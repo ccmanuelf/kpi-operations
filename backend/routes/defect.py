@@ -25,7 +25,7 @@ from backend.services.defect_service import (
     delete_defect as delete_defect_detail,
     get_summary_by_type as get_defect_summary_by_type,
 )
-from backend.auth.jwt import get_current_user, get_current_active_supervisor
+from backend.auth.jwt import get_current_active_supervisor, get_current_contributor, get_current_user
 from backend.orm.user import User
 from backend.utils.logging_utils import get_module_logger
 
@@ -36,7 +36,7 @@ router = APIRouter(prefix="/api/defects", tags=["Defect Details"])
 
 @router.post("", response_model=DefectDetailResponse, status_code=status.HTTP_201_CREATED)
 def create_defect(
-    defect: DefectDetailCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+    defect: DefectDetailCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_contributor)
 ) -> Any:
     """
     Create new defect detail record
@@ -91,7 +91,7 @@ def update_defect(
     defect_detail_id: str,
     defect_update: DefectDetailUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_contributor),
 ) -> Any:
     """
     Update defect detail record

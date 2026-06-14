@@ -18,7 +18,7 @@ from backend.services.coverage_service import (
     update_coverage as update_shift_coverage,
     delete_coverage as delete_shift_coverage,
 )
-from backend.auth.jwt import get_current_user, get_current_active_supervisor
+from backend.auth.jwt import get_current_active_supervisor, get_current_contributor, get_current_user
 from backend.orm.user import User
 from backend.utils.logging_utils import get_module_logger
 
@@ -29,7 +29,7 @@ router = APIRouter(prefix="/api/coverage", tags=["Shift Coverage"])
 
 @router.post("", response_model=ShiftCoverageResponse, status_code=status.HTTP_201_CREATED)
 def create_coverage(
-    coverage: ShiftCoverageCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+    coverage: ShiftCoverageCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_contributor)
 ) -> Any:
     """
     Create new shift coverage record
@@ -115,7 +115,7 @@ def update_coverage(
     coverage_id: int,
     coverage_update: ShiftCoverageUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_contributor),
 ) -> Any:
     """
     Update shift coverage record

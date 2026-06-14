@@ -47,7 +47,7 @@ class UserCreate(BaseModel):
     full_name: str = Field(..., min_length=1, max_length=100, description="User display name shown in the application")
     role: str = Field(
         default="operator",
-        pattern="^(admin|poweruser|supervisor|operator|viewer)$",
+        pattern="^(admin|poweruser|leader|supervisor|operator|viewer)$",
         description="Access role determining permissions: admin, poweruser, supervisor, operator, or viewer",
     )
     client_id_assigned: Optional[str] = Field(
@@ -96,7 +96,7 @@ class UserUpdate(BaseModel):
     )
     role: Optional[str] = Field(
         None,
-        pattern="^(admin|poweruser|supervisor|operator|viewer)$",
+        pattern="^(admin|poweruser|leader|supervisor|operator|viewer)$",
         description="Updated access role for permissions",
     )
     client_id_assigned: Optional[str] = Field(None, description="Updated client tenant ID assignment")

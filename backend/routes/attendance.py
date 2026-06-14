@@ -28,7 +28,7 @@ from backend.services.attendance_service import (
     mark_all_employees_present as mark_all_present,
 )
 from backend.calculations.absenteeism import calculate_bradford_factor
-from backend.auth.jwt import get_current_user, get_current_active_supervisor
+from backend.auth.jwt import get_current_active_supervisor, get_current_contributor, get_current_user
 from backend.orm.attendance_entry import AttendanceEntry
 from backend.orm.user import User
 from backend.middleware.client_auth import build_client_filter_clause, verify_client_access
@@ -41,7 +41,9 @@ router = APIRouter(prefix="/api/attendance", tags=["Attendance Tracking"])
 
 @router.post("", response_model=AttendanceRecordResponse, status_code=status.HTTP_201_CREATED)
 def create_attendance(
-    attendance: AttendanceRecordCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+    attendance: AttendanceRecordCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_contributor),
 ) -> AttendanceRecordResponse:
     """
     Create new attendance record
@@ -242,7 +244,7 @@ def update_attendance(
     attendance_id: str,
     attendance_update: AttendanceRecordUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_contributor),
 ) -> AttendanceRecordResponse:
     """
     Update attendance record
@@ -591,7 +593,7 @@ def get_bradford_factor(
 def bulk_create_attendance(
     records: List[AttendanceRecordCreate],
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_contributor),
 ) -> dict:
     """
     Bulk create attendance records in a single transaction.
@@ -625,7 +627,7 @@ def mark_all_present_endpoint(
     shift_id: int,
     shift_date: date,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_contributor),
 ) -> dict:
     """
     Mark all active employees as present for a given shift and date.

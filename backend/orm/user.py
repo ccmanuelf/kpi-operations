@@ -16,12 +16,20 @@ from backend.database import Base
 
 
 class UserRole(str, enum.Enum):
-    """User roles enum - defines access scope"""
+    """User roles enum - defines access scope.
+
+    Canonical set of the six role strings the platform recognizes (Run 7
+    reconciliation). Write authority descends ADMIN > POWERUSER > LEADER ≈
+    SUPERVISOR > OPERATOR > VIEWER. See docs/user-guide/10-roles-permissions.md
+    and the guard tiers in backend/auth/jwt.py.
+    """
 
     ADMIN = "admin"  # Full system access, all clients
     POWERUSER = "poweruser"  # All clients access
     LEADER = "leader"  # Multiple clients (client_id_assigned)
-    OPERATOR = "operator"  # Single client (client_id_assigned)
+    SUPERVISOR = "supervisor"  # Shift supervisor; supervisory tier (≈ leader)
+    OPERATOR = "operator"  # Single client (client_id_assigned); data entry
+    VIEWER = "viewer"  # Read-only; single client
 
 
 class User(Base):

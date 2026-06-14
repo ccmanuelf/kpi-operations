@@ -220,16 +220,17 @@ def get_current_user(request: Request, token: str = Depends(oauth2_scheme), db: 
     return user
 
 
-# Role tiers (Run 7 T2.7), per the documented permission matrix in
-# docs/user-guide/10-roles-permissions.md:
-#   admin                      -> system administration
-#   PLANNER_ROLES              -> capacity planning, scenarios, configuration
-#   SUPERVISORY_ROLES          -> operations master data, work orders, bulk loads
-#   any authenticated user     -> transactional data entry (the operator's job)
-# "supervisor" is a legacy role string (not in the UserRole enum) carried by
-# DB-seeded users; it is accepted in the supervisory tier for compatibility.
+# Role tiers (Run 7), per the documented permission matrix in
+# docs/user-guide/10-roles-permissions.md. All six are canonical UserRole
+# enum values (Run 7 role-model reconciliation):
+#   admin               -> system administration
+#   PLANNER_ROLES       -> capacity planning, scenarios, configuration
+#   SUPERVISORY_ROLES   -> operations master data, work orders, bulk loads
+#   CONTRIBUTOR_ROLES   -> transactional data entry (everyone except viewer)
+#   viewer              -> read-only (excluded from all write guards)
 PLANNER_ROLES = ["admin", "poweruser"]
 SUPERVISORY_ROLES = ["admin", "poweruser", "leader", "supervisor"]
+CONTRIBUTOR_ROLES = ["admin", "poweruser", "leader", "supervisor", "operator"]
 
 
 def get_current_active_supervisor(current_user: User = Depends(get_current_user)) -> User:
@@ -264,6 +265,26 @@ def get_current_planner(current_user: User = Depends(get_current_user)) -> User:
     if current_user.role not in PLANNER_ROLES:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="Planner access required (admin or poweruser)"
+        )
+    return current_user
+
+
+def get_current_contributor(current_user: User = Depends(get_current_user)) -> User:
+    """
+    Dependency for transactional data entry: any authenticated role except
+    viewer (Run 7 role-model reconciliation).
+
+    Viewers are read-only — they may authenticate and read, but cannot create
+    or modify operational records (production, downtime, attendance, quality,
+    holds, coverage, defects). Operators and above are contributors.
+
+    Raises:
+        HTTPException: If the caller is a viewer
+    """
+    if current_user.role not in CONTRIBUTOR_ROLES:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This action requires a data-entry role (viewers are read-only)",
         )
     return current_user
 
