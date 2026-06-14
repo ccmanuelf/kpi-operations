@@ -23,7 +23,7 @@ from sqlalchemy.orm import Session
 
 from backend.auth.jwt import get_current_user
 from backend.database import get_db
-from backend.orm.user import User
+from backend.orm.user import User, SUPERVISORY_ROLES
 from backend.schemas.simulation_calibration import CalibrationResponse
 from backend.services.simulation_calibration import calibrate_from_history
 from backend.utils.date_range import validate_date_range
@@ -37,7 +37,7 @@ router = APIRouter(
 )
 
 
-_WRITE_ROLES = {"admin", "ADMIN", "poweruser", "leader", "supervisor"}
+_WRITE_ROLES = SUPERVISORY_ROLES
 
 
 def _check_calibration_permission(user: User) -> None:
