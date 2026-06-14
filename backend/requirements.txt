@@ -12,12 +12,12 @@ pydantic-settings==2.14.1
 sqlalchemy==2.0.46
 alembic==1.15.2
 pymysql==1.1.2
-cryptography==46.0.7  # CVE-2026-34073 + CVE-2026-39892 fix; pinned for pymysql SSL + python-jose; security-critical
+cryptography==46.0.7  # CVE-2026-34073 + CVE-2026-39892 fix; pinned for pymysql SSL; security-critical
 
 # Authentication
-python-jose[cryptography]==3.5.0
-ecdsa==0.19.2          # transitive via python-jose; pinned for CVE-2024-23342 + CVE-2026-33936
-pyasn1==0.6.3          # transitive via python-jose + rsa; pinned for CVE-2026-30922
+pyjwt==2.13.0          # HS256 JWTs (replaced unmaintained python-jose, Run 7); HMAC needs no crypto extra
+# python-jose removed (Run 7): dropped with its compensating CVE pins ecdsa /
+# pyasn1 / rsa, which only existed for jose's unused EC/RSA paths.
 argon2-cffi==25.1.0    # Primary password-hashing (OWASP-recommended algorithm)
 bcrypt==5.0.0          # Retained for legacy-hash verification path (rehash-on-verify migration shim from passlib era)
 python-multipart==0.0.27  # CVE-2026-40347 + CVE-2026-42561 fix

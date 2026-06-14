@@ -6,7 +6,7 @@ Target: 90% coverage for auth/ module
 import pytest
 from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock
-from jose import jwt
+import jwt
 import sys
 import os
 
@@ -114,7 +114,7 @@ class TestJWTTokens:
 
         invalid_token = "invalid.token.here"
 
-        with pytest.raises(jwt.JWTError):
+        with pytest.raises(jwt.PyJWTError):
             jwt.decode(invalid_token, secret_key, algorithms=[algorithm])
 
     def test_wrong_secret_key_raises_error(self):
@@ -131,7 +131,7 @@ class TestJWTTokens:
 
         token = jwt.encode(to_encode, secret_key, algorithm=algorithm)
 
-        with pytest.raises(jwt.JWTError):
+        with pytest.raises(jwt.PyJWTError):
             jwt.decode(token, wrong_key, algorithms=[algorithm])
 
 

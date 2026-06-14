@@ -6,7 +6,8 @@ All authentication endpoints: register, login, logout, password management
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from datetime import datetime, timezone
-from jose import JWTError, jwt
+import jwt
+from jwt import PyJWTError
 import uuid
 
 from backend.database import get_db
@@ -280,7 +281,7 @@ def reset_password(request: Request, reset_confirm: PasswordResetConfirm, db: Se
 
         return {"message": "Password has been reset successfully"}
 
-    except JWTError:
+    except PyJWTError:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired reset token")
 
 
