@@ -369,3 +369,18 @@ Expected: PR opened; monitor the 4 required checks; merge on green; verify Rende
 - **No placeholders:** token derivation, contrast helper, theme wiring, and a worked CSS-rebase example are concrete; the 150-rule sweep is methodology + example + the exact grep that bounds it + the gate that proves done (full enumeration isn't knowable until Step 1 runs).
 - **Type consistency:** `buildMd3Theme(mode)`/`contrastRatio(fg,bg)`/`carbonSeeds` names are used identically across Task 2 and Task 3.
 - **Risk:** if `material-color-utilities` tonal output drifts Carbon identity, Task 2 Step 4 tunes `ROLE_TONES`; if Vuetify 4 exposes sufficient native tonal handling, `md3Tonal.ts` can wrap that instead — outcome identical.
+
+---
+
+## PR1 Execution Findings (2026-06-14) — live-harness visual validation
+
+**Tasks 1–3 DONE & reviewed** (commits 1c4713b, 8645c82, c0274fc): Vuetify 4.1.1 + MD3 blueprint + Carbon-seeded tonal theme; build/vitest(1986)/vue-tsc/eslint/npm-audit all green. The upgrade core is sound.
+
+**Live visual harness built & proven** (gitignored at `frontend/.visual-baseline/`): headless Playwright (chromium) scripts — `capture.mjs` (login via "Sign In" button click, NOT Enter; per-screen screenshots + overflow/console checks), `layout.mjs`, `var.mjs`, `ab.mjs` (v4-local vs v3-Render). Faithful local run = backend on :8010 (`DEMO_MODE=true`) + `npm run dev -- --port 3010` with a TEMP `vite.config.ts` proxy edit (`:8000`→`:8010`) that must be reverted before any commit (gym-platform squats :8000/:3000 — do not tear down).
+
+**Findings that change Task 5's scope:**
+1. **KEYSTONE BUG — Tailwind 4 preflight vs Vuetify 4 cascade layers.** Vuetify 4 emits its CSS into `@layer`s (new in v4); Tailwind 4's preflight reset then wins the cascade and zeroes `.v-main { padding-left: var(--v-layout-left) }`. Result: `--v-layout-left` computes correctly (256px) but `padding-left:0`, so content renders UNDER the 280px permanent nav drawer — leftmost KPI cards + filter toolbar are CLIPPED on every authenticated screen. v3 was fine (Vuetify 3 styles unlayered → beat Tailwind). Fix = deliberate Tailwind↔Vuetify `@layer` ordering (or disable Tailwind preflight). Adding a bare `@layer vuetify, app, utilities;` (Task 3) did NOT fix it and is not the answer; needs the correct ordering with the actual Vuetify-4 layer name. THIS is the crux of the CSS reconciliation and likely resolves most layout issues at once.
+2. **Three color systems, not "150 hex overrides"** (the footprint scan miscounted). Only ~14 hardcoded hex exist, mostly in CSS-var *definitions* + print/high-contrast styles (leave those). Real cohesion work = harmonizing: (a) Vuetify MD3 tonal theme, (b) `carbon-tokens.css` `--cds-*` (heavily used), (c) Tailwind `@theme --color-*` (indigo #1a237e ≠ Carbon #0f62fe). A pre-existing inconsistency the MD3 modernization should unify.
+3. **Charts are NOT broken** — `canvas=0` locally is a demo-data-window artifact (default view N/A with no client/date data); all chart-data APIs 200, chart code + build fine. Validate charts on data-populated state (select client/date) or a deploy.
+
+**Revised Task 5 reality:** it's (a) solve the @layer keystone, (b) reconcile the 3 color systems, (c) per-screen visual validation (14 screens × light/dark) — a substantial focused effort, larger/different than this plan's original "rebase 150 .v-* hex" framing. Recommend doing it as dedicated focused work using the proven harness, starting from the @layer keystone.
