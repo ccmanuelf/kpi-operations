@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from backend.database import get_db
-from backend.auth.jwt import get_current_user, get_current_active_supervisor
+from backend.auth.jwt import get_current_active_supervisor, get_current_contributor, get_current_user
 from backend.orm.quality_entry import QualityEntry
 from backend.orm.user import User
 from backend.middleware.client_auth import build_client_filter_clause, verify_client_access
@@ -39,7 +39,7 @@ entries_router = APIRouter()
 def create_quality(
     inspection: QualityInspectionCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_contributor),
 ) -> QualityInspectionResponse:
     """
     Create new quality inspection record
@@ -207,7 +207,7 @@ def update_quality(
     inspection_id: str,
     inspection_update: QualityInspectionUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_contributor),
 ) -> QualityInspectionResponse:
     """
     Update quality inspection record

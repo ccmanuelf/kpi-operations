@@ -1,6 +1,6 @@
 # 10 — Roles & Permissions
 
-## The 5 roles
+## The 6 roles
 
 | Role | Designed for | Default landing | Can see |
 |------|--------------|-----------------|---------|
@@ -9,43 +9,48 @@
 | **Leader** | Line/quality lead | `/` | Operations + Monitoring |
 | **Supervisor** | Shift supervisor | `/` (fallback) | Operations + Monitoring |
 | **Operator** | Line operator (data collector) | `/my-shift` | Operations + Monitoring (single client) |
+| **Viewer** | Read-only stakeholder | `/` | Operations + Monitoring (single client), **read-only** |
 
-> **Role strings:** the canonical role enum (`backend/orm/user.py`) is `admin`, `poweruser`, `leader`, `operator`. `supervisor` is a legacy role string still carried by the demo `supervisor*` accounts; for write permissions it is treated as supervisory-tier, equivalent to `leader`. (A future release will consolidate `supervisor` into `leader` and reconcile the user-management role list.)
+> **Canonical role set (Run 7):** all six are values of the `UserRole` enum
+> (`backend/orm/user.py`) and are accepted by the user-management API. For
+> **write** authority they collapse into the guard tiers below: Leader and
+> Supervisor are equivalent (supervisory tier), and Viewer can read but
+> cannot create or modify any record (it is excluded from every write guard).
 
 ## What each role can do
 
 ### Read access
 
-| Surface | Admin | PowerUser | Leader | Supervisor | Operator |
-|---------|:-----:|:---------:|:------:|:----------:|:--------:|
-| Home / KPI Dashboard | ✓ | ✓ | ✓ | ✓ | ✓ |
-| MyShift | ✓ | ✓ | ✓ | ✓ | ✓ |
-| KPI sub-views (Efficiency, OEE, etc.) | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Plan vs Actual | ✓ | ✓ | ✓ | ✓ | — |
-| Capacity Planning workbook | ✓ | ✓ | view-only | view-only | — |
-| Work Orders | ✓ | ✓ | ✓ | ✓ | view-only |
-| Alerts (their data) | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Reports | ✓ | ✓ | ✓ | — | — |
-| Admin section | ✓ | — | — | — | — |
+| Surface | Admin | PowerUser | Leader | Supervisor | Operator | Viewer |
+|---------|:-----:|:---------:|:------:|:----------:|:--------:|:------:|
+| Home / KPI Dashboard | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| MyShift | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| KPI sub-views (Efficiency, OEE, etc.) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Plan vs Actual | ✓ | ✓ | ✓ | ✓ | — | — |
+| Capacity Planning workbook | ✓ | ✓ | view-only | view-only | — | — |
+| Work Orders | ✓ | ✓ | ✓ | ✓ | view-only | view-only |
+| Alerts (their data) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Reports | ✓ | ✓ | ✓ | — | — | — |
+| Admin section | ✓ | — | — | — | — | — |
 
 ### Write / mutate
 
-| Action | Admin | PowerUser | Leader | Supervisor | Operator |
-|--------|:-----:|:---------:|:------:|:----------:|:--------:|
-| Production entry | ✓ | ✓ | ✓ | ✓ | ✓ (own line) |
-| Downtime / Attendance / Quality / Hold entry | ✓ | ✓ | ✓ | ✓ | ✓ (own line) |
-| Create / edit / patch-status work orders | ✓ | ✓ | ✓ | ✓ | — (Run-6 audit added explicit gate) |
-| Delete work orders | ✓ | — | — | ✓ | — |
-| Edit capacity workbook | ✓ | ✓ | — | — | — |
-| Save scenarios | ✓ | ✓ | — | — | — |
-| Run simulation (V2) | ✓ | ✓ | ✓ | ✓ | — |
-| Run MiniZinc patterns (P1-P4) | ✓ | ✓ | ✓ | ✓ | — |
-| Manage users / clients | ✓ | — | — | — | — |
-| Trigger DB migrations | ✓ | — | — | — | — |
+| Action | Admin | PowerUser | Leader | Supervisor | Operator | Viewer |
+|--------|:-----:|:---------:|:------:|:----------:|:--------:|:------:|
+| Production entry | ✓ | ✓ | ✓ | ✓ | ✓ (own line) | — |
+| Downtime / Attendance / Quality / Hold entry | ✓ | ✓ | ✓ | ✓ | ✓ (own line) | — |
+| Create / edit / patch-status work orders | ✓ | ✓ | ✓ | ✓ | — (Run-6 audit added explicit gate) | — |
+| Delete work orders | ✓ | — | — | ✓ | — | — |
+| Edit capacity workbook | ✓ | ✓ | — | — | — | — |
+| Save scenarios | ✓ | ✓ | — | — | — | — |
+| Run simulation (V2) | ✓ | ✓ | ✓ | ✓ | — | — |
+| Run MiniZinc patterns (P1-P4) | ✓ | ✓ | ✓ | ✓ | — | — |
+| Manage users / clients | ✓ | — | — | — | — | — |
+| Trigger DB migrations | ✓ | — | — | — | — | — |
 
 ### How this is enforced (Run 7)
 
-Every mutation endpoint carries one of three route-level guard tiers
+Every mutation endpoint carries one of four route-level guard tiers
 (`backend/auth/jwt.py`), applied uniformly in the Run 7 permission sweep:
 
 | Tier | Roles | Covers |
@@ -53,9 +58,12 @@ Every mutation endpoint carries one of three route-level guard tiers
 | **admin** | admin | users/clients management, client CSV import, DB migrations, cache invalidation, nightly batch triggers |
 | **planner** | admin, poweruser | capacity workbook/orders/BOM/calendar/lines/standards/schedules, capacity scenarios, KPI thresholds, client configuration |
 | **supervisory** | admin, poweruser, leader, supervisor | operations master data (employees, jobs, floating pool, part opportunities), work-order transitions, bulk/CSV imports, simulation V2 runs & scenarios, alert generation/config, report email config |
-| *(authenticated)* | all roles incl. operator | transactional data entry (production, downtime, attendance, quality, holds), filters, preferences, alert acknowledge/resolve |
+| **contributor** | admin, poweruser, leader, supervisor, operator (everyone except viewer) | transactional data entry (production, downtime, attendance, quality, holds, coverage, defects) |
+| *(authenticated)* | all roles incl. viewer | personal-scoped writes (own filters, preferences) and alert acknowledge/resolve |
 
-These tiers are pinned by `backend/tests/test_security/test_permission_matrix.py`.
+Viewer is the read-only floor: it passes the `(authenticated)` row only, and is
+denied by the contributor tier and above. These tiers are pinned by
+`backend/tests/test_security/test_permission_matrix.py`.
 
 ## Multi-tenant isolation
 

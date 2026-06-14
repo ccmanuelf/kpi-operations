@@ -114,6 +114,32 @@ class TestPermissionMatrix:
             response = client.request(method, path, json={})
             assert response.status_code == 422, f"operator on {method} {path}: got {response.status_code}"
 
+    # Transactional data-entry write endpoints gated to the contributor tier
+    # (every role except viewer) in the Run 7 role-model reconciliation.
+    CONTRIBUTOR_WRITE_ENDPOINTS = [
+        ("POST", "/api/production"),
+        ("POST", "/api/downtime"),
+        ("POST", "/api/attendance"),
+        ("POST", "/api/quality/"),
+        ("POST", "/api/holds"),
+        ("POST", "/api/coverage"),
+        ("POST", "/api/defects"),
+    ]
+
+    def test_viewer_cannot_write_transactional_data(self, as_role):
+        """Viewer is read-only: every data-entry write must 403 (Run 7)."""
+        client = as_role("viewer")
+        for method, path in self.CONTRIBUTOR_WRITE_ENDPOINTS:
+            response = client.request(method, path, json={})
+            assert response.status_code == 403, f"viewer on {method} {path}: got {response.status_code}"
+
+    def test_operator_is_a_contributor(self, as_role):
+        """Operator (and above) keep data-entry access — 422 = passed the guard."""
+        client = as_role("operator")
+        for method, path in self.CONTRIBUTOR_WRITE_ENDPOINTS:
+            response = client.request(method, path, json={})
+            assert response.status_code != 403, f"operator wrongly denied on {method} {path}"
+
     def test_workflow_transition_no_longer_bypasses_wo_gate(self, as_role):
         """workflow.py's transition endpoint sidestepped the Run-6 work-order
         write gate with bare authentication — operators must now get 403."""

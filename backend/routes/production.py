@@ -30,7 +30,7 @@ from backend.services.production_crud_service import (
     delete_entry as delete_production_entry,
     get_entry_with_details as get_production_entry_with_details,
 )
-from backend.auth.jwt import get_current_user, get_current_active_supervisor
+from backend.auth.jwt import get_current_active_supervisor, get_current_contributor, get_current_user
 from backend.orm.production_entry import ProductionEntry
 from backend.orm.user import User
 from backend.orm.product import Product
@@ -44,7 +44,7 @@ router = APIRouter(prefix="/api/production", tags=["Production"])
 
 @router.post("", response_model=ProductionEntryResponse, status_code=status.HTTP_201_CREATED)
 def create_entry(
-    entry: ProductionEntryCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+    entry: ProductionEntryCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_contributor)
 ) -> ProductionEntryResponse:
     """Create new production entry"""
     # Verify product exists and belongs to the same client
@@ -149,7 +149,7 @@ def update_entry(
     entry_id: str,
     entry_update: ProductionEntryUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_contributor),
 ) -> ProductionEntryResponse:
     """Update production entry"""
     try:

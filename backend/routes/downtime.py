@@ -23,7 +23,7 @@ from backend.services.downtime_service import (
     delete_event as delete_downtime_event,
 )
 from backend.calculations.availability import calculate_availability
-from backend.auth.jwt import get_current_user, get_current_active_supervisor
+from backend.auth.jwt import get_current_active_supervisor, get_current_contributor, get_current_user
 from backend.orm.user import User
 
 logger = get_module_logger(__name__)
@@ -34,7 +34,7 @@ router = APIRouter(prefix="/api/downtime", tags=["Downtime Tracking"])
 
 @router.post("", response_model=DowntimeEventResponse, status_code=status.HTTP_201_CREATED)
 def create_downtime(
-    downtime: DowntimeEventCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+    downtime: DowntimeEventCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_contributor)
 ) -> Any:
     """Create downtime event"""
     try:
@@ -99,7 +99,7 @@ def update_downtime(
     downtime_id: str,
     downtime_update: DowntimeEventUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_contributor),
 ) -> Any:
     """Update downtime event"""
     try:

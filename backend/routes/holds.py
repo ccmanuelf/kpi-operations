@@ -21,7 +21,7 @@ from backend.services.hold_service import (
     validate_reason_for_client as validate_hold_reason_for_client,
 )
 from backend.calculations.wip_aging import identify_chronic_holds
-from backend.auth.jwt import get_current_user, get_current_active_supervisor
+from backend.auth.jwt import get_current_active_supervisor, get_current_contributor, get_current_user
 from backend.orm.user import User
 from backend.constants import DEFAULT_PAGE_SIZE, SMALL_PAGE_SIZE, LOOKBACK_MONTHLY_DAYS
 from backend.utils.logging_utils import get_module_logger
@@ -33,7 +33,7 @@ router = APIRouter(prefix="/api/holds", tags=["WIP Holds"])
 
 @router.post("", response_model=WIPHoldResponse, status_code=status.HTTP_201_CREATED)
 def create_hold(
-    hold: WIPHoldCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+    hold: WIPHoldCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_contributor)
 ) -> WIPHoldResponse:
     """
     Create WIP hold record.
@@ -122,7 +122,7 @@ def update_hold(
     hold_id: str,
     hold_update: WIPHoldUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_contributor),
 ) -> WIPHoldResponse:
     """Update WIP hold record. Validates hold_reason against catalog if provided."""
     # Validate hold_reason against catalog when updating
@@ -199,7 +199,7 @@ def approve_hold(
 
 @router.post("/{hold_id}/request-resume", response_model=WIPHoldResponse)
 def request_resume(
-    hold_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+    hold_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_contributor)
 ) -> WIPHoldResponse:
     """
     Request to resume a hold (any user can request).

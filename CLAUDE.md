@@ -385,9 +385,12 @@ Remember: **Claude Flow coordinates, Claude Code creates!**
 - **M-3** Simulation V1 HTTP API removed (past sunset); **M-6** `orm/`↔`schemas/` invariant corrected; **M-7** uniform 3-tier authorization on all mutation endpoints; **M-9** capacity 400→500
 - Deps: starlette PYSEC-2026-161 + esbuild advisories patched; Node 22 / Python 3.11
 
+### Resolved since the report
+- **python-jose → pyjwt** (M-15): all auth on PyJWT 2.13.0; ecdsa/pyasn1 pins dropped.
+- **Role model reconciled** (was the open product decision): `UserRole` now formalizes all six roles (admin, poweruser, leader, supervisor, operator, viewer); the user-management regex accepts the same six; guard tiers are admin / planner / supervisory / contributor (= everyone but viewer) / authenticated. Viewer is enforced read-only on transactional data-entry endpoints. Pinned by `test_permission_matrix.py`.
+
 ### Still open (lower-priority Run 7 items)
-- python-jose → joserfc/pyjwt migration (M); Python lockfile/hash pinning (L); `endpoints/csv_upload.py` consolidation (L); ~55 residual hardcoded i18n strings (L)
-- **Role-model inconsistency (NEW, surfaced in docs wave):** `UserRole` enum = {admin, poweruser, leader, operator}, but demo seeders create `supervisor` accounts, `UserCreate` regex allows {admin, poweruser, supervisor, operator, viewer}, and guards accept both `leader` and `supervisor`. Needs a product decision on the canonical role set before code reconciliation.
+- Python lockfile/hash pinning (L); `endpoints/csv_upload.py` consolidation (L); ~55 residual hardcoded i18n strings (L); `.mcp.json.example` template (L)
 - Architecture Mediums deferred: single schema-evolution mechanism (Alembic vs `create_all`), `main.py` lifespan decomposition
 
 ### Audit Conventions
