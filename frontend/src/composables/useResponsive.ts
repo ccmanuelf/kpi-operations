@@ -67,9 +67,11 @@ export function useResponsive() {
   }
 
   const getRowHeight = (): number => {
-    if (isMobile.value) return 36
-    if (isTablet.value) return 40
-    return 44
+    // Spreadsheet-natural compact density (PR2): denser than the MD3-airy
+    // defaults while still fitting the compact-tag cell renderers.
+    if (isMobile.value) return 32
+    if (isTablet.value) return 36
+    return 38
   }
 
   const shouldHideSidebar = (): boolean => isMobile.value || isTablet.value
