@@ -144,8 +144,10 @@
   --cds-support-info: var(--cds-blue-60);
   /* Carbon yellow (#f1c21b) is a surface/icon color and is unreadable as text
      on light backgrounds; this dark amber is the AA-safe color for warning TEXT
-     on light surfaces (brightens to the yellow in the dark-theme block below). */
-  --cds-text-warning: #8a6d00;
+     on light surfaces (brightens to the yellow in the dark-theme block below).
+     #806000 (not a lighter amber) so it clears AA on the off-white layer-01
+     surface (#f4f4f4), not just pure white. */
+  --cds-text-warning: #806000;
 
   --cds-focus: var(--cds-blue-60);
   --cds-interactive: var(--cds-blue-60);
