@@ -19,6 +19,10 @@ import {
   type ValidationResult,
   type MapColumnsResult,
 } from '@/utils/clipboardParser'
+import {
+  useAgGridExcelBehaviors,
+  DEFAULT_EXCEL_BEHAVIOR_FLAGS,
+} from './agGridExcelBehaviors'
 
 type EmitFn = (_event: string, _payload?: unknown) => void
 
@@ -71,6 +75,20 @@ export function useAGGridBase(props: AGGridBaseProps, emit: EmitFn) {
   const gridApi = ref<GridApi | null>(null)
   const columnApi = ref<unknown | null>(null)
 
+  // All Excel behaviors route through the one isolated module. Paste remains
+  // opt-in per grid via the existing `enableExcelPaste` prop; everything else
+  // is Community default-on. A master switch lives in the module for the
+  // Enterprise hand-off (see docs/frontend/ag-grid-excel-behaviors.md).
+  const excelBehaviors = computed(() =>
+    useAgGridExcelBehaviors({
+      ...DEFAULT_EXCEL_BEHAVIOR_FLAGS,
+      excelPaste: !!props.enableExcelPaste,
+    }),
+  )
+  const pasteEnabled = computed(
+    () => excelBehaviors.value.registry.find((e) => e.key === 'excelPaste')?.enabled ?? false,
+  )
+
   const pasteLoading = ref(false)
   const lastPasteCount = ref(0)
   const showPasteDialog = ref(false)
@@ -80,7 +98,7 @@ export function useAGGridBase(props: AGGridBaseProps, emit: EmitFn) {
   const pasteColumnMapping = ref<MapColumnsResult | null>(null)
   const snackbar = ref<SnackbarState>({ show: false, text: '', color: 'info' })
 
-  const toolbarHeight = computed(() => (props.enableExcelPaste ? 56 : 0))
+  const toolbarHeight = computed(() => (pasteEnabled.value ? 56 : 0))
 
   const gridStyle = computed(() => {
     const totalHeight = props.height || getGridHeight()
@@ -147,26 +165,7 @@ export function useAGGridBase(props: AGGridBaseProps, emit: EmitFn) {
     suppressColumnVirtualisation: isMobile.value,
     singleClickEdit: isMobile.value || isTouchDevice(),
 
-    navigateToNextCell: (params: {
-      key: number
-      nextCellPosition: unknown
-      previousCellPosition: { rowIndex: number; column: unknown }
-    }) => {
-      const suggestedNextCell = params.nextCellPosition
-
-      if (params.key === 9) {
-        return suggestedNextCell
-      }
-
-      if (params.key === 13) {
-        return {
-          rowIndex: params.previousCellPosition.rowIndex + 1,
-          column: params.previousCellPosition.column,
-        }
-      }
-
-      return suggestedNextCell
-    },
+    ...excelBehaviors.value.gridOptions,
 
     ...(isMobile.value && {
       suppressMenuHide: false,
@@ -372,7 +371,7 @@ export function useAGGridBase(props: AGGridBaseProps, emit: EmitFn) {
   }
 
   onMounted(() => {
-    if (props.enableExcelPaste) {
+    if (pasteEnabled.value) {
       document.addEventListener('keydown', handleKeyboardPaste)
     }
   })
@@ -414,6 +413,7 @@ export function useAGGridBase(props: AGGridBaseProps, emit: EmitFn) {
     isDesktop,
     gridApi,
     columnApi,
+    excelBehaviorRegistry: computed(() => excelBehaviors.value.registry),
     pasteLoading,
     lastPasteCount,
     showPasteDialog,
