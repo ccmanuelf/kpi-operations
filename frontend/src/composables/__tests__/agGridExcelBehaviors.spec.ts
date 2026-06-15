@@ -40,7 +40,7 @@ describe('agGridExcelBehaviors', () => {
 
   it('keyboard nav is Excel-style: Enter (13) moves down, Tab (9) keeps suggested', () => {
     const { gridOptions } = useAgGridExcelBehaviors(DEFAULT_EXCEL_BEHAVIOR_FLAGS)
-    const nav = gridOptions.navigateToNextCell as (p: unknown) => unknown
+    const nav = gridOptions.navigateToNextCell as (_p: unknown) => unknown
     const suggested = { rowIndex: 5, column: 'X' }
     const prev = { rowIndex: 5, column: 'COL' }
     expect(nav({ key: 13, nextCellPosition: suggested, previousCellPosition: prev }))
