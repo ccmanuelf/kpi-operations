@@ -695,3 +695,9 @@
 .ag-theme-material .ag-header-cell:last-of-type {
   border-right: none;
 }
+
+/* Range-copy shim highlight (PR3c) — reuses the Carbon range-selection token
+   already themed for light + dark; mirrors Excel's range box. */
+.ag-theme-material .range-shim-selected {
+  background-color: var(--ag-range-selection-background-color, #edf5ff) !important;
+}
