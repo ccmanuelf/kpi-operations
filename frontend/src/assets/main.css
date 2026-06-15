@@ -5,7 +5,16 @@
  * Typography, spacing, and visual patterns follow Carbon guidelines.
  */
 
-@layer vuetify, app, utilities;
+/* Master cascade-layer order (Vuetify 4 + Tailwind 4 reconciliation).
+   MUST be the first @layer statement the bundle parses — main.css is the
+   first import in main.ts. Vuetify 4 emits component styles into vuetify-*
+   layers; Tailwind 4's preflight reset lives in `base`. Without an explicit
+   order, `base` was declared last (highest priority) and its
+   `*{padding:0}` beat `.v-main{padding-left:var(--v-layout-left)}` (in
+   vuetify-components), clipping content under the nav drawer. Placing `base`
+   BELOW the Vuetify layers fixes this; `app` overrides win over Vuetify,
+   and Tailwind utilities win last. */
+@layer theme, base, vuetify-core, vuetify-components, vuetify-overrides, vuetify-utilities, vuetify-final, app, components, utilities;
 
 @import './carbon-tokens.css';
 @import "tailwindcss";

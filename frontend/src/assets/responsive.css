@@ -119,13 +119,11 @@ h4 {
   max-height: 2000px;
 }
 
-/* Mobile navigation adjustments - respect Vuetify rail mode */
-.v-navigation-drawer:not(.v-navigation-drawer--rail) {
-  width: 280px !important;
-}
-.v-navigation-drawer.v-navigation-drawer--rail {
-  width: 56px !important;
-}
+/* Drawer width is owned by Vuetify via the <v-navigation-drawer :width="280">
+   prop in App.vue (rail-width defaults to 56), so Vuetify's layout reserves the
+   correct --v-layout-left. The previous `width: …px !important` overrides here
+   desynced the rendered width from the reserved width (content slid under the
+   drawer's right edge) and are no longer needed. */
 
 .v-app-bar {
   height: 56px !important;
@@ -343,13 +341,8 @@ h4 {
     min-height: 44px;
   }
 
-  /* Desktop navigation - respect Vuetify rail mode */
-  .v-navigation-drawer:not(.v-navigation-drawer--rail) {
-    width: 280px !important;
-  }
-  .v-navigation-drawer.v-navigation-drawer--rail {
-    width: 56px !important;
-  }
+  /* Drawer width owned by Vuetify (see App.vue :width="280"); the prior
+     desktop width !important overrides were redundant and desynced the layout. */
 
   .v-app-bar {
     height: 64px !important;

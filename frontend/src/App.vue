@@ -45,6 +45,7 @@
       v-if="isAuthenticated"
       v-model="drawer"
       :rail="rail"
+      :width="280"
       permanent
       role="navigation"
       aria-label="Main navigation"
