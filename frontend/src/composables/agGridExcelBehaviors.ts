@@ -16,6 +16,7 @@ export interface ExcelBehaviorFlags {
   cellEditing: boolean
   freezePanes: boolean
   quickFind: boolean
+  rangeCopy: boolean
 }
 
 export const DEFAULT_EXCEL_BEHAVIOR_FLAGS: ExcelBehaviorFlags = {
@@ -30,6 +31,7 @@ export const DEFAULT_EXCEL_BEHAVIOR_FLAGS: ExcelBehaviorFlags = {
   cellEditing: true,
   freezePanes: true,
   quickFind: false,
+  rangeCopy: true,
 }
 
 export type ExcelBehaviorKey = Exclude<keyof ExcelBehaviorFlags, 'master'>
@@ -103,6 +105,12 @@ const BEHAVIOR_META: Omit<ExcelBehaviorEntry, 'enabled'>[] = [
     excelFeature: 'Instant global filter (Ctrl+F style)',
     communityMechanism: 'deferred — per-screen Search box covers this (off by default)',
     enterpriseEquivalent: 'n/a (Community-capable; deferred by product choice)',
+  },
+  {
+    key: 'rangeCopy',
+    excelFeature: 'Select a cell range (Shift+click / Shift+Arrow) and copy it',
+    communityMechanism: 'useGridRangeCopy shim — AG events + getValue + TSV clipboard',
+    enterpriseEquivalent: 'Enterprise cell selection + range copy (disable this flag)',
   },
 ]
 
