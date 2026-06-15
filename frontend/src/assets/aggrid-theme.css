@@ -673,3 +673,25 @@
     display: none;
   }
 }
+
+/* ============================================
+   SPREADSHEET-NATURAL: vertical gridlines + compact cell type (PR2)
+   Horizontal row borders already exist; vertical borders give the
+   Excel grid feel. Colors track the Carbon border tokens so this
+   adapts to dark mode automatically.
+   ============================================ */
+.ag-theme-material {
+  --ag-font-size: 13px;
+  --ag-cell-horizontal-padding: 10px;
+}
+.ag-theme-material .ag-cell {
+  border-right: 1px solid var(--cds-border-subtle-00, #e0e0e0);
+}
+.ag-theme-material .ag-header-cell {
+  border-right: 1px solid var(--cds-border-subtle-01, #c6c6c6);
+}
+/* don't double-border the last column against the grid edge */
+.ag-theme-material .ag-cell:last-of-type,
+.ag-theme-material .ag-header-cell:last-of-type {
+  border-right: none;
+}
