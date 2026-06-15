@@ -13,6 +13,11 @@ documents every registered behavior; a test asserts it covers each registry key.
 | `csvImport` | Import a CSV file into the grid | file read → TSV → shared paste pipeline | n/a (Community-capable; no Enterprise overlap) |
 | `csvExport` | Export the grid to CSV | `api.exportDataAsCsv` (Community) | n/a (Community-capable; no Enterprise overlap) |
 | `xlsxExport` | Export the grid to .xlsx | exceljs over row data (`utils/excelExport`) | Enterprise `api.exportDataAsExcel` |
+| `undoRedo` | Undo / redo cell edits (Ctrl+Z / Ctrl+Y) | `undoRedoCellEditing` gridOption (limit 20) | Same native AG Grid option (no shim; flag stays on) |
+| `copy` | Copy focused cell or whole selected rows (Ctrl+C) | AG default cell copy + `suppressCopyRowsToClipboard:false` | Enterprise clipboard / range copy (PR3c) |
+| `cellEditing` | Type-to-edit, Esc cancels, commit on blur | `stopEditingWhenCellsLoseFocus` + AG default key editing | n/a (Community-capable) |
+| `freezePanes` | Freeze columns + header row | per-grid colDef `pinned` + sticky header (no extra option) | Same native pinning |
+| `quickFind` | Instant global filter (Ctrl+F style) | deferred — per-screen Search covers it (off by default) | n/a (deferred by product choice) |
 
 To disable everything (e.g. when adopting Enterprise), set `master: false` in the
 flags passed to `useAgGridExcelBehaviors`; to defer a single behavior, set its

@@ -11,6 +11,11 @@ export interface ExcelBehaviorFlags {
   csvImport: boolean
   csvExport: boolean
   xlsxExport: boolean
+  undoRedo: boolean
+  copy: boolean
+  cellEditing: boolean
+  freezePanes: boolean
+  quickFind: boolean
 }
 
 export const DEFAULT_EXCEL_BEHAVIOR_FLAGS: ExcelBehaviorFlags = {
@@ -20,6 +25,11 @@ export const DEFAULT_EXCEL_BEHAVIOR_FLAGS: ExcelBehaviorFlags = {
   csvImport: true,
   csvExport: true,
   xlsxExport: true,
+  undoRedo: true,
+  copy: true,
+  cellEditing: true,
+  freezePanes: true,
+  quickFind: false,
 }
 
 export type ExcelBehaviorKey = Exclude<keyof ExcelBehaviorFlags, 'master'>
@@ -64,6 +74,36 @@ const BEHAVIOR_META: Omit<ExcelBehaviorEntry, 'enabled'>[] = [
     communityMechanism: 'exceljs over row data (utils/excelExport)',
     enterpriseEquivalent: 'Enterprise api.exportDataAsExcel',
   },
+  {
+    key: 'undoRedo',
+    excelFeature: 'Undo / redo cell edits (Ctrl+Z / Ctrl+Y)',
+    communityMechanism: 'undoRedoCellEditing gridOption (limit 20)',
+    enterpriseEquivalent: 'Same native AG Grid option (no shim; flag stays on)',
+  },
+  {
+    key: 'copy',
+    excelFeature: 'Copy focused cell or whole selected rows (Ctrl+C)',
+    communityMechanism: 'AG default cell copy + suppressCopyRowsToClipboard:false',
+    enterpriseEquivalent: 'Enterprise clipboard (richer range copy — see PR3c)',
+  },
+  {
+    key: 'cellEditing',
+    excelFeature: 'Type-to-edit, Esc cancels, commit on blur',
+    communityMechanism: 'stopEditingWhenCellsLoseFocus + AG default key editing',
+    enterpriseEquivalent: 'n/a (Community-capable; no Enterprise overlap)',
+  },
+  {
+    key: 'freezePanes',
+    excelFeature: 'Freeze columns + header row',
+    communityMechanism: 'per-grid colDef pinned + sticky header (no extra option)',
+    enterpriseEquivalent: 'Same native pinning',
+  },
+  {
+    key: 'quickFind',
+    excelFeature: 'Instant global filter (Ctrl+F style)',
+    communityMechanism: 'deferred — per-screen Search box covers this (off by default)',
+    enterpriseEquivalent: 'n/a (Community-capable; deferred by product choice)',
+  },
 ]
 
 // Excel-style cell navigation: Enter commits + moves down the same column;
@@ -94,6 +134,21 @@ export function useAgGridExcelBehaviors(flags: ExcelBehaviorFlags): ExcelBehavio
   if (on('keyboardNav')) {
     gridOptions.navigateToNextCell = excelNavigateToNextCell
   }
+  if (on('undoRedo')) {
+    gridOptions.undoRedoCellEditing = true
+    gridOptions.undoRedoCellEditingLimit = 20
+  }
+  if (on('copy')) {
+    // Single-cell Ctrl+C is the AG default; this makes whole-row copy explicit.
+    // Enterprise: native clipboard / range copy (PR3c) supersedes — flag off then.
+    gridOptions.suppressCopyRowsToClipboard = false
+  }
+  if (on('cellEditing')) {
+    // Excel-style commit-on-blur; type-to-edit + Esc-cancel are AG defaults.
+    gridOptions.stopEditingWhenCellsLoseFocus = true
+  }
+  // freezePanes = per-grid pinned columns + sticky header; quickFind = deferred.
+  // Neither emits a gridOptions fragment — they are registry/doc entries only.
   const registry: ExcelBehaviorEntry[] = BEHAVIOR_META.map((m) => ({
     ...m,
     enabled: on(m.key),
