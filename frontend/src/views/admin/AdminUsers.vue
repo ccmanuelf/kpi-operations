@@ -286,7 +286,9 @@ const showSnackbar = (message, color = 'success') => {
 
 const getRoleColor = (role) => {
   const colors = { admin: 'error', poweruser: 'warning', operator: 'info' }
-  return colors[role] || 'grey'
+  // 'secondary' is a real theme tonal palette (dark text on a light container =
+  // AA); the previous 'grey' fallback produced low-contrast chip text.
+  return colors[role] || 'secondary'
 }
 
 const formatRole = (role) => {

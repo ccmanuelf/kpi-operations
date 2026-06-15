@@ -4,7 +4,7 @@ import globals from 'globals'
 import tsParser from '@typescript-eslint/parser'
 
 export default [
-  { ignores: ['dist/**', 'node_modules/**', 'playwright-report*/**', 'test-results/**', 'e2e/**'] },
+  { ignores: ['dist/**', 'node_modules/**', 'playwright-report*/**', 'test-results/**', 'e2e/**', '.visual-baseline/**'] },
   js.configs.recommended,
   ...pluginVue.configs['flat/essential'],
   {

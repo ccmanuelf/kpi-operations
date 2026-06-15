@@ -43,9 +43,9 @@ export default function useOEEData() {
 
   const statusColor = computed<string>(() => {
     const oee = (oeeData.value?.percentage as number) || 0
-    if (oee >= 85) return 'success'
-    if (oee >= 65) return 'amber-darken-3'
-    return 'error'
+    if (oee >= 85) return 'var(--cds-support-success)'
+    if (oee >= 65) return '#b45309'
+    return 'var(--cds-support-error)'
   })
 
   const historyHeaders = computed<TableHeader[]>(() => [

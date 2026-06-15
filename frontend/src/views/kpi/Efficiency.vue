@@ -11,7 +11,7 @@
         <v-chip :color="statusColor" size="large" class="mr-2 text-white" variant="flat">
           {{ formatValue(efficiencyData?.current) }}%
         </v-chip>
-        <v-chip color="grey-darken-2">{{ $t('kpi.targetPercent', { value: 85 }) }}</v-chip>
+        <v-chip variant="text" style="color: var(--cds-text-secondary)">{{ $t('kpi.targetPercent', { value: 85 }) }}</v-chip>
       </v-col>
     </v-row>
 

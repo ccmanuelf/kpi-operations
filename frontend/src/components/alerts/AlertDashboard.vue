@@ -213,33 +213,44 @@ onMounted(() => {
 
 .stat.critical {
   background: rgba(234, 88, 12, 0.1);
-  color: #ea580c;
+  color: #9a3412;
 }
 
 .stat.warning {
   background: rgba(202, 138, 4, 0.1);
-  color: #ca8a04;
+  color: #854d0e;
 }
 
 .stat.info {
   background: rgba(59, 130, 246, 0.1);
-  color: #3b82f6;
+  color: #0043ce;
 }
 
 .stat.total {
   background: rgba(107, 114, 128, 0.1);
-  color: #6b7280;
+  color: #4b5563;
 }
 
 .btn-help {
   padding: 0.5rem 1rem;
   background: var(--color-surface);
-  border: 1px solid var(--color-primary);
-  color: var(--color-primary);
+  /* --cds-link-primary brightens to #78a9ff in dark mode so the outline/text
+     stay AA on the dark surface (the brand blue #0f62fe fails there). */
+  border: 1px solid var(--cds-link-primary);
+  color: var(--cds-link-primary);
   border-radius: 4px;
   cursor: pointer;
   margin-right: 0.5rem;
 }
+
+/* The .stat text colors above are tuned for the pale light-theme tints; on dark
+   the rgba(…,0.1) tints become dark, so the text must brighten to stay AA. */
+[data-theme="dark"] .stat.urgent { color: #ff8389; }
+[data-theme="dark"] .stat.critical,
+[data-theme="dark"] .critical-section h3 { color: #fb923c; }
+[data-theme="dark"] .stat.warning { color: #f1c21b; }
+[data-theme="dark"] .stat.info { color: #78a9ff; }
+[data-theme="dark"] .stat.total { color: #c6c6c6; }
 
 .btn-help:hover {
   background: var(--color-primary);
@@ -288,7 +299,7 @@ onMounted(() => {
 }
 
 .critical-section h3 {
-  color: #ea580c;
+  color: #9a3412;
 }
 
 .alert-list {

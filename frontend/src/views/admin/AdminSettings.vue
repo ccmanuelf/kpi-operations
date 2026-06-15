@@ -73,7 +73,7 @@
             <v-chip v-if="selectedClientId" color="primary" size="small" class="ml-2">
               {{ selectedClientName }}
             </v-chip>
-            <v-chip v-else color="grey" size="small" class="ml-2">
+            <v-chip v-else color="secondary" size="small" class="ml-2">
               {{ t('admin.settings.globalDefaults') }}
             </v-chip>
           </v-card-title>

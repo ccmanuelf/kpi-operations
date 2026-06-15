@@ -314,7 +314,7 @@ const actionsColumn = computed(() => ({
       buttons += `<button class="ag-grid-approve-resume-btn" style="${btnStyle('#9c27b0')}">${t('grids.holds.approvalWorkflow.approveResume')}</button>`
     }
 
-    buttons += `<button class="ag-grid-delete-btn" style="${btnStyle('#c62828')}">${t('common.delete')}</button>`
+    buttons += `<button class="ag-grid-delete-btn" style="${btnStyle('#da1e28')}">${t('common.delete')}</button>`
 
     div.innerHTML = `<div style="display: flex; gap: 4px; flex-wrap: wrap;">${buttons}</div>`
 

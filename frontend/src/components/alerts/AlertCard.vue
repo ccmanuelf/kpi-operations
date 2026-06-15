@@ -196,17 +196,17 @@ function formatValue(value) {
 }
 
 .severity-badge.critical {
-  background: #ea580c;
+  background: #c2410c;
   color: white;
 }
 
 .severity-badge.warning {
-  background: #ca8a04;
+  background: #a16207;
   color: white;
 }
 
 .severity-badge.info {
-  background: #3b82f6;
+  background: #0f62fe;
   color: white;
 }
 
@@ -246,17 +246,17 @@ function formatValue(value) {
 }
 
 .status-badge.acknowledged {
-  background: #3b82f6;
+  background: #0f62fe;
   color: white;
 }
 
 .status-badge.resolved {
-  background: #16a34a;
+  background: #15803d;
   color: white;
 }
 
 .status-badge.dismissed {
-  background: #6b7280;
+  background: #4b5563;
   color: white;
 }
 
@@ -315,12 +315,12 @@ function formatValue(value) {
 }
 
 .btn-acknowledge {
-  background: #3b82f6;
+  background: #0f62fe;
   color: white;
 }
 
 .btn-resolve {
-  background: #16a34a;
+  background: #15803d;
   color: white;
 }
 

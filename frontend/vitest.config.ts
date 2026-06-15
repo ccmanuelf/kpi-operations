@@ -22,6 +22,16 @@ export default defineConfig({
       '**/playwright/**'
     ],
     setupFiles: ['./src/test/setup.ts'],
+    server: {
+      deps: {
+        // @material/material-color-utilities ships ESM whose internal
+        // `dynamiccolor` imports omit the `.js` extension; Node's native ESM
+        // resolver (used for externalized deps) rejects them. Inlining forces
+        // the package through Vite's transform pipeline, which resolves the
+        // extensionless relative imports.
+        inline: ['@material/material-color-utilities']
+      }
+    },
     deps: {
       optimizer: {
         web: {

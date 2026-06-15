@@ -71,9 +71,18 @@ if (savedLanguage && savedLanguage !== locale.value) {
   border-color: rgba(255, 255, 255, 0.5);
 }
 
-.v-app-bar .language-toggle .v-btn {
-  color: white;
+.v-app-bar .language-toggle :deep(.v-btn) {
+  /* !important: the selected toggle button gets a `text-primary` class whose
+     color would otherwise win and render at ~4.2:1 on the bar. */
+  color: #fff !important;
   border-color: rgba(255, 255, 255, 0.3);
+}
+
+/* Inactive segment: lift text opacity above WCAG-AA (4.5:1) on the app-bar grey.
+   :deep() is required — the v-btn internals are a child component, so a plain
+   scoped selector never reaches them (the previous rule had no effect). */
+.v-app-bar .language-toggle :deep(.v-btn:not(.v-btn--active)) {
+  color: rgba(255, 255, 255, 0.85) !important;
 }
 
 .v-app-bar .language-toggle .v-btn--active {

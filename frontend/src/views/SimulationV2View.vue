@@ -1330,7 +1330,10 @@
         </div>
       </div>
       <template v-slot:actions>
-        <v-btn variant="text" @click="showWelcomeMessage = false">{{ t('simulationV2.welcome.gotIt') }}</v-btn>
+        <!-- color="surface" flat keeps the button AA on the info snackbar in both
+             themes (info bg is dark-blue in light / light-blue in dark, so a fixed
+             white text would fail one of them). -->
+        <v-btn variant="flat" color="surface" @click="showWelcomeMessage = false">{{ t('simulationV2.welcome.gotIt') }}</v-btn>
       </template>
     </v-snackbar>
   </v-container>
