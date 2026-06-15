@@ -11,6 +11,7 @@
  * operator clicks "Save" in the row's actions column, then POST.
  */
 import { computed, type ComputedRef, type Ref } from 'vue'
+import { tagStyle } from './gridTagStyle'
 import { useI18n } from 'vue-i18n'
 import api from '@/services/api'
 import type { DefectType, Severity } from './useDefectTypesData'
@@ -283,15 +284,7 @@ const renderSeverityChip = (params: { value?: unknown }): HTMLElement => {
   const color = SEVERITY_COLORS[value] || SEVERITY_COLORS.MAJOR
   const span = document.createElement('span')
   span.textContent = value
-  span.style.cssText = `
-    display: inline-block;
-    padding: 2px 8px;
-    border-radius: 12px;
-    font-size: 11px;
-    font-weight: 600;
-    color: white;
-    background: ${color};
-  `
+  span.style.cssText = tagStyle(color)
   return span
 }
 

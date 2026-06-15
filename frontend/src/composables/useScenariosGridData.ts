@@ -20,6 +20,7 @@
  * commit.
  */
 import { computed, type ComputedRef, type Ref } from 'vue'
+import { tagStyle } from './gridTagStyle'
 import { useI18n } from 'vue-i18n'
 
 export interface ScenarioRow {
@@ -361,15 +362,7 @@ const renderTypeChip = (type: string): HTMLElement => {
   }
   const color = TYPE_COLORS[type] || '#757575'
   span.textContent = type
-  span.style.cssText = `
-    display: inline-block;
-    padding: 2px 8px;
-    border-radius: 12px;
-    font-size: 11px;
-    font-weight: 600;
-    color: white;
-    background: ${color};
-  `
+  span.style.cssText = tagStyle(color)
   return span
 }
 
@@ -382,15 +375,7 @@ const renderStatusChip = (status: string): HTMLElement => {
   }
   const color = STATUS_COLORS[status] || STATUS_COLORS.DRAFT
   span.textContent = status
-  span.style.cssText = `
-    display: inline-block;
-    padding: 2px 8px;
-    border-radius: 12px;
-    font-size: 11px;
-    font-weight: 600;
-    color: white;
-    background: ${color};
-  `
+  span.style.cssText = tagStyle(color)
   return span
 }
 

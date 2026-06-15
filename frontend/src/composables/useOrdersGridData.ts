@@ -12,6 +12,7 @@
  * `useCapacityPlanningStore.saveWorksheet('orders')`.
  */
 import { computed, type ComputedRef } from 'vue'
+import { tagStyle } from './gridTagStyle'
 import { useI18n } from 'vue-i18n'
 import { useCapacityPlanningStore } from '@/stores/capacityPlanningStore'
 
@@ -239,15 +240,7 @@ const renderStatusChip = (params: { value?: unknown }): HTMLElement => {
   const color = STATUS_COLORS[status] || STATUS_COLORS.DRAFT
   const span = document.createElement('span')
   span.textContent = status
-  span.style.cssText = `
-    display: inline-block;
-    padding: 2px 8px;
-    border-radius: 12px;
-    font-size: 11px;
-    font-weight: 600;
-    color: white;
-    background: ${color};
-  `
+  span.style.cssText = tagStyle(color)
   return span
 }
 

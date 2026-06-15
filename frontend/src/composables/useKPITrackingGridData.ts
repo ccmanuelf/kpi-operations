@@ -10,6 +10,7 @@
  * actuals data. Only kpi_name and target_value are operator-editable.
  */
 import { computed, type ComputedRef } from 'vue'
+import { tagStyle } from './gridTagStyle'
 import { useI18n } from 'vue-i18n'
 import { useCapacityPlanningStore } from '@/stores/capacityPlanningStore'
 
@@ -224,15 +225,7 @@ const renderVarianceChip = (variance: number | null | undefined): HTMLElement =>
   const color = VARIANCE_COLORS[tier]
   const sign = variance > 0 ? '+' : ''
   span.textContent = `${sign}${variance}%`
-  span.style.cssText = `
-    display: inline-block;
-    padding: 2px 8px;
-    border-radius: 12px;
-    font-size: 11px;
-    font-weight: 600;
-    color: white;
-    background: ${color};
-  `
+  span.style.cssText = tagStyle(color)
   return span
 }
 
@@ -245,15 +238,7 @@ const renderStatusChip = (status: string): HTMLElement => {
   }
   const color = STATUS_COLORS[status] || STATUS_COLORS.PENDING
   span.textContent = status
-  span.style.cssText = `
-    display: inline-block;
-    padding: 2px 8px;
-    border-radius: 12px;
-    font-size: 11px;
-    font-weight: 600;
-    color: white;
-    background: ${color};
-  `
+  span.style.cssText = tagStyle(color)
   return span
 }
 

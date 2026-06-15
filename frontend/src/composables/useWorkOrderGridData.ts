@@ -14,6 +14,7 @@
  * kpiStore (Group A pattern) — fixes the legacy hardcoded 'CLIENT001'.
  */
 import { computed, type ComputedRef, type Ref } from 'vue'
+import { tagStyle } from './gridTagStyle'
 import { useI18n } from 'vue-i18n'
 import api from '@/services/api'
 import { useAuthStore } from '@/stores/authStore'
@@ -415,15 +416,7 @@ const renderStatusChip = (status: string): HTMLElement => {
   }
   const color = STATUS_COLORS[status] || STATUS_COLORS.RECEIVED
   span.textContent = status
-  span.style.cssText = `
-    display: inline-block;
-    padding: 2px 8px;
-    border-radius: 12px;
-    font-size: 11px;
-    font-weight: 600;
-    color: white;
-    background: ${color};
-  `
+  span.style.cssText = tagStyle(color)
   return span
 }
 
@@ -436,15 +429,7 @@ const renderPriorityChip = (priority: string | null | undefined): HTMLElement =>
   }
   const color = PRIORITY_COLORS[priority] || '#757575'
   span.textContent = priority
-  span.style.cssText = `
-    display: inline-block;
-    padding: 2px 8px;
-    border-radius: 12px;
-    font-size: 11px;
-    font-weight: 600;
-    color: white;
-    background: ${color};
-  `
+  span.style.cssText = tagStyle(color)
   return span
 }
 
