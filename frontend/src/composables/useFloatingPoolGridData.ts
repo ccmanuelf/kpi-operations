@@ -29,6 +29,7 @@
  *     pool_id)
  */
 import { computed, type ComputedRef, type Ref } from 'vue'
+import { tagStyle } from './gridTagStyle'
 import { useI18n } from 'vue-i18n'
 import api from '@/services/api'
 
@@ -330,15 +331,7 @@ const renderStatusChip = (status: string, t: (_k: string) => string): HTMLElemen
   span.textContent = isAssigned
     ? t('admin.floatingPool.assigned')
     : t('admin.floatingPool.available')
-  span.style.cssText = `
-    display: inline-block;
-    padding: 2px 8px;
-    border-radius: 12px;
-    font-size: 11px;
-    font-weight: 600;
-    color: white;
-    background: ${isAssigned ? '#ed6c02' : '#2e7d32'};
-  `
+  span.style.cssText = tagStyle(isAssigned ? '#b45309' : '#2e7d32')
   return span
 }
 

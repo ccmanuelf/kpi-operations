@@ -138,7 +138,7 @@ export function useAGGridBase(props: AGGridBaseProps, emit: EmitFn) {
     paginationPageSize: props.paginationPageSize,
 
     rowHeight: getRowHeight(),
-    headerHeight: isMobile.value ? 40 : isTablet.value ? 44 : 48,
+    headerHeight: isMobile.value ? 34 : isTablet.value ? 36 : 40,
 
     suppressTouch: false,
     suppressContextMenu: isTouchDevice(),
