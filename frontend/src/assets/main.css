@@ -19,12 +19,17 @@
 @import './carbon-tokens.css';
 @import "tailwindcss";
 
-@theme {
-  --color-primary: #1a237e;
-  --color-secondary: #0d47a1;
-  --color-success: #2e7d32;
-  --color-warning: #f57c00;
-  --color-danger: #c62828;
+/* Tailwind utility colors derive from the Carbon design tokens (carbon-tokens.css),
+   so bg-/text- utilities match the Vuetify MD3 tonal theme — all three systems are
+   now seeded from Carbon blue #0f62fe instead of the old stray indigo (#1a237e).
+   `@theme inline` makes the utilities reference the --cds-* vars directly, so they
+   also inherit the tokens' light/dark variants automatically. */
+@theme inline {
+  --color-primary: var(--cds-interactive);
+  --color-secondary: var(--cds-text-secondary);
+  --color-success: var(--cds-support-success);
+  --color-warning: var(--cds-support-warning);
+  --color-danger: var(--cds-support-error);
 }
 
 /* ============================================
