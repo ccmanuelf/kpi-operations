@@ -22,7 +22,9 @@ export default createVuetify({
         variables: {
           'border-radius-root': '4px',
           'high-emphasis-opacity': 0.87,
-          'medium-emphasis-opacity': 0.6,
+          // 0.6 leaves medium-emphasis text at ~4.43:1 on off-white header
+          // surfaces; 0.66 clears WCAG-AA (4.5:1) on light backgrounds.
+          'medium-emphasis-opacity': 0.66,
           'disabled-opacity': 0.38,
           'hover-opacity': 0.04,
           'activated-opacity': 0.12,
@@ -36,7 +38,9 @@ export default createVuetify({
         variables: {
           'border-radius-root': '4px',
           'high-emphasis-opacity': 0.87,
-          'medium-emphasis-opacity': 0.6,
+          // 0.6 leaves medium-emphasis text at ~4.34:1 on the Carbon layer-02
+          // dark surface (#393939); 0.7 lifts it to ~5.2:1 (WCAG-AA).
+          'medium-emphasis-opacity': 0.7,
           'disabled-opacity': 0.38,
           'hover-opacity': 0.08,
           'activated-opacity': 0.16,

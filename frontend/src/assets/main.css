@@ -14,7 +14,7 @@
    vuetify-components), clipping content under the nav drawer. Placing `base`
    BELOW the Vuetify layers fixes this; `app` overrides win over Vuetify,
    and Tailwind utilities win last. */
-@layer theme, base, vuetify-core, vuetify-components, vuetify-overrides, vuetify-utilities, vuetify-final, app, components, utilities;
+@layer theme, base, vuetify-core, vuetify-components, vuetify-overrides, vuetify-utilities, vuetify-final, app, components, utilities, overrides;
 
 @import './carbon-tokens.css';
 @import "tailwindcss";
@@ -30,6 +30,21 @@
   --color-success: var(--cds-support-success);
   --color-warning: var(--cds-support-warning);
   --color-danger: var(--cds-support-error);
+}
+
+/* Semantic color corrections for WCAG-AA, theme-aware. This layer is declared
+   AFTER Tailwind's `utilities`, so it refines the generated bg-/text- utilities
+   (which Vuetify also emits for color="primary" etc.) without !important:
+   - brand/status TEXT must stay AA on every surface in both themes, so it uses
+     the link/amber tokens that brighten in dark rather than the solid seed;
+   - solid brand/status BACKGROUNDS carry an explicit AA on-color, fixing the
+     case where Tailwind's bg wins but Vuetify's on-color text (sized for a
+     different tone) remained, e.g. dark-blue text on a blue button in dark. */
+@layer overrides {
+  .text-primary { color: var(--cds-link-primary); }   /* #0f62fe light / #78a9ff dark */
+  .text-warning { color: var(--cds-text-warning); }   /* dark amber light / yellow dark */
+  .bg-primary { color: #ffffff; }                     /* white on Carbon blue — 5.05:1 */
+  .bg-warning { color: #161616; }                     /* dark text on Carbon yellow */
 }
 
 /* ============================================

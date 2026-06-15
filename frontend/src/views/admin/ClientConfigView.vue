@@ -101,7 +101,7 @@
             </v-icon>
             {{ $t('admin.clientConfig.configFor') }}: {{ selectedClientName }}
             <v-spacer />
-            <v-chip :color="clientConfig?.is_default ? 'grey' : 'success'" size="small">
+            <v-chip :color="clientConfig?.is_default ? 'secondary' : 'success'" size="small">
               {{ clientConfig?.is_default ? $t('admin.clientConfig.usingDefaults') : $t('admin.clientConfig.customConfig') }}
             </v-chip>
           </v-card-title>
@@ -225,7 +225,7 @@ const ConfigValueCard = {
   template: `
     <div class="d-flex justify-space-between align-center pa-3 rounded" :class="isDefault ? 'bg-grey-lighten-4' : 'bg-success-lighten-5'">
       <span class="text-body-2">{{ label }}</span>
-      <v-chip :size="'small'" :color="isDefault ? 'grey' : 'success'">{{ value }}</v-chip>
+      <v-chip :size="'small'" :color="isDefault ? 'secondary' : 'success'">{{ value }}</v-chip>
     </div>
   `
 }

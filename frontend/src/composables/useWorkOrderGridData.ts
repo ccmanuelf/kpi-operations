@@ -89,7 +89,7 @@ const STATUS_COLORS: Record<string, string> = {
   RELEASED: '#1976d2',
   ACTIVE: '#1976d2',
   IN_PROGRESS: '#1976d2',
-  ON_HOLD: '#ed6c02',
+  ON_HOLD: '#b45309',
   COMPLETED: '#2e7d32',
   SHIPPED: '#2e7d32',
   CLOSED: '#757575',
@@ -102,7 +102,7 @@ const PRIORITY_COLORS: Record<string, string> = {
   URGENT: '#7b1fa2',
   HIGH: '#c62828',
   NORMAL: '#757575',
-  MEDIUM: '#ed6c02',
+  MEDIUM: '#b45309',
   LOW: '#1976d2',
 }
 
@@ -463,7 +463,7 @@ const renderDateWithOverdueFlag = (
     : date.toLocaleDateString()
   span.textContent = formatted
   if (isOverdue(planned_ship_date)) {
-    span.style.color = '#c62828'
+    span.style.color = 'var(--cds-support-error)'
     span.style.fontWeight = '600'
     span.textContent = `⚠ ${formatted}`
   }
@@ -512,7 +512,7 @@ const renderActions = (
     div.innerHTML = `
       <button class="ag-grid-detail-btn" title="View details" style="
         background: transparent;
-        color: #1976d2;
+        color: var(--cds-link-primary);
         border: 1px solid #1976d2;
         padding: 2px 6px;
         border-radius: 4px;

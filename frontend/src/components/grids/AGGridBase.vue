@@ -21,7 +21,7 @@
       <v-btn
         v-if="enableCsvImport"
         color="primary"
-        variant="outlined"
+        variant="flat"
         size="small"
         :aria-label="$t('csv.importAria')"
         :loading="pasteLoading"
@@ -44,8 +44,8 @@
       <v-spacer />
       <v-btn
         v-if="enableExport"
-        color="secondary"
-        variant="outlined"
+        color="primary"
+        variant="flat"
         size="small"
         :aria-label="$t('grids.exportCsvAria')"
         data-testid="csv-export-btn"

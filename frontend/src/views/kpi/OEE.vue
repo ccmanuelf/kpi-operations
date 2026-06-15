@@ -11,7 +11,7 @@
         <v-chip :color="statusColor" size="large" class="mr-2 text-white" variant="flat">
           {{ formatValue(oeeData?.percentage) }}%
         </v-chip>
-        <v-chip color="grey-darken-2">{{ $t('kpi.targetPercent', { value: 85 }) }}</v-chip>
+        <v-chip variant="text" style="color: var(--cds-text-secondary)">{{ $t('kpi.targetPercent', { value: 85 }) }}</v-chip>
       </v-col>
     </v-row>
 
@@ -67,7 +67,10 @@
               {{ formatValue(components.availability) }}% x
               {{ formatValue(components.performance) }}% x
               {{ formatValue(components.quality) }}% =
-              <span :class="statusColor + '--text'">{{ formatValue(oeeData?.percentage) }}%</span>
+              <!-- Inherit the tonal card's (AA) text color; the status color is
+                   already conveyed by the chip above and is not AA as text on
+                   this surface across themes. -->
+              <span>{{ formatValue(oeeData?.percentage) }}%</span>
             </div>
           </v-card-text>
         </v-card>

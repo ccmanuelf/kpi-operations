@@ -163,7 +163,7 @@ const columnDefs = computed(() => [
       const btn = document.createElement('button')
       btn.innerHTML = '✕'
       btn.className = 'delete-btn'
-      btn.style.cssText = 'cursor:pointer;color:red;border:none;background:none;font-size:16px;'
+      btn.style.cssText = 'cursor:pointer;color:var(--cds-support-error);border:none;background:none;font-size:16px;'
       btn.onclick = () => removeRow(params.node.rowIndex)
       return btn
     }

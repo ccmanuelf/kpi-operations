@@ -142,6 +142,10 @@
   --cds-support-success: var(--cds-green-60);
   --cds-support-warning: var(--cds-yellow-30);
   --cds-support-info: var(--cds-blue-60);
+  /* Carbon yellow (#f1c21b) is a surface/icon color and is unreadable as text
+     on light backgrounds; this dark amber is the AA-safe color for warning TEXT
+     on light surfaces (brightens to the yellow in the dark-theme block below). */
+  --cds-text-warning: #8a6d00;
 
   --cds-focus: var(--cds-blue-60);
   --cds-interactive: var(--cds-blue-60);
@@ -306,6 +310,8 @@
   --cds-support-error: #ff8389;
   --cds-support-warning: #f1c21b;
   --cds-support-info: #4589ff;
+  /* On dark surfaces the bright Carbon yellow is readable as warning text. */
+  --cds-text-warning: #f1c21b;
   --cds-support-success-subtle: #044317;
   --cds-support-error-subtle: #520408;
 }

@@ -13,7 +13,7 @@
                 <h1 class="text-h5 font-weight-bold mb-1">
                   {{ t('navigation.myShift') }}
                 </h1>
-                <span class="text-body-2 text-grey">
+                <span class="text-body-2" style="color: #ffffff">
                   {{ currentDateFormatted }}
                 </span>
               </div>
@@ -33,7 +33,7 @@
             <v-icon class="mr-2">mdi-clipboard-check-outline</v-icon>
             {{ t('navigation.myShift') }}
             <v-spacer />
-            <v-chip color="white" variant="flat" size="small" class="text-primary">
+            <v-chip variant="flat" size="small" style="background-color: #0f62fe; color: #fff">
               {{ assignedWorkOrders.length }} {{ t('common.active') }}
             </v-chip>
           </v-card-title>
@@ -166,7 +166,7 @@
 
         <!-- Data Completeness -->
         <v-card class="mb-4" elevation="2">
-          <v-card-title class="bg-grey-darken-3 text-white py-3">
+          <v-card-title class="bg-grey-darken-3 text-white py-3" style="color: #fff !important">
             <v-icon class="mr-2">mdi-clipboard-check</v-icon>
             {{ t('common.status') }}
           </v-card-title>
