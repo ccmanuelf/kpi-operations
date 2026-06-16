@@ -34,7 +34,7 @@ describe('useGridRangeCopy composable', () => {
   const makeApi = () => ({
     getColumnState: () => colState,
     getDisplayedRowAtIndex: (i: number) => ({ i }),
-    getValue: (colId: string, node: { i: number }) => `${node.i}:${colId}`,
+    getCellValue: ({ rowNode, colKey }: { rowNode: { i: number }; colKey: string }) => `${rowNode.i}:${colKey}`,
     refreshCells: () => {},
   })
 

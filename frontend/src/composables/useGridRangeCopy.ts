@@ -51,7 +51,7 @@ export function buildTsv(
 interface GridApiLike {
   getColumnState?: () => { colId: string }[]
   getDisplayedRowAtIndex?: (_i: number) => unknown
-  getValue?: (_colId: string, _node: unknown) => unknown
+  getCellValue?: (_p: { rowNode: unknown; colKey: string; useFormatter?: boolean }) => unknown
   refreshCells?: (_p?: { force?: boolean }) => void
 }
 interface ClickedCell {
@@ -97,7 +97,9 @@ export function useGridRangeCopy(opts: { gridApi: Ref<GridApiLike | null>; enabl
   const getValue = (rowIndex: number, colId: string): unknown => {
     const api = opts.gridApi.value
     const node = api?.getDisplayedRowAtIndex?.(rowIndex)
-    return node ? api?.getValue?.(colId, node) : undefined
+    // AG Grid 35 renamed getValue -> getCellValue; useFormatter copies the
+    // displayed value (Excel-copy parity).
+    return node ? api?.getCellValue?.({ rowNode: node, colKey: colId, useFormatter: true }) : undefined
   }
 
   const copyRange = async (): Promise<boolean> => {

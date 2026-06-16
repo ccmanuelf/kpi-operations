@@ -90,15 +90,14 @@ export function useAGGridBase(props: AGGridBaseProps, emit: EmitFn) {
     () => excelBehaviors.value.registry.find((e) => e.key === 'excelPaste')?.enabled ?? false,
   )
 
-  // rangeCopy is a Community shim; it yields to AG Grid Enterprise when its
-  // native cell selection is present (Enterprise adds api.getCellRanges).
-  const rangeCopyEnabled = computed(() => {
-    const registered =
-      excelBehaviors.value.registry.find((e) => e.key === 'rangeCopy')?.enabled ?? false
-    const enterprisePresent =
-      typeof (gridApi.value as { getCellRanges?: unknown } | null)?.getCellRanges === 'function'
-    return registered && !enterprisePresent
-  })
+  // rangeCopy is a Community shim. Enterprise deferral is via the flag: this is a
+  // Community-only build (no ag-grid-enterprise dependency), so the shim is on.
+  // NOTE: getCellRanges() exists on the Community GridApi as a no-op stub, so it
+  // CANNOT feature-detect Enterprise. When Enterprise is adopted, disable the
+  // rangeCopy flag so native cell selection takes over.
+  const rangeCopyEnabled = computed(
+    () => excelBehaviors.value.registry.find((e) => e.key === 'rangeCopy')?.enabled ?? false,
+  )
   const rangeCopy = useGridRangeCopy({ gridApi, enabled: rangeCopyEnabled })
 
   const pasteLoading = ref(false)
