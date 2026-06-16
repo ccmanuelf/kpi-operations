@@ -18,6 +18,7 @@ documents every registered behavior; a test asserts it covers each registry key.
 | `cellEditing` | Type-to-edit, Esc cancels, commit on blur | `stopEditingWhenCellsLoseFocus` + AG default key editing | n/a (Community-capable) |
 | `freezePanes` | Freeze columns + header row | per-grid colDef `pinned` + sticky header (no extra option) | Same native pinning |
 | `quickFind` | Instant global filter (Ctrl+F style) | deferred — per-screen Search covers it (off by default) | n/a (deferred by product choice) |
+| `rangeCopy` | Select a cell range (Shift+click / Shift+Arrow) and copy it | `useGridRangeCopy` shim — AG events + getValue + TSV clipboard | Enterprise cell selection + range copy (disable this flag) |
 
 To disable everything (e.g. when adopting Enterprise), set `master: false` in the
 flags passed to `useAgGridExcelBehaviors`; to defer a single behavior, set its

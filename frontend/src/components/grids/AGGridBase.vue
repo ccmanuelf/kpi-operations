@@ -123,10 +123,6 @@ const props = defineProps({
     type: Object,
     default: () => ({})
   },
-  enableRangeSelection: {
-    type: Boolean,
-    default: true
-  },
   pagination: {
     type: Boolean,
     default: false

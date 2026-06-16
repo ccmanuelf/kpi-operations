@@ -23,6 +23,7 @@ import {
   useAgGridExcelBehaviors,
   DEFAULT_EXCEL_BEHAVIOR_FLAGS,
 } from './agGridExcelBehaviors'
+import { useGridRangeCopy } from './useGridRangeCopy'
 
 type EmitFn = (_event: string, _payload?: unknown) => void
 
@@ -89,6 +90,16 @@ export function useAGGridBase(props: AGGridBaseProps, emit: EmitFn) {
     () => excelBehaviors.value.registry.find((e) => e.key === 'excelPaste')?.enabled ?? false,
   )
 
+  // rangeCopy is a Community shim. Enterprise deferral is via the flag: this is a
+  // Community-only build (no ag-grid-enterprise dependency), so the shim is on.
+  // NOTE: getCellRanges() exists on the Community GridApi as a no-op stub, so it
+  // CANNOT feature-detect Enterprise. When Enterprise is adopted, disable the
+  // rangeCopy flag so native cell selection takes over.
+  const rangeCopyEnabled = computed(
+    () => excelBehaviors.value.registry.find((e) => e.key === 'rangeCopy')?.enabled ?? false,
+  )
+  const rangeCopy = useGridRangeCopy({ gridApi, enabled: rangeCopyEnabled })
+
   const pasteLoading = ref(false)
   const lastPasteCount = ref(0)
   const showPasteDialog = ref(false)
@@ -138,6 +149,7 @@ export function useAGGridBase(props: AGGridBaseProps, emit: EmitFn) {
       fontSize: isMobile.value ? '13px' : isTablet.value ? '14px' : '14px',
     },
     enableCellChangeFlash: true,
+    cellClassRules: rangeCopy.rangeCellClassRules,
     suppressKeyboardEvent: (params: { event: KeyboardEvent }) => {
       const keyCode = params.event.keyCode
       const ctrlPressed = params.event.ctrlKey || params.event.metaKey
@@ -205,6 +217,7 @@ export function useAGGridBase(props: AGGridBaseProps, emit: EmitFn) {
   }
 
   const handleCellClicked = (event: unknown): void => {
+    rangeCopy.onCellClicked(event as Parameters<typeof rangeCopy.onCellClicked>[0])
     emit('cell-clicked', event)
   }
 
@@ -374,10 +387,15 @@ export function useAGGridBase(props: AGGridBaseProps, emit: EmitFn) {
     if (pasteEnabled.value) {
       document.addEventListener('keydown', handleKeyboardPaste)
     }
+    if (rangeCopyEnabled.value) {
+      // capture phase so Shift+Arrow / Ctrl+C reach the range shim before AG Grid
+      document.addEventListener('keydown', rangeCopy.onKeyDown, true)
+    }
   })
 
   onUnmounted(() => {
     document.removeEventListener('keydown', handleKeyboardPaste)
+    document.removeEventListener('keydown', rangeCopy.onKeyDown, true)
   })
 
   const exportToCsv = (filename: string = 'export.csv'): void => {

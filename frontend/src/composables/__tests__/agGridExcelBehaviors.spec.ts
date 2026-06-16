@@ -82,4 +82,11 @@ describe('agGridExcelBehaviors', () => {
     expect('rowPinned' in gridOptions).toBe(false)
     expect('quickFilterText' in gridOptions).toBe(false)
   })
+
+  it('registers rangeCopy, enabled by default', () => {
+    const { registry } = useAgGridExcelBehaviors(DEFAULT_EXCEL_BEHAVIOR_FLAGS)
+    const entry = registry.find((e) => e.key === 'rangeCopy')
+    expect(entry?.enabled).toBe(true)
+    expect(entry?.enterpriseEquivalent).toMatch(/Enterprise/i)
+  })
 })
