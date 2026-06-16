@@ -66,11 +66,11 @@
                     <v-list density="compact">
                       <v-list-item>
                         <template v-slot:prepend><v-icon>mdi-clock</v-icon></template>
-                        <v-list-item-title>{{ results.daily_summary.total_shifts_per_day }} shifts, {{ results.daily_summary.daily_planned_hours }}h/day</v-list-item-title>
+                        <v-list-item-title>{{ t('simulationResults.shiftsPerDay', { shifts: results.daily_summary.total_shifts_per_day, hours: results.daily_summary.daily_planned_hours }) }}</v-list-item-title>
                       </v-list-item>
                       <v-list-item>
                         <template v-slot:prepend><v-icon>mdi-package-variant</v-icon></template>
-                        <v-list-item-title>{{ results.daily_summary.bundles_processed_per_day }} bundles/day (size: {{ results.daily_summary.bundle_size_pcs }})</v-list-item-title>
+                        <v-list-item-title>{{ t('simulationResults.bundlesPerDay', { bundles: results.daily_summary.bundles_processed_per_day, size: results.daily_summary.bundle_size_pcs }) }}</v-list-item-title>
                       </v-list-item>
                       <v-list-item>
                         <template v-slot:prepend><v-icon>mdi-timer-sand</v-icon></template>
@@ -78,7 +78,7 @@
                       </v-list-item>
                       <v-list-item>
                         <template v-slot:prepend><v-icon>mdi-layers-outline</v-icon></template>
-                        <v-list-item-title>{{ t('simulationResults.avgWip') }}: {{ results.daily_summary.avg_wip_pcs }} pieces</v-list-item-title>
+                        <v-list-item-title>{{ t('simulationResults.avgWip') }}: {{ results.daily_summary.avg_wip_pcs }} {{ t('simulationResults.unitPieces') }}</v-list-item-title>
                       </v-list-item>
                     </v-list>
                   </v-card-text>
@@ -92,7 +92,7 @@
                     <v-list density="compact">
                       <v-list-item>
                         <template v-slot:prepend><v-icon>mdi-speedometer</v-icon></template>
-                        <v-list-item-title>{{ t('simulationResults.maxCapacity') }}: {{ results.free_capacity.daily_max_capacity_pcs }} pcs/day</v-list-item-title>
+                        <v-list-item-title>{{ t('simulationResults.maxCapacity') }}: {{ results.free_capacity.daily_max_capacity_pcs }} {{ t('simulationResults.unitPcsPerDay') }}</v-list-item-title>
                       </v-list-item>
                       <v-list-item>
                         <template v-slot:prepend><v-icon>mdi-percent</v-icon></template>
@@ -100,7 +100,7 @@
                       </v-list-item>
                       <v-list-item>
                         <template v-slot:prepend><v-icon>mdi-clock-plus</v-icon></template>
-                        <v-list-item-title>{{ t('simulationResults.freeLineHours') }}: {{ results.free_capacity.free_line_hours_per_day.toFixed(1) }}h/day</v-list-item-title>
+                        <v-list-item-title>{{ t('simulationResults.freeLineHours') }}: {{ results.free_capacity.free_line_hours_per_day.toFixed(1) }}{{ t('simulationResults.unitHoursPerDay') }}</v-list-item-title>
                       </v-list-item>
                       <v-list-item>
                         <template v-slot:prepend><v-icon>mdi-account-plus</v-icon></template>

@@ -25,7 +25,7 @@
               <template v-slot:item="{ props, item }">
                 <v-list-item v-bind="props">
                   <template v-slot:subtitle>
-                    ID: {{ item.raw.client_id }}
+                    {{ t('common.idLabel') }} {{ item.raw.client_id }}
                   </template>
                 </v-list-item>
               </template>

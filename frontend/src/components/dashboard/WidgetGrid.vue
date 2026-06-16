@@ -242,7 +242,7 @@ const FallbackWidget = {
   template: `
     <div class="text-center py-8">
       <v-icon size="48" color="grey-lighten-1">mdi-puzzle-outline</v-icon>
-      <p class="text-grey mt-2">Widget not found</p>
+      <p class="text-grey mt-2">{{ $t('dashboard.widgetNotFound') }}</p>
     </div>
   `
 }

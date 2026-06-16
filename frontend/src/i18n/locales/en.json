@@ -86,7 +86,9 @@
     "unit": "Unit",
     "target": "Target",
     "notSet": "Not set",
-    "skip": "Skip"
+    "skip": "Skip",
+    "idLabel": "ID:",
+    "available": "Available"
   },
   "workflowWizard": {
     "startShift": "Start Shift",
@@ -476,7 +478,8 @@
       "averageAgeMeaning": "Average number of days items have been in WIP status. Lower values indicate faster throughput and more efficient production flow.",
       "oldestItemMeaning": "Age of the oldest item currently in WIP. High values may indicate production bottlenecks, quality holds, or material shortages requiring immediate attention.",
       "criticalItemsMeaning": "Number of WIP items aged over 14 days. These require urgent attention as they impact delivery schedules and tie up working capital."
-    }
+    },
+    "fpyLabel": "FPY:"
   },
   "inferenceIndicator": {
     "dataSourcesTitle": "Data Sources Used",
@@ -886,7 +889,18 @@
     "incomplete": "Incomplete",
     "warning": "Warning",
     "predictive": "Predictive Analytics",
-    "forecast": "Forecast"
+    "forecast": "Forecast",
+    "kpiLabel": "KPI #{n}:",
+    "health": {
+      "apiLabel": "API:",
+      "dbLabel": "DB:"
+    },
+    "status": {
+      "good": "good",
+      "needsAttention": "needs attention",
+      "critical": "critical"
+    },
+    "widgetNotFound": "Widget not found"
   },
   "notifications": {
     "title": "Notifications",
@@ -919,7 +933,8 @@
       "deleteFailed": "Failed to delete work order",
       "statusUpdated": "Work order status updated to {status}",
       "statusUpdateFailed": "Failed to update status",
-      "deleteSuccess": "Work order deleted successfully"
+      "deleteSuccess": "Work order deleted successfully",
+      "compareFailed": "Failed to compare scenarios"
     },
     "dashboard": {
       "loadFailed": "Failed to load dashboard preferences. Using local settings.",
@@ -940,7 +955,9 @@
     "unauthorized": "Unauthorized. Please login again.",
     "forbidden": "Access denied.",
     "timeout": "Request timed out. Please try again.",
-    "duplicate": "Duplicate entry found."
+    "duplicate": "Duplicate entry found.",
+    "loadClientsFailed": "Failed to load clients",
+    "refreshFailed": "Failed to refresh data"
   },
   "success": {
     "saved": "Successfully saved.",
@@ -1467,7 +1484,9 @@
       "hintDefectName": "Display name (e.g., Solder Defect)",
       "hintDescription": "Detailed description for training/reference",
       "hintSortOrder": "Display order (0-999)",
-      "hintIndustryCode": "e.g., IPC-A-610-5.2"
+      "hintIndustryCode": "e.g., IPC-A-610-5.2",
+      "selectClientFirst": "Select a client first",
+      "fillRequiredFields": "Fill required fields first"
     },
     "partOpportunities": "Part Opportunities Management",
     "partOpportunitiesDescription": "Configure defect opportunities per part for accurate DPMO calculation",
@@ -1499,7 +1518,7 @@
       "fairComparison": "Fair Comparison",
       "fairComparisonDesc": "Compare quality across products with different complexity levels",
       "sigmaLevel": "Sigma Level",
-      "sigmaLevelDesc": "Calculate process sigma level (1\u03c3 to 6\u03c3)",
+      "sigmaLevelDesc": "Calculate process sigma level (1σ to 6σ)",
       "summaryCardsExplained": "Summary Cards Explained",
       "totalPartsDesc": "Number of part definitions",
       "avgOpportunitiesDesc": "Average defect points per unit",
@@ -1582,7 +1601,12 @@
       "holes": "Holes",
       "edgeFinishing": "Edge finishing",
       "tip": "Tip",
-      "tipText": "Work with your quality team to establish consistent opportunity counting methods across all products. Document your counting methodology for consistency."
+      "tipText": "Work with your quality team to establish consistent opportunity counting methods across all products. Document your counting methodology for consistency.",
+      "exampleTShirt": "Standard T-Shirt",
+      "exampleComplexity": "complexity",
+      "exampleStandard": "Standard",
+      "exampleNotes": "notes",
+      "exampleBasicGarment": "Basic garment"
     },
     "poolGuide": {
       "whatIsTitle": "What is the Floating Pool?",
@@ -1819,14 +1843,15 @@
         "save": "Failed to save configuration",
         "applyTemplate": "Failed to apply template"
       }
-    }
+    },
+    "fillRequiredFields": "Fill required fields first"
   },
   "csv": {
     "importCsv": "Import CSV",
     "importAria": "Import a CSV file into this grid",
     "parseError": "CSV parse error: {detail}",
     "emptyFile": "CSV file is empty",
-    "importError": "CSV import failed",
+    "importError": "Import error: {error}",
     "title": "Bulk Upload via CSV",
     "selectFile": "Select CSV File",
     "dragDrop": "Drag and drop a CSV file here",
@@ -1846,7 +1871,6 @@
     "partOpportunitiesInfo": "Upload a CSV file with part_number and opportunities_per_unit columns to bulk configure part opportunities.",
     "replaceExisting": "Replace existing entries",
     "replaceExistingHint": "If checked, existing entries for matching part numbers will be updated",
-    "importCsv": "Import CSV",
     "importTitle": "CSV Import - {type}",
     "importTitleAttendance": "CSV Import - Attendance Records",
     "importTitleDowntime": "CSV Import - Downtime Events",
@@ -1886,7 +1910,6 @@
     "uploadingData": "Uploading data...",
     "importComplete": "Import complete!",
     "importCompletedSuccessfully": "Import completed successfully!",
-    "importError": "Import error: {error}",
     "csvParsingError": "CSV parsing error: {error}",
     "fileReadError": "File read error: {error}",
     "stepUpload": "Upload",
@@ -1912,7 +1935,10 @@
     "date": "Invalid date format",
     "dateRange": "End date must be after start date",
     "future": "Date must be in the future",
-    "past": "Date cannot be in the future"
+    "past": "Date cannot be in the future",
+    "positiveNumber": "Must be a positive number",
+    "positiveInteger": "Must be a positive integer",
+    "percentage": "Must be between 0 and 100"
   },
   "simulation": {
     "title": "Simulation & Capacity Planning",
@@ -2266,7 +2292,6 @@
     },
     "openWorkOrders": "Open Work Orders",
     "noWorkOrdersForShift": "No active work orders for this client.",
-    "overdue": "Overdue",
     "resolveDowntime": "Resolve Downtime",
     "endTime": "End Time",
     "rootCause": "Root Cause",
@@ -2765,7 +2790,9 @@
         "uom": "UOM",
         "wastePercent": "Waste %",
         "actions": "Actions"
-      }
+      },
+      "selectBomFirst": "Select a BOM first",
+      "noComponentsYet": "No components yet"
     },
     "calendar": {
       "title": "Master Calendar",
@@ -2906,6 +2933,12 @@
         "quantity": "Quantity",
         "status": "Status"
       }
+    },
+    "dialogs": {
+      "scheduleName": "Schedule Name",
+      "includeAllOrders": "Include All Orders",
+      "selectFile": "Select File",
+      "targetWorksheet": "Target Worksheet"
     }
   },
   "simulationV2": {
@@ -3174,6 +3207,9 @@
       "demandMode": "Demand Mode",
       "totalDailyDemand": "Total Daily Demand (pieces)",
       "simulationHorizon": "Simulation Horizon (days)"
+    },
+    "operations": {
+      "product": "Product"
     }
   },
   "migration": {
@@ -3608,6 +3644,13 @@
       "systemHealth": "System Health",
       "userStats": "User Stats",
       "auditLog": "Audit Log"
+    },
+    "rework": {
+      "summary": "{count} operations account for {pct}% of all rework. Focus improvement efforts here.",
+      "rateSuffix": "% rate"
+    },
+    "downtime": {
+      "oeeSuffix": "% OEE"
     }
   },
   "dashboardCustomizer": {
@@ -3813,7 +3856,12 @@
       "utilAfter": "Util After",
       "role": "Role",
       "action": "Action"
-    }
+    },
+    "shiftsPerDay": "{shifts} shifts, {hours}h/day",
+    "bundlesPerDay": "{bundles} bundles/day (size: {size})",
+    "unitPieces": "pieces",
+    "unitPcsPerDay": "pcs/day",
+    "unitHoursPerDay": "h/day"
   },
   "simulationSchedule": {
     "title": "Schedule Configuration",
@@ -3907,7 +3955,8 @@
     "inProgress": "In Progress",
     "idle": "Idle",
     "done": "Done",
-    "tryAgain": "Try Again"
+    "tryAgain": "Try Again",
+    "tables": "tables"
   },
   "dataCompleteness": {
     "title": "Data Completeness",
@@ -3918,7 +3967,9 @@
     "details": "Details",
     "collapse": "Collapse",
     "needAttentionCount": "{count} category(ies) need attention",
-    "completeCategory": "Complete {name}"
+    "completeCategory": "Complete {name}",
+    "entries": "entries",
+    "shift": "Shift"
   },
   "absenteeismAlert": {
     "scheduledHours": "Scheduled Hours",
@@ -4039,5 +4090,78 @@
       "notAvailable": "Calculation lineage is not available for this metric",
       "openFailed": "Could not open calculation lineage"
     }
+  },
+  "simulationGuide": {
+    "stepN": "Step {n}:",
+    "sample": {
+      "cycleTimeValue": "15 min",
+      "shiftDurationValue": "8 hrs"
+    },
+    "capacity": {
+      "stepLabel1": "Define Target",
+      "stepLabel2": "Set Parameters",
+      "stepLabel4": "Review",
+      "step1": "{step} Go to the {target} tab",
+      "step1Detail": "Enter your target production units (e.g., 500 units/day)",
+      "step2": "{step} Set your shift hours (default: 8 hours)",
+      "step2Detail1": "Enter cycle time per unit (e.g., 0.25 hours = 15 minutes)",
+      "step2Detail2": "Adjust target efficiency (default: 85%)",
+      "step3": "{step} Click {target}",
+      "step3Detail": "The system will compute required employees including buffer",
+      "step4": "{step} Review the results showing:",
+      "step4Item1": "Required employees",
+      "step4Item2": "Buffer employees (for absenteeism)",
+      "step4Item3": "Total recommended staffing"
+    },
+    "productionLine": {
+      "stepLabel1": "Configure",
+      "stepLabel2": "Load",
+      "stepLabel3": "Run",
+      "stepLabel4": "Analyze",
+      "step1": "{step} Go to {target} tab",
+      "step1Detail": "Configure number of stations, workers per station, and floating pool size",
+      "step2": "{step} Click {target}",
+      "step2Detail": "This generates a production line based on your settings",
+      "step3": "{step} Set simulation duration (default: 8 hours)",
+      "step3Action": "Click {target}",
+      "step4": "{step} Review simulation results:",
+      "step4Item1": "Units completed and throughput",
+      "step4Item2": "Efficiency and quality yield",
+      "step4Item3": "Station utilization (identify bottlenecks)",
+      "step4Item4": "Recommendations for improvement"
+    },
+    "scenarios": {
+      "stepLabel1": "Baseline",
+      "stepLabel2": "Create Scenarios",
+      "stepLabel3": "Compare",
+      "stepLabel4": "Decide",
+      "step1": "{step} First, load a baseline configuration in Production Line tab",
+      "step1Detail": "This becomes your reference point for comparison",
+      "step2": "{step} Go to {target} tab",
+      "step2Detail": "Create multiple scenarios with different configurations:",
+      "step2Item1": "Scenario A: Add 1 worker per station",
+      "step2Item2": "Scenario B: Add 2 floating pool workers",
+      "step2Item3": "Scenario C: Reduce cycle time 20%",
+      "step3": "{step} Click {target}",
+      "step3Detail": "System runs simulation for each scenario",
+      "step4": "{step} Review comparison table showing:",
+      "step4Item1": "Throughput change vs baseline",
+      "step4Item2": "Efficiency improvement",
+      "step4Item3": "Quality impact",
+      "step4Item4": "Best scenario recommendation"
+    }
+  },
+  "validationPanel": {
+    "passed": "Validation Passed",
+    "failed": "Validation Failed",
+    "productsCount": "{count} products",
+    "operationsCount": "{count} operations",
+    "machinesCount": "{count} machines",
+    "errorsTitle": "Errors ({count}) - Must fix before running",
+    "warningsTitle": "Warnings ({count}) - Review recommended",
+    "showWarnings": "Show {count} warning(s)",
+    "infoTitle": "Information ({count})",
+    "showInfo": "Show {count} info message(s)",
+    "allValid": "Configuration is valid with no warnings. Ready to run simulation."
   }
 }

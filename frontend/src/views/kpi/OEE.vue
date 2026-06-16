@@ -63,6 +63,8 @@
         <v-card color="primary" variant="tonal">
           <v-card-text class="text-center">
             <div class="text-h6 mb-2">{{ $t('kpi.oeeFormula') }}</div>
+            <!-- Math formula display (Availability% × Performance% × Quality% = OEE%); not UI copy. -->
+            <!-- eslint-disable @intlify/vue-i18n/no-raw-text -->
             <div class="text-h4 font-weight-bold">
               {{ formatValue(components.availability) }}% x
               {{ formatValue(components.performance) }}% x
@@ -72,6 +74,7 @@
                    this surface across themes. -->
               <span>{{ formatValue(oeeData?.percentage) }}%</span>
             </div>
+            <!-- eslint-enable @intlify/vue-i18n/no-raw-text -->
           </v-card-text>
         </v-card>
       </v-col>

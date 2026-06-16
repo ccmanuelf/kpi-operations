@@ -42,7 +42,7 @@
         </template>
         <v-list-item-title>{{ t('migrationProgress.tablesProgress') }}</v-list-item-title>
         <v-list-item-subtitle>
-          {{ status.tables_migrated }} / {{ status.total_tables }} tables
+          {{ status.tables_migrated }} / {{ status.total_tables }} {{ t('migrationProgress.tables') }}
         </v-list-item-subtitle>
       </v-list-item>
     </v-list>

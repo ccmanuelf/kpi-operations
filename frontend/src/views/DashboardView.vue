@@ -204,7 +204,7 @@
                   :aria-label="`Efficiency: ${parseFloat(item.efficiency_percentage || 0).toFixed(2)} percent, status: ${getEfficiencyColor(item.efficiency_percentage)}`"
                 >
                   {{ parseFloat(item.efficiency_percentage || 0).toFixed(2) }}%
-                  <span class="sr-only">({{ getEfficiencyColor(item.efficiency_percentage) === 'success' ? 'good' : getEfficiencyColor(item.efficiency_percentage) === 'warning' ? 'needs attention' : 'critical' }})</span>
+                  <span class="sr-only">({{ getEfficiencyColor(item.efficiency_percentage) === 'success' ? t('dashboard.status.good') : getEfficiencyColor(item.efficiency_percentage) === 'warning' ? t('dashboard.status.needsAttention') : t('dashboard.status.critical') }})</span>
                 </v-chip>
               </template>
               <template v-slot:item.performance_percentage="{ item }">
@@ -214,7 +214,7 @@
                   :aria-label="`Performance: ${parseFloat(item.performance_percentage || 0).toFixed(2)} percent, status: ${getPerformanceColor(item.performance_percentage)}`"
                 >
                   {{ parseFloat(item.performance_percentage || 0).toFixed(2) }}%
-                  <span class="sr-only">({{ getPerformanceColor(item.performance_percentage) === 'success' ? 'good' : getPerformanceColor(item.performance_percentage) === 'warning' ? 'needs attention' : 'critical' }})</span>
+                  <span class="sr-only">({{ getPerformanceColor(item.performance_percentage) === 'success' ? t('dashboard.status.good') : getPerformanceColor(item.performance_percentage) === 'warning' ? t('dashboard.status.needsAttention') : t('dashboard.status.critical') }})</span>
                 </v-chip>
               </template>
             </v-data-table>

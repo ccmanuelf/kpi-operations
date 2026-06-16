@@ -76,6 +76,14 @@ export default [
           'DPMO = (Defects x 1,000,000) / (Units x Opportunities per Unit)',
           '= 1,000 x 20 = 20,000',
           'PART-001', 'part_number', 'part_description', 'opportunities_per_unit',
+          // empty-string / sign fallback literals inside {{ }} ternaries (e.g. `x > 0 ? '+' : ''`)
+          '',
+          // unit symbols (identical in es) and glyphs that are not UI copy
+          'h', 'min', 'hrs', 'd', 'x', 'v',
+          // language switch ISO codes (not translated)
+          'EN', 'ES',
+          // universal keyboard shortcuts
+          '(Ctrl+Z)', '(Ctrl+Y)',
         ],
       }],
     },

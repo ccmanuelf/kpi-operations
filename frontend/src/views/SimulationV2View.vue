@@ -421,7 +421,7 @@
                       <thead>
                         <tr>
                           <th>{{ t('simulationResults.summary') }}</th>
-                          <th class="text-right">pcs/day</th>
+                          <th class="text-right">{{ t('simulationResults.unitPcsPerDay') }}</th>
                           <th class="text-right">{{ t('simulationResults.coverage') }}</th>
                         </tr>
                       </thead>
@@ -450,7 +450,7 @@
                       <thead>
                         <tr>
                           <th>{{ t('simulationResults.summary') }}</th>
-                          <th class="text-right">pcs/day</th>
+                          <th class="text-right">{{ t('simulationResults.unitPcsPerDay') }}</th>
                           <th class="text-right">{{ t('simulationResults.coverage') }}</th>
                         </tr>
                       </thead>

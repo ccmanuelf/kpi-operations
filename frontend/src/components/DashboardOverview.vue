@@ -32,7 +32,7 @@
           <div class="text-h3 font-weight-bold text-primary" aria-live="polite">
             {{ kpiData.efficiency }}%
           </div>
-          <div id="kpi-efficiency-label" class="text-subtitle-2 text-grey">KPI #3: {{ $t('kpi.efficiency') }}</div>
+          <div id="kpi-efficiency-label" class="text-subtitle-2 text-grey">{{ $t('dashboard.kpiLabel', { n: 3 }) }} {{ $t('kpi.efficiency') }}</div>
           <v-progress-linear
             :model-value="kpiData.efficiency"
             color="primary"
@@ -56,7 +56,7 @@
           <div class="text-h3 font-weight-bold text-success" aria-live="polite">
             {{ kpiData.performance }}%
           </div>
-          <div id="kpi-performance-label" class="text-subtitle-2 text-grey">KPI #9: {{ $t('kpi.performance') }}</div>
+          <div id="kpi-performance-label" class="text-subtitle-2 text-grey">{{ $t('dashboard.kpiLabel', { n: 9 }) }} {{ $t('kpi.performance') }}</div>
           <v-progress-linear
             :model-value="kpiData.performance"
             color="success"
@@ -81,7 +81,7 @@
           <div class="text-h3 font-weight-bold text-warning">
             {{ kpiData.wipAging }}
           </div>
-          <div class="text-subtitle-2 text-grey">KPI #1: {{ $t('kpi.wipAging') }}</div>
+          <div class="text-subtitle-2 text-grey">{{ $t('dashboard.kpiLabel', { n: 1 }) }} {{ $t('kpi.wipAging') }}</div>
           <v-progress-linear
             :model-value="(kpiData.wipAging / 30) * 100"
             color="warning"
@@ -100,7 +100,7 @@
           <div class="text-h3 font-weight-bold text-info">
             {{ kpiData.otd }}%
           </div>
-          <div class="text-subtitle-2 text-grey">KPI #2: {{ $t('kpi.otdFull') }}</div>
+          <div class="text-subtitle-2 text-grey">{{ $t('dashboard.kpiLabel', { n: 2 }) }} {{ $t('kpi.otdFull') }}</div>
           <v-progress-linear
             :model-value="kpiData.otd"
             color="info"
@@ -119,7 +119,7 @@
           <div class="text-h3 font-weight-bold text-primary">
             {{ kpiData.availability }}%
           </div>
-          <div class="text-subtitle-2 text-grey">KPI #8: {{ $t('kpi.availability') }}</div>
+          <div class="text-subtitle-2 text-grey">{{ $t('dashboard.kpiLabel', { n: 8 }) }} {{ $t('kpi.availability') }}</div>
           <v-progress-linear
             :model-value="kpiData.availability"
             color="primary"
@@ -139,7 +139,7 @@
           <div class="text-h3 font-weight-bold text-error">
             {{ kpiData.absenteeism }}%
           </div>
-          <div class="text-subtitle-2 text-grey">KPI #10: {{ $t('kpi.absenteeism') }}</div>
+          <div class="text-subtitle-2 text-grey">{{ $t('dashboard.kpiLabel', { n: 10 }) }} {{ $t('kpi.absenteeism') }}</div>
           <v-progress-linear
             :model-value="kpiData.absenteeism"
             color="error"
@@ -159,7 +159,7 @@
           <div class="text-h3 font-weight-bold text-deep-purple">
             {{ kpiData.ppm }}
           </div>
-          <div class="text-subtitle-2 text-grey">KPI #4: {{ $t('kpi.ppmFull') }}</div>
+          <div class="text-subtitle-2 text-grey">{{ $t('dashboard.kpiLabel', { n: 4 }) }} {{ $t('kpi.ppmFull') }}</div>
           <v-progress-linear
             :model-value="Math.min((kpiData.ppm / 10000) * 100, 100)"
             color="deep-purple"
@@ -178,7 +178,7 @@
           <div class="text-h3 font-weight-bold text-indigo">
             {{ kpiData.dpmo }}
           </div>
-          <div class="text-subtitle-2 text-grey">KPI #5: {{ $t('kpi.dpmoFull') }}</div>
+          <div class="text-subtitle-2 text-grey">{{ $t('dashboard.kpiLabel', { n: 5 }) }} {{ $t('kpi.dpmoFull') }}</div>
           <v-progress-linear
             :model-value="Math.min((kpiData.dpmo / 10000) * 100, 100)"
             color="indigo"
@@ -197,7 +197,7 @@
           <div class="text-h3 font-weight-bold text-teal">
             {{ kpiData.fpy }}%
           </div>
-          <div class="text-subtitle-2 text-grey">KPI #6: {{ $t('kpi.fpyFull') }}</div>
+          <div class="text-subtitle-2 text-grey">{{ $t('dashboard.kpiLabel', { n: 6 }) }} {{ $t('kpi.fpyFull') }}</div>
           <v-progress-linear
             :model-value="kpiData.fpy"
             color="teal"
@@ -216,7 +216,7 @@
           <div class="text-h3 font-weight-bold text-cyan">
             {{ kpiData.rty }}%
           </div>
-          <div class="text-subtitle-2 text-grey">KPI #7: {{ $t('kpi.rtyFull') }}</div>
+          <div class="text-subtitle-2 text-grey">{{ $t('dashboard.kpiLabel', { n: 7 }) }} {{ $t('kpi.rtyFull') }}</div>
           <v-progress-linear
             :model-value="kpiData.rty"
             color="cyan"
@@ -285,11 +285,11 @@
             <div class="d-flex justify-space-between align-center">
               <div>
                 <v-icon color="success" class="mr-1">mdi-check-circle</v-icon>
-                <span class="text-body-2">API: {{ $t('common.success') }}</span>
+                <span class="text-body-2">{{ $t('dashboard.health.apiLabel') }} {{ $t('common.success') }}</span>
               </div>
               <div>
                 <v-icon color="success" class="mr-1">mdi-database</v-icon>
-                <span class="text-body-2">DB: {{ $t('common.success') }}</span>
+                <span class="text-body-2">{{ $t('dashboard.health.dbLabel') }} {{ $t('common.success') }}</span>
               </div>
             </div>
           </v-card-text>

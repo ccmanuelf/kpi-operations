@@ -9,7 +9,7 @@
       </v-col>
       <v-col cols="12" md="6" class="text-right">
         <v-chip :color="fpyColor" size="large" class="mr-2 text-white" variant="flat">
-          FPY: {{ formatValue(qualityData?.fpy) }}%
+          {{ t('kpi.fpyLabel') }} {{ formatValue(qualityData?.fpy) }}%
         </v-chip>
         <v-chip variant="text" style="color: var(--cds-text-secondary)">{{ t('kpi.targetPercent', { value: 99 }) }}</v-chip>
       </v-col>

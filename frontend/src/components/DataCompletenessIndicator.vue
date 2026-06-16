@@ -83,7 +83,7 @@
                 {{ category.percentage }}%
               </v-chip>
             </template>
-            <span>{{ category.name }}: {{ category.entered }}/{{ category.expected }} entries</span>
+            <span>{{ category.name }}: {{ category.entered }}/{{ category.expected }} {{ t('dataCompleteness.entries') }}</span>
           </v-tooltip>
         </div>
 
@@ -159,7 +159,7 @@
         {{ formattedDate }}
       </v-chip>
       <v-chip v-if="shift" size="x-small" variant="outlined" color="grey" class="ml-1">
-        Shift {{ shift }}
+        {{ t('dataCompleteness.shift') }} {{ shift }}
       </v-chip>
       <v-spacer />
       <v-btn

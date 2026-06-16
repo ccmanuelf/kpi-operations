@@ -86,7 +86,9 @@
     "unit": "Unidad",
     "target": "Meta",
     "notSet": "No establecido",
-    "skip": "Omitir"
+    "skip": "Omitir",
+    "idLabel": "ID:",
+    "available": "Disponible"
   },
   "workflowWizard": {
     "startShift": "Iniciar Turno",
@@ -476,7 +478,8 @@
       "averageAgeMeaning": "Número promedio de días que los artículos han estado en estado WIP. Valores más bajos indican mayor rendimiento y flujo de producción más eficiente.",
       "oldestItemMeaning": "Edad del artículo más antiguo actualmente en WIP. Valores altos pueden indicar cuellos de botella, retenciones de calidad o escasez de materiales que requieren atención inmediata.",
       "criticalItemsMeaning": "Número de artículos WIP con más de 14 días de antigüedad. Requieren atención urgente ya que impactan los calendarios de entrega y comprometen capital de trabajo."
-    }
+    },
+    "fpyLabel": "FPY:"
   },
   "inferenceIndicator": {
     "dataSourcesTitle": "Fuentes de Datos Utilizadas",
@@ -886,7 +889,18 @@
     "incomplete": "Incompleto",
     "warning": "Advertencia",
     "predictive": "Análisis Predictivo",
-    "forecast": "Pronóstico"
+    "forecast": "Pronóstico",
+    "kpiLabel": "KPI n.º {n}:",
+    "health": {
+      "apiLabel": "API:",
+      "dbLabel": "DB:"
+    },
+    "status": {
+      "good": "bueno",
+      "needsAttention": "necesita atención",
+      "critical": "crítico"
+    },
+    "widgetNotFound": "Widget no encontrado"
   },
   "notifications": {
     "title": "Notificaciones",
@@ -919,7 +933,8 @@
       "deleteFailed": "Error al eliminar orden de trabajo",
       "statusUpdated": "Estado de orden actualizado a {status}",
       "statusUpdateFailed": "Error al actualizar estado",
-      "deleteSuccess": "Orden de trabajo eliminada exitosamente"
+      "deleteSuccess": "Orden de trabajo eliminada exitosamente",
+      "compareFailed": "Error al comparar escenarios"
     },
     "dashboard": {
       "loadFailed": "Error al cargar preferencias del panel. Usando configuración local.",
@@ -940,7 +955,9 @@
     "unauthorized": "No autorizado. Por favor inicia sesión de nuevo.",
     "forbidden": "Acceso denegado.",
     "timeout": "La solicitud expiró. Por favor intenta de nuevo.",
-    "duplicate": "Registro duplicado encontrado."
+    "duplicate": "Registro duplicado encontrado.",
+    "loadClientsFailed": "Error al cargar los clientes",
+    "refreshFailed": "Error al actualizar los datos"
   },
   "success": {
     "saved": "Guardado exitosamente.",
@@ -1467,7 +1484,9 @@
       "hintDefectName": "Nombre para mostrar (ej., Defecto de Soldadura)",
       "hintDescription": "Descripción detallada para capacitación/referencia",
       "hintSortOrder": "Orden de visualización (0-999)",
-      "hintIndustryCode": "ej., IPC-A-610-5.2"
+      "hintIndustryCode": "ej., IPC-A-610-5.2",
+      "selectClientFirst": "Seleccione primero un cliente",
+      "fillRequiredFields": "Complete primero los campos requeridos"
     },
     "partOpportunities": "Gestión de Oportunidades por Parte",
     "partOpportunitiesDescription": "Configure oportunidades de defecto por parte para cálculo preciso de DPMO",
@@ -1582,7 +1601,12 @@
       "holes": "Agujeros",
       "edgeFinishing": "Acabado de bordes",
       "tip": "Consejo",
-      "tipText": "Trabaje con su equipo de calidad para establecer métodos consistentes de conteo de oportunidades en todos los productos. Documente su metodología de conteo para mantener la consistencia."
+      "tipText": "Trabaje con su equipo de calidad para establecer métodos consistentes de conteo de oportunidades en todos los productos. Documente su metodología de conteo para mantener la consistencia.",
+      "exampleTShirt": "Camiseta estándar",
+      "exampleComplexity": "complejidad",
+      "exampleStandard": "Estándar",
+      "exampleNotes": "notas",
+      "exampleBasicGarment": "Prenda básica"
     },
     "poolGuide": {
       "whatIsTitle": "¿Qué es el Personal Flotante?",
@@ -1819,7 +1843,8 @@
         "save": "Error al guardar configuración",
         "applyTemplate": "Error al aplicar plantilla"
       }
-    }
+    },
+    "fillRequiredFields": "Complete primero los campos requeridos"
   },
   "csv": {
     "importCsv": "Importar CSV",
@@ -1910,7 +1935,10 @@
     "date": "Formato de fecha inválido",
     "dateRange": "La fecha de fin debe ser posterior a la de inicio",
     "future": "La fecha debe ser en el futuro",
-    "past": "La fecha no puede ser en el futuro"
+    "past": "La fecha no puede ser en el futuro",
+    "positiveNumber": "Debe ser un número positivo",
+    "positiveInteger": "Debe ser un número entero positivo",
+    "percentage": "Debe estar entre 0 y 100"
   },
   "simulation": {
     "title": "Simulación y Planificación de Capacidad",
@@ -2762,7 +2790,9 @@
         "uom": "UDM",
         "wastePercent": "Desperdicio %",
         "actions": "Acciones"
-      }
+      },
+      "selectBomFirst": "Seleccione primero un BOM",
+      "noComponentsYet": "Aún no hay componentes"
     },
     "calendar": {
       "title": "Calendario Maestro",
@@ -2903,6 +2933,12 @@
         "quantity": "Cantidad",
         "status": "Estado"
       }
+    },
+    "dialogs": {
+      "scheduleName": "Nombre del cronograma",
+      "includeAllOrders": "Incluir todos los pedidos",
+      "selectFile": "Seleccionar archivo",
+      "targetWorksheet": "Hoja de cálculo de destino"
     }
   },
   "simulationV2": {
@@ -3171,6 +3207,9 @@
       "demandMode": "Modo de Demanda",
       "totalDailyDemand": "Demanda Diaria Total (piezas)",
       "simulationHorizon": "Horizonte de Simulación (días)"
+    },
+    "operations": {
+      "product": "Producto"
     }
   },
   "migration": {
@@ -3605,6 +3644,13 @@
       "systemHealth": "Salud del Sistema",
       "userStats": "Estadísticas de Usuario",
       "auditLog": "Registro de Auditoría"
+    },
+    "rework": {
+      "summary": "{count} operaciones representan el {pct}% del total de retrabajo. Concentre los esfuerzos de mejora aquí.",
+      "rateSuffix": "% tasa"
+    },
+    "downtime": {
+      "oeeSuffix": "% OEE"
     }
   },
   "dashboardCustomizer": {
@@ -3810,7 +3856,12 @@
       "utilAfter": "Util. Después",
       "role": "Rol",
       "action": "Acción"
-    }
+    },
+    "shiftsPerDay": "{shifts} turnos, {hours} h/día",
+    "bundlesPerDay": "{bundles} paquetes/día (tamaño: {size})",
+    "unitPieces": "piezas",
+    "unitPcsPerDay": "pzs/día",
+    "unitHoursPerDay": "h/día"
   },
   "simulationSchedule": {
     "title": "Configuración de Horario",
@@ -3904,7 +3955,8 @@
     "inProgress": "En Progreso",
     "idle": "Inactivo",
     "done": "Listo",
-    "tryAgain": "Reintentar"
+    "tryAgain": "Reintentar",
+    "tables": "tablas"
   },
   "dataCompleteness": {
     "title": "Completitud de Datos",
@@ -3915,7 +3967,9 @@
     "details": "Detalles",
     "collapse": "Colapsar",
     "needAttentionCount": "{count} categoría(s) requieren atención",
-    "completeCategory": "Completar {name}"
+    "completeCategory": "Completar {name}",
+    "entries": "entradas",
+    "shift": "Turno"
   },
   "absenteeismAlert": {
     "scheduledHours": "Horas Programadas",
@@ -4036,5 +4090,78 @@
       "notAvailable": "La trazabilidad del calculo no esta disponible para esta metrica",
       "openFailed": "No se pudo abrir la trazabilidad del calculo"
     }
+  },
+  "simulationGuide": {
+    "stepN": "Paso {n}:",
+    "sample": {
+      "cycleTimeValue": "15 min",
+      "shiftDurationValue": "8 h"
+    },
+    "capacity": {
+      "stepLabel1": "Definir objetivo",
+      "stepLabel2": "Configurar parámetros",
+      "stepLabel4": "Revisar",
+      "step1": "{step} Vaya a la pestaña {target}",
+      "step1Detail": "Ingrese sus unidades de producción objetivo (p. ej., 500 unidades/día)",
+      "step2": "{step} Configure sus horas de turno (predeterminado: 8 horas)",
+      "step2Detail1": "Ingrese el tiempo de ciclo por unidad (p. ej., 0,25 horas = 15 minutos)",
+      "step2Detail2": "Ajuste la eficiencia objetivo (predeterminado: 85 %)",
+      "step3": "{step} Hacer clic en {target}",
+      "step3Detail": "El sistema calculará los empleados requeridos incluyendo la reserva",
+      "step4": "{step} Revise los resultados que muestran:",
+      "step4Item1": "Empleados requeridos",
+      "step4Item2": "Empleados de reserva (para ausentismo)",
+      "step4Item3": "Personal total recomendado"
+    },
+    "productionLine": {
+      "stepLabel1": "Configurar",
+      "stepLabel2": "Cargar",
+      "stepLabel3": "Ejecutar",
+      "stepLabel4": "Analizar",
+      "step1": "{step} Vaya a la pestaña {target}",
+      "step1Detail": "Configure el número de estaciones, trabajadores por estación y el tamaño del grupo flotante",
+      "step2": "{step} Hacer clic en {target}",
+      "step2Detail": "Esto genera una línea de producción basada en su configuración",
+      "step3": "{step} Configure la duración de la simulación (predeterminado: 8 horas)",
+      "step3Action": "Hacer clic en {target}",
+      "step4": "{step} Revise los resultados de la simulación:",
+      "step4Item1": "Unidades completadas y rendimiento",
+      "step4Item2": "Eficiencia y rendimiento de calidad",
+      "step4Item3": "Utilización de estaciones (identificar cuellos de botella)",
+      "step4Item4": "Recomendaciones de mejora"
+    },
+    "scenarios": {
+      "stepLabel1": "Línea base",
+      "stepLabel2": "Crear escenarios",
+      "stepLabel3": "Comparar",
+      "stepLabel4": "Decidir",
+      "step1": "{step} Primero, cargue una configuración de línea base en la pestaña Línea de producción",
+      "step1Detail": "Esto se convierte en su punto de referencia para la comparación",
+      "step2": "{step} Vaya a la pestaña {target}",
+      "step2Detail": "Cree múltiples escenarios con diferentes configuraciones:",
+      "step2Item1": "Escenario A: Agregar 1 trabajador por estación",
+      "step2Item2": "Escenario B: Agregar 2 trabajadores del grupo flotante",
+      "step2Item3": "Escenario C: Reducir el tiempo de ciclo 20 %",
+      "step3": "{step} Hacer clic en {target}",
+      "step3Detail": "El sistema ejecuta la simulación para cada escenario",
+      "step4": "{step} Revise la tabla de comparación que muestra:",
+      "step4Item1": "Cambio de rendimiento frente a la línea base",
+      "step4Item2": "Mejora de eficiencia",
+      "step4Item3": "Impacto en la calidad",
+      "step4Item4": "Recomendación del mejor escenario"
+    }
+  },
+  "validationPanel": {
+    "passed": "Validación aprobada",
+    "failed": "Validación fallida",
+    "productsCount": "{count} productos",
+    "operationsCount": "{count} operaciones",
+    "machinesCount": "{count} máquinas",
+    "errorsTitle": "Errores ({count}) - Debe corregir antes de ejecutar",
+    "warningsTitle": "Advertencias ({count}) - Revisión recomendada",
+    "showWarnings": "Mostrar {count} advertencia(s)",
+    "infoTitle": "Información ({count})",
+    "showInfo": "Mostrar {count} mensaje(s) de información",
+    "allValid": "La configuración es válida y no tiene advertencias. Lista para ejecutar la simulación."
   }
 }

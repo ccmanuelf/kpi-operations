@@ -2,16 +2,16 @@
   <v-card v-if="report" variant="outlined" :color="panelColor">
     <v-card-title class="d-flex align-center">
       <v-icon :color="iconColor" class="mr-2">{{ statusIcon }}</v-icon>
-      <span>Validation {{ report.is_valid ? 'Passed' : 'Failed' }}</span>
+      <span>{{ report.is_valid ? $t('validationPanel.passed') : $t('validationPanel.failed') }}</span>
       <v-spacer />
       <v-chip size="small" color="info" variant="tonal" class="mr-1">
-        {{ report.products_count }} products
+        {{ $t('validationPanel.productsCount', { count: report.products_count }) }}
       </v-chip>
       <v-chip size="small" color="info" variant="tonal" class="mr-1">
-        {{ report.operations_count }} operations
+        {{ $t('validationPanel.operationsCount', { count: report.operations_count }) }}
       </v-chip>
       <v-chip size="small" color="info" variant="tonal">
-        {{ report.machine_tools_count }} machines
+        {{ $t('validationPanel.machinesCount', { count: report.machine_tools_count }) }}
       </v-chip>
     </v-card-title>
 
@@ -20,7 +20,7 @@
       <div v-if="report.errors.length > 0" class="mb-4">
         <div class="text-subtitle-2 text-error mb-2">
           <v-icon size="small" color="error">mdi-alert-circle</v-icon>
-          Errors ({{ report.errors.length }}) - Must fix before running
+          {{ $t('validationPanel.errorsTitle', { count: report.errors.length }) }}
         </div>
         <v-list density="compact" class="bg-error-lighten-5 rounded">
           <v-list-item
@@ -43,12 +43,12 @@
       <div v-if="report.warnings.length > 0" class="mb-4">
         <div class="text-subtitle-2 text-warning mb-2">
           <v-icon size="small" color="warning">mdi-alert</v-icon>
-          Warnings ({{ report.warnings.length }}) - Review recommended
+          {{ $t('validationPanel.warningsTitle', { count: report.warnings.length }) }}
         </div>
         <v-expansion-panels variant="accordion">
           <v-expansion-panel>
             <v-expansion-panel-title>
-              Show {{ report.warnings.length }} warning(s)
+              {{ $t('validationPanel.showWarnings', { count: report.warnings.length }) }}
             </v-expansion-panel-title>
             <v-expansion-panel-text>
               <v-list density="compact">
@@ -75,12 +75,12 @@
       <div v-if="report.info.length > 0">
         <div class="text-subtitle-2 text-info mb-2">
           <v-icon size="small" color="info">mdi-information</v-icon>
-          Information ({{ report.info.length }})
+          {{ $t('validationPanel.infoTitle', { count: report.info.length }) }}
         </div>
         <v-expansion-panels variant="accordion">
           <v-expansion-panel>
             <v-expansion-panel-title>
-              Show {{ report.info.length }} info message(s)
+              {{ $t('validationPanel.showInfo', { count: report.info.length }) }}
             </v-expansion-panel-title>
             <v-expansion-panel-text>
               <v-list density="compact">
@@ -109,7 +109,7 @@
         variant="tonal"
         density="compact"
       >
-        Configuration is valid with no warnings. Ready to run simulation.
+        {{ $t('validationPanel.allValid') }}
       </v-alert>
     </v-card-text>
   </v-card>

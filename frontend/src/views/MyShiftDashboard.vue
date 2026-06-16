@@ -59,7 +59,7 @@
                   </v-list-item-title>
                   <v-list-item-subtitle>
                     <span class="text-body-2">
-                      {{ wo.product_name }} - {{ wo.produced || 0 }} / {{ wo.target_qty }} units
+                      {{ wo.product_name }} - {{ wo.produced || 0 }} / {{ wo.target_qty }} {{ t('common.units') }}
                     </span>
                   </v-list-item-subtitle>
 

@@ -85,11 +85,11 @@
                     <div class="text-caption">{{ t('simulation.guide.workersStation') }}</div>
                   </v-col>
                   <v-col cols="6" md="3">
-                    <div class="text-h5 text-primary">15 min</div>
+                    <div class="text-h5 text-primary">{{ t('simulationGuide.sample.cycleTimeValue') }}</div>
                     <div class="text-caption">{{ t('simulation.guide.cycleTime') }}</div>
                   </v-col>
                   <v-col cols="6" md="3">
-                    <div class="text-h5 text-primary">8 hrs</div>
+                    <div class="text-h5 text-primary">{{ t('simulationGuide.sample.shiftDurationValue') }}</div>
                     <div class="text-caption">{{ t('simulation.guide.shiftDuration') }}</div>
                   </v-col>
                 </v-row>
@@ -110,40 +110,58 @@
             <v-expansion-panels>
               <v-expansion-panel :title="t('simulation.guide.workflow1Title')">
                 <v-expansion-panel-text>
-                  <v-stepper :items="['Define Target', 'Set Parameters', 'Calculate', 'Review']" alt-labels class="elevation-0">
+                  <v-stepper :items="[t('simulationGuide.capacity.stepLabel1'), t('simulationGuide.capacity.stepLabel2'), t('simulation.calculate'), t('simulationGuide.capacity.stepLabel4')]" alt-labels class="elevation-0">
                     <template v-slot:item.1>
                       <v-card flat>
                         <v-card-text>
-                          <p><strong>Step 1:</strong> Go to the <strong>Capacity Planning</strong> tab</p>
-                          <p>Enter your target production units (e.g., 500 units/day)</p>
+                          <p>
+                            <i18n-t keypath="simulationGuide.capacity.step1" tag="span" scope="global">
+                              <template #step><strong>{{ t('simulationGuide.stepN', { n: 1 }) }}</strong></template>
+                              <template #target><strong>{{ t('simulation.capacityPlanning') }}</strong></template>
+                            </i18n-t>
+                          </p>
+                          <p>{{ t('simulationGuide.capacity.step1Detail') }}</p>
                         </v-card-text>
                       </v-card>
                     </template>
                     <template v-slot:item.2>
                       <v-card flat>
                         <v-card-text>
-                          <p><strong>Step 2:</strong> Set your shift hours (default: 8 hours)</p>
-                          <p>Enter cycle time per unit (e.g., 0.25 hours = 15 minutes)</p>
-                          <p>Adjust target efficiency (default: 85%)</p>
+                          <p>
+                            <i18n-t keypath="simulationGuide.capacity.step2" tag="span" scope="global">
+                              <template #step><strong>{{ t('simulationGuide.stepN', { n: 2 }) }}</strong></template>
+                            </i18n-t>
+                          </p>
+                          <p>{{ t('simulationGuide.capacity.step2Detail1') }}</p>
+                          <p>{{ t('simulationGuide.capacity.step2Detail2') }}</p>
                         </v-card-text>
                       </v-card>
                     </template>
                     <template v-slot:item.3>
                       <v-card flat>
                         <v-card-text>
-                          <p><strong>Step 3:</strong> Click <strong>Calculate</strong></p>
-                          <p>The system will compute required employees including buffer</p>
+                          <p>
+                            <i18n-t keypath="simulationGuide.capacity.step3" tag="span" scope="global">
+                              <template #step><strong>{{ t('simulationGuide.stepN', { n: 3 }) }}</strong></template>
+                              <template #target><strong>{{ t('simulation.calculate') }}</strong></template>
+                            </i18n-t>
+                          </p>
+                          <p>{{ t('simulationGuide.capacity.step3Detail') }}</p>
                         </v-card-text>
                       </v-card>
                     </template>
                     <template v-slot:item.4>
                       <v-card flat>
                         <v-card-text>
-                          <p><strong>Step 4:</strong> Review the results showing:</p>
+                          <p>
+                            <i18n-t keypath="simulationGuide.capacity.step4" tag="span" scope="global">
+                              <template #step><strong>{{ t('simulationGuide.stepN', { n: 4 }) }}</strong></template>
+                            </i18n-t>
+                          </p>
                           <ul>
-                            <li>Required employees</li>
-                            <li>Buffer employees (for absenteeism)</li>
-                            <li>Total recommended staffing</li>
+                            <li>{{ t('simulationGuide.capacity.step4Item1') }}</li>
+                            <li>{{ t('simulationGuide.capacity.step4Item2') }}</li>
+                            <li>{{ t('simulationGuide.capacity.step4Item3') }}</li>
                           </ul>
                         </v-card-text>
                       </v-card>
@@ -154,40 +172,62 @@
 
               <v-expansion-panel :title="t('simulation.guide.workflow2Title')">
                 <v-expansion-panel-text>
-                  <v-stepper :items="['Configure', 'Load', 'Run', 'Analyze']" alt-labels class="elevation-0">
+                  <v-stepper :items="[t('simulationGuide.productionLine.stepLabel1'), t('simulationGuide.productionLine.stepLabel2'), t('simulationGuide.productionLine.stepLabel3'), t('simulationGuide.productionLine.stepLabel4')]" alt-labels class="elevation-0">
                     <template v-slot:item.1>
                       <v-card flat>
                         <v-card-text>
-                          <p><strong>Step 1:</strong> Go to <strong>Production Line Simulation</strong> tab</p>
-                          <p>Configure number of stations, workers per station, and floating pool size</p>
+                          <p>
+                            <i18n-t keypath="simulationGuide.productionLine.step1" tag="span" scope="global">
+                              <template #step><strong>{{ t('simulationGuide.stepN', { n: 1 }) }}</strong></template>
+                              <template #target><strong>{{ t('simulation.productionLine') }}</strong></template>
+                            </i18n-t>
+                          </p>
+                          <p>{{ t('simulationGuide.productionLine.step1Detail') }}</p>
                         </v-card-text>
                       </v-card>
                     </template>
                     <template v-slot:item.2>
                       <v-card flat>
                         <v-card-text>
-                          <p><strong>Step 2:</strong> Click <strong>Load Configuration</strong></p>
-                          <p>This generates a production line based on your settings</p>
+                          <p>
+                            <i18n-t keypath="simulationGuide.productionLine.step2" tag="span" scope="global">
+                              <template #step><strong>{{ t('simulationGuide.stepN', { n: 2 }) }}</strong></template>
+                              <template #target><strong>{{ t('simulation.loadConfig') }}</strong></template>
+                            </i18n-t>
+                          </p>
+                          <p>{{ t('simulationGuide.productionLine.step2Detail') }}</p>
                         </v-card-text>
                       </v-card>
                     </template>
                     <template v-slot:item.3>
                       <v-card flat>
                         <v-card-text>
-                          <p><strong>Step 3:</strong> Set simulation duration (default: 8 hours)</p>
-                          <p>Click <strong>Run Simulation</strong></p>
+                          <p>
+                            <i18n-t keypath="simulationGuide.productionLine.step3" tag="span" scope="global">
+                              <template #step><strong>{{ t('simulationGuide.stepN', { n: 3 }) }}</strong></template>
+                            </i18n-t>
+                          </p>
+                          <p>
+                            <i18n-t keypath="simulationGuide.productionLine.step3Action" tag="span" scope="global">
+                              <template #target><strong>{{ t('simulation.runSimulation') }}</strong></template>
+                            </i18n-t>
+                          </p>
                         </v-card-text>
                       </v-card>
                     </template>
                     <template v-slot:item.4>
                       <v-card flat>
                         <v-card-text>
-                          <p><strong>Step 4:</strong> Review simulation results:</p>
+                          <p>
+                            <i18n-t keypath="simulationGuide.productionLine.step4" tag="span" scope="global">
+                              <template #step><strong>{{ t('simulationGuide.stepN', { n: 4 }) }}</strong></template>
+                            </i18n-t>
+                          </p>
                           <ul>
-                            <li>Units completed and throughput</li>
-                            <li>Efficiency and quality yield</li>
-                            <li>Station utilization (identify bottlenecks)</li>
-                            <li>Recommendations for improvement</li>
+                            <li>{{ t('simulationGuide.productionLine.step4Item1') }}</li>
+                            <li>{{ t('simulationGuide.productionLine.step4Item2') }}</li>
+                            <li>{{ t('simulationGuide.productionLine.step4Item3') }}</li>
+                            <li>{{ t('simulationGuide.productionLine.step4Item4') }}</li>
                           </ul>
                         </v-card-text>
                       </v-card>
@@ -198,24 +238,33 @@
 
               <v-expansion-panel :title="t('simulation.guide.workflow3Title')">
                 <v-expansion-panel-text>
-                  <v-stepper :items="['Baseline', 'Create Scenarios', 'Compare', 'Decide']" alt-labels class="elevation-0">
+                  <v-stepper :items="[t('simulationGuide.scenarios.stepLabel1'), t('simulationGuide.scenarios.stepLabel2'), t('simulationGuide.scenarios.stepLabel3'), t('simulationGuide.scenarios.stepLabel4')]" alt-labels class="elevation-0">
                     <template v-slot:item.1>
                       <v-card flat>
                         <v-card-text>
-                          <p><strong>Step 1:</strong> First, load a baseline configuration in Production Line tab</p>
-                          <p>This becomes your reference point for comparison</p>
+                          <p>
+                            <i18n-t keypath="simulationGuide.scenarios.step1" tag="span" scope="global">
+                              <template #step><strong>{{ t('simulationGuide.stepN', { n: 1 }) }}</strong></template>
+                            </i18n-t>
+                          </p>
+                          <p>{{ t('simulationGuide.scenarios.step1Detail') }}</p>
                         </v-card-text>
                       </v-card>
                     </template>
                     <template v-slot:item.2>
                       <v-card flat>
                         <v-card-text>
-                          <p><strong>Step 2:</strong> Go to <strong>Scenario Comparison</strong> tab</p>
-                          <p>Create multiple scenarios with different configurations:</p>
+                          <p>
+                            <i18n-t keypath="simulationGuide.scenarios.step2" tag="span" scope="global">
+                              <template #step><strong>{{ t('simulationGuide.stepN', { n: 2 }) }}</strong></template>
+                              <template #target><strong>{{ t('simulation.scenarioComparison') }}</strong></template>
+                            </i18n-t>
+                          </p>
+                          <p>{{ t('simulationGuide.scenarios.step2Detail') }}</p>
                           <ul>
-                            <li>Scenario A: Add 1 worker per station</li>
-                            <li>Scenario B: Add 2 floating pool workers</li>
-                            <li>Scenario C: Reduce cycle time 20%</li>
+                            <li>{{ t('simulationGuide.scenarios.step2Item1') }}</li>
+                            <li>{{ t('simulationGuide.scenarios.step2Item2') }}</li>
+                            <li>{{ t('simulationGuide.scenarios.step2Item3') }}</li>
                           </ul>
                         </v-card-text>
                       </v-card>
@@ -223,20 +272,29 @@
                     <template v-slot:item.3>
                       <v-card flat>
                         <v-card-text>
-                          <p><strong>Step 3:</strong> Click <strong>Compare Scenarios</strong></p>
-                          <p>System runs simulation for each scenario</p>
+                          <p>
+                            <i18n-t keypath="simulationGuide.scenarios.step3" tag="span" scope="global">
+                              <template #step><strong>{{ t('simulationGuide.stepN', { n: 3 }) }}</strong></template>
+                              <template #target><strong>{{ t('simulation.compareScenarios') }}</strong></template>
+                            </i18n-t>
+                          </p>
+                          <p>{{ t('simulationGuide.scenarios.step3Detail') }}</p>
                         </v-card-text>
                       </v-card>
                     </template>
                     <template v-slot:item.4>
                       <v-card flat>
                         <v-card-text>
-                          <p><strong>Step 4:</strong> Review comparison table showing:</p>
+                          <p>
+                            <i18n-t keypath="simulationGuide.scenarios.step4" tag="span" scope="global">
+                              <template #step><strong>{{ t('simulationGuide.stepN', { n: 4 }) }}</strong></template>
+                            </i18n-t>
+                          </p>
                           <ul>
-                            <li>Throughput change vs baseline</li>
-                            <li>Efficiency improvement</li>
-                            <li>Quality impact</li>
-                            <li>Best scenario recommendation</li>
+                            <li>{{ t('simulationGuide.scenarios.step4Item1') }}</li>
+                            <li>{{ t('simulationGuide.scenarios.step4Item2') }}</li>
+                            <li>{{ t('simulationGuide.scenarios.step4Item3') }}</li>
+                            <li>{{ t('simulationGuide.scenarios.step4Item4') }}</li>
                           </ul>
                         </v-card-text>
                       </v-card>

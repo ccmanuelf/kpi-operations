@@ -64,7 +64,7 @@
               <template v-slot:prepend>
                 <v-icon>mdi-domain</v-icon>
               </template>
-              <v-list-item-subtitle>ID: {{ item.raw.client_id }}</v-list-item-subtitle>
+              <v-list-item-subtitle>{{ $t('common.idLabel') }} {{ item.raw.client_id }}</v-list-item-subtitle>
             </v-list-item>
           </template>
         </v-autocomplete>
