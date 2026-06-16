@@ -266,6 +266,32 @@ Effort is substantially higher (likely 100+ string moves with es translations
 across dozens of files); execute in disciplined batches, re-running
 `no-raw-text` (count) + the parity test between batches as the convergence checks.
 
+## RESUME STATE (2026-06-16) — pick up here
+
+**Branch:** `feat/i18n-residual-strings` (not merged). **Done:** P1 ignore-config
+committed @ `64574bd` (rule at **warn**; mdi + symbols/formulas/code ignored —
+NOTE the `mysql+pymysql://…` example was dropped from `ignoreText` because
+detect-secrets blocks it; handle that one raw-text via an inline
+`eslint-disable-next-line` in its `.vue`). P2 parity test written? **No — not yet.**
+
+**Remaining:** P2 (parity test) → P3 (localize ~157 genuine TEMPLATE strings, en+es,
+subagent bulk) → P4 (flip rule to `error`) → P5 (script-side sweep) → P6 (verify + PR).
+
+**To regenerate the work-list** (run from `frontend/`):
+```
+npx eslint "src/**/*.vue" --format json > /tmp/rawtext.json 2>/dev/null
+```
+then group by file / extract the `raw text '…'` strings (156 hits across 31 files;
+heaviest: SimulationGuideDialog.vue 60, ValidationPanel 16, DashboardOverview 12,
+ResultsView 7, SimulationV2View 6). Many are interpolation fragments
+(`Errors (`, `KPI #1:`, `Step N:`) needing `$t` + placeholders. Dispatch subagents
+per file-group with a shared **es glossary** for consistency; between batches
+re-run the eslint JSON count + the parity test as convergence checks. Spanish is
+flagged for native review (gate enforces presence + parity, not fluency).
+
+**Then:** C2 (csv_upload consolidation) and C3 (main.py lifespan) remain in the
+PR4 slate; C4/C5 deferred to MariaDB go-live. See memory `vuetify-4-md3-migration`.
+
 ## Self-review notes (author)
 
 - **Spec coverage:** install + rule wiring + enumerate (Task 1); parity test (Task 2); localize genuine strings + ignore non-translatable (Task 3); gate at error (Task 4); verify + es spot-check + PR (Task 5).
