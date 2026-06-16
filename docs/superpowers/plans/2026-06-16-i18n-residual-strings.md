@@ -229,6 +229,43 @@ Expected: PR opens; 4 required checks green; merge on green.
 
 ---
 
+## Revised scope (2026-06-16 execution finding) — SUPERSEDES the task sizing above
+
+Enumeration (Task 1 Step 3) showed the surface is larger/messier than "~55 simple
+strings", and the user chose **full coverage (template + script-side), disciplined,
+no deferral**. Real picture (~700 raw-text hits):
+- **594 `mdi-*` icon names** in `<v-icon>` → ignore (add an `^mdi-` alternative to
+  `ignorePattern`; they are icon IDs, not copy).
+- **~40 units / symbols / formulas / codes** (`%`, `min`, `2σ`–`6σ`, `→`, `Δ`,
+  `DPMO = 750`, `mysql+pymysql://…`, `part_number`) → ignore (extend
+  `ignorePattern`/`ignoreText` or scoped disables for formula blocks).
+- **~60–80 genuine TEMPLATE strings**, including **interpolation fragments**
+  (`Errors (`, `KPI #1:`, `Step 1:`, `Go to`) and **wizard prose** (the Simulation
+  guide) → localize with `$t` + placeholders (`$t('x.errors', { count })`), en+es.
+- **Script-side pile** (render-function templates like
+  `WidgetGrid.vue template: '<div>…AI Predictions</div>'`, chart labels, user-facing
+  `.ts` strings) → localize en+es; the `no-raw-text` rule can't gate these
+  (template-only), so they're found by grep heuristics + manual review.
+
+**Revised phased execution (replaces Tasks 1–5 sizing; same TDD/commit discipline):**
+- **P1 — ignore-config:** extend the rule's `ignorePattern`/`ignoreText` for mdi +
+  symbols/formulas/codes; re-run until only genuine prose remains. Commit.
+- **P2 — parity test** (Task 2 as written). Commit.
+- **P3 — template localization:** work file-by-file through the genuine list
+  (labels → simple `$t`; fragments/wizard prose → `$t` with placeholders), en+es
+  each, until `no-raw-text` reports 0 genuine. Commit in logical batches.
+- **P4 — enable gate** (`error`). Commit.
+- **P5 — script-side sweep:** grep heuristics (`template: *'<`, chart label keys,
+  literal strings in `.ts` notification/message code) → localize en+es; no rule
+  gate (template-only) but the parity test + manual es-toggle review cover it.
+  Commit in batches.
+- **P6 — verify + PR:** full gates + es-toggle spot-check across several converted
+  screens (incl. the Simulation wizard and a chart) + PR.
+
+Effort is substantially higher (likely 100+ string moves with es translations
+across dozens of files); execute in disciplined batches, re-running
+`no-raw-text` (count) + the parity test between batches as the convergence checks.
+
 ## Self-review notes (author)
 
 - **Spec coverage:** install + rule wiring + enumerate (Task 1); parity test (Task 2); localize genuine strings + ignore non-translatable (Task 3); gate at error (Task 4); verify + es spot-check + PR (Task 5).
