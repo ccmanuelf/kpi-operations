@@ -290,7 +290,32 @@ re-run the eslint JSON count + the parity test as convergence checks. Spanish is
 flagged for native review (gate enforces presence + parity, not fluency).
 
 **Then:** C2 (csv_upload consolidation) and C3 (main.py lifespan) remain in the
-PR4 slate; C4/C5 deferred to MariaDB go-live. See memory `vuetify-4-md3-migration`.
+PR4 slate; C4/C5 deferred to MariaDB go-live. See memory `pr4-robustness-slate`.
+
+### Copy-paste resume prompt (new session)
+
+> Resume **C1 (i18n residual strings)** on branch `feat/i18n-residual-strings`.
+> First read these memories — `pr4-robustness-slate`, `disciplined-spec-driven-workflow`,
+> `thoroughness-over-deferral`, `verify-rigorously-not-sample` — and this plan
+> (especially **RESUME STATE**); verify the branch/commit still match before acting.
+>
+> Scope is already decided: **full template + script-side localization, en+es with
+> parity preserved, no deferral.** P1 (the `no-raw-text` rule at *warn* + ignore-config)
+> is committed at `64574bd`. Continue **P2→P6**:
+> - **P2:** add the en/es key-parity vitest test.
+> - **P3:** regenerate the work-list (`npx eslint "src/**/*.vue" --format json`), then
+>   localize the ~156 genuine **template** strings via **subagents per file-group**,
+>   using a shared **Spanish glossary** for consistency; between batches re-run the
+>   eslint count + parity test to converge. Fold in any pre-existing/adjacent issues found.
+> - **P4:** flip `no-raw-text` to `error`.
+> - **P5:** **script-side sweep** (render-template / chart / `.ts` user-facing strings) → en+es.
+> - **P6:** verify (build / vitest / vue-tsc / lint / npm-audit + an es-toggle spot-check
+>   via the local harness), push, open the PR, watch the 4 required CI checks; **when green,
+>   report back for merge approval — do not auto-merge.** After approval + merge: sync local
+>   main to 0/0, confirm post-merge main CI green, verify local == GitHub == Render.
+>
+> Then **C2** (`csv_upload.py` consolidation) and **C3** (`main.py` lifespan) are next per
+> the slate — each its own brainstorm→spec→plan cycle. C4/C5 stay deferred to MariaDB go-live.
 
 ## Self-review notes (author)
 
