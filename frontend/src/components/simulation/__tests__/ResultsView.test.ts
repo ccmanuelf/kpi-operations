@@ -4,17 +4,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
+import { createI18n } from 'vue-i18n'
+import en from '../../../i18n/locales/en.json'
+import es from '../../../i18n/locales/es.json'
 import ResultsView from '../ResultsView.vue'
 
-// Mock vue-i18n
-vi.mock('vue-i18n', () => ({
-  useI18n: () => ({ t: (key: string, params?: Record<string, unknown>) => {
-    if (params) {
-      return Object.entries(params).reduce((str, [k, v]) => str.replace(`{${k}}`, String(v)), key)
-    }
-    return key
-  }})
-}))
+const i18n = createI18n({ legacy: false, globalInjection: true, locale: 'en', fallbackLocale: 'en', messages: { en, es } })
 
 // Mock date-fns. The two args are unused in the stub (we always
 // return a fixed timestamp); prefix with _ to silence noUnusedParameters.
@@ -87,6 +82,7 @@ describe('ResultsView', () => {
         ...props
       },
       global: {
+        plugins: [i18n],
         stubs: {
           'v-dialog': {
             template: '<div class="v-dialog" v-if="modelValue"><slot /></div>',
@@ -139,12 +135,12 @@ describe('ResultsView', () => {
 
     it('should display Simulation Results title', () => {
       const wrapper = mountComponent()
-      expect(wrapper.text()).toContain('simulationResults.title')
+      expect(wrapper.text()).toContain('Simulation Results')
     })
 
     it('should display Export to Excel button', () => {
       const wrapper = mountComponent()
-      expect(wrapper.text()).toContain('simulationResults.exportExcel')
+      expect(wrapper.text()).toContain('Export to Excel')
     })
   })
 
@@ -156,12 +152,9 @@ describe('ResultsView', () => {
 
     it('should display throughput vs demand', () => {
       const wrapper = mountComponent()
-      // The hardcoded `Simulated X pieces/day vs Y demand` block is
-      // now i18n-driven via `simulationResults.simulatedSummary`. The
-      // test's i18n mock returns the bare key (interpolation lives in
-      // the locale value, not the key string), so verify the key is
-      // emitted — runtime translation is exercised by E2E tests.
-      expect(wrapper.text()).toContain('simulationResults.simulatedSummary')
+      // `simulationResults.simulatedSummary` renders with real i18n
+      // interpolation: "Simulated {throughput} pieces/day vs {demand} demand".
+      expect(wrapper.text()).toContain('Simulated 950 pieces/day vs 1000 demand')
     })
 
     it('should show success message when coverage >= 100%', () => {
@@ -169,7 +162,7 @@ describe('ResultsView', () => {
         daily_summary: { ...createMockResults().daily_summary, daily_coverage_pct: 105 }
       })
       const wrapper = mountComponent({ results })
-      expect(wrapper.vm.summaryText).toBe('simulationResults.demandMet')
+      expect(wrapper.vm.summaryText).toBe('Demand can be fully met')
     })
 
     it('should show warning message when coverage >= 90% but < 100%', () => {
@@ -177,7 +170,7 @@ describe('ResultsView', () => {
         daily_summary: { ...createMockResults().daily_summary, daily_coverage_pct: 95 }
       })
       const wrapper = mountComponent({ results })
-      expect(wrapper.vm.summaryText).toBe('simulationResults.shortfall')
+      expect(wrapper.vm.summaryText).toBe('Slight shortfall expected')
     })
 
     it('should show error message when coverage < 90%', () => {
@@ -185,44 +178,44 @@ describe('ResultsView', () => {
         daily_summary: { ...createMockResults().daily_summary, daily_coverage_pct: 80 }
       })
       const wrapper = mountComponent({ results })
-      expect(wrapper.vm.summaryText).toBe('simulationResults.significantShortfall')
+      expect(wrapper.vm.summaryText).toBe('Significant shortfall - action needed')
     })
   })
 
   describe('Tabs', () => {
     it('should render Summary tab', () => {
       const wrapper = mountComponent()
-      expect(wrapper.text()).toContain('simulationResults.summary')
+      expect(wrapper.text()).toContain('Summary')
     })
 
     it('should render Weekly Capacity tab', () => {
       const wrapper = mountComponent()
-      expect(wrapper.text()).toContain('simulationResults.weeklyCapacity')
+      expect(wrapper.text()).toContain('Weekly Capacity')
     })
 
     it('should render Station Performance tab', () => {
       const wrapper = mountComponent()
-      expect(wrapper.text()).toContain('simulationResults.stationPerformance')
+      expect(wrapper.text()).toContain('Station Performance')
     })
 
     it('should render Per Product tab', () => {
       const wrapper = mountComponent()
-      expect(wrapper.text()).toContain('simulationResults.perProduct')
+      expect(wrapper.text()).toContain('Per Product')
     })
 
     it('should render Bundle Metrics tab', () => {
       const wrapper = mountComponent()
-      expect(wrapper.text()).toContain('simulationResults.bundleMetrics')
+      expect(wrapper.text()).toContain('Bundle Metrics')
     })
 
     it('should render Rebalancing tab', () => {
       const wrapper = mountComponent()
-      expect(wrapper.text()).toContain('simulationResults.rebalancing')
+      expect(wrapper.text()).toContain('Rebalancing')
     })
 
     it('should render Assumptions tab', () => {
       const wrapper = mountComponent()
-      expect(wrapper.text()).toContain('simulationResults.assumptions')
+      expect(wrapper.text()).toContain('Assumptions')
     })
   })
 
@@ -240,13 +233,13 @@ describe('ResultsView', () => {
 
     it('should display average cycle time', () => {
       const wrapper = mountComponent()
-      expect(wrapper.text()).toContain('simulationResults.avgCycleTime')
+      expect(wrapper.text()).toContain('Avg cycle time')
       expect(wrapper.text()).toContain('15.5 min')
     })
 
     it('should display average WIP', () => {
       const wrapper = mountComponent()
-      expect(wrapper.text()).toContain('simulationResults.avgWip')
+      expect(wrapper.text()).toContain('Avg WIP')
       expect(wrapper.text()).toContain('25 pieces')
     })
   })
@@ -254,19 +247,19 @@ describe('ResultsView', () => {
   describe('Free Capacity', () => {
     it('should display max capacity', () => {
       const wrapper = mountComponent()
-      expect(wrapper.text()).toContain('simulationResults.maxCapacity')
+      expect(wrapper.text()).toContain('Max capacity')
       expect(wrapper.text()).toContain('1200 pcs/day')
     })
 
     it('should display demand usage percentage', () => {
       const wrapper = mountComponent()
-      expect(wrapper.text()).toContain('simulationResults.usage')
+      expect(wrapper.text()).toContain('Usage')
       expect(wrapper.text()).toContain('83.3%')
     })
 
     it('should display free line hours', () => {
       const wrapper = mountComponent()
-      expect(wrapper.text()).toContain('simulationResults.freeLineHours')
+      expect(wrapper.text()).toContain('Free line hours')
       expect(wrapper.text()).toContain('2.5h/day')
     })
   })
@@ -293,7 +286,7 @@ describe('ResultsView', () => {
         ]
       })
       const wrapper = mountComponent({ results })
-      expect(wrapper.text()).toContain('simulationResults.noBottlenecks')
+      expect(wrapper.text()).toContain('No bottlenecks detected')
     })
   })
 
@@ -352,10 +345,9 @@ describe('ResultsView', () => {
   describe('Simulation Duration', () => {
     it('should display simulation duration', () => {
       const wrapper = mountComponent()
-      // Footer is now `simulationResults.simulationCompleted` (bare key
-      // is what the test's i18n mock returns; {seconds} interpolation
-      // is in the locale value and exercised by E2E tests).
-      expect(wrapper.text()).toContain('simulationResults.simulationCompleted')
+      // Footer renders `simulationResults.simulationCompleted` with real
+      // i18n interpolation: "Simulation completed in {seconds} seconds".
+      expect(wrapper.text()).toContain('Simulation completed in 1.25 seconds')
     })
   })
 
@@ -419,7 +411,7 @@ describe('ResultsView', () => {
         rebalancing_suggestions: []
       })
       const wrapper = mountComponent({ results })
-      expect(wrapper.text()).toContain('simulationResults.noRebalancing')
+      expect(wrapper.text()).toContain('No rebalancing needed - line is well balanced.')
     })
   })
 })
