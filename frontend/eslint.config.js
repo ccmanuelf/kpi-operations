@@ -62,8 +62,8 @@ export default [
       },
     },
     rules: {
-      // Start at warn to enumerate; flipped to error in P4.
-      '@intlify/vue-i18n/no-raw-text': ['warn', {
+      // Enforced: new hardcoded user-facing template text fails lint (CI gate).
+      '@intlify/vue-i18n/no-raw-text': ['error', {
         // ignore icon names (<v-icon>mdi-…), pure symbols/numbers/punctuation,
         // and Greek/arrow glyphs used in formulas — none are UI copy.
         ignorePattern: "^(mdi-[a-z0-9-]+|[\\s\\d.,%·°:;!?#()\\[\\]{}\\-+*×÷=/|<>$€σΣΔ→—'\"]+)$",
