@@ -67,14 +67,35 @@ const STORAGE_KEY = 'kpi-saved-filters'
 const HISTORY_KEY = 'kpi-filter-history'
 const MAX_HISTORY = 10
 
+/**
+ * Static set of valid FilterType keys — use this for iteration, prop
+ * validators, and Object.keys() needs. Values are NOT translated labels;
+ * use the store getter `filterTypeLabels` for display strings.
+ */
+export const FILTER_TYPE_KEYS: FilterType[] = [
+  'dashboard',
+  'production',
+  'quality',
+  'attendance',
+  'downtime',
+  'hold',
+  'coverage',
+]
+
+/**
+ * @deprecated Use `useFiltersStore().filterTypeLabels` for reactive labels.
+ * Kept temporarily so callers that only need Object.keys() still compile.
+ * Keys are the FilterType identifiers; values are intentionally the key
+ * strings (not translated) to catch any stale access at runtime.
+ */
 export const FILTER_TYPES: Record<FilterType, string> = {
-  dashboard: t('filters.types.dashboard'),
-  production: t('filters.types.production'),
-  quality: t('filters.types.quality'),
-  attendance: t('filters.types.attendance'),
-  downtime: t('filters.types.downtime'),
-  hold: t('filters.types.hold'),
-  coverage: t('filters.types.coverage'),
+  dashboard: 'dashboard',
+  production: 'production',
+  quality: 'quality',
+  attendance: 'attendance',
+  downtime: 'downtime',
+  hold: 'hold',
+  coverage: 'coverage',
 }
 
 export const useFiltersStore = defineStore('filters', () => {
@@ -88,11 +109,26 @@ export const useFiltersStore = defineStore('filters', () => {
 
   const filtersByType = computed<Record<FilterType, SavedFilter[]>>(() => {
     const grouped = {} as Record<FilterType, SavedFilter[]>
-    ;(Object.keys(FILTER_TYPES) as FilterType[]).forEach((type) => {
+    FILTER_TYPE_KEYS.forEach((type) => {
       grouped[type] = savedFilters.value.filter((f) => f.filter_type === type)
     })
     return grouped
   })
+
+  /**
+   * Reactive map of FilterType → translated display label.
+   * Resolved via i18n.global.t at access time (inside a computed) so
+   * it re-resolves when the locale changes — never baked at import time.
+   */
+  const filterTypeLabels = computed<Record<FilterType, string>>(() => ({
+    dashboard: t('kpiFilters.types.dashboard'),
+    production: t('kpiFilters.types.production'),
+    quality: t('kpiFilters.types.quality'),
+    attendance: t('kpiFilters.types.attendance'),
+    downtime: t('kpiFilters.types.downtime'),
+    hold: t('kpiFilters.types.hold'),
+    coverage: t('kpiFilters.types.coverage'),
+  }))
 
   const defaultFilters = computed(() => savedFilters.value.filter((f) => f.is_default))
 
@@ -416,6 +452,7 @@ export const useFiltersStore = defineStore('filters', () => {
     isLoading,
     isSynced,
     filtersByType,
+    filterTypeLabels,
     defaultFilters,
     getDefaultForType,
     recentFilters,

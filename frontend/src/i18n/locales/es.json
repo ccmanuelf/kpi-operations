@@ -954,16 +954,7 @@
     "atLeastOneRecipient": "Se requiere al menos un destinatario",
     "scanQrForQuickEntry": "Escanea códigos QR para captura rápida",
     "saveFilterConfig": "Guardar configuración de filtro actual",
-    "quickQrScanner": "Escáner QR Rápido",
-    "types": {
-      "dashboard": "Tablero",
-      "production": "Producción",
-      "quality": "Calidad",
-      "attendance": "Asistencia",
-      "downtime": "Tiempo de Inactividad",
-      "hold": "En Espera/WIP",
-      "coverage": "Cobertura"
-    }
+    "quickQrScanner": "Escáner QR Rápido"
   },
   "dashboard": {
     "title": "Tablero",
@@ -4367,7 +4358,9 @@
       "production": "Producción",
       "quality": "Calidad",
       "attendance": "Asistencia",
-      "downtime": "Tiempo de Paro"
+      "downtime": "Tiempo de Paro",
+      "hold": "En Espera/WIP",
+      "coverage": "Cobertura"
     }
   },
   "shift": {

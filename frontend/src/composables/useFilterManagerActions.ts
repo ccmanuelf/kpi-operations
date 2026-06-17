@@ -6,7 +6,6 @@
 import { ref, computed } from 'vue'
 import {
   useFiltersStore,
-  FILTER_TYPES,
   type FilterType,
   type SavedFilter,
   type FilterConfig,
@@ -46,7 +45,7 @@ export default function useFilterManagerActions(emit: EmitFn) {
   const isDeleting = ref(false)
 
   const filterTypeOptions = computed<FilterTypeOption[]>(() =>
-    Object.entries(FILTER_TYPES).map(([value, label]) => ({
+    Object.entries(filtersStore.filterTypeLabels).map(([value, label]) => ({
       value: value as FilterType,
       label,
     })),

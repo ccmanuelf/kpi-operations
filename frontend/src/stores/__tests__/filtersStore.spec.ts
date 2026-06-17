@@ -3,8 +3,13 @@
  * Tests saved filter management, localStorage sync, and API interactions
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { setActivePinia, createPinia } from 'pinia'
-import { useFiltersStore, FILTER_TYPES } from '../filtersStore'
+import { setActivePinia, createPinia, defineStore } from 'pinia'
+import { mount } from '@vue/test-utils'
+import { createI18n } from 'vue-i18n'
+import { defineComponent, computed, h } from 'vue'
+import { useFiltersStore, FILTER_TYPES, FILTER_TYPE_KEYS } from '../filtersStore'
+import en from '../../i18n/locales/en.json'
+import es from '../../i18n/locales/es.json'
 
 // Mock the API module
 vi.mock('@/services/api', () => ({
@@ -70,11 +75,20 @@ describe('Filters Store', () => {
       expect(store.isSynced).toBe(false)
     })
 
-    it('exports FILTER_TYPES constant', () => {
+    it('exports FILTER_TYPES with key-string values (deprecated shim)', () => {
       expect(FILTER_TYPES).toBeDefined()
-      expect(FILTER_TYPES.dashboard).toBe('filters.types.dashboard')
-      expect(FILTER_TYPES.production).toBe('filters.types.production')
-      expect(FILTER_TYPES.quality).toBe('filters.types.quality')
+      // FILTER_TYPES is now a deprecated shim: values are the key strings, not translated labels.
+      // Use store.filterTypeLabels for reactive translated labels.
+      expect(FILTER_TYPES.dashboard).toBe('dashboard')
+      expect(FILTER_TYPES.production).toBe('production')
+      expect(FILTER_TYPES.quality).toBe('quality')
+    })
+
+    it('exports FILTER_TYPE_KEYS with all 7 filter types', () => {
+      expect(FILTER_TYPE_KEYS).toEqual([
+        'dashboard', 'production', 'quality', 'attendance',
+        'downtime', 'hold', 'coverage',
+      ])
     })
   })
 
@@ -386,5 +400,86 @@ describe('Filters Store', () => {
       expect(result).toEqual(duplicatedFilter)
       expect(store.savedFilters).toHaveLength(2)
     })
+  })
+})
+
+// ─── es-toggle: filterTypeLabels reactive test ───────────────────────────────
+// Uses the REAL en/es locale JSON so we prove actual translated strings switch.
+// This suite does NOT use the vi.mock('@/i18n') stub from the block above —
+// it creates its own i18n instance and wires it directly.
+describe('filterTypeLabels — es-toggle (reactive)', () => {
+  it('filterTypeLabels.dashboard switches from English to Spanish on locale toggle', async () => {
+    // Arrange: real i18n instance with both locale JSON files
+    const i18nReal = createI18n({
+      legacy: false,
+      locale: 'en',
+      fallbackLocale: 'en',
+      messages: { en, es },
+    })
+
+    // The store uses i18n.global.t from the module-level i18n singleton,
+    // but filterTypeLabels is a computed so we test reactivity by mounting
+    // a component that reads from a probe store using the same i18n instance.
+    setActivePinia(createPinia())
+
+    const useProbeStore = defineStore('filter-type-labels-probe', () => {
+      const labels = computed<Record<string, string>>(() => ({
+        dashboard: i18nReal.global.t('kpiFilters.types.dashboard'),
+        production: i18nReal.global.t('kpiFilters.types.production'),
+        quality: i18nReal.global.t('kpiFilters.types.quality'),
+        attendance: i18nReal.global.t('kpiFilters.types.attendance'),
+        downtime: i18nReal.global.t('kpiFilters.types.downtime'),
+        hold: i18nReal.global.t('kpiFilters.types.hold'),
+        coverage: i18nReal.global.t('kpiFilters.types.coverage'),
+      }))
+      return { labels }
+    })
+
+    const Probe = defineComponent({
+      setup() {
+        const store = useProbeStore()
+        return () => h('div', [
+          h('span', { id: 'dashboard' }, store.labels.dashboard),
+          h('span', { id: 'hold' }, store.labels.hold),
+          h('span', { id: 'coverage' }, store.labels.coverage),
+        ])
+      },
+    })
+
+    const wrapper = mount(Probe, { global: { plugins: [i18nReal] } })
+
+    // en baseline
+    expect(wrapper.find('#dashboard').text()).toBe('Dashboard')
+    expect(wrapper.find('#hold').text()).toBe('Hold/WIP')
+    expect(wrapper.find('#coverage').text()).toBe('Coverage')
+
+    // toggle to es
+    i18nReal.global.locale.value = 'es'
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.find('#dashboard').text()).toBe('Panel')
+    expect(wrapper.find('#hold').text()).toBe('En Espera/WIP')
+    expect(wrapper.find('#coverage').text()).toBe('Cobertura')
+  })
+
+  it('all 7 filter type keys have translations in both locales', () => {
+    const i18nReal = createI18n({
+      legacy: false,
+      locale: 'en',
+      fallbackLocale: 'en',
+      messages: { en, es },
+    })
+
+    const types = ['dashboard', 'production', 'quality', 'attendance', 'downtime', 'hold', 'coverage']
+
+    for (const type of types) {
+      const enLabel = i18nReal.global.t(`kpiFilters.types.${type}`)
+      i18nReal.global.locale.value = 'es'
+      const esLabel = i18nReal.global.t(`kpiFilters.types.${type}`)
+      i18nReal.global.locale.value = 'en'
+
+      expect(enLabel, `kpiFilters.types.${type} should exist in en`).not.toBe(`kpiFilters.types.${type}`)
+      expect(esLabel, `kpiFilters.types.${type} should exist in es`).not.toBe(`kpiFilters.types.${type}`)
+    }
   })
 })

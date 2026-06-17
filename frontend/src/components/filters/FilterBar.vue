@@ -212,7 +212,7 @@
 
           <!-- Saved Filters by Type -->
           <div v-for="(filters, type) in filtersByTypeFiltered" :key="type" class="px-3 py-2">
-            <div class="text-caption text-medium-emphasis mb-1">{{ FILTER_TYPES[type] }}</div>
+            <div class="text-caption text-medium-emphasis mb-1">{{ filtersStore.filterTypeLabels[type] }}</div>
             <v-list density="compact" nav class="pa-0">
               <v-list-item
                 v-for="filter in filters"
@@ -317,18 +317,19 @@
 
 <script setup>
 import { useI18n } from 'vue-i18n'
-import { FILTER_TYPES } from '@/stores/filtersStore'
+import { FILTER_TYPE_KEYS, useFiltersStore } from '@/stores/filtersStore'
 import SaveFilterDialog from './SaveFilterDialog.vue'
 import FilterManager from './FilterManager.vue'
 import useFilterBarData from '@/composables/useFilterBarData'
 
 const { t } = useI18n()
+const filtersStore = useFiltersStore()
 
 const props = defineProps({
   filterType: {
     type: String,
     default: 'dashboard',
-    validator: (value) => Object.keys(FILTER_TYPES).includes(value)
+    validator: (value) => FILTER_TYPE_KEYS.includes(value)
   }
 })
 
