@@ -82,22 +82,6 @@ export const FILTER_TYPE_KEYS: FilterType[] = [
   'coverage',
 ]
 
-/**
- * @deprecated Use `useFiltersStore().filterTypeLabels` for reactive labels.
- * Kept temporarily so callers that only need Object.keys() still compile.
- * Keys are the FilterType identifiers; values are intentionally the key
- * strings (not translated) to catch any stale access at runtime.
- */
-export const FILTER_TYPES: Record<FilterType, string> = {
-  dashboard: 'dashboard',
-  production: 'production',
-  quality: 'quality',
-  attendance: 'attendance',
-  downtime: 'downtime',
-  hold: 'hold',
-  coverage: 'coverage',
-}
-
 export const useFiltersStore = defineStore('filters', () => {
   const authStore = useAuthStore()
 
@@ -471,6 +455,5 @@ export const useFiltersStore = defineStore('filters', () => {
     clearHistory,
     duplicateFilter,
     createFilterConfig,
-    FILTER_TYPES,
   }
 })

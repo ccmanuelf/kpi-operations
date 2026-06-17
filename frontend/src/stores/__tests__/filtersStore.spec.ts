@@ -7,7 +7,7 @@ import { setActivePinia, createPinia, defineStore } from 'pinia'
 import { mount } from '@vue/test-utils'
 import { createI18n } from 'vue-i18n'
 import { defineComponent, computed, h } from 'vue'
-import { useFiltersStore, FILTER_TYPES, FILTER_TYPE_KEYS } from '../filtersStore'
+import { useFiltersStore, FILTER_TYPE_KEYS } from '../filtersStore'
 import en from '../../i18n/locales/en.json'
 import es from '../../i18n/locales/es.json'
 
@@ -73,15 +73,6 @@ describe('Filters Store', () => {
       expect(store.activeFilter).toBeNull()
       expect(store.isLoading).toBe(false)
       expect(store.isSynced).toBe(false)
-    })
-
-    it('exports FILTER_TYPES with key-string values (deprecated shim)', () => {
-      expect(FILTER_TYPES).toBeDefined()
-      // FILTER_TYPES is now a deprecated shim: values are the key strings, not translated labels.
-      // Use store.filterTypeLabels for reactive translated labels.
-      expect(FILTER_TYPES.dashboard).toBe('dashboard')
-      expect(FILTER_TYPES.production).toBe('production')
-      expect(FILTER_TYPES.quality).toBe('quality')
     })
 
     it('exports FILTER_TYPE_KEYS with all 7 filter types', () => {
