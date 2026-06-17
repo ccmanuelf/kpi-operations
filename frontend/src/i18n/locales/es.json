@@ -799,7 +799,6 @@
     "deliveryDate": "Fecha de Envío",
     "priority": "Prioridad",
     "status": {
-      "label": "Estado",
       "pending": "Pendiente",
       "inProgress": "En Progreso",
       "completed": "Completado",
@@ -997,6 +996,24 @@
       "system_health": "Salud del Sistema",
       "user_stats": "Estadísticas de Usuario",
       "audit_log": "Registro de Auditoría"
+    },
+    "widgetDescriptions": {
+      "qr_scanner": "Escanea códigos QR para captura rápida de datos",
+      "my_kpis": "Tus KPIs de clientes asignados",
+      "data_entry_shortcuts": "Accesos directos a formularios de captura",
+      "recent_entries": "Tus capturas de datos recientes",
+      "client_overview": "Resumen multicliente",
+      "team_kpis": "Métricas de rendimiento del equipo",
+      "bradford_factor": "Patrones de ausentismo y puntuaciones de riesgo",
+      "efficiency_trends": "Eficiencia a lo largo del tiempo",
+      "attendance_summary": "Resumen de asistencia del equipo",
+      "all_kpis_grid": "Tablero completo de KPIs",
+      "predictions": "Pronósticos basados en IA",
+      "analytics_deep_dive": "Vista de análisis profundo",
+      "reports": "Generar reportes",
+      "system_health": "Estado y métricas del sistema",
+      "user_stats": "Estadísticas de actividad de usuarios",
+      "audit_log": "Registro de auditoría del sistema"
     }
   },
   "notifications": {

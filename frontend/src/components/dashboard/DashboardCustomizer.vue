@@ -112,10 +112,10 @@
               </template>
 
               <v-list-item-title class="text-body-2">
-                {{ widget.name }}
+                {{ widgetName(widget) }}
               </v-list-item-title>
               <v-list-item-subtitle class="text-caption">
-                {{ widget.description }}
+                {{ widgetDescription(widget) }}
               </v-list-item-subtitle>
 
               <template v-slot:append>
@@ -249,7 +249,29 @@ const getWidgetIcon = (widgetKey) => {
 }
 
 const getWidgetDescription = (widgetKey) => {
-  return dashboardStore.ALL_WIDGETS[widgetKey]?.description || ''
+  const descKey = `dashboard.widgetDescriptions.${widgetKey}`
+  const fallback = dashboardStore.ALL_WIDGETS[widgetKey]?.description || ''
+  return te(descKey) ? t(descKey) : fallback
+}
+
+/**
+ * Returns a reactive localized name for an available widget.
+ * Resolves via dashboard.widgets.<widget_key> if the key exists; falls back to
+ * the store's static English name so unknown widgets still display correctly.
+ */
+const widgetName = (widget) => {
+  const key = `dashboard.widgets.${widget.widget_key}`
+  return te(key) ? t(key) : widget.name
+}
+
+/**
+ * Returns a reactive localized description for an available widget.
+ * Resolves via dashboard.widgetDescriptions.<widget_key> if the key exists;
+ * falls back to the store's static English description.
+ */
+const widgetDescription = (widget) => {
+  const key = `dashboard.widgetDescriptions.${widget.widget_key}`
+  return te(key) ? t(key) : widget.description
 }
 
 const hideWidget = (widgetKey) => {

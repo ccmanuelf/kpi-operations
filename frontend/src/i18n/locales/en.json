@@ -799,7 +799,6 @@
     "deliveryDate": "Delivery Date",
     "priority": "Priority",
     "status": {
-      "label": "Status",
       "pending": "Pending",
       "inProgress": "In Progress",
       "completed": "Completed",
@@ -997,6 +996,24 @@
       "system_health": "System Health",
       "user_stats": "User Stats",
       "audit_log": "Audit Log"
+    },
+    "widgetDescriptions": {
+      "qr_scanner": "Scan QR codes for quick data entry",
+      "my_kpis": "Your assigned client KPIs",
+      "data_entry_shortcuts": "Quick links to entry forms",
+      "recent_entries": "Your recent data entries",
+      "client_overview": "Multi-client summary",
+      "team_kpis": "Team performance metrics",
+      "bradford_factor": "Employee absence patterns and risk scores",
+      "efficiency_trends": "Efficiency over time",
+      "attendance_summary": "Team attendance summary",
+      "all_kpis_grid": "Complete KPI dashboard",
+      "predictions": "AI-powered forecasts",
+      "analytics_deep_dive": "Deep analytics view",
+      "reports": "Generate reports",
+      "system_health": "System status and metrics",
+      "user_stats": "User activity statistics",
+      "audit_log": "System audit trail"
     }
   },
   "notifications": {
