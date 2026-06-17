@@ -2,7 +2,31 @@
  * Unit tests for Workflow Validator
  * Tests validation rules for workflow configurations
  */
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
+
+vi.mock('@/i18n', () => ({
+  default: {
+    global: {
+      t: (key: string) => {
+        const messages: Record<string, string> = {
+          'workflow.validation.fix.noEntryPoint': 'Add RECEIVED status as the workflow entry point',
+          'workflow.validation.fix.noTerminalStatus': 'Add at least one terminal status (CLOSED, CANCELLED, or REJECTED)',
+          'workflow.validation.fix.orphanStatus': 'Connect this status to the workflow or remove it',
+          'workflow.validation.fix.deadEndStatus': 'Add an outgoing transition or mark as terminal',
+          'workflow.validation.fix.selfTransition': 'Self-transitions are usually not recommended',
+          'workflow.validation.fix.emptyWorkflow': 'Add statuses to define the workflow',
+          'workflow.validation.fix.unreachableTerminal': 'This terminal status cannot be reached from the start',
+          'workflow.validation.fix.missingHoldResume': 'Add a resume path from this hold status',
+          'workflow.validation.fix.duplicateStatus': 'Remove duplicate status definitions',
+          'workflow.validation.fix.invalidStatusName': 'Use uppercase letters and underscores for status names',
+          'workflow.validation.unknownIssue': 'Unknown validation issue',
+        }
+        return messages[key] ?? key
+      },
+    },
+  },
+}))
+
 import {
   validateWorkflow,
   SEVERITY,

@@ -11,6 +11,7 @@ import { useNotificationStore } from '@/stores/notificationStore'
 import { useKPIStore } from '@/stores/kpi'
 import { useAuthStore } from '@/stores/authStore'
 import type { WorkOrder } from './useWorkOrderForms'
+import { useWorkOrderStatusOptions, useWorkOrderPriorityOptions } from '@/composables/useOrderStatusOptions'
 
 export interface ClientOption {
   client_id: string
@@ -102,21 +103,9 @@ export function useWorkOrderData() {
     endDate: '',
   })
 
-  const statusOptions: StatusOption[] = [
-    { title: 'Active', value: 'ACTIVE' },
-    { title: 'On Hold', value: 'ON_HOLD' },
-    { title: 'Completed', value: 'COMPLETED' },
-    { title: 'Rejected', value: 'REJECTED' },
-    { title: 'Cancelled', value: 'CANCELLED' },
-  ]
+  const statusOptions = useWorkOrderStatusOptions()
 
-  const priorityOptions: StatusOption[] = [
-    { title: 'Urgent', value: 'URGENT' },
-    { title: 'High', value: 'HIGH' },
-    { title: 'Normal', value: 'NORMAL' },
-    { title: 'Medium', value: 'MEDIUM' },
-    { title: 'Low', value: 'LOW' },
-  ]
+  const priorityOptions = useWorkOrderPriorityOptions()
 
   const headers = computed<TableHeader[]>(() => [
     { title: t('workOrders.workOrderId'), key: 'work_order_id', sortable: true },
@@ -236,11 +225,11 @@ export function useWorkOrderData() {
 
   const formatStatus = (status: string): string => {
     const labels: Record<string, string> = {
-      ACTIVE: 'Active',
-      ON_HOLD: 'On Hold',
-      COMPLETED: 'Completed',
-      REJECTED: 'Rejected',
-      CANCELLED: 'Cancelled',
+      ACTIVE: t('workOrders.status.active'),
+      ON_HOLD: t('workOrders.status.onHold'),
+      COMPLETED: t('workOrders.status.completed'),
+      REJECTED: t('workOrders.status.rejected'),
+      CANCELLED: t('workOrders.status.cancelled'),
     }
     return labels[status] || status
   }

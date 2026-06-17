@@ -1,6 +1,7 @@
 import { ref } from 'vue'
 import api from '@/services/api/client'
 import { useNotificationStore } from '@/stores/notificationStore'
+import i18n from '@/i18n'
 
 export interface CSVExportParams {
   client_id?: string | number
@@ -49,11 +50,11 @@ export function useCSVExport() {
       document.body.removeChild(link)
       window.URL.revokeObjectURL(url)
 
-      notificationStore.showSuccess(`${entityType} CSV downloaded successfully`)
+      notificationStore.showSuccess(i18n.global.t('csv.downloadSuccess', { type: entityType }))
     } catch (error) {
       const ax = error as { response?: { data?: { detail?: string } }; message?: string }
       const message = ax?.response?.data?.detail || ax?.message || 'CSV download failed'
-      notificationStore.showError(`Export failed: ${message}`)
+      notificationStore.showError(i18n.global.t('csv.exportFailed', { message }))
       throw error
     } finally {
       downloading.value = false

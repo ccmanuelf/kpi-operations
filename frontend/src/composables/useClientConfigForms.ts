@@ -3,7 +3,7 @@
  * submission. Edit dialog, reset dialog, form data, validation
  * rules, save/reset operations.
  */
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import api from '@/services/api'
 
@@ -102,11 +102,11 @@ export function useClientConfigForms(
     wip_critical_threshold_days: 14,
   })
 
-  const otdModeOptions: OTDModeOption[] = [
-    { title: 'Standard OTD', value: 'STANDARD' },
-    { title: 'True OTD (Complete Orders Only)', value: 'TRUE' },
-    { title: 'Both (Show Standard & True)', value: 'BOTH' },
-  ]
+  const otdModeOptions = computed<OTDModeOption[]>(() => [
+    { title: t('admin.clientConfig.otdModes.standard'), value: 'STANDARD' },
+    { title: t('admin.clientConfig.otdModes.trueOtd'), value: 'TRUE' },
+    { title: t('admin.clientConfig.otdModes.both'), value: 'BOTH' },
+  ])
 
   const rules: ValidationRules = {
     required: (v) => !!v || v === 0 || t('validation.required'),
@@ -118,13 +118,13 @@ export function useClientConfigForms(
       (typeof v === 'number' && v >= 0 && v <= 100) || t('validation.percentage'),
   }
 
-  const editFormFields: FormFieldDefinition[] = [
+  const editFormFields = computed<FormFieldDefinition[]>(() => [
     {
       key: 'otd_mode',
       type: 'select',
       labelKey: 'admin.clientConfig.fields.otdMode',
       icon: 'mdi-truck-delivery',
-      items: otdModeOptions,
+      items: otdModeOptions.value,
       hintKey: 'admin.clientConfig.hints.otdMode',
       md: 6,
     },
@@ -244,7 +244,7 @@ export function useClientConfigForms(
       rules: ['required', 'positiveInteger'],
       md: 4,
     },
-  ]
+  ])
 
   const openEditDialog = (): void => {
     const config = getClientConfig()

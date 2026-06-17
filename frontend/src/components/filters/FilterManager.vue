@@ -51,7 +51,7 @@
           ></v-badge>
         </v-tab>
         <v-tab
-          v-for="(label, type) in FILTER_TYPES"
+          v-for="(label, type) in filterTypeLabels"
           :key="type"
           :value="type"
         >
@@ -106,7 +106,7 @@
                   variant="tonal"
                   class="mr-2"
                 >
-                  {{ FILTER_TYPES[filter.filter_type] }}
+                  {{ filterTypeLabels[filter.filter_type] }}
                 </v-chip>
                 {{ formatFilterSummary(filter.filter_config) }}
               </v-list-item-subtitle>
@@ -390,7 +390,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useFiltersStore, FILTER_TYPES } from '@/stores/filtersStore'
+import { useFiltersStore } from '@/stores/filtersStore'
 import useFilterManagerActions from '@/composables/useFilterManagerActions'
 
 const { t } = useI18n()
@@ -426,6 +426,9 @@ const {
 const isOpen = ref(props.modelValue)
 const activeTab = ref('all')
 const searchQuery = ref('')
+
+// Reactive filter type labels — re-resolves when locale changes
+const filterTypeLabels = computed(() => filtersStore.filterTypeLabels)
 
 // Store-derived computed
 const activeFilter = computed(() => filtersStore.activeFilter)

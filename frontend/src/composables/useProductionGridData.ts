@@ -133,21 +133,21 @@ export default function useProductionGridData() {
   const confirmationFieldConfig = computed<ConfirmationField[]>(() => {
     const productName =
       products.value.find((p) => p.product_id === pendingData.value.product_id)
-        ?.product_name || 'N/A'
+        ?.product_name || t('common.na')
     const shiftName =
       shifts.value.find((s) => s.shift_id === pendingData.value.shift_id)?.shift_name ||
-      'N/A'
+      t('common.na')
 
     return [
-      { key: 'production_date', label: 'Production Date', type: 'date' },
-      { key: 'product_id', label: 'Product', type: 'text', displayValue: productName },
-      { key: 'shift_id', label: 'Shift', type: 'text', displayValue: shiftName },
-      { key: 'work_order_id', label: 'Work Order', type: 'text' },
-      { key: 'units_produced', label: 'Units Produced', type: 'number' },
-      { key: 'run_time_hours', label: 'Runtime (hours)', type: 'number' },
-      { key: 'employees_assigned', label: 'Employees Assigned', type: 'number' },
-      { key: 'defect_count', label: 'Defects', type: 'number' },
-      { key: 'scrap_count', label: 'Scrap', type: 'number' },
+      { key: 'production_date', label: t('grids.columns.date'), type: 'date' },
+      { key: 'product_id', label: t('grids.columns.product'), type: 'text', displayValue: productName },
+      { key: 'shift_id', label: t('grids.columns.shift'), type: 'text', displayValue: shiftName },
+      { key: 'work_order_id', label: t('grids.columns.workOrder'), type: 'text' },
+      { key: 'units_produced', label: t('grids.columns.unitsProduced'), type: 'number' },
+      { key: 'run_time_hours', label: t('grids.columns.runtimeHrs'), type: 'number' },
+      { key: 'employees_assigned', label: t('grids.columns.employees'), type: 'number' },
+      { key: 'defect_count', label: t('grids.columns.defects'), type: 'number' },
+      { key: 'scrap_count', label: t('grids.columns.scrap'), type: 'number' },
     ]
   })
 
@@ -455,7 +455,7 @@ export default function useProductionGridData() {
       }
     } catch (error) {
       const ax = error as { message?: string }
-      showSnackbar('Error saving changes: ' + (ax?.message || ''), 'error')
+      showSnackbar(t('errors.saveFailed') + (ax?.message ? ': ' + ax.message : ''), 'error')
     } finally {
       saving.value = false
       pendingRows.value = []

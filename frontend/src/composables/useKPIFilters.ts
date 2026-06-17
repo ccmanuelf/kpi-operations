@@ -2,7 +2,7 @@
  * Composable for KPI Dashboard saved-filter management.
  * Saving filters, applying quick filters, filter form state.
  */
-import { ref, type Ref } from 'vue'
+import { ref, computed, type Ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { format } from 'date-fns'
 import { useFiltersStore, type FilterConfig, type SavedFilter, type FilterType } from '@/stores/filtersStore'
@@ -38,13 +38,13 @@ export function useKPIFilters(
   const newFilterType = ref<FilterType>('dashboard')
   const newFilterIsDefault = ref(false)
   const savingFilter = ref(false)
-  const filterTypeOptions: FilterTypeOption[] = [
-    { title: 'Dashboard', value: 'dashboard' },
-    { title: 'Production', value: 'production' },
-    { title: 'Quality', value: 'quality' },
-    { title: 'Attendance', value: 'attendance' },
-    { title: 'Downtime', value: 'downtime' },
-  ]
+  const filterTypeOptions = computed<FilterTypeOption[]>(() => [
+    { title: t('kpiFilters.types.dashboard'), value: 'dashboard' },
+    { title: t('kpiFilters.types.production'), value: 'production' },
+    { title: t('kpiFilters.types.quality'), value: 'quality' },
+    { title: t('kpiFilters.types.attendance'), value: 'attendance' },
+    { title: t('kpiFilters.types.downtime'), value: 'downtime' },
+  ])
 
   const showFilterManager = ref(false)
 

@@ -355,11 +355,11 @@ const isOverdue = computed(() => {
 // Methods
 const formatStatus = (status) => {
   const labels = {
-    ACTIVE: 'Active',
-    ON_HOLD: 'On Hold',
-    COMPLETED: 'Completed',
-    REJECTED: 'Rejected',
-    CANCELLED: 'Cancelled'
+    ACTIVE: t('workOrders.status.active'),
+    ON_HOLD: t('workOrders.status.onHold'),
+    COMPLETED: t('workOrders.status.completed'),
+    REJECTED: t('workOrders.status.rejected'),
+    CANCELLED: t('workOrders.status.cancelled'),
   }
   return labels[status] || status
 }

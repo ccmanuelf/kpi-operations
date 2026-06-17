@@ -65,7 +65,7 @@
                 <v-icon class="drag-handle mr-3 cursor-move" color="grey">mdi-drag</v-icon>
                 <v-icon :icon="getWidgetIcon(element.widget_key)" class="mr-3" color="primary" />
                 <div class="flex-grow-1">
-                  <div class="text-body-2 font-weight-medium">{{ element.widget_name }}</div>
+                  <div class="text-body-2 font-weight-medium">{{ widgetTitle(element) }}</div>
                   <div class="text-caption text-grey">
                     {{ getWidgetDescription(element.widget_key) }}
                   </div>
@@ -112,10 +112,10 @@
               </template>
 
               <v-list-item-title class="text-body-2">
-                {{ widget.name }}
+                {{ widgetName(widget) }}
               </v-list-item-title>
               <v-list-item-subtitle class="text-caption">
-                {{ widget.description }}
+                {{ widgetDescription(widget) }}
               </v-list-item-subtitle>
 
               <template v-slot:append>
@@ -186,7 +186,17 @@ import { useI18n } from 'vue-i18n'
 import draggable from 'vuedraggable'
 import { useDashboardStore } from '@/stores/dashboardStore'
 
-const { t } = useI18n()
+const { t, te } = useI18n()
+
+/**
+ * Returns a reactive localized name for a placed widget (element from localVisibleWidgets).
+ * Resolves via dashboard.widgets.<widget_key> if the key exists; falls back to the
+ * persisted widget_name so custom/unknown widgets still display correctly.
+ */
+const widgetTitle = (element) => {
+  const key = `dashboard.widgets.${element.widget_key}`
+  return te(key) ? t(key) : element.widget_name
+}
 
 const props = defineProps({
   modelValue: {
@@ -239,7 +249,29 @@ const getWidgetIcon = (widgetKey) => {
 }
 
 const getWidgetDescription = (widgetKey) => {
-  return dashboardStore.ALL_WIDGETS[widgetKey]?.description || ''
+  const descKey = `dashboard.widgetDescriptions.${widgetKey}`
+  const fallback = dashboardStore.ALL_WIDGETS[widgetKey]?.description || ''
+  return te(descKey) ? t(descKey) : fallback
+}
+
+/**
+ * Returns a reactive localized name for an available widget.
+ * Resolves via dashboard.widgets.<widget_key> if the key exists; falls back to
+ * the store's static English name so unknown widgets still display correctly.
+ */
+const widgetName = (widget) => {
+  const key = `dashboard.widgets.${widget.widget_key}`
+  return te(key) ? t(key) : widget.name
+}
+
+/**
+ * Returns a reactive localized description for an available widget.
+ * Resolves via dashboard.widgetDescriptions.<widget_key> if the key exists;
+ * falls back to the store's static English description.
+ */
+const widgetDescription = (widget) => {
+  const key = `dashboard.widgetDescriptions.${widget.widget_key}`
+  return te(key) ? t(key) : widget.description
 }
 
 const hideWidget = (widgetKey) => {

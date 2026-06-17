@@ -36,6 +36,14 @@ const { apiMock } = vi.hoisted(() => ({
   },
 }))
 
+vi.mock('@/i18n', () => ({
+  default: {
+    global: {
+      t: (k: string) => k,
+      locale: { value: 'en' },
+    },
+  },
+}))
 vi.mock('vue-i18n', () => ({
   useI18n: () => ({ t: (k: string) => k, locale: { value: 'en' } }),
 }))

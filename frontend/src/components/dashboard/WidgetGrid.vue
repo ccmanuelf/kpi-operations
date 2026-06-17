@@ -173,22 +173,22 @@ const widgetComponents = {
   ),
   data_entry_shortcuts: defineAsyncComponent(() =>
     import('./widgets/DataEntryShortcuts.vue').catch(() => ({
-      template: '<div class="text-center pa-4"><v-icon>mdi-form-select</v-icon><p class="text-grey mt-2">Data Entry Shortcuts</p></div>'
+      template: '<div class="text-center pa-4"><v-icon>mdi-form-select</v-icon><p class="text-grey mt-2">{{ $t(\'widgets.grid.dataEntryShortcuts\') }}</p></div>'
     }))
   ),
   recent_entries: defineAsyncComponent(() =>
     import('./widgets/RecentEntries.vue').catch(() => ({
-      template: '<div class="text-center pa-4"><v-icon>mdi-history</v-icon><p class="text-grey mt-2">Recent Entries</p></div>'
+      template: '<div class="text-center pa-4"><v-icon>mdi-history</v-icon><p class="text-grey mt-2">{{ $t(\'widgets.grid.recentEntries\') }}</p></div>'
     }))
   ),
   client_overview: defineAsyncComponent(() =>
     import('./widgets/ClientOverview.vue').catch(() => ({
-      template: '<div class="text-center pa-4"><v-icon>mdi-domain</v-icon><p class="text-grey mt-2">Client Overview</p></div>'
+      template: '<div class="text-center pa-4"><v-icon>mdi-domain</v-icon><p class="text-grey mt-2">{{ $t(\'widgets.grid.clientOverview\') }}</p></div>'
     }))
   ),
   team_kpis: defineAsyncComponent(() =>
     import('./widgets/TeamKPIs.vue').catch(() => ({
-      template: '<div class="text-center pa-4"><v-icon>mdi-account-group</v-icon><p class="text-grey mt-2">Team KPIs</p></div>'
+      template: '<div class="text-center pa-4"><v-icon>mdi-account-group</v-icon><p class="text-grey mt-2">{{ $t(\'widgets.grid.teamKpis\') }}</p></div>'
     }))
   ),
   bradford_factor: defineAsyncComponent(() =>
@@ -196,7 +196,7 @@ const widgetComponents = {
   ),
   efficiency_trends: defineAsyncComponent(() =>
     import('./widgets/EfficiencyTrends.vue').catch(() => ({
-      template: '<div class="text-center pa-4"><v-icon>mdi-trending-up</v-icon><p class="text-grey mt-2">Efficiency Trends</p></div>'
+      template: '<div class="text-center pa-4"><v-icon>mdi-trending-up</v-icon><p class="text-grey mt-2">{{ $t(\'widgets.grid.efficiencyTrends\') }}</p></div>'
     }))
   ),
   attendance_summary: defineAsyncComponent(() =>
@@ -207,32 +207,32 @@ const widgetComponents = {
   ),
   predictions: defineAsyncComponent(() =>
     import('./widgets/Predictions.vue').catch(() => ({
-      template: '<div class="text-center pa-4"><v-icon>mdi-crystal-ball</v-icon><p class="text-grey mt-2">AI Predictions</p></div>'
+      template: '<div class="text-center pa-4"><v-icon>mdi-crystal-ball</v-icon><p class="text-grey mt-2">{{ $t(\'widgets.grid.aiPredictions\') }}</p></div>'
     }))
   ),
   analytics_deep_dive: defineAsyncComponent(() =>
     import('./widgets/AnalyticsDeepDive.vue').catch(() => ({
-      template: '<div class="text-center pa-4"><v-icon>mdi-chart-areaspline</v-icon><p class="text-grey mt-2">Analytics Deep Dive</p></div>'
+      template: '<div class="text-center pa-4"><v-icon>mdi-chart-areaspline</v-icon><p class="text-grey mt-2">{{ $t(\'widgets.grid.analyticsDeepDive\') }}</p></div>'
     }))
   ),
   reports: defineAsyncComponent(() =>
     import('./widgets/Reports.vue').catch(() => ({
-      template: '<div class="text-center pa-4"><v-icon>mdi-file-document-outline</v-icon><p class="text-grey mt-2">Reports</p></div>'
+      template: '<div class="text-center pa-4"><v-icon>mdi-file-document-outline</v-icon><p class="text-grey mt-2">{{ $t(\'widgets.grid.reports\') }}</p></div>'
     }))
   ),
   system_health: defineAsyncComponent(() =>
     import('./widgets/SystemHealth.vue').catch(() => ({
-      template: '<div class="text-center pa-4"><v-icon>mdi-server</v-icon><p class="text-grey mt-2">System Health</p></div>'
+      template: '<div class="text-center pa-4"><v-icon>mdi-server</v-icon><p class="text-grey mt-2">{{ $t(\'widgets.grid.systemHealth\') }}</p></div>'
     }))
   ),
   user_stats: defineAsyncComponent(() =>
     import('./widgets/UserStats.vue').catch(() => ({
-      template: '<div class="text-center pa-4"><v-icon>mdi-account-cog</v-icon><p class="text-grey mt-2">User Stats</p></div>'
+      template: '<div class="text-center pa-4"><v-icon>mdi-account-cog</v-icon><p class="text-grey mt-2">{{ $t(\'widgets.grid.userStats\') }}</p></div>'
     }))
   ),
   audit_log: defineAsyncComponent(() =>
     import('./widgets/AuditLog.vue').catch(() => ({
-      template: '<div class="text-center pa-4"><v-icon>mdi-clipboard-text-clock</v-icon><p class="text-grey mt-2">Audit Log</p></div>'
+      template: '<div class="text-center pa-4"><v-icon>mdi-clipboard-text-clock</v-icon><p class="text-grey mt-2">{{ $t(\'widgets.grid.auditLog\') }}</p></div>'
     }))
   )
 }

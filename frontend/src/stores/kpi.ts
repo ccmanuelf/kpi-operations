@@ -5,6 +5,7 @@
  * predictions. Options-API style.
  */
 import { defineStore } from 'pinia'
+import i18n from '@/i18n'
 import api from '@/services/api'
 import { useNotificationStore } from '@/stores/notificationStore'
 
@@ -287,7 +288,7 @@ export const useKPIStore = defineStore('kpi', {
     allKPIs: (state): KPISummary[] => [
       {
         key: 'efficiency',
-        title: 'Efficiency',
+        title: i18n.global.t('kpi.efficiency'),
         value: state.efficiency?.current,
         target: state.efficiency?.target || 85,
         unit: '%',
@@ -298,7 +299,7 @@ export const useKPIStore = defineStore('kpi', {
       },
       {
         key: 'wipAging',
-        title: 'WIP Aging',
+        title: i18n.global.t('kpi.wipAging'),
         value: state.wipAging?.average_days,
         target: 7,
         unit: 'days',
@@ -309,7 +310,7 @@ export const useKPIStore = defineStore('kpi', {
       },
       {
         key: 'onTimeDelivery',
-        title: 'On-Time Delivery',
+        title: i18n.global.t('kpi.otd'),
         value: state.onTimeDelivery?.percentage,
         target: 95,
         unit: '%',
@@ -320,7 +321,7 @@ export const useKPIStore = defineStore('kpi', {
       },
       {
         key: 'availability',
-        title: 'Availability',
+        title: i18n.global.t('kpi.availability'),
         value: state.availability?.percentage,
         target: 90,
         unit: '%',
@@ -331,7 +332,7 @@ export const useKPIStore = defineStore('kpi', {
       },
       {
         key: 'performance',
-        title: 'Performance',
+        title: i18n.global.t('kpi.performance'),
         value: state.performance?.percentage,
         target: 95,
         unit: '%',
@@ -342,7 +343,7 @@ export const useKPIStore = defineStore('kpi', {
       },
       {
         key: 'quality',
-        title: 'Quality (FPY)',
+        title: i18n.global.t('kpi.qualityFPY'),
         value: state.quality?.fpy,
         target: 99,
         unit: '%',
@@ -353,7 +354,7 @@ export const useKPIStore = defineStore('kpi', {
       },
       {
         key: 'oee',
-        title: 'OEE',
+        title: i18n.global.t('kpi.oeeShort'),
         value: state.oee?.percentage,
         target: 85,
         unit: '%',
@@ -364,7 +365,7 @@ export const useKPIStore = defineStore('kpi', {
       },
       {
         key: 'absenteeism',
-        title: 'Absenteeism',
+        title: i18n.global.t('kpi.absenteeismShort'),
         value: state.absenteeism?.rate,
         target: 5,
         unit: '%',
@@ -375,7 +376,7 @@ export const useKPIStore = defineStore('kpi', {
       },
       {
         key: 'defectRates',
-        title: 'PPM',
+        title: i18n.global.t('kpi.ppm'),
         value: state.defectRates?.ppm,
         target: 500,
         unit: 'ppm',
@@ -384,13 +385,13 @@ export const useKPIStore = defineStore('kpi', {
         route: '/kpi/quality',
         subtitle:
           state.defectRates?.defect_rate_percentage != null
-            ? `${state.defectRates.defect_rate_percentage}% defect rate`
+            ? i18n.global.t('kpi.defectRatePercent', { value: state.defectRates.defect_rate_percentage })
             : null,
         inference: state.inference.defectRates,
       },
       {
         key: 'throughputTime',
-        title: 'Throughput Time',
+        title: i18n.global.t('kpi.throughputTime'),
         value: state.throughputTime?.average_hours,
         target: 24,
         unit: 'hrs',

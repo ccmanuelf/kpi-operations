@@ -62,7 +62,7 @@
           >
             <template #label>
               <div>
-                <span>{{ t('saveFilterDialog.setAsDefaultLabel', { type: FILTER_TYPES[filterType] || 'this type' }) }}</span>
+                <span>{{ t('saveFilterDialog.setAsDefaultLabel', { type: filtersStore.filterTypeLabels[filterType] }) }}</span>
                 <div class="text-caption text-medium-emphasis">
                   {{ t('saveFilterDialog.setAsDefaultHint') }}
                 </div>
@@ -175,7 +175,7 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useFiltersStore, FILTER_TYPES } from '@/stores/filtersStore'
+import { useFiltersStore } from '@/stores/filtersStore'
 import api from '@/services/api'
 
 const props = defineProps({
@@ -219,9 +219,10 @@ const nameRules = [
   (v) => (v && v.length <= 100) || t('saveFilterDialog.filterNameMax')
 ]
 
-// Filter type options for select
+// Filter type options for select — uses reactive filterTypeLabels getter
+// so labels update when locale switches
 const filterTypeOptions = computed(() => {
-  return Object.entries(FILTER_TYPES).map(([value, label]) => ({
+  return Object.entries(filtersStore.filterTypeLabels).map(([value, label]) => ({
     value,
     label
   }))

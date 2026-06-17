@@ -5,6 +5,7 @@
 
 import { classifyStatus, STATUS_TYPES, isTerminalStatus, isStartStatus } from './statusClassifier'
 import type { WorkflowConfig } from './types'
+import i18n from '@/i18n'
 
 export const SEVERITY = {
   ERROR: 'error',
@@ -51,7 +52,7 @@ export function validateWorkflow(
   if (!config) {
     errors.push({
       code: VALIDATION_CODES.EMPTY_WORKFLOW,
-      message: 'Workflow configuration is empty',
+      message: i18n.global.t('workflow.validation.configEmpty'),
       severity: SEVERITY.ERROR,
     })
     return { isValid: false, errors, warnings }
@@ -62,7 +63,7 @@ export function validateWorkflow(
   if (statuses.length === 0) {
     errors.push({
       code: VALIDATION_CODES.EMPTY_WORKFLOW,
-      message: 'Workflow has no statuses defined',
+      message: i18n.global.t('workflow.validation.noStatuses'),
       severity: SEVERITY.ERROR,
     })
     return { isValid: false, errors, warnings }
@@ -72,7 +73,7 @@ export function validateWorkflow(
   if (duplicates.length > 0) {
     errors.push({
       code: VALIDATION_CODES.DUPLICATE_STATUS,
-      message: `Duplicate statuses found: ${duplicates.join(', ')}`,
+      message: i18n.global.t('workflow.validation.duplicateStatuses', { statuses: duplicates.join(', ') }),
       severity: SEVERITY.ERROR,
       details: duplicates,
     })
@@ -82,7 +83,7 @@ export function validateWorkflow(
     if (!isValidStatusName(status)) {
       errors.push({
         code: VALIDATION_CODES.INVALID_STATUS_NAME,
-        message: `Invalid status name: "${status}". Use uppercase letters and underscores only.`,
+        message: i18n.global.t('workflow.validation.invalidStatusName', { status }),
         severity: SEVERITY.ERROR,
         details: { status },
       })
@@ -93,7 +94,7 @@ export function validateWorkflow(
   if (!hasEntryPoint) {
     errors.push({
       code: VALIDATION_CODES.NO_ENTRY_POINT,
-      message: 'Workflow must have a RECEIVED status as entry point',
+      message: i18n.global.t('workflow.validation.noEntryPoint'),
       severity: SEVERITY.ERROR,
     })
   }
@@ -102,8 +103,7 @@ export function validateWorkflow(
   if (terminalStatuses.length === 0) {
     errors.push({
       code: VALIDATION_CODES.NO_TERMINAL_STATUS,
-      message:
-        'Workflow must have at least one terminal status (CLOSED, CANCELLED, or REJECTED)',
+      message: i18n.global.t('workflow.validation.noTerminalStatus'),
       severity: SEVERITY.ERROR,
     })
   }
@@ -114,7 +114,7 @@ export function validateWorkflow(
     if (!isStartStatus(status) && !reachable.has(status)) {
       warnings.push({
         code: VALIDATION_CODES.ORPHAN_STATUS,
-        message: `Status "${status}" is not reachable from RECEIVED`,
+        message: i18n.global.t('workflow.validation.orphanStatus', { status }),
         severity: SEVERITY.WARNING,
         details: { status },
       })
@@ -132,7 +132,7 @@ export function validateWorkflow(
         if (statusType !== STATUS_TYPES.HOLD) {
           warnings.push({
             code: VALIDATION_CODES.DEAD_END_STATUS,
-            message: `Status "${status}" has no outgoing transitions (dead end)`,
+            message: i18n.global.t('workflow.validation.deadEndStatus', { status }),
             severity: SEVERITY.WARNING,
             details: { status },
           })
@@ -145,7 +145,7 @@ export function validateWorkflow(
     if (sources.includes(target)) {
       warnings.push({
         code: VALIDATION_CODES.SELF_TRANSITION,
-        message: `Status "${target}" has a self-transition`,
+        message: i18n.global.t('workflow.validation.selfTransition', { status: target }),
         severity: SEVERITY.WARNING,
         details: { status: target },
       })
@@ -156,7 +156,7 @@ export function validateWorkflow(
     if (!reachable.has(terminal)) {
       warnings.push({
         code: VALIDATION_CODES.UNREACHABLE_TERMINAL,
-        message: `Terminal status "${terminal}" is not reachable from RECEIVED`,
+        message: i18n.global.t('workflow.validation.unreachableTerminal', { status: terminal }),
         severity: SEVERITY.WARNING,
         details: { status: terminal },
       })
@@ -173,7 +173,7 @@ export function validateWorkflow(
     if (!canResume) {
       warnings.push({
         code: VALIDATION_CODES.MISSING_HOLD_RESUME,
-        message: `Hold status "${holdStatus}" has no resume path to continue workflow`,
+        message: i18n.global.t('workflow.validation.missingHoldResume', { status: holdStatus }),
         severity: SEVERITY.WARNING,
         details: { status: holdStatus },
       })
@@ -251,22 +251,19 @@ function isValidStatusName(name: unknown): boolean {
 
 export function getValidationMessage(code: ValidationCode | string): string {
   const messages: Record<string, string> = {
-    [VALIDATION_CODES.NO_ENTRY_POINT]: 'Add RECEIVED status as the workflow entry point',
-    [VALIDATION_CODES.NO_TERMINAL_STATUS]:
-      'Add at least one terminal status (CLOSED, CANCELLED, or REJECTED)',
-    [VALIDATION_CODES.ORPHAN_STATUS]: 'Connect this status to the workflow or remove it',
-    [VALIDATION_CODES.DEAD_END_STATUS]: 'Add an outgoing transition or mark as terminal',
-    [VALIDATION_CODES.SELF_TRANSITION]: 'Self-transitions are usually not recommended',
-    [VALIDATION_CODES.EMPTY_WORKFLOW]: 'Add statuses to define the workflow',
-    [VALIDATION_CODES.UNREACHABLE_TERMINAL]:
-      'This terminal status cannot be reached from the start',
-    [VALIDATION_CODES.MISSING_HOLD_RESUME]: 'Add a resume path from this hold status',
-    [VALIDATION_CODES.DUPLICATE_STATUS]: 'Remove duplicate status definitions',
-    [VALIDATION_CODES.INVALID_STATUS_NAME]:
-      'Use uppercase letters and underscores for status names',
+    [VALIDATION_CODES.NO_ENTRY_POINT]: i18n.global.t('workflow.validation.fix.noEntryPoint'),
+    [VALIDATION_CODES.NO_TERMINAL_STATUS]: i18n.global.t('workflow.validation.fix.noTerminalStatus'),
+    [VALIDATION_CODES.ORPHAN_STATUS]: i18n.global.t('workflow.validation.fix.orphanStatus'),
+    [VALIDATION_CODES.DEAD_END_STATUS]: i18n.global.t('workflow.validation.fix.deadEndStatus'),
+    [VALIDATION_CODES.SELF_TRANSITION]: i18n.global.t('workflow.validation.fix.selfTransition'),
+    [VALIDATION_CODES.EMPTY_WORKFLOW]: i18n.global.t('workflow.validation.fix.emptyWorkflow'),
+    [VALIDATION_CODES.UNREACHABLE_TERMINAL]: i18n.global.t('workflow.validation.fix.unreachableTerminal'),
+    [VALIDATION_CODES.MISSING_HOLD_RESUME]: i18n.global.t('workflow.validation.fix.missingHoldResume'),
+    [VALIDATION_CODES.DUPLICATE_STATUS]: i18n.global.t('workflow.validation.fix.duplicateStatus'),
+    [VALIDATION_CODES.INVALID_STATUS_NAME]: i18n.global.t('workflow.validation.fix.invalidStatusName'),
   }
 
-  return messages[code] || 'Unknown validation issue'
+  return messages[code] || i18n.global.t('workflow.validation.unknownIssue')
 }
 
 export default {
