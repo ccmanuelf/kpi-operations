@@ -12,6 +12,7 @@
  * refine values via the standalone Production Entry grid).
  */
 import { ref, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useNotificationStore } from '@/stores/notificationStore'
 import { useAuthStore } from '@/stores/authStore'
 import { useKPIStore } from '@/stores/kpi'
@@ -94,6 +95,7 @@ export function useShiftForms(
   getAssignedWorkOrders: () => ShiftWorkOrder[],
   onDataRefresh: () => Promise<void> | void,
 ) {
+  const { t } = useI18n()
   const notificationStore = useNotificationStore()
   const authStore = useAuthStore()
   const kpiSelectionStore = useKPIStore()
@@ -254,16 +256,16 @@ export function useShiftForms(
     try {
       const payload = buildProductionPayload(selectedWorkOrder.value, quantity)
       if (!payload) {
-        notificationStore.showError('Cannot log production: client/product/shift not resolved')
+        notificationStore.showError(t('errors.cannotLogProduction'))
         return
       }
       await api.createProductionEntry(payload)
 
-      successMessage.value = `Logged ${quantity} units for ${selectedWorkOrder.value.work_order_id}`
+      successMessage.value = t('success.loggedUnitsForOrder', { count: quantity, orderId: selectedWorkOrder.value.work_order_id })
       showSuccess.value = true
       await onDataRefresh()
     } catch (error) {
-      notificationStore.showError(errorDetail(error, 'Failed to log production'))
+      notificationStore.showError(errorDetail(error, t('errors.failedToLogProduction')))
     } finally {
       isSubmitting.value = false
     }
@@ -275,25 +277,23 @@ export function useShiftForms(
       const workOrders = getAssignedWorkOrders()
       const wo = workOrders.find((w) => w.id === productionForm.value.workOrderId)
       if (!wo) {
-        notificationStore.showError('Work order not found')
+        notificationStore.showError(t('errors.workOrderNotFound'))
         return
       }
       const payload = buildProductionPayload(wo, productionForm.value.quantity)
       if (!payload) {
-        notificationStore.showError(
-          'Cannot log production: client/product/shift not resolved',
-        )
+        notificationStore.showError(t('errors.cannotLogProduction'))
         return
       }
       await api.createProductionEntry(payload)
 
-      successMessage.value = `Logged ${productionForm.value.quantity} units`
+      successMessage.value = t('success.loggedUnits', { count: productionForm.value.quantity })
       showSuccess.value = true
       showProductionDialog.value = false
       productionForm.value.quantity = 10
       await onDataRefresh()
     } catch (error) {
-      notificationStore.showError(errorDetail(error, 'Failed to log production'))
+      notificationStore.showError(errorDetail(error, t('errors.failedToLogProduction')))
     } finally {
       isSubmitting.value = false
     }
@@ -305,12 +305,12 @@ export function useShiftForms(
       const workOrders = getAssignedWorkOrders()
       const wo = workOrders.find((w) => w.id === downtimeForm.value.workOrderId)
       if (!wo) {
-        notificationStore.showError('Work order not found')
+        notificationStore.showError(t('errors.workOrderNotFound'))
         return
       }
       const clientId = activeClientId()
       if (!clientId) {
-        notificationStore.showError('No client selected')
+        notificationStore.showError(t('errors.noClientSelected'))
         return
       }
       await api.createDowntimeEntry({
@@ -322,13 +322,13 @@ export function useShiftForms(
         notes: downtimeForm.value.notes || undefined,
       })
 
-      successMessage.value = 'Downtime reported successfully'
+      successMessage.value = t('success.downtimeReported')
       showSuccess.value = true
       showDowntimeDialog.value = false
       downtimeForm.value = { workOrderId: null, reason: null, minutes: 15, notes: '' }
       await onDataRefresh()
     } catch (error) {
-      notificationStore.showError(errorDetail(error, 'Failed to report downtime'))
+      notificationStore.showError(errorDetail(error, t('errors.failedToReportDowntime')))
     } finally {
       isSubmitting.value = false
     }
@@ -340,12 +340,12 @@ export function useShiftForms(
       const workOrders = getAssignedWorkOrders()
       const wo = workOrders.find((w) => w.id === qualityForm.value.workOrderId)
       if (!wo) {
-        notificationStore.showError('Work order not found')
+        notificationStore.showError(t('errors.workOrderNotFound'))
         return
       }
       const clientId = activeClientId()
       if (!clientId) {
-        notificationStore.showError('No client selected')
+        notificationStore.showError(t('errors.noClientSelected'))
         return
       }
       const inspected = qualityForm.value.inspectedQty || 0
@@ -365,7 +365,7 @@ export function useShiftForms(
           : undefined,
       })
 
-      successMessage.value = 'Quality check recorded'
+      successMessage.value = t('success.qualityCheckRecorded')
       showSuccess.value = true
       showQualityDialog.value = false
       qualityForm.value = {
@@ -376,7 +376,7 @@ export function useShiftForms(
       }
       await onDataRefresh()
     } catch (error) {
-      notificationStore.showError(errorDetail(error, 'Failed to record quality check'))
+      notificationStore.showError(errorDetail(error, t('errors.failedToRecordQualityCheck')))
     } finally {
       isSubmitting.value = false
     }
@@ -385,12 +385,12 @@ export function useShiftForms(
   const submitHelpRequest = async (): Promise<void> => {
     isSubmitting.value = true
     try {
-      successMessage.value = 'Help request sent to supervisor'
+      successMessage.value = t('success.helpRequestSent')
       showSuccess.value = true
       showHelpDialog.value = false
       helpForm.value = { type: null, description: '' }
     } catch {
-      notificationStore.showError('Failed to send help request')
+      notificationStore.showError(t('errors.failedToSendHelpRequest'))
     } finally {
       isSubmitting.value = false
     }

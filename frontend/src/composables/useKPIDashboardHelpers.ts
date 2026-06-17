@@ -30,78 +30,68 @@ export interface SummaryHeader {
   width?: number
 }
 
-const kpiTooltips: Record<string, KpiTooltip> = {
-  efficiency: {
-    title: 'Formula:',
-    formula: 'Efficiency = (Actual Output / Expected Output) x 100',
-    meaning:
-      'Measures how well resources are utilized to produce output. Higher efficiency means more output with the same resources.',
-  },
-  wipAging: {
-    title: 'Formula:',
-    formula: 'WIP Age = Days Since Work Order Started',
-    meaning:
-      'Average time work-in-process items spend in production. Lower is better - indicates faster throughput and fewer bottlenecks.',
-  },
-  onTimeDelivery: {
-    title: 'Formula:',
-    formula: 'OTD = (Orders Delivered On Time / Total Orders) x 100',
-    meaning:
-      'Percentage of orders delivered by the promised date. Critical for customer satisfaction and reliability.',
-  },
-  availability: {
-    title: 'Formula:',
-    formula: 'Availability = (Uptime / Planned Production Time) x 100',
-    meaning:
-      'Percentage of scheduled time that equipment is available for production. Accounts for breakdowns and changeovers.',
-  },
-  performance: {
-    title: 'Formula:',
-    formula: 'Performance = (Actual Rate / Ideal Rate) x 100',
-    meaning:
-      'Measures production speed relative to the designed capacity. Accounts for slow cycles and minor stoppages.',
-  },
-  quality: {
-    title: 'Formula:',
-    formula: 'FPY = (Good Units First Pass / Total Units) x 100',
-    meaning:
-      'First Pass Yield - percentage of units that pass inspection on the first attempt without rework or repair.',
-  },
-  oee: {
-    title: 'Formula:',
-    formula: 'OEE = Availability x Performance x Quality',
-    meaning:
-      'Overall Equipment Effectiveness - comprehensive metric combining availability, performance, and quality to measure manufacturing productivity.',
-  },
-  absenteeism: {
-    title: 'Formula:',
-    formula: 'Absenteeism = (Absent Hours / Scheduled Hours) x 100',
-    meaning:
-      'Percentage of scheduled work hours lost due to employee absence. Lower is better for workforce planning and productivity.',
-  },
-  defectRates: {
-    title: 'Formula:',
-    formula: 'PPM = (Defective Units / Total Units) x 1,000,000',
-    meaning:
-      'Parts Per Million - number of defective parts per million produced. Industry standard for measuring quality at scale.',
-  },
-  throughputTime: {
-    title: 'Formula:',
-    formula: 'Throughput = Total Time from Start to Completion',
-    meaning:
-      'Average time to complete a production order from start to finish. Lower times indicate more efficient processes.',
-  },
-}
-
-const defaultTooltip: KpiTooltip = {
-  title: 'Info:',
-  formula: null,
-  meaning: 'Key performance indicator tracking operational metrics.',
-}
-
 export function useKPIDashboardHelpers() {
   const { t } = useI18n()
   const kpiStore = useKPIStore()
+
+  const kpiTooltips = computed<Record<string, KpiTooltip>>(() => ({
+    efficiency: {
+      title: t('kpi.tooltips.formulaLabel'),
+      formula: t('kpi.tooltips.efficiency.formula'),
+      meaning: t('kpi.tooltips.efficiency.meaning'),
+    },
+    wipAging: {
+      title: t('kpi.tooltips.formulaLabel'),
+      formula: t('kpi.tooltips.wipAging.formula'),
+      meaning: t('kpi.tooltips.wipAging.meaning'),
+    },
+    onTimeDelivery: {
+      title: t('kpi.tooltips.formulaLabel'),
+      formula: t('kpi.tooltips.onTimeDelivery.formula'),
+      meaning: t('kpi.tooltips.onTimeDelivery.meaning'),
+    },
+    availability: {
+      title: t('kpi.tooltips.formulaLabel'),
+      formula: t('kpi.tooltips.availability.formula'),
+      meaning: t('kpi.tooltips.availability.meaning'),
+    },
+    performance: {
+      title: t('kpi.tooltips.formulaLabel'),
+      formula: t('kpi.tooltips.performance.formula'),
+      meaning: t('kpi.tooltips.performance.meaning'),
+    },
+    quality: {
+      title: t('kpi.tooltips.formulaLabel'),
+      formula: t('kpi.tooltips.quality.formula'),
+      meaning: t('kpi.tooltips.quality.meaning'),
+    },
+    oee: {
+      title: t('kpi.tooltips.formulaLabel'),
+      formula: t('kpi.tooltips.oee.formula'),
+      meaning: t('kpi.tooltips.oee.meaning'),
+    },
+    absenteeism: {
+      title: t('kpi.tooltips.formulaLabel'),
+      formula: t('kpi.tooltips.absenteeism.formula'),
+      meaning: t('kpi.tooltips.absenteeism.meaning'),
+    },
+    defectRates: {
+      title: t('kpi.tooltips.formulaLabel'),
+      formula: t('kpi.tooltips.defectRates.formula'),
+      meaning: t('kpi.tooltips.defectRates.meaning'),
+    },
+    throughputTime: {
+      title: t('kpi.tooltips.formulaLabel'),
+      formula: t('kpi.tooltips.throughputTime.formula'),
+      meaning: t('kpi.tooltips.throughputTime.meaning'),
+    },
+  }))
+
+  const defaultTooltip = computed<KpiTooltip>(() => ({
+    title: t('kpi.tooltips.infoLabel'),
+    formula: null,
+    meaning: t('kpi.tooltips.defaultMeaning'),
+  }))
 
   const formatValue = (value: number | null | undefined, unit: string): string => {
     if (value === null || value === undefined) return t('common.na')
@@ -135,16 +125,16 @@ export function useKPIDashboardHelpers() {
     return 'error'
   }
 
-  const getKpiTooltip = (key: string): KpiTooltip => kpiTooltips[key] || defaultTooltip
+  const getKpiTooltip = (key: string): KpiTooltip => kpiTooltips.value[key] || defaultTooltip.value
 
-  const summaryHeaders: SummaryHeader[] = [
-    { title: 'KPI', key: 'title', sortable: true },
-    { title: 'Current', key: 'value', sortable: true },
-    { title: 'Target', key: 'target', sortable: true },
-    { title: 'Status', key: 'status', sortable: true },
-    { title: 'Trend', key: 'trend', sortable: false },
+  const summaryHeaders = computed<SummaryHeader[]>(() => [
+    { title: t('kpi.summaryHeaders.kpi'), key: 'title', sortable: true },
+    { title: t('kpi.summaryHeaders.current'), key: 'value', sortable: true },
+    { title: t('kpi.summaryHeaders.target'), key: 'target', sortable: true },
+    { title: t('kpi.summaryHeaders.status'), key: 'status', sortable: true },
+    { title: t('kpi.summaryHeaders.trend'), key: 'trend', sortable: false },
     { title: '', key: 'actions', sortable: false, width: 50 },
-  ]
+  ])
 
   const summaryItems = computed<SummaryItem[]>(() =>
     kpiStore.allKPIs.map((kpi) => ({

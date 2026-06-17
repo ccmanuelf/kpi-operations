@@ -63,14 +63,14 @@ const CATEGORIES: string[] = [
   'General',
 ]
 
-const VALIDATION_RULES: ValidationRules = {
-  required: (v) => !!v || 'Required',
-  maxLength20: (v) => !v || v.length <= 20 || 'Max 20 characters',
-  maxLength100: (v) => !v || v.length <= 100 || 'Max 100 characters',
-}
-
 export default function useDefectTypesData() {
   const { t } = useI18n()
+
+  const VALIDATION_RULES: ValidationRules = {
+    required: (v) => !!v || t('validation.requiredShort'),
+    maxLength20: (v) => !v || v.length <= 20 || t('validation.maxChars', { n: 20 }),
+    maxLength100: (v) => !v || v.length <= 100 || t('validation.maxChars', { n: 100 }),
+  }
 
   const loading = ref(false)
 
@@ -83,16 +83,16 @@ export default function useDefectTypesData() {
   const categories = CATEGORIES
   const rules = VALIDATION_RULES
 
-  const headers: TableHeader[] = [
-    { title: 'Code', key: 'defect_code', sortable: true },
-    { title: 'Name', key: 'defect_name', sortable: true },
-    { title: 'Category', key: 'category', sortable: true },
-    { title: 'Severity', key: 'severity_default', sortable: true },
-    { title: 'Standard', key: 'industry_standard_code', sortable: true },
-    { title: 'Order', key: 'sort_order', sortable: true },
-    { title: 'Active', key: 'is_active', sortable: true },
-    { title: 'Actions', key: 'actions', sortable: false, align: 'end' },
-  ]
+  const headers = computed<TableHeader[]>(() => [
+    { title: t('admin.defectTypes.tableHeaders.code'), key: 'defect_code', sortable: true },
+    { title: t('admin.defectTypes.tableHeaders.name'), key: 'defect_name', sortable: true },
+    { title: t('admin.defectTypes.tableHeaders.category'), key: 'category', sortable: true },
+    { title: t('admin.defectTypes.tableHeaders.severity'), key: 'severity_default', sortable: true },
+    { title: t('admin.defectTypes.tableHeaders.standard'), key: 'industry_standard_code', sortable: true },
+    { title: t('admin.defectTypes.tableHeaders.order'), key: 'sort_order', sortable: true },
+    { title: t('admin.defectTypes.tableHeaders.active'), key: 'is_active', sortable: true },
+    { title: t('admin.defectTypes.tableHeaders.actions'), key: 'actions', sortable: false, align: 'end' },
+  ])
 
   const clientOptions = computed<ClientOption[]>(() => {
     const globalOption: ClientOption = {

@@ -72,9 +72,9 @@ describe('Filters Store', () => {
 
     it('exports FILTER_TYPES constant', () => {
       expect(FILTER_TYPES).toBeDefined()
-      expect(FILTER_TYPES.dashboard).toBe('Dashboard')
-      expect(FILTER_TYPES.production).toBe('Production')
-      expect(FILTER_TYPES.quality).toBe('Quality')
+      expect(FILTER_TYPES.dashboard).toBe('filters.types.dashboard')
+      expect(FILTER_TYPES.production).toBe('filters.types.production')
+      expect(FILTER_TYPES.quality).toBe('filters.types.quality')
     })
   })
 

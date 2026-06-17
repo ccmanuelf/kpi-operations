@@ -490,7 +490,57 @@
       "averageAgeFormula": "Edad Prom = Suma de Todas las Edades WIP / Total de Artículos WIP",
       "averageAgeMeaning": "Número promedio de días que los artículos han estado en estado WIP. Valores más bajos indican mayor rendimiento y flujo de producción más eficiente.",
       "oldestItemMeaning": "Edad del artículo más antiguo actualmente en WIP. Valores altos pueden indicar cuellos de botella, retenciones de calidad o escasez de materiales que requieren atención inmediata.",
-      "criticalItemsMeaning": "Número de artículos WIP con más de 14 días de antigüedad. Requieren atención urgente ya que impactan los calendarios de entrega y comprometen capital de trabajo."
+      "criticalItemsMeaning": "Número de artículos WIP con más de 14 días de antigüedad. Requieren atención urgente ya que impactan los calendarios de entrega y comprometen capital de trabajo.",
+      "formulaLabel": "Fórmula:",
+      "infoLabel": "Info:",
+      "defaultMeaning": "Indicador clave de rendimiento que monitorea métricas operacionales.",
+      "efficiency": {
+        "formula": "Eficiencia = (Producción Real / Producción Esperada) x 100",
+        "meaning": "Mide qué tan bien se utilizan los recursos para producir. Mayor eficiencia significa más producción con los mismos recursos."
+      },
+      "wipAging": {
+        "formula": "Antigüedad WIP = Días desde que inició la orden de trabajo",
+        "meaning": "Tiempo promedio que los artículos en proceso pasan en producción. Menor es mejor: indica mayor velocidad de flujo y menos cuellos de botella."
+      },
+      "onTimeDelivery": {
+        "formula": "OTD = (Pedidos entregados a tiempo / Total de pedidos) x 100",
+        "meaning": "Porcentaje de pedidos entregados en la fecha prometida. Crítico para la satisfacción del cliente y la confiabilidad."
+      },
+      "availability": {
+        "formula": "Disponibilidad = (Tiempo activo / Tiempo de producción planificado) x 100",
+        "meaning": "Porcentaje del tiempo programado que el equipo está disponible para producción. Considera averías y cambios de línea."
+      },
+      "performance": {
+        "formula": "Rendimiento = (Velocidad real / Velocidad ideal) x 100",
+        "meaning": "Mide la velocidad de producción en relación a la capacidad de diseño. Considera ciclos lentos y paradas menores."
+      },
+      "quality": {
+        "formula": "FPY = (Unidades buenas en primer intento / Total de unidades) x 100",
+        "meaning": "Rendimiento en primer intento: porcentaje de unidades que pasan inspección en el primer intento sin reproceso ni reparación."
+      },
+      "oee": {
+        "formula": "OEE = Disponibilidad x Rendimiento x Calidad",
+        "meaning": "Efectividad Global del Equipo: métrica integral que combina disponibilidad, rendimiento y calidad para medir la productividad de fabricación."
+      },
+      "absenteeism": {
+        "formula": "Ausentismo = (Horas ausentes / Horas programadas) x 100",
+        "meaning": "Porcentaje de horas laborales programadas perdidas por ausencia de empleados. Menor es mejor para la planificación de personal."
+      },
+      "defectRates": {
+        "formula": "PPM = (Unidades defectuosas / Total de unidades) x 1,000,000",
+        "meaning": "Partes por millón: número de piezas defectuosas por millón producidas. Estándar de industria para medir calidad a escala."
+      },
+      "throughputTime": {
+        "formula": "Tiempo de ciclo = Tiempo total desde inicio hasta completado",
+        "meaning": "Tiempo promedio para completar una orden de producción de inicio a fin. Tiempos menores indican procesos más eficientes."
+      }
+    },
+    "summaryHeaders": {
+      "kpi": "KPI",
+      "current": "Actual",
+      "target": "Meta",
+      "status": "Estado",
+      "trend": "Tendencia"
     },
     "fpyLabel": "FPY:"
   },
@@ -904,7 +954,16 @@
     "atLeastOneRecipient": "Se requiere al menos un destinatario",
     "scanQrForQuickEntry": "Escanea códigos QR para captura rápida",
     "saveFilterConfig": "Guardar configuración de filtro actual",
-    "quickQrScanner": "Escáner QR Rápido"
+    "quickQrScanner": "Escáner QR Rápido",
+    "types": {
+      "dashboard": "Tablero",
+      "production": "Producción",
+      "quality": "Calidad",
+      "attendance": "Asistencia",
+      "downtime": "Tiempo de Inactividad",
+      "hold": "En Espera/WIP",
+      "coverage": "Cobertura"
+    }
   },
   "dashboard": {
     "title": "Tablero",
@@ -1004,7 +1063,15 @@
     "timeout": "La solicitud expiró. Por favor intenta de nuevo.",
     "duplicate": "Registro duplicado encontrado.",
     "loadClientsFailed": "Error al cargar los clientes",
-    "refreshFailed": "Error al actualizar los datos"
+    "refreshFailed": "Error al actualizar los datos",
+    "cannotLogProduction": "No se puede registrar producción: cliente/producto/turno no resuelto",
+    "failedToLogProduction": "Error al registrar producción",
+    "workOrderNotFound": "Orden de trabajo no encontrada",
+    "noClientSelected": "Ningún cliente seleccionado",
+    "failedToReportDowntime": "Error al reportar tiempo de inactividad",
+    "failedToRecordQualityCheck": "Error al registrar revisión de calidad",
+    "failedToSendHelpRequest": "Error al enviar solicitud de ayuda",
+    "saveFailed": "Error al guardar cambios"
   },
   "success": {
     "saved": "Guardado exitosamente.",
@@ -1026,7 +1093,12 @@
     "filterSaveFailed": "Error al guardar filtro",
     "pleaseAddRecipient": "Por favor agregue al menos un destinatario",
     "pleaseEnterFilterName": "Por favor ingrese un nombre de filtro",
-    "errorRefreshingData": "Error al actualizar datos. Por favor intente de nuevo."
+    "errorRefreshingData": "Error al actualizar datos. Por favor intente de nuevo.",
+    "loggedUnitsForOrder": "Se registraron {count} unidades para {orderId}",
+    "loggedUnits": "Se registraron {count} unidades",
+    "downtimeReported": "Tiempo de inactividad reportado exitosamente",
+    "qualityCheckRecorded": "Revisión de calidad registrada",
+    "helpRequestSent": "Solicitud de ayuda enviada al supervisor"
   },
   "language": {
     "title": "Idioma",
@@ -1533,7 +1605,17 @@
       "hintSortOrder": "Orden de visualización (0-999)",
       "hintIndustryCode": "ej., IPC-A-610-5.2",
       "selectClientFirst": "Seleccione primero un cliente",
-      "fillRequiredFields": "Complete primero los campos requeridos"
+      "fillRequiredFields": "Complete primero los campos requeridos",
+      "tableHeaders": {
+        "code": "Código",
+        "name": "Nombre",
+        "category": "Categoría",
+        "severity": "Severidad",
+        "standard": "Estándar",
+        "order": "Orden",
+        "active": "Activo",
+        "actions": "Acciones"
+      }
     },
     "partOpportunities": "Gestión de Oportunidades por Parte",
     "partOpportunitiesDescription": "Configure oportunidades de defecto por parte para cálculo preciso de DPMO",
@@ -1966,7 +2048,9 @@
     "fileReadError": "Error al leer archivo: {error}",
     "stepUpload": "Subir",
     "stepPreview": "Vista Previa",
-    "stepConfirm": "Confirmar"
+    "stepConfirm": "Confirmar",
+    "downloadSuccess": "CSV de {type} descargado exitosamente",
+    "exportFailed": "Error de exportación: {message}"
   },
   "validation": {
     "required": "Este campo es requerido",
@@ -1990,7 +2074,9 @@
     "past": "La fecha no puede ser en el futuro",
     "positiveNumber": "Debe ser un número positivo",
     "positiveInteger": "Debe ser un número entero positivo",
-    "percentage": "Debe estar entre 0 y 100"
+    "percentage": "Debe estar entre 0 y 100",
+    "requiredShort": "Requerido",
+    "maxChars": "Máximo {n} caracteres"
   },
   "simulation": {
     "title": "Simulación y Planificación de Capacidad",
@@ -2488,6 +2574,32 @@
         "standard": "Flujo Estándar",
         "simple": "Flujo Simple",
         "express": "Flujo Express"
+      }
+    },
+    "validation": {
+      "configEmpty": "La configuración del flujo de trabajo está vacía",
+      "noStatuses": "El flujo de trabajo no tiene estados definidos",
+      "duplicateStatuses": "Se encontraron estados duplicados: {statuses}",
+      "invalidStatusName": "Nombre de estado inválido: \"{status}\". Use letras mayúsculas y guiones bajos únicamente.",
+      "noEntryPoint": "El flujo de trabajo debe tener un estado RECEIVED como punto de entrada",
+      "noTerminalStatus": "El flujo de trabajo debe tener al menos un estado terminal (CLOSED, CANCELLED o REJECTED)",
+      "orphanStatus": "El estado \"{status}\" no es alcanzable desde RECEIVED",
+      "deadEndStatus": "El estado \"{status}\" no tiene transiciones de salida (punto muerto)",
+      "selfTransition": "El estado \"{status}\" tiene una auto-transición",
+      "unreachableTerminal": "El estado terminal \"{status}\" no es alcanzable desde RECEIVED",
+      "missingHoldResume": "El estado de espera \"{status}\" no tiene ruta de reanudación para continuar el flujo",
+      "unknownIssue": "Problema de validación desconocido",
+      "fix": {
+        "noEntryPoint": "Agregar estado RECEIVED como punto de entrada del flujo de trabajo",
+        "noTerminalStatus": "Agregar al menos un estado terminal (CLOSED, CANCELLED o REJECTED)",
+        "orphanStatus": "Conectar este estado al flujo de trabajo o eliminarlo",
+        "deadEndStatus": "Agregar una transición de salida o marcar como terminal",
+        "selfTransition": "Las auto-transiciones generalmente no son recomendadas",
+        "emptyWorkflow": "Agregar estados para definir el flujo de trabajo",
+        "unreachableTerminal": "Este estado terminal no puede alcanzarse desde el inicio",
+        "missingHoldResume": "Agregar una ruta de reanudación desde este estado de espera",
+        "duplicateStatus": "Eliminar definiciones de estado duplicadas",
+        "invalidStatusName": "Usar letras mayúsculas y guiones bajos para los nombres de estado"
       }
     }
   },
@@ -4256,6 +4368,14 @@
       "quality": "Calidad",
       "attendance": "Asistencia",
       "downtime": "Tiempo de Paro"
+    }
+  },
+  "shift": {
+    "activity": {
+      "loggedUnits": "Se registraron {count} unidades para {orderId}",
+      "qualityCheck": "Revisión de calidad: {inspected} inspeccionadas, {defects} defecto(s)",
+      "equipmentBreakdown": "Falla de equipo: {minutes} min de inactividad",
+      "downtimeEvent": "{reason}: {minutes} min de inactividad"
     }
   }
 }

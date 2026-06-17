@@ -490,7 +490,57 @@
       "averageAgeFormula": "Avg Age = Sum of All WIP Ages / Total WIP Items",
       "averageAgeMeaning": "Average number of days items have been in WIP status. Lower values indicate faster throughput and more efficient production flow.",
       "oldestItemMeaning": "Age of the oldest item currently in WIP. High values may indicate production bottlenecks, quality holds, or material shortages requiring immediate attention.",
-      "criticalItemsMeaning": "Number of WIP items aged over 14 days. These require urgent attention as they impact delivery schedules and tie up working capital."
+      "criticalItemsMeaning": "Number of WIP items aged over 14 days. These require urgent attention as they impact delivery schedules and tie up working capital.",
+      "formulaLabel": "Formula:",
+      "infoLabel": "Info:",
+      "defaultMeaning": "Key performance indicator tracking operational metrics.",
+      "efficiency": {
+        "formula": "Efficiency = (Actual Output / Expected Output) x 100",
+        "meaning": "Measures how well resources are utilized to produce output. Higher efficiency means more output with the same resources."
+      },
+      "wipAging": {
+        "formula": "WIP Age = Days Since Work Order Started",
+        "meaning": "Average time work-in-process items spend in production. Lower is better - indicates faster throughput and fewer bottlenecks."
+      },
+      "onTimeDelivery": {
+        "formula": "OTD = (Orders Delivered On Time / Total Orders) x 100",
+        "meaning": "Percentage of orders delivered by the promised date. Critical for customer satisfaction and reliability."
+      },
+      "availability": {
+        "formula": "Availability = (Uptime / Planned Production Time) x 100",
+        "meaning": "Percentage of scheduled time that equipment is available for production. Accounts for breakdowns and changeovers."
+      },
+      "performance": {
+        "formula": "Performance = (Actual Rate / Ideal Rate) x 100",
+        "meaning": "Measures production speed relative to the designed capacity. Accounts for slow cycles and minor stoppages."
+      },
+      "quality": {
+        "formula": "FPY = (Good Units First Pass / Total Units) x 100",
+        "meaning": "First Pass Yield - percentage of units that pass inspection on the first attempt without rework or repair."
+      },
+      "oee": {
+        "formula": "OEE = Availability x Performance x Quality",
+        "meaning": "Overall Equipment Effectiveness - comprehensive metric combining availability, performance, and quality to measure manufacturing productivity."
+      },
+      "absenteeism": {
+        "formula": "Absenteeism = (Absent Hours / Scheduled Hours) x 100",
+        "meaning": "Percentage of scheduled work hours lost due to employee absence. Lower is better for workforce planning and productivity."
+      },
+      "defectRates": {
+        "formula": "PPM = (Defective Units / Total Units) x 1,000,000",
+        "meaning": "Parts Per Million - number of defective parts per million produced. Industry standard for measuring quality at scale."
+      },
+      "throughputTime": {
+        "formula": "Throughput = Total Time from Start to Completion",
+        "meaning": "Average time to complete a production order from start to finish. Lower times indicate more efficient processes."
+      }
+    },
+    "summaryHeaders": {
+      "kpi": "KPI",
+      "current": "Current",
+      "target": "Target",
+      "status": "Status",
+      "trend": "Trend"
     },
     "fpyLabel": "FPY:"
   },
@@ -904,7 +954,16 @@
     "atLeastOneRecipient": "At least one recipient required",
     "scanQrForQuickEntry": "Scan QR codes for quick data entry",
     "saveFilterConfig": "Save current filter configuration",
-    "quickQrScanner": "Quick QR Scanner"
+    "quickQrScanner": "Quick QR Scanner",
+    "types": {
+      "dashboard": "Dashboard",
+      "production": "Production",
+      "quality": "Quality",
+      "attendance": "Attendance",
+      "downtime": "Downtime",
+      "hold": "Hold/WIP",
+      "coverage": "Coverage"
+    }
   },
   "dashboard": {
     "title": "Dashboard",
@@ -1004,7 +1063,15 @@
     "timeout": "Request timed out. Please try again.",
     "duplicate": "Duplicate entry found.",
     "loadClientsFailed": "Failed to load clients",
-    "refreshFailed": "Failed to refresh data"
+    "refreshFailed": "Failed to refresh data",
+    "cannotLogProduction": "Cannot log production: client/product/shift not resolved",
+    "failedToLogProduction": "Failed to log production",
+    "workOrderNotFound": "Work order not found",
+    "noClientSelected": "No client selected",
+    "failedToReportDowntime": "Failed to report downtime",
+    "failedToRecordQualityCheck": "Failed to record quality check",
+    "failedToSendHelpRequest": "Failed to send help request",
+    "saveFailed": "Error saving changes"
   },
   "success": {
     "saved": "Successfully saved.",
@@ -1026,7 +1093,12 @@
     "filterSaveFailed": "Failed to save filter",
     "pleaseAddRecipient": "Please add at least one recipient",
     "pleaseEnterFilterName": "Please enter a filter name",
-    "errorRefreshingData": "Error refreshing data. Please try again."
+    "errorRefreshingData": "Error refreshing data. Please try again.",
+    "loggedUnitsForOrder": "Logged {count} units for {orderId}",
+    "loggedUnits": "Logged {count} units",
+    "downtimeReported": "Downtime reported successfully",
+    "qualityCheckRecorded": "Quality check recorded",
+    "helpRequestSent": "Help request sent to supervisor"
   },
   "language": {
     "title": "Language",
@@ -1533,7 +1605,17 @@
       "hintSortOrder": "Display order (0-999)",
       "hintIndustryCode": "e.g., IPC-A-610-5.2",
       "selectClientFirst": "Select a client first",
-      "fillRequiredFields": "Fill required fields first"
+      "fillRequiredFields": "Fill required fields first",
+      "tableHeaders": {
+        "code": "Code",
+        "name": "Name",
+        "category": "Category",
+        "severity": "Severity",
+        "standard": "Standard",
+        "order": "Order",
+        "active": "Active",
+        "actions": "Actions"
+      }
     },
     "partOpportunities": "Part Opportunities Management",
     "partOpportunitiesDescription": "Configure defect opportunities per part for accurate DPMO calculation",
@@ -1966,7 +2048,9 @@
     "fileReadError": "File read error: {error}",
     "stepUpload": "Upload",
     "stepPreview": "Preview",
-    "stepConfirm": "Confirm"
+    "stepConfirm": "Confirm",
+    "downloadSuccess": "{type} CSV downloaded successfully",
+    "exportFailed": "Export failed: {message}"
   },
   "validation": {
     "required": "This field is required",
@@ -1990,7 +2074,9 @@
     "past": "Date cannot be in the future",
     "positiveNumber": "Must be a positive number",
     "positiveInteger": "Must be a positive integer",
-    "percentage": "Must be between 0 and 100"
+    "percentage": "Must be between 0 and 100",
+    "requiredShort": "Required",
+    "maxChars": "Max {n} characters"
   },
   "simulation": {
     "title": "Simulation & Capacity Planning",
@@ -2488,6 +2574,32 @@
         "standard": "Standard Workflow",
         "simple": "Simple Workflow",
         "express": "Express Workflow"
+      }
+    },
+    "validation": {
+      "configEmpty": "Workflow configuration is empty",
+      "noStatuses": "Workflow has no statuses defined",
+      "duplicateStatuses": "Duplicate statuses found: {statuses}",
+      "invalidStatusName": "Invalid status name: \"{status}\". Use uppercase letters and underscores only.",
+      "noEntryPoint": "Workflow must have a RECEIVED status as entry point",
+      "noTerminalStatus": "Workflow must have at least one terminal status (CLOSED, CANCELLED, or REJECTED)",
+      "orphanStatus": "Status \"{status}\" is not reachable from RECEIVED",
+      "deadEndStatus": "Status \"{status}\" has no outgoing transitions (dead end)",
+      "selfTransition": "Status \"{status}\" has a self-transition",
+      "unreachableTerminal": "Terminal status \"{status}\" is not reachable from RECEIVED",
+      "missingHoldResume": "Hold status \"{status}\" has no resume path to continue workflow",
+      "unknownIssue": "Unknown validation issue",
+      "fix": {
+        "noEntryPoint": "Add RECEIVED status as the workflow entry point",
+        "noTerminalStatus": "Add at least one terminal status (CLOSED, CANCELLED, or REJECTED)",
+        "orphanStatus": "Connect this status to the workflow or remove it",
+        "deadEndStatus": "Add an outgoing transition or mark as terminal",
+        "selfTransition": "Self-transitions are usually not recommended",
+        "emptyWorkflow": "Add statuses to define the workflow",
+        "unreachableTerminal": "This terminal status cannot be reached from the start",
+        "missingHoldResume": "Add a resume path from this hold status",
+        "duplicateStatus": "Remove duplicate status definitions",
+        "invalidStatusName": "Use uppercase letters and underscores for status names"
       }
     }
   },
@@ -4256,6 +4368,14 @@
       "quality": "Quality",
       "attendance": "Attendance",
       "downtime": "Downtime"
+    }
+  },
+  "shift": {
+    "activity": {
+      "loggedUnits": "Logged {count} units for {orderId}",
+      "qualityCheck": "Quality check: {inspected} inspected, {defects} defect(s)",
+      "equipmentBreakdown": "Equipment Breakdown: {minutes} min downtime",
+      "downtimeEvent": "{reason}: {minutes} min downtime"
     }
   }
 }

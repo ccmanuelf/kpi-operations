@@ -3,6 +3,7 @@
  * Work orders, recent activity, stats, clock interval.
  */
 import { ref, computed, type Ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import api from '@/services/api'
 
 export interface ShiftWorkOrderRow {
@@ -64,6 +65,7 @@ interface WorkOrderOption {
 }
 
 export function useShiftDashboardData() {
+  const { t } = useI18n()
   const currentTime = ref(new Date())
   let timeInterval: ReturnType<typeof setInterval> | null = null
 
@@ -186,31 +188,31 @@ export function useShiftDashboardData() {
       {
         id: '1',
         type: 'production',
-        description: 'Logged 50 units for WO-2024-001',
+        description: t('shift.activity.loggedUnits', { count: 50, orderId: 'WO-2024-001' }),
         timestamp: new Date(Date.now() - 15 * 60000).toISOString(),
       },
       {
         id: '2',
         type: 'quality',
-        description: 'Quality check: 100 inspected, 1 defect',
+        description: t('shift.activity.qualityCheck', { inspected: 100, defects: 1 }),
         timestamp: new Date(Date.now() - 45 * 60000).toISOString(),
       },
       {
         id: '3',
         type: 'downtime',
-        description: 'Equipment Breakdown: 15 min downtime',
+        description: t('shift.activity.equipmentBreakdown', { minutes: 15 }),
         timestamp: new Date(Date.now() - 90 * 60000).toISOString(),
       },
       {
         id: '4',
         type: 'production',
-        description: 'Logged 100 units for WO-2024-002',
+        description: t('shift.activity.loggedUnits', { count: 100, orderId: 'WO-2024-002' }),
         timestamp: new Date(Date.now() - 120 * 60000).toISOString(),
       },
       {
         id: '5',
         type: 'production',
-        description: 'Logged 75 units for WO-2024-003',
+        description: t('shift.activity.loggedUnits', { count: 75, orderId: 'WO-2024-003' }),
         timestamp: new Date(Date.now() - 180 * 60000).toISOString(),
       },
     ]
@@ -271,19 +273,19 @@ export function useShiftDashboardData() {
         ...productions.map((p) => ({
           id: `prod-${p.id}`,
           type: 'production' as const,
-          description: `Logged ${p.units_produced} units for ${p.work_order_id}`,
+          description: t('shift.activity.loggedUnits', { count: p.units_produced, orderId: p.work_order_id }),
           timestamp: p.created_at || p.date || '',
         })),
         ...downtimes.map((d) => ({
           id: `down-${d.id}`,
           type: 'downtime' as const,
-          description: `${d.reason}: ${d.downtime_minutes} min downtime`,
+          description: t('shift.activity.downtimeEvent', { reason: d.reason, minutes: d.downtime_minutes }),
           timestamp: d.created_at || d.date || '',
         })),
         ...qualities.map((q) => ({
           id: `qual-${q.id}`,
           type: 'quality' as const,
-          description: `Quality check: ${q.inspected_quantity} inspected, ${q.defect_quantity} defects`,
+          description: t('shift.activity.qualityCheck', { inspected: q.inspected_quantity, defects: q.defect_quantity }),
           timestamp: q.created_at || q.date || '',
         })),
       ]

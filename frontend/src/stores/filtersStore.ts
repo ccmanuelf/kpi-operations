@@ -68,13 +68,13 @@ const HISTORY_KEY = 'kpi-filter-history'
 const MAX_HISTORY = 10
 
 export const FILTER_TYPES: Record<FilterType, string> = {
-  dashboard: 'Dashboard',
-  production: 'Production',
-  quality: 'Quality',
-  attendance: 'Attendance',
-  downtime: 'Downtime',
-  hold: 'Hold/WIP',
-  coverage: 'Coverage',
+  dashboard: t('filters.types.dashboard'),
+  production: t('filters.types.production'),
+  quality: t('filters.types.quality'),
+  attendance: t('filters.types.attendance'),
+  downtime: t('filters.types.downtime'),
+  hold: t('filters.types.hold'),
+  coverage: t('filters.types.coverage'),
 }
 
 export const useFiltersStore = defineStore('filters', () => {
