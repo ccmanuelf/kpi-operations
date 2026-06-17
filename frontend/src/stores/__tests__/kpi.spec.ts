@@ -6,6 +6,35 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { useKPIStore } from '../kpi'
 
+// Mock i18n — kpi store uses i18n.global.t inside the allKPIs getter.
+// The mock returns real English values so existing title assertions keep passing.
+vi.mock('@/i18n', () => ({
+  default: {
+    global: {
+      t: (key: string, params?: Record<string, unknown>) => {
+        const messages: Record<string, string> = {
+          'kpi.efficiency': 'Efficiency',
+          'kpi.wipAging': 'WIP Aging',
+          'kpi.otd': 'On-Time Delivery',
+          'kpi.availability': 'Availability',
+          'kpi.performance': 'Performance',
+          'kpi.qualityFPY': 'Quality (FPY)',
+          'kpi.oeeShort': 'OEE',
+          'kpi.absenteeismShort': 'Absenteeism',
+          'kpi.ppm': 'PPM',
+          'kpi.throughputTime': 'Throughput Time',
+          'kpi.defectRatePercent': '{value}% defect rate',
+        }
+        const tpl = messages[key] ?? key
+        if (params && typeof tpl === 'string') {
+          return tpl.replace(/\{(\w+)\}/g, (_, k) => String(params[k] ?? ''))
+        }
+        return tpl
+      },
+    },
+  },
+}))
+
 // Mock the API module
 vi.mock('@/services/api', () => ({
   default: {

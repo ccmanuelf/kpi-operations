@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import i18n from '@/i18n'
 import api from '@/services/api'
 import type { LoginCredentials, RegisterPayload } from '@/services/api/auth'
 
@@ -85,7 +86,7 @@ export const useAuthStore = defineStore('auth', {
       } catch (error) {
         return {
           success: false,
-          error: extractErrorDetail(error, 'Login failed'),
+          error: extractErrorDetail(error, i18n.global.t('auth.loginFailed')),
         }
       }
     },
@@ -97,7 +98,7 @@ export const useAuthStore = defineStore('auth', {
       } catch (error) {
         return {
           success: false,
-          error: extractErrorDetail(error, 'Registration failed'),
+          error: extractErrorDetail(error, i18n.global.t('auth.registrationFailed')),
         }
       }
     },
@@ -109,9 +110,9 @@ export const useAuthStore = defineStore('auth', {
       try {
         await api.forgotPassword(email)
         this.passwordResetSent = true
-        return { success: true, message: 'Password reset email sent' }
+        return { success: true, message: i18n.global.t('auth.passwordResetSuccess') }
       } catch (error) {
-        this.passwordResetError = extractErrorDetail(error, 'Failed to send reset email')
+        this.passwordResetError = extractErrorDetail(error, i18n.global.t('auth.forgotPasswordFailed'))
         return {
           success: false,
           error: this.passwordResetError,
@@ -122,11 +123,11 @@ export const useAuthStore = defineStore('auth', {
     async resetPassword(token: string, newPassword: string): Promise<ActionResult> {
       try {
         await api.resetPassword(token, newPassword)
-        return { success: true, message: 'Password reset successfully' }
+        return { success: true, message: i18n.global.t('auth.resetPasswordSuccess') }
       } catch (error) {
         return {
           success: false,
-          error: extractErrorDetail(error, 'Failed to reset password'),
+          error: extractErrorDetail(error, i18n.global.t('auth.resetPasswordFailed')),
         }
       }
     },
@@ -140,7 +141,7 @@ export const useAuthStore = defineStore('auth', {
         return {
           success: false,
           valid: false,
-          error: extractErrorDetail(error, 'Invalid or expired token'),
+          error: extractErrorDetail(error, i18n.global.t('auth.verifyTokenFailed')),
         }
       }
     },
@@ -148,11 +149,11 @@ export const useAuthStore = defineStore('auth', {
     async changePassword(currentPassword: string, newPassword: string): Promise<ActionResult> {
       try {
         await api.changePassword(currentPassword, newPassword)
-        return { success: true, message: 'Password changed successfully' }
+        return { success: true, message: i18n.global.t('auth.changePasswordSuccess') }
       } catch (error) {
         return {
           success: false,
-          error: extractErrorDetail(error, 'Failed to change password'),
+          error: extractErrorDetail(error, i18n.global.t('auth.changePasswordFailed')),
         }
       }
     },

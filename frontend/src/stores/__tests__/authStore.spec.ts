@@ -19,6 +19,30 @@ vi.mock('@/services/api', () => ({
   }
 }))
 
+// Mock i18n — authStore imports the global instance to translate user-facing
+// fallback strings. The mock returns the real English values so existing
+// assertions keep their exact-string checks without weakening them.
+vi.mock('@/i18n', () => ({
+  default: {
+    global: {
+      t: (key: string) => {
+        const messages: Record<string, string> = {
+          'auth.loginFailed': 'Login failed',
+          'auth.registrationFailed': 'Registration failed',
+          'auth.forgotPasswordFailed': 'Failed to send reset email',
+          'auth.resetPasswordFailed': 'Failed to reset password',
+          'auth.verifyTokenFailed': 'Invalid or expired token',
+          'auth.changePasswordFailed': 'Failed to change password',
+          'auth.passwordResetSuccess': 'Password reset email sent',
+          'auth.resetPasswordSuccess': 'Password reset successfully',
+          'auth.changePasswordSuccess': 'Password changed successfully',
+        }
+        return messages[key] ?? key
+      },
+    },
+  },
+}))
+
 import api from '@/services/api'
 
 describe('Auth Store', () => {

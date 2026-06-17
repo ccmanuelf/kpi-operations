@@ -207,7 +207,16 @@
     "resetFailed": "Failed to process request. Please try again.",
     "accountCreated": "Account created successfully! You can now login.",
     "accountCreationFailed": "Failed to create account. Please try again.",
-    "registerAccount": "Register Account"
+    "registerAccount": "Register Account",
+    "loginFailed": "Login failed",
+    "registrationFailed": "Registration failed",
+    "forgotPasswordFailed": "Failed to send reset email",
+    "resetPasswordFailed": "Failed to reset password",
+    "verifyTokenFailed": "Invalid or expired token",
+    "changePasswordFailed": "Failed to change password",
+    "passwordResetSuccess": "Password reset email sent",
+    "resetPasswordSuccess": "Password reset successfully",
+    "changePasswordSuccess": "Password changed successfully"
   },
   "kpi": {
     "title": "Key Performance Indicators",
@@ -252,6 +261,8 @@
     "wipAging": "WIP Aging",
     "wipAgingDesc": "Work-in-progress days on floor",
     "wipAgingDescription": "Monitor work-in-progress inventory age to optimize production flow",
+    "throughputTime": "Throughput Time",
+    "defectRatePercent": "{value}% defect rate",
     "wipAgingTrend": "WIP Aging Trend",
     "totalWipUnits": "Total WIP Units",
     "averageAge": "Average Age",
@@ -285,9 +296,11 @@
     "qualityTrends": "Quality Trends",
     "qualityFPY": "Quality (FPY)",
     "oee": "Overall Equipment Effectiveness (OEE)",
+    "oeeShort": "OEE",
     "oeeDescription": "Comprehensive productivity metric combining Availability, Performance, and Quality",
     "oeeTrend": "OEE Trend",
     "absenteeism": "Workforce Absenteeism",
+    "absenteeismShort": "Absenteeism",
     "absenteeismDesc": "Employee absence rate",
     "absenteeismDescription": "Track employee attendance patterns and absence rates",
     "absenteeismTrend": "Absenteeism Trend",
@@ -900,7 +913,25 @@
       "needsAttention": "needs attention",
       "critical": "critical"
     },
-    "widgetNotFound": "Widget not found"
+    "widgetNotFound": "Widget not found",
+    "widgets": {
+      "qr_scanner": "QR Scanner",
+      "my_kpis": "My KPIs",
+      "data_entry_shortcuts": "Data Entry",
+      "recent_entries": "Recent Entries",
+      "client_overview": "Client Overview",
+      "team_kpis": "Team KPIs",
+      "bradford_factor": "Bradford Factor",
+      "efficiency_trends": "Efficiency Trends",
+      "attendance_summary": "Attendance",
+      "all_kpis_grid": "All KPIs",
+      "predictions": "Predictions",
+      "analytics_deep_dive": "Analytics",
+      "reports": "Reports",
+      "system_health": "System Health",
+      "user_stats": "User Stats",
+      "audit_log": "Audit Log"
+    }
   },
   "notifications": {
     "title": "Notifications",
@@ -3337,6 +3368,10 @@
       "scenario3Step2": "Reassign resources if needed",
       "scenario3Step3": "Review individual Bradford Factor scores",
       "scenario3Step4": "Consider capacity planning adjustments"
+    },
+    "registry": {
+      "absenteeismAlert": "Absenteeism Threshold Alert",
+      "absenteeismAlertDesc": "Alerts when absenteeism rate exceeds configurable threshold"
     }
   },
   "filterManager": {
@@ -3651,6 +3686,16 @@
     },
     "downtime": {
       "oeeSuffix": "% OEE"
+    },
+    "registry": {
+      "downtimeImpact": "Downtime Impact on OEE",
+      "downtimeImpactDesc": "Shows downtime categories ranked by their impact on Overall Equipment Effectiveness",
+      "bradfordFactor": "Bradford Factor Score",
+      "bradfordFactorDesc": "Displays Bradford Factor attendance scoring with risk thresholds",
+      "qualityByOperator": "Quality by Operator",
+      "qualityByOperatorDesc": "Operator-level quality metrics with First Pass Yield tracking",
+      "reworkByOperation": "Rework by Operation",
+      "reworkByOperationDesc": "Rework analysis by operation with Pareto breakdown and cost estimation"
     }
   },
   "dashboardCustomizer": {

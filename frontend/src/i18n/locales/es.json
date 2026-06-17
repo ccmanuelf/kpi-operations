@@ -207,7 +207,16 @@
     "resetFailed": "Error al procesar la solicitud. Por favor intenta de nuevo.",
     "accountCreated": "¡Cuenta creada exitosamente! Ya puedes iniciar sesión.",
     "accountCreationFailed": "Error al crear la cuenta. Por favor intenta de nuevo.",
-    "registerAccount": "Registrar Cuenta"
+    "registerAccount": "Registrar Cuenta",
+    "loginFailed": "Error al iniciar sesión",
+    "registrationFailed": "Error en el registro",
+    "forgotPasswordFailed": "Error al enviar el correo de restablecimiento",
+    "resetPasswordFailed": "Error al restablecer la contraseña",
+    "verifyTokenFailed": "Token inválido o expirado",
+    "changePasswordFailed": "Error al cambiar la contraseña",
+    "passwordResetSuccess": "Correo de restablecimiento de contraseña enviado",
+    "resetPasswordSuccess": "Contraseña restablecida exitosamente",
+    "changePasswordSuccess": "Contraseña cambiada exitosamente"
   },
   "kpi": {
     "title": "Indicadores Clave de Desempeño",
@@ -251,6 +260,8 @@
     "totalScrapped": "Total Desperdiciado",
     "wipAging": "Antigüedad WIP",
     "wipAgingDesc": "Días de trabajo en proceso en piso",
+    "throughputTime": "Tiempo de Ciclo",
+    "defectRatePercent": "{value}% tasa de defectos",
     "wipAgingDescription": "Monitoreo de antigüedad del inventario en proceso para optimizar flujo de producción",
     "wipAgingTrend": "Tendencia de Antigüedad WIP",
     "totalWipUnits": "Unidades WIP Totales",
@@ -285,9 +296,11 @@
     "qualityTrends": "Tendencias de Calidad",
     "qualityFPY": "Calidad (FPY)",
     "oee": "Efectividad General del Equipo (OEE)",
+    "oeeShort": "OEE",
     "oeeDescription": "Métrica integral de productividad que combina Disponibilidad, Rendimiento y Calidad",
     "oeeTrend": "Tendencia de OEE",
     "absenteeism": "Ausentismo Laboral",
+    "absenteeismShort": "Ausentismo",
     "absenteeismDesc": "Tasa de ausencia de empleados",
     "absenteeismDescription": "Seguimiento de patrones de asistencia y tasas de ausencia de empleados",
     "absenteeismTrend": "Tendencia de Ausentismo",
@@ -900,7 +913,25 @@
       "needsAttention": "necesita atención",
       "critical": "crítico"
     },
-    "widgetNotFound": "Widget no encontrado"
+    "widgetNotFound": "Widget no encontrado",
+    "widgets": {
+      "qr_scanner": "Escáner QR",
+      "my_kpis": "Mis KPIs",
+      "data_entry_shortcuts": "Captura de Datos",
+      "recent_entries": "Entradas Recientes",
+      "client_overview": "Resumen de Cliente",
+      "team_kpis": "KPIs del Equipo",
+      "bradford_factor": "Factor Bradford",
+      "efficiency_trends": "Tendencias de Eficiencia",
+      "attendance_summary": "Asistencia",
+      "all_kpis_grid": "Todos los KPIs",
+      "predictions": "Predicciones",
+      "analytics_deep_dive": "Análisis",
+      "reports": "Reportes",
+      "system_health": "Salud del Sistema",
+      "user_stats": "Estadísticas de Usuario",
+      "audit_log": "Registro de Auditoría"
+    }
   },
   "notifications": {
     "title": "Notificaciones",
@@ -3337,6 +3368,10 @@
       "scenario3Step2": "Reasignar recursos si es necesario",
       "scenario3Step3": "Revisar puntajes individuales del Factor Bradford",
       "scenario3Step4": "Considerar ajustes de planificacion de capacidad"
+    },
+    "registry": {
+      "absenteeismAlert": "Alerta de Umbral de Ausentismo",
+      "absenteeismAlertDesc": "Genera alertas cuando la tasa de ausentismo supera el umbral configurable"
     }
   },
   "filterManager": {
@@ -3651,6 +3686,16 @@
     },
     "downtime": {
       "oeeSuffix": "% OEE"
+    },
+    "registry": {
+      "downtimeImpact": "Impacto del Tiempo de Paro en OEE",
+      "downtimeImpactDesc": "Muestra las categorías de tiempo de paro clasificadas por su impacto en la Efectividad General del Equipo",
+      "bradfordFactor": "Puntuación del Factor Bradford",
+      "bradfordFactorDesc": "Muestra la puntuación de asistencia del Factor Bradford con umbrales de riesgo",
+      "qualityByOperator": "Calidad por Operador",
+      "qualityByOperatorDesc": "Métricas de calidad a nivel operador con seguimiento de Rendimiento a la Primera Vez",
+      "reworkByOperation": "Retrabajo por Operación",
+      "reworkByOperationDesc": "Análisis de retrabajo por operación con desglose de Pareto y estimación de costos"
     }
   },
   "dashboardCustomizer": {
