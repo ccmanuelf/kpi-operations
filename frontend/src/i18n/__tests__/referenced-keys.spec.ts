@@ -25,7 +25,8 @@ function get(obj: Record<string, unknown>, path: string): unknown {
   return path.split('.').reduce<unknown>((a, k) => (a && typeof a === 'object' ? (a as Record<string, unknown>)[k] : undefined), obj)
 }
 // literal keys only: t('a.b') / $t("a.b") / keypath="a.b"; skip `${...}` template-literal (dynamic) keys
-const KEY_RE = /(?:\$t|[^\w.]t)\(\s*['"]([A-Za-z0-9_.]+)['"]|keypath=["']([A-Za-z0-9_.]+)["']/g
+// Also matches backslash-escaped quotes in render-fn template strings, e.g. $t(\'widgets.grid.dataEntryShortcuts\')
+const KEY_RE = /(?:\$t|[^\w.]t)\(\s*\\?['"]([A-Za-z0-9_.]+)\\?['"]|keypath=["']([A-Za-z0-9_.]+)["']/g
 
 describe('referenced i18n keys resolve in both locales', () => {
   it('every literal t()/$t()/keypath key exists in en and es', () => {
