@@ -58,6 +58,10 @@ vi.mock('@/stores/kpi', () => ({
   useKPIStore: () => ({ selectedClient: kpiState.selectedClient }),
 }))
 
+vi.mock('vue-i18n', () => ({
+  useI18n: () => ({ t: (key: string) => key }),
+}))
+
 import { useShiftForms, downtimeReasonToCode } from '../useShiftForms'
 
 describe('downtimeReasonToCode', () => {
