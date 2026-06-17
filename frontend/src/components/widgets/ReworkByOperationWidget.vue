@@ -99,14 +99,14 @@
 
             <v-list-item-subtitle class="d-flex align-center mt-1">
               <v-icon size="14" class="mr-1">mdi-package-variant</v-icon>
-              {{ item.rework_units.toLocaleString() }} units
+              {{ item.rework_units.toLocaleString() }} {{ t('common.units') }}
               <v-divider vertical class="mx-2" />
               <v-icon size="14" class="mr-1">mdi-clock-outline</v-icon>
               {{ item.rework_hours }}h
               <v-divider vertical class="mx-2" />
               <v-icon size="14" class="mr-1">mdi-percent</v-icon>
               <span :class="getReworkRateTextColor(item.rework_rate)">
-                {{ item.rework_rate }}% rate
+                {{ item.rework_rate }}{{ t('widgets.rework.rateSuffix') }}
               </span>
             </v-list-item-subtitle>
 
@@ -154,8 +154,7 @@
           class="mt-2"
         >
           <v-icon>mdi-lightbulb</v-icon>
-          <strong>{{ vitalFewCount }}</strong> operations account for <strong>80%</strong> of all rework.
-          Focus improvement efforts here.
+          {{ t('widgets.rework.summary', { count: vitalFewCount, pct: 80 }) }}
         </v-alert>
       </template>
     </v-card-text>

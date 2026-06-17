@@ -75,9 +75,12 @@
               <div class="text-caption text-grey">{{ t('widgets.bradfordFactor.score') }}</div>
             </v-col>
           </v-row>
+          <!-- Math formula display (Bradford Factor: S² × D = score); not UI copy. -->
+          <!-- eslint-disable @intlify/vue-i18n/no-raw-text -->
           <div class="text-caption text-grey text-center mt-2">
             Formula: S<sup>2</sup> x D = {{ spells }}<sup>2</sup> x {{ totalDays }} = {{ score }}
           </div>
+          <!-- eslint-enable @intlify/vue-i18n/no-raw-text -->
         </v-card>
 
         <!-- Risk Level Alert -->

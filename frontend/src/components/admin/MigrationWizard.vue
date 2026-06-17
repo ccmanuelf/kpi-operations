@@ -43,6 +43,8 @@
 
           <v-alert type="info" variant="tonal" density="compact" class="mb-4">
             <v-alert-title>{{ t('migrationWizard.connectionFormat') }}</v-alert-title>
+            <!-- Connection-string format example (code/data, not UI copy). -->
+            <!-- eslint-disable-next-line @intlify/vue-i18n/no-raw-text -->
             <code>mysql+pymysql://username:password@hostname:port/database_name</code>
           </v-alert>
         </v-card>

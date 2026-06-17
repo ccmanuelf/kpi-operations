@@ -79,7 +79,7 @@
               <v-divider vertical class="mx-2" />
               <v-icon size="14" class="mr-1">mdi-gauge</v-icon>
               <span :class="getImpactTextColor(item.oeeImpact)">
-                -{{ item.oeeImpact }}% OEE
+                -{{ item.oeeImpact }}{{ t('widgets.downtime.oeeSuffix') }}
               </span>
               <v-divider vertical class="mx-2" />
               <v-icon size="14" class="mr-1">mdi-counter</v-icon>
@@ -128,7 +128,7 @@
       </v-btn>
       <v-spacer />
       <v-chip size="x-small" variant="outlined" color="grey">
-        Last updated: {{ lastUpdated }}
+        {{ t('widgets.downtimeImpact.lastUpdated', { time: lastUpdated }) }}
       </v-chip>
     </v-card-actions>
   </v-card>

@@ -44,7 +44,7 @@
             <div class="mt-2">
               <v-chip color="success" size="small">
                 <v-icon left small>mdi-check</v-icon>
-                Active
+                {{ t('common.active') }}
               </v-chip>
             </div>
           </v-card-text>

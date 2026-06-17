@@ -4,7 +4,12 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
+import { createI18n } from 'vue-i18n'
+import en from '../../../i18n/locales/en.json'
+import es from '../../../i18n/locales/es.json'
 import ValidationPanel from '../ValidationPanel.vue'
+
+const i18n = createI18n({ legacy: false, globalInjection: true, locale: 'en', fallbackLocale: 'en', messages: { en, es } })
 
 // Create a fresh pinia for each test
 const createTestPinia = () => {
@@ -18,7 +23,7 @@ describe('ValidationPanel', () => {
     return mount(ValidationPanel, {
       props,
       global: {
-        plugins: [createTestPinia()],
+        plugins: [createTestPinia(), i18n],
         stubs: {
           'v-card': { template: '<div class="v-card"><slot /></div>' },
           'v-card-title': { template: '<div class="v-card-title"><slot /></div>' },

@@ -220,19 +220,19 @@
                   <td>part_description</td>
                   <td><v-icon color="grey">mdi-minus</v-icon></td>
                   <td>{{ $t('admin.partGuide.csvDescDesc') }}</td>
-                  <td>Standard T-Shirt</td>
+                  <td>{{ $t('admin.partGuide.exampleTShirt') }}</td>
                 </tr>
                 <tr>
-                  <td>complexity</td>
+                  <td>{{ $t('admin.partGuide.exampleComplexity') }}</td>
                   <td><v-icon color="grey">mdi-minus</v-icon></td>
                   <td>{{ $t('admin.partGuide.csvComplexityDesc') }}</td>
-                  <td>Standard</td>
+                  <td>{{ $t('admin.partGuide.exampleStandard') }}</td>
                 </tr>
                 <tr>
-                  <td>notes</td>
+                  <td>{{ $t('admin.partGuide.exampleNotes') }}</td>
                   <td><v-icon color="grey">mdi-minus</v-icon></td>
                   <td>{{ $t('admin.partGuide.csvNotesDesc') }}</td>
-                  <td>Basic garment</td>
+                  <td>{{ $t('admin.partGuide.exampleBasicGarment') }}</td>
                 </tr>
               </tbody>
             </v-table>

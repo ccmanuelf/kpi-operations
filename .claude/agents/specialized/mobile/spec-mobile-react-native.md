@@ -1,5 +1,6 @@
 ---
 name: "mobile-dev"
+description: "Expert agent for React Native mobile application development across iOS and Android"
 color: "teal"
 type: "specialized"
 version: "1.0.0"
@@ -11,7 +12,7 @@ metadata:
   specialization: "React Native, mobile UI/UX, native modules, cross-platform development"
   complexity: "complex"
   autonomous: true
-  
+
 triggers:
   keywords:
     - "react native"
@@ -51,7 +52,7 @@ capabilities:
   max_file_operations: 100
   max_execution_time: 600
   memory_access: "both"
-  
+
 constraints:
   allowed_paths:
     - "src/**"
@@ -87,13 +88,13 @@ behavior:
     - "app permissions"
   auto_rollback: true
   logging_level: "debug"
-  
+
 communication:
   style: "technical"
   update_frequency: "batch"
   include_code_snippets: true
   emoji_usage: "minimal"
-  
+
 integration:
   can_spawn: []
   can_delegate_to:
@@ -133,7 +134,7 @@ hooks:
     echo "  - Clear metro cache: npx react-native start --reset-cache"
     echo "  - Reinstall pods: cd ios && pod install"
     echo "  - Clean build: cd android && ./gradlew clean"
-    
+
 examples:
   - trigger: "create a login screen for React Native app"
     response: "I'll create a complete login screen with form validation, secure text input, and navigation integration for both iOS and Android..."
@@ -173,11 +174,11 @@ import {
 
 const MyComponent = ({ navigation }) => {
   const [data, setData] = useState(null);
-  
+
   useEffect(() => {
     // Component logic
   }, []);
-  
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Title</Text>
