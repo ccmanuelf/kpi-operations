@@ -65,7 +65,7 @@
                 <v-icon class="drag-handle mr-3 cursor-move" color="grey">mdi-drag</v-icon>
                 <v-icon :icon="getWidgetIcon(element.widget_key)" class="mr-3" color="primary" />
                 <div class="flex-grow-1">
-                  <div class="text-body-2 font-weight-medium">{{ element.widget_name }}</div>
+                  <div class="text-body-2 font-weight-medium">{{ widgetTitle(element) }}</div>
                   <div class="text-caption text-grey">
                     {{ getWidgetDescription(element.widget_key) }}
                   </div>
@@ -186,7 +186,17 @@ import { useI18n } from 'vue-i18n'
 import draggable from 'vuedraggable'
 import { useDashboardStore } from '@/stores/dashboardStore'
 
-const { t } = useI18n()
+const { t, te } = useI18n()
+
+/**
+ * Returns a reactive localized name for a placed widget (element from localVisibleWidgets).
+ * Resolves via dashboard.widgets.<widget_key> if the key exists; falls back to the
+ * persisted widget_name so custom/unknown widgets still display correctly.
+ */
+const widgetTitle = (element) => {
+  const key = `dashboard.widgets.${element.widget_key}`
+  return te(key) ? t(key) : element.widget_name
+}
 
 const props = defineProps({
   modelValue: {

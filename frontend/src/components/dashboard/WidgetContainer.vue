@@ -28,7 +28,7 @@
       />
 
       <!-- Widget Title -->
-      <span class="text-subtitle-1 font-weight-medium">{{ widget.widget_name }}</span>
+      <span class="text-subtitle-1 font-weight-medium">{{ widgetTitle }}</span>
 
       <v-spacer />
 
@@ -105,7 +105,7 @@
       <div v-if="isEditing" class="edit-preview d-flex align-center justify-center">
         <div class="text-center">
           <v-icon :icon="widgetIcon" size="48" color="grey-lighten-1" />
-          <div class="text-caption text-grey mt-2">{{ widget.widget_name }}</div>
+          <div class="text-caption text-grey mt-2">{{ widgetTitle }}</div>
         </div>
       </div>
 
@@ -139,7 +139,7 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useDashboardStore } from '@/stores/dashboardStore'
 
-const { t } = useI18n()
+const { t, te } = useI18n()
 
 const props = defineProps({
   widget: {
@@ -182,6 +182,15 @@ const dashboardStore = useDashboardStore()
 
 const widgetIcon = computed(() => {
   return dashboardStore.ALL_WIDGETS[props.widget.widget_key]?.icon || 'mdi-widgets'
+})
+
+/**
+ * Reactive widget title: resolves via i18n if a dashboard.widgets.<widget_key>
+ * translation exists; falls back to the persisted widget_name for custom/unknown widgets.
+ */
+const widgetTitle = computed(() => {
+  const key = `dashboard.widgets.${props.widget.widget_key}`
+  return te(key) ? t(key) : props.widget.widget_name
 })
 </script>
 
