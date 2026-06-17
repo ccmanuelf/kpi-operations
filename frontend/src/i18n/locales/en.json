@@ -748,7 +748,16 @@
     "dueDate": "Due Date",
     "deliveryDate": "Delivery Date",
     "priority": "Priority",
-    "status": "Status",
+    "status": {
+      "label": "Status",
+      "pending": "Pending",
+      "inProgress": "In Progress",
+      "completed": "Completed",
+      "onHold": "On Hold",
+      "cancelled": "Cancelled",
+      "active": "Active",
+      "rejected": "Rejected"
+    },
     "inProgress": "In Progress",
     "completed": "Completed",
     "pending": "Pending",
@@ -773,6 +782,13 @@
     "errors": {
       "noClient": "No client selected — pick a client first",
       "fillRequired": "Fill required fields (work order id, style, planned quantity)"
+    },
+    "priorityLabel": {
+      "urgent": "Urgent",
+      "high": "High",
+      "normal": "Normal",
+      "medium": "Medium",
+      "low": "Low"
     }
   },
   "reports": {
@@ -1772,6 +1788,11 @@
         "loadConfig": "Failed to load client configuration",
         "save": "Failed to save configuration",
         "reset": "Failed to reset configuration"
+      },
+      "otdModes": {
+        "standard": "Standard OTD",
+        "trueOtd": "True OTD (Complete Orders Only)",
+        "both": "Both (Show Standard & True)"
       }
     },
     "floatingPool": {
@@ -3413,7 +3434,16 @@
     "clear": "Clear",
     "manage": "Manage",
     "saveCurrentFilter": "Save current filter",
-    "clearAllFilters": "Clear all filters"
+    "clearAllFilters": "Clear all filters",
+    "presets": {
+      "today": "Today",
+      "last7Days": "Last 7 Days",
+      "last30Days": "Last 30 Days",
+      "last90Days": "Last 90 Days",
+      "yearToDate": "Year to Date",
+      "customRange": "Custom Range",
+      "selectDateRange": "Select Date Range"
+    }
   },
   "saveFilterDialog": {
     "title": "Save Filter",
@@ -4208,5 +4238,24 @@
     "infoTitle": "Information ({count})",
     "showInfo": "Show {count} info message(s)",
     "allValid": "Configuration is valid with no warnings. Ready to run simulation."
+  },
+  "capacityExport": {
+    "sheets": {
+      "orders": "Orders",
+      "masterCalendar": "Calendar",
+      "productionLines": "Production Lines",
+      "productionStandards": "Standards",
+      "bom": "BOM",
+      "stockSnapshot": "Stock"
+    }
+  },
+  "kpiFilters": {
+    "types": {
+      "dashboard": "Dashboard",
+      "production": "Production",
+      "quality": "Quality",
+      "attendance": "Attendance",
+      "downtime": "Downtime"
+    }
   }
 }

@@ -4,6 +4,7 @@
  * filter application, debounced filter emission.
  */
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import {
   useFiltersStore,
   type DateRange,
@@ -16,7 +17,7 @@ import { format, formatDistanceToNow } from 'date-fns'
 import api from '@/services/api'
 import { debounce } from '@/utils/performance'
 
-interface DateRangeOption {
+export interface DateRangeOption {
   value: string
   label: string
   icon: string
@@ -41,17 +42,26 @@ interface DebouncedFn {
   cancel?: () => void
 }
 
-const DATE_RANGE_OPTIONS: DateRangeOption[] = [
-  { value: 'today', label: 'Today', icon: 'mdi-calendar-today', days: 0 },
-  { value: '7d', label: 'Last 7 Days', icon: 'mdi-calendar-week', days: 7 },
-  { value: '30d', label: 'Last 30 Days', icon: 'mdi-calendar-month', days: 30 },
-  { value: '90d', label: 'Last 90 Days', icon: 'mdi-calendar-range', days: 90 },
-  { value: 'ytd', label: 'Year to Date', icon: 'mdi-calendar-star', days: null },
-  { value: 'custom', label: 'Custom Range', icon: 'mdi-calendar-edit', days: null },
-]
+/**
+ * Factory returning a reactive (locale-aware) list of date-range presets.
+ * Call inside setup() so useI18n() has an active component instance.
+ */
+export function useDatePresets() {
+  const { t } = useI18n()
+  return computed<DateRangeOption[]>(() => [
+    { value: 'today', label: t('filterBar.presets.today'), icon: 'mdi-calendar-today', days: 0 },
+    { value: '7d', label: t('filterBar.presets.last7Days'), icon: 'mdi-calendar-week', days: 7 },
+    { value: '30d', label: t('filterBar.presets.last30Days'), icon: 'mdi-calendar-month', days: 30 },
+    { value: '90d', label: t('filterBar.presets.last90Days'), icon: 'mdi-calendar-range', days: 90 },
+    { value: 'ytd', label: t('filterBar.presets.yearToDate'), icon: 'mdi-calendar-star', days: null },
+    { value: 'custom', label: t('filterBar.presets.customRange'), icon: 'mdi-calendar-edit', days: null },
+  ])
+}
 
 export default function useFilterBarData(props: FilterBarProps, emit: EmitFn) {
+  const { t } = useI18n()
   const filtersStore = useFiltersStore()
+  const dateRangeOptions = useDatePresets()
 
   const clients = ref<ClientRow[]>([])
   const selectedClientId = ref<string | number | null>(null)
@@ -111,8 +121,8 @@ export default function useFilterBarData(props: FilterBarProps, emit: EmitFn) {
         'MMM d',
       )}`
     }
-    const option = DATE_RANGE_OPTIONS.find((o) => o.value === dateRangeType.value)
-    return option?.label || 'Select Date Range'
+    const option = dateRangeOptions.value.find((o) => o.value === dateRangeType.value)
+    return option?.label || t('filterBar.presets.selectDateRange')
   })
 
   const getDateRangeConfig = (): DateRange => {
@@ -124,7 +134,7 @@ export default function useFilterBarData(props: FilterBarProps, emit: EmitFn) {
       }
     }
 
-    const option = DATE_RANGE_OPTIONS.find((o) => o.value === dateRangeType.value)
+    const option = dateRangeOptions.value.find((o) => o.value === dateRangeType.value)
     if (option?.days !== null && option?.days !== undefined) {
       return {
         type: 'relative',
@@ -175,7 +185,7 @@ export default function useFilterBarData(props: FilterBarProps, emit: EmitFn) {
         customStartDate.value = config.date_range.start_date
         customEndDate.value = config.date_range.end_date
       } else if (config.date_range.relative_days) {
-        const match = DATE_RANGE_OPTIONS.find(
+        const match = dateRangeOptions.value.find(
           (o) => o.days === config.date_range?.relative_days,
         )
         dateRangeType.value = match?.value || '30d'
@@ -331,7 +341,7 @@ export default function useFilterBarData(props: FilterBarProps, emit: EmitFn) {
   })
 
   return {
-    dateRangeOptions: DATE_RANGE_OPTIONS,
+    dateRangeOptions,
     clients,
     selectedClientId,
     selectedShifts,

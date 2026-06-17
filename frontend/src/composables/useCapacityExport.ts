@@ -5,25 +5,15 @@
  */
 import { ref, type Ref } from 'vue'
 import { useCapacityPlanningStore } from '@/stores/capacityPlanningStore'
+import { useExportSheetOptions } from '@/composables/useExportSheetOptions'
 
-export interface WorksheetOption {
-  title: string
-  value: string
-}
-
-const worksheetOptions: WorksheetOption[] = [
-  { title: 'Orders', value: 'orders' },
-  { title: 'Calendar', value: 'masterCalendar' },
-  { title: 'Production Lines', value: 'productionLines' },
-  { title: 'Standards', value: 'productionStandards' },
-  { title: 'BOM', value: 'bom' },
-  { title: 'Stock', value: 'stockSnapshot' },
-]
+export type { WorksheetOption } from '@/composables/useExportSheetOptions'
 
 type ExportFormat = 'JSON' | 'CSV'
 
 export function useCapacityExport(activeTab: Ref<string>) {
   const store = useCapacityPlanningStore()
+  const worksheetOptions = useExportSheetOptions()
 
   const showExportDialog = ref(false)
   const showImportDialog = ref(false)

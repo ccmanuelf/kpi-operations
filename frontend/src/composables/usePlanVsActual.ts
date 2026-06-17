@@ -8,6 +8,7 @@ import { useI18n } from 'vue-i18n'
 import { getPlanVsActual, getPlanVsActualSummary } from '@/services/api/planVsActual'
 import { useAuthStore } from '@/stores/authStore'
 import { useNotificationStore } from '@/stores/notificationStore'
+import { useOrderStatusOptions } from '@/composables/useOrderStatusOptions'
 
 export type RiskLevel = 'LOW' | 'MEDIUM' | 'HIGH' | 'OVERDUE' | 'COMPLETED' | 'UNKNOWN'
 export type OrderStatus =
@@ -78,13 +79,7 @@ export function usePlanVsActual() {
     () => (authStore.currentUser?.client_id_assigned as string | number | null) ?? null,
   )
 
-  const statusOptions: StatusOption[] = [
-    { title: 'Pending', value: 'PENDING' },
-    { title: 'In Progress', value: 'IN_PROGRESS' },
-    { title: 'Completed', value: 'COMPLETED' },
-    { title: 'On Hold', value: 'ON_HOLD' },
-    { title: 'Cancelled', value: 'CANCELLED' },
-  ]
+  const statusOptions = useOrderStatusOptions()
 
   const headers = computed<TableHeader[]>(() => [
     { title: t('planVsActual.orderNumber'), key: 'order_number', sortable: true },

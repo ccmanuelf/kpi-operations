@@ -748,7 +748,16 @@
     "dueDate": "Fecha de Entrega",
     "deliveryDate": "Fecha de Envío",
     "priority": "Prioridad",
-    "status": "Estado",
+    "status": {
+      "label": "Estado",
+      "pending": "Pendiente",
+      "inProgress": "En Progreso",
+      "completed": "Completado",
+      "onHold": "En Espera",
+      "cancelled": "Cancelado",
+      "active": "Activo",
+      "rejected": "Rechazado"
+    },
     "inProgress": "En Progreso",
     "completed": "Completado",
     "pending": "Pendiente",
@@ -773,6 +782,13 @@
     "errors": {
       "noClient": "Sin cliente seleccionado — elige un cliente primero",
       "fillRequired": "Completa los campos requeridos (id de orden, estilo, cantidad planeada)"
+    },
+    "priorityLabel": {
+      "urgent": "Urgente",
+      "high": "Alto",
+      "normal": "Normal",
+      "medium": "Medio",
+      "low": "Bajo"
     }
   },
   "reports": {
@@ -1772,6 +1788,11 @@
         "loadConfig": "Error al cargar configuración del cliente",
         "save": "Error al guardar configuración",
         "reset": "Error al restablecer configuración"
+      },
+      "otdModes": {
+        "standard": "OTD Estándar",
+        "trueOtd": "OTD Verdadero (Solo Órdenes Completas)",
+        "both": "Ambos (Mostrar Estándar y Verdadero)"
       }
     },
     "floatingPool": {
@@ -3413,7 +3434,16 @@
     "clear": "Limpiar",
     "manage": "Administrar",
     "saveCurrentFilter": "Guardar filtro actual",
-    "clearAllFilters": "Limpiar todos los filtros"
+    "clearAllFilters": "Limpiar todos los filtros",
+    "presets": {
+      "today": "Hoy",
+      "last7Days": "Últimos 7 Días",
+      "last30Days": "Últimos 30 Días",
+      "last90Days": "Últimos 90 Días",
+      "yearToDate": "Año hasta la Fecha",
+      "customRange": "Rango Personalizado",
+      "selectDateRange": "Seleccionar Rango de Fechas"
+    }
   },
   "saveFilterDialog": {
     "title": "Guardar Filtro",
@@ -4208,5 +4238,24 @@
     "infoTitle": "Información ({count})",
     "showInfo": "Mostrar {count} mensaje(s) de información",
     "allValid": "La configuración es válida y no tiene advertencias. Lista para ejecutar la simulación."
+  },
+  "capacityExport": {
+    "sheets": {
+      "orders": "Órdenes",
+      "masterCalendar": "Calendario",
+      "productionLines": "Líneas de Producción",
+      "productionStandards": "Estándares",
+      "bom": "BOM",
+      "stockSnapshot": "Inventario"
+    }
+  },
+  "kpiFilters": {
+    "types": {
+      "dashboard": "Panel",
+      "production": "Producción",
+      "quality": "Calidad",
+      "attendance": "Asistencia",
+      "downtime": "Tiempo de Paro"
+    }
   }
 }
