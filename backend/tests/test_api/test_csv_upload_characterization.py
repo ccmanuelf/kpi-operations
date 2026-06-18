@@ -444,7 +444,7 @@ def test_employees_invalid_row_recorded(test_client, admin_auth_headers, monkeyp
 
 
 def test_employees_requires_elevated_role(test_client, auth_headers):
-    # auth_headers = operator; employees endpoint has inline admin-only check → 403
+    # auth_headers = operator; 403 from get_current_admin dependency
     content = _csv_bytes(
         "employee_code,employee_name",
         "EMP-001,Jane Doe",
@@ -506,4 +506,117 @@ def test_floating_pool_requires_elevated_role(test_client, auth_headers):
         "42",
     )
     resp = test_client.post("/api/floating-pool/upload/csv", files=_files(content), headers=auth_headers)
+    assert resp.status_code == 403
+
+
+# ==================== DOWNTIME ====================
+
+
+def test_downtime_happy_path(test_client, admin_auth_headers, monkeypatch):
+    captured = {}
+
+    def stub(db, entry, user):
+        captured["entry"] = entry
+        return _Created(downtime_entry_id="DT-1")
+
+    monkeypatch.setattr("backend.endpoints.csv_upload.create_downtime_event", stub)
+    # Required: client_id, shift_date (YYYY-MM-DD), duration_hours (→ minutes via from_legacy_csv)
+    content = _csv_bytes(
+        "client_id,shift_date,duration_hours",
+        "CLIENT-A,2024-01-15,1",
+    )
+    resp = test_client.post("/api/downtime/upload/csv", files=_files(content), headers=admin_auth_headers)
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["successful"] == 1
+    assert body["failed"] == 0
+    assert body["created_entries"] == ["DT-1"]
+    assert captured["entry"] is not None  # mapper produced a schema object
+
+
+def test_downtime_invalid_row_recorded(test_client, admin_auth_headers, monkeypatch):
+    monkeypatch.setattr(
+        "backend.endpoints.csv_upload.create_downtime_event",
+        lambda db, e, u: _Created(downtime_entry_id="X"),
+    )
+    # Missing required client_id → ValueError("client_id is required") → Data parsing error
+    content = _csv_bytes(
+        "client_id,shift_date,duration_hours",
+        ",2024-01-15,1",
+    )
+    resp = test_client.post("/api/downtime/upload/csv", files=_files(content), headers=admin_auth_headers)
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["failed"] == 1
+    assert body["successful"] == 0
+    assert body["errors"][0]["row"] == 2
+    assert body["errors"][0]["error"] == "Data parsing error in CSV row"
+
+
+def test_downtime_requires_elevated_role(test_client, auth_headers):
+    # auth_headers = operator; downtime endpoint requires supervisor → 403
+    content = _csv_bytes(
+        "client_id,shift_date,duration_hours",
+        "CLIENT-A,2024-01-15,1",
+    )
+    resp = test_client.post("/api/downtime/upload/csv", files=_files(content), headers=auth_headers)
+    assert resp.status_code == 403
+
+
+# ==================== WORK ORDERS ====================
+
+
+def test_work_orders_happy_path(test_client, admin_auth_headers, monkeypatch):
+    captured = {}
+
+    def stub(db, data, user):
+        captured["data"] = data
+        return _Created(work_order_id="WO-1")
+
+    monkeypatch.setattr("backend.endpoints.csv_upload.create_work_order", stub)
+    # Required: work_order_id, client_id, style_model, planned_quantity
+    # priority must match pattern ^(URGENT|HIGH|NORMAL|MEDIUM|LOW)$ (empty string fails validation)
+    content = _csv_bytes(
+        "work_order_id,client_id,style_model,planned_quantity,priority",
+        "WO-001,CLIENT-A,Style-X,100,HIGH",
+    )
+    resp = test_client.post("/api/work-orders/upload/csv", files=_files(content), headers=admin_auth_headers)
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["successful"] == 1
+    assert body["failed"] == 0
+    assert body["created_entries"] == ["WO-1"]
+    assert captured["data"] is not None  # mapper produced a schema object
+
+
+def test_work_orders_invalid_row_recorded(test_client, admin_auth_headers, monkeypatch):
+    monkeypatch.setattr(
+        "backend.endpoints.csv_upload.create_work_order",
+        lambda db, d, u: _Created(work_order_id="X"),
+    )
+    # Missing required client_id column → row["client_id"] KeyError → Data parsing error
+    content = _csv_bytes(
+        "work_order_id,style_model,planned_quantity",
+        "WO-001,Style-X,100",
+    )
+    resp = test_client.post("/api/work-orders/upload/csv", files=_files(content), headers=admin_auth_headers)
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["failed"] == 1
+    assert body["successful"] == 0
+    assert body["errors"][0]["row"] == 2
+    assert body["errors"][0]["error"] == "Data parsing error in CSV row"
+
+
+def test_work_orders_requires_elevated_role(test_client, auth_headers):
+    # auth_headers = operator; work-orders endpoint requires supervisor → 403
+    content = _csv_bytes(
+        "work_order_id,client_id,style_model,planned_quantity,priority",
+        "WO-001,CLIENT-A,Style-X,100,HIGH",
+    )
+    resp = test_client.post("/api/work-orders/upload/csv", files=_files(content), headers=auth_headers)
     assert resp.status_code == 403
