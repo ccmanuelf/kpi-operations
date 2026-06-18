@@ -4,19 +4,15 @@ Provides CSV and XLSX upload functionality for all major entities in the system
 """
 
 import logging
-from fastapi import APIRouter, Depends, HTTPException, Query, status, UploadFile, File
+from fastapi import APIRouter, Depends, Query, UploadFile, File
 from sqlalchemy.orm import Session
-from sqlalchemy.exc import SQLAlchemyError
-from typing import Dict, List, Optional
+from typing import Optional
 from datetime import datetime
-from decimal import Decimal, InvalidOperation
-from pydantic import ValidationError
-import io
-import csv
+from decimal import Decimal
 
 from backend.database import get_db
-from backend.auth.jwt import get_current_active_supervisor, get_current_admin
-from backend.orm.user import User, UserRole
+from backend.auth.jwt import get_current_active_supervisor, get_current_admin, get_current_planner
+from backend.orm.user import User
 from backend.middleware.client_auth import verify_client_access
 from backend.schemas.production import CSVUploadResponse
 
@@ -54,7 +50,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 _CSV_INJECTION_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
-_MAX_CSV_SIZE = 10 * 1024 * 1024  # 10MB
 
 
 def sanitize_csv_value(value: str) -> str:
@@ -62,54 +57,6 @@ def sanitize_csv_value(value: str) -> str:
     if isinstance(value, str) and value and value[0] in _CSV_INJECTION_PREFIXES:
         return "'" + value
     return value
-
-
-_ALLOWED_EXTENSIONS = (".csv", ".xlsx")
-
-
-def _read_upload_file(
-    file_content: bytes,
-    filename: str,
-    sheet_name: Optional[str] = None,
-) -> List[Dict[str, str]]:
-    """
-    Read uploaded file (CSV or XLSX) and return list of row dicts.
-
-    This is the single decision point for CSV vs XLSX parsing.
-    Both paths return List[Dict[str, str]] matching csv.DictReader output.
-
-    Args:
-        file_content: Raw bytes of the uploaded file.
-        filename: Original filename (used to detect format by extension).
-        sheet_name: For XLSX files, which sheet to read (default: active sheet).
-
-    Returns:
-        List of dicts where keys are column headers and values are strings.
-
-    Raises:
-        HTTPException: If the file format is unsupported or cannot be parsed.
-    """
-    lower_name = (filename or "").lower()
-
-    if lower_name.endswith(".xlsx"):
-        from backend.services.xlsx_parser import parse_xlsx_to_rows
-
-        try:
-            return parse_xlsx_to_rows(file_content, sheet_name=sheet_name, fuzzy_headers=True)
-        except ValueError as exc:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Invalid XLSX file: {exc}",
-            )
-
-    if lower_name.endswith(".csv"):
-        csv_file = io.StringIO(file_content.decode("utf-8"))
-        return list(csv.DictReader(csv_file))
-
-    raise HTTPException(
-        status_code=status.HTTP_400_BAD_REQUEST,
-        detail="File must be a .csv or .xlsx file",
-    )
 
 
 # ==================== 1. DOWNTIME EVENTS CSV UPLOAD ====================
@@ -739,10 +686,6 @@ async def upload_clients_csv(
     - timezone (str, max 50)
     - is_active (int: 0 or 1)
     """
-    # SECURITY: Only ADMIN can create clients
-    if current_user.role != UserRole.ADMIN:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only administrators can upload clients")
-
     rows = read_upload(await file.read(), file.filename or "", sheet_name)
     return process_csv_upload(
         rows,
@@ -755,12 +698,33 @@ async def upload_clients_csv(
 
 
 # ==================== 10. EMPLOYEES CSV UPLOAD (ADMIN ONLY) ====================
+def _map_employees_row(row: dict, current_user: User) -> EmployeeCreate:
+    # Parse hire date
+    hire_date = None
+    if row.get("hire_date"):
+        try:
+            hire_date = datetime.strptime(row["hire_date"], "%Y-%m-%d %H:%M:%S")
+        except ValueError:
+            hire_date = datetime.strptime(row["hire_date"], "%Y-%m-%d")
+
+    return EmployeeCreate(
+        employee_code=sanitize_csv_value(row["employee_code"]),
+        employee_name=sanitize_csv_value(row["employee_name"]),
+        client_id_assigned=sanitize_csv_value(row.get("client_id_assigned") or ""),
+        is_floating_pool=int(row.get("is_floating_pool", 0)),
+        contact_phone=sanitize_csv_value(row.get("contact_phone") or ""),
+        contact_email=sanitize_csv_value(row.get("contact_email") or ""),
+        position=sanitize_csv_value(row.get("position") or ""),
+        hire_date=hire_date,
+    )
+
+
 @router.post("/api/employees/upload/csv", response_model=CSVUploadResponse)
 async def upload_employees_csv(
     file: UploadFile = File(...),
     sheet_name: Optional[str] = Query(None, description="Sheet name for XLSX files"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_supervisor),
+    current_user: User = Depends(get_current_admin),
 ) -> CSVUploadResponse:
     """
     Upload employees via CSV or XLSX (Admin only)
@@ -779,77 +743,42 @@ async def upload_employees_csv(
     - position (str, max 100)
     - hire_date (YYYY-MM-DD HH:MM:SS)
     """
-    # SECURITY: Only ADMIN can create employees
-    if current_user.role != UserRole.ADMIN:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only administrators can upload employees")
-
-    filename = file.filename or ""
-    if not filename.lower().endswith(_ALLOWED_EXTENSIONS):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File must be a .csv or .xlsx file")
-
-    contents = await file.read()
-    if len(contents) > _MAX_CSV_SIZE:
-        raise HTTPException(status_code=413, detail="File size exceeds 10MB limit")
-    rows_list = _read_upload_file(contents, filename, sheet_name=sheet_name)
-
-    total_rows = 0
-    successful = 0
-    failed = 0
-    errors = []
-    created_ids = []
-
-    for row_num, row in enumerate(rows_list, start=2):
-        total_rows += 1
-
-        try:
-            # Parse hire date
-            hire_date = None
-            if row.get("hire_date"):
-                try:
-                    hire_date = datetime.strptime(row["hire_date"], "%Y-%m-%d %H:%M:%S")
-                except ValueError:
-                    hire_date = datetime.strptime(row["hire_date"], "%Y-%m-%d")
-
-            entry = EmployeeCreate(
-                employee_code=sanitize_csv_value(row["employee_code"]),
-                employee_name=sanitize_csv_value(row["employee_name"]),
-                client_id_assigned=sanitize_csv_value(row.get("client_id_assigned") or ""),
-                is_floating_pool=int(row.get("is_floating_pool", 0)),
-                contact_phone=sanitize_csv_value(row.get("contact_phone") or ""),
-                contact_email=sanitize_csv_value(row.get("contact_email") or ""),
-                position=sanitize_csv_value(row.get("position") or ""),
-                hire_date=hire_date,
-            )
-
-            created = create_employee(db, entry.model_dump(), current_user)
-            created_ids.append(created.employee_id)
-            successful += 1
-
-        except ValidationError as e:
-            logger.warning("CSV row %d validation failed: %s", row_num, e)
-            failed += 1
-            errors.append({"row": row_num, "error": "Validation error in CSV row data", "data": row})
-        except SQLAlchemyError:
-            logger.exception("Database error processing CSV row %d", row_num)
-            failed += 1
-            errors.append({"row": row_num, "error": "Database error processing row", "data": row})
-        except (ValueError, TypeError, KeyError, InvalidOperation) as e:
-            logger.warning("Data parsing error in CSV row %d: %s", row_num, e)
-            failed += 1
-            errors.append({"row": row_num, "error": "Data parsing error in CSV row", "data": row})
-
-    return CSVUploadResponse(
-        total_rows=total_rows, successful=successful, failed=failed, errors=errors[:100], created_entries=created_ids
+    rows = read_upload(await file.read(), file.filename or "", sheet_name)
+    return process_csv_upload(
+        rows,
+        db,
+        current_user,
+        row_mapper=_map_employees_row,
+        create_fn=lambda db_, e, u: create_employee(db_, e.model_dump(), u),
+        id_getter=lambda c: c.employee_id,
     )
 
 
-# ==================== 11. FLOATING POOL CSV UPLOAD (SUPERVISOR ONLY) ====================
+# ==================== 11. FLOATING POOL CSV UPLOAD (PLANNER/ADMIN ONLY) ====================
+def _map_floating_pool_row(row: dict, current_user: User) -> FloatingPoolCreate:
+    def parse_datetime(date_str: Optional[str]) -> Optional[datetime]:
+        if not date_str:
+            return None
+        try:
+            return datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
+        except ValueError:
+            return datetime.strptime(date_str, "%Y-%m-%d")
+
+    return FloatingPoolCreate(
+        employee_id=int(row["employee_id"]),
+        available_from=parse_datetime(row.get("available_from")),
+        available_to=parse_datetime(row.get("available_to")),
+        current_assignment=sanitize_csv_value(row.get("current_assignment") or ""),
+        notes=sanitize_csv_value(row.get("notes") or ""),
+    )
+
+
 @router.post("/api/floating-pool/upload/csv", response_model=CSVUploadResponse)
 async def upload_floating_pool_csv(
     file: UploadFile = File(...),
     sheet_name: Optional[str] = Query(None, description="Sheet name for XLSX files"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_supervisor),
+    current_user: User = Depends(get_current_planner),
 ) -> CSVUploadResponse:
     """
     Upload floating pool assignments via CSV or XLSX (Supervisor/Admin only)
@@ -865,65 +794,12 @@ async def upload_floating_pool_csv(
     - current_assignment (str, client_id or NULL)
     - notes (text)
     """
-    # SECURITY: Only ADMIN and POWERUSER can manage floating pool
-    if current_user.role not in [UserRole.ADMIN, UserRole.POWERUSER]:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Only supervisors and administrators can manage floating pool"
-        )
-
-    filename = file.filename or ""
-    if not filename.lower().endswith(_ALLOWED_EXTENSIONS):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File must be a .csv or .xlsx file")
-
-    contents = await file.read()
-    if len(contents) > _MAX_CSV_SIZE:
-        raise HTTPException(status_code=413, detail="File size exceeds 10MB limit")
-    rows_list = _read_upload_file(contents, filename, sheet_name=sheet_name)
-
-    total_rows = 0
-    successful = 0
-    failed = 0
-    errors = []
-    created_ids = []
-
-    for row_num, row in enumerate(rows_list, start=2):
-        total_rows += 1
-
-        try:
-            # Parse datetime fields
-            def parse_datetime(date_str: Optional[str]) -> Optional[datetime]:
-                if not date_str:
-                    return None
-                try:
-                    return datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
-                except ValueError:
-                    return datetime.strptime(date_str, "%Y-%m-%d")
-
-            entry = FloatingPoolCreate(
-                employee_id=int(row["employee_id"]),
-                available_from=parse_datetime(row.get("available_from")),
-                available_to=parse_datetime(row.get("available_to")),
-                current_assignment=sanitize_csv_value(row.get("current_assignment") or ""),
-                notes=sanitize_csv_value(row.get("notes") or ""),
-            )
-
-            created = create_floating_pool_entry(db, entry.model_dump(), current_user)
-            created_ids.append(created.pool_id)
-            successful += 1
-
-        except ValidationError as e:
-            logger.warning("CSV row %d validation failed: %s", row_num, e)
-            failed += 1
-            errors.append({"row": row_num, "error": "Validation error in CSV row data", "data": row})
-        except SQLAlchemyError:
-            logger.exception("Database error processing CSV row %d", row_num)
-            failed += 1
-            errors.append({"row": row_num, "error": "Database error processing row", "data": row})
-        except (ValueError, TypeError, KeyError, InvalidOperation) as e:
-            logger.warning("Data parsing error in CSV row %d: %s", row_num, e)
-            failed += 1
-            errors.append({"row": row_num, "error": "Data parsing error in CSV row", "data": row})
-
-    return CSVUploadResponse(
-        total_rows=total_rows, successful=successful, failed=failed, errors=errors[:100], created_entries=created_ids
+    rows = read_upload(await file.read(), file.filename or "", sheet_name)
+    return process_csv_upload(
+        rows,
+        db,
+        current_user,
+        row_mapper=_map_floating_pool_row,
+        create_fn=lambda db_, e, u: create_floating_pool_entry(db_, e.model_dump(), u),
+        id_getter=lambda c: c.pool_id,
     )

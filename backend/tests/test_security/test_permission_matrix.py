@@ -74,11 +74,13 @@ MATRIX = [
     ("POST", "/api/v2/simulation/validate", ["operator"], "leader", 422),
     ("POST", "/api/v2/simulation/scenarios", ["operator"], "leader", 422),
     ("POST", "/api/production/batch-import", ["operator"], "supervisor", 422),
-    ("POST", "/api/employees/upload/csv", ["operator"], "leader", 422),
     # These two accept an all-default body, so passing the guard yields 200.
     ("POST", "/api/reports/email-config", ["operator"], "leader", 200),
     ("POST", "/api/alerts/generate/check-all", ["operator"], "leader", 200),
+    # Planner tier CSV uploads (admin/poweruser)
+    ("POST", "/api/floating-pool/upload/csv", ["operator", "leader", "supervisor"], "poweruser", 422),
     # Admin tier
+    ("POST", "/api/employees/upload/csv", ["operator", "leader", "supervisor"], "admin", 422),
     ("POST", "/api/clients/upload/csv", ["operator", "leader", "supervisor"], "admin", 422),
     ("POST", "/api/admin/database/migrate", ["operator", "leader", "supervisor"], "admin", 422),
 ]
