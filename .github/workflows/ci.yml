@@ -34,6 +34,18 @@ jobs:
           python -m pip install --upgrade pip
           pip install --require-hashes --only-binary=:all: -r requirements-dev.lock
 
+      - name: Lock drift check (sources must be re-locked)
+        working-directory: .
+        run: |
+          ./scripts/lock-deps.sh
+          git diff --exit-code -- backend/requirements.lock backend/requirements-dev.lock \
+            || { echo "::error::Lock drift — a source requirements file changed without regenerating the lock. Run scripts/lock-deps.sh and commit backend/*.lock."; exit 1; }
+      - name: Build-free hash + wheel verify
+        working-directory: .
+        run: |
+          pip install --require-hashes --only-binary=:all: --dry-run -r backend/requirements.lock
+          pip install --require-hashes --only-binary=:all: --dry-run -r backend/requirements-dev.lock
+
       - name: Check code formatting
         run: black --check .
 

@@ -277,6 +277,19 @@ hides.
 
 5. **E2E navigation patterns** -- use `a[href="/path"]` selectors, call `scrollIntoViewIfNeeded()`, verify URL changes with `waitForURL()`.
 
+## Updating Python dependencies
+
+Edit the SOURCE files only — `backend/requirements.txt` (prod) or
+`backend/requirements-dev.txt` (dev/test/tooling), keeping the `==` pins and
+CVE annotations. Then regenerate the hash-pinned locks:
+
+    ./scripts/lock-deps.sh
+
+Commit both `backend/requirements.lock` and `backend/requirements-dev.lock`
+alongside the source change. CI's lock-drift gate fails if a source changed
+without re-locking. Dependabot bumps the source files; when batching its PRs,
+run `./scripts/lock-deps.sh` and commit the regenerated locks.
+
 ## Pull Request Process
 
 1. **Branch naming**: `feat/description`, `fix/description`, `docs/description`, `chore/description`
