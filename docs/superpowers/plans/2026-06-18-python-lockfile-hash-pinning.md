@@ -15,7 +15,7 @@
 ## Global Constraints
 
 - **Exact pins:** `pip-tools==7.5.3`; base image `python:3.11.11-slim-bookworm@sha256:081075da77b2b55c23c088251026fb69a7b2bf92471e491ff5fd75c192fd38e5`.
-- **Hermetic generation:** locks are ALWAYS generated inside that digest-pinned container (never on the host Python) so output is byte-reproducible. Canonical compile flags: `pip-compile --generate-hashes --no-header --output-file=<lock> <source>` (the `--no-header` keeps output path-independent; pip-compile is *sticky* — without `--upgrade` it keeps the versions already in the committed lock, changing only when a source constraint changed).
+- **Hermetic generation:** locks are ALWAYS generated inside that digest-pinned container **with `docker run --platform linux/amd64`** (the CI runner + Render + Docker-build target arch) so output is byte-reproducible regardless of the host's arch — a maintainer on an arm64 Mac must still produce the amd64 lock the amd64 drift gate expects. (Verified 2026-06-18: this dep set resolves identically on arm64/amd64, but pinning the platform keeps it deterministic if a future dep carries platform markers.) Canonical compile flags: `pip-compile --generate-hashes --no-header --output-file=<lock> <source>` (the `--no-header` keeps output path-independent; pip-compile is *sticky* — without `--upgrade` it keeps the versions already in the committed lock, changing only when a source constraint changed).
 - **Install flags everywhere:** `--require-hashes --only-binary=:all:` (wheels-only ⇒ no sdist builds ⇒ self-contained hashed set).
 - **No version changes:** the lock pins the CURRENT resolution; do NOT bump any dependency. The CVE-annotated `==` pins in the sources stay the source of truth.
 - **Sources unchanged except adding `pip-tools`:** keep `backend/requirements.txt` and the CVE comments as-is; add only `pip-tools==7.5.3` to `backend/requirements-dev.txt`.
@@ -157,7 +157,9 @@ git commit -m "ci(deps): install hash-pinned dev lock wheels-only in ci + e2e (C
 set -euo pipefail
 IMAGE="python:3.11.11-slim-bookworm@sha256:081075da77b2b55c23c088251026fb69a7b2bf92471e491ff5fd75c192fd38e5"
 ROOT="$(git rev-parse --show-toplevel)"
-docker run --rm -v "$ROOT/backend:/work" -w /work "$IMAGE" sh -ec '
+# --platform linux/amd64 pins generation to the CI/Render/Docker target arch so
+# the lock is byte-identical regardless of the maintainer's host arch.
+docker run --rm --platform linux/amd64 -v "$ROOT/backend:/work" -w /work "$IMAGE" sh -ec '
   pip install --quiet --no-cache-dir pip-tools==7.5.3
   pip-compile --generate-hashes --no-header --output-file=requirements.lock requirements.txt
   pip-compile --generate-hashes --no-header --output-file=requirements-dev.lock requirements-dev.txt
