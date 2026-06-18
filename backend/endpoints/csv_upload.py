@@ -42,21 +42,12 @@ from backend.schemas.client import ClientCreate
 from backend.schemas.employee import EmployeeCreate
 from backend.schemas.floating_pool import FloatingPoolCreate
 
-from backend.services.csv_upload_processor import process_csv_upload, read_upload
+from backend.services.csv_upload_processor import process_csv_upload, read_upload, sanitize_csv_value
 
 logger = logging.getLogger(__name__)
 
 
 router = APIRouter()
-
-_CSV_INJECTION_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
-
-
-def sanitize_csv_value(value: str) -> str:
-    """Strip CSV injection prefixes (=, +, -, @, \\t, \\r) from string values"""
-    if isinstance(value, str) and value and value[0] in _CSV_INJECTION_PREFIXES:
-        return "'" + value
-    return value
 
 
 # ==================== 1. DOWNTIME EVENTS CSV UPLOAD ====================
