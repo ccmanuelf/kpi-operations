@@ -14,14 +14,11 @@ from typing import Any, Dict
 
 from fastapi import FastAPI
 from datetime import datetime, timezone
-import logging
 
 from backend.bootstrap.lifecycle import lifespan
 from backend.bootstrap.openapi import tags_metadata
 from backend.bootstrap.routers import register_routers
 from backend.bootstrap.app_config import configure_middleware, register_exception_handlers
-
-logger = logging.getLogger(__name__)
 
 # Initialize FastAPI app
 app = FastAPI(
