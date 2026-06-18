@@ -46,6 +46,8 @@ from backend.schemas.client import ClientCreate
 from backend.schemas.employee import EmployeeCreate
 from backend.schemas.floating_pool import FloatingPoolCreate
 
+from backend.services.csv_upload_processor import process_csv_upload, read_upload
+
 logger = logging.getLogger(__name__)
 
 
@@ -111,6 +113,41 @@ def _read_upload_file(
 
 
 # ==================== 1. DOWNTIME EVENTS CSV UPLOAD ====================
+def _map_downtime_row(row: dict, current_user: User) -> DowntimeEventCreate:
+    # SECURITY: Validate client_id - REQUIRED
+    client_id = sanitize_csv_value(row.get("client_id", ""))
+    if not client_id:
+        raise ValueError("client_id is required")
+    verify_client_access(current_user, client_id)
+
+    # Parse date - support both field names
+    shift_date_str = row.get("shift_date") or row.get("production_date")
+    if not shift_date_str:
+        raise ValueError("shift_date or production_date is required")
+    shift_date = datetime.strptime(shift_date_str, "%Y-%m-%d").date()
+
+    # Build data dict for legacy CSV mapping
+    csv_data = {
+        "client_id": client_id,
+        "work_order_number": sanitize_csv_value(row.get("work_order_number") or row.get("work_order_id") or ""),
+        "shift_date": shift_date,
+        "downtime_category": sanitize_csv_value(row.get("downtime_category") or ""),
+        "downtime_reason": sanitize_csv_value(row.get("downtime_reason") or ""),
+        "duration_hours": row.get("duration_hours"),
+        "downtime_duration_minutes": (
+            int(row["downtime_duration_minutes"]) if row.get("downtime_duration_minutes") else None
+        ),
+        "machine_id": sanitize_csv_value(row.get("machine_id") or ""),
+        "equipment_code": sanitize_csv_value(row.get("equipment_code") or ""),
+        "root_cause_category": sanitize_csv_value(row.get("root_cause_category") or ""),
+        "corrective_action": sanitize_csv_value(row.get("corrective_action") or ""),
+        "notes": sanitize_csv_value(row.get("notes") or ""),
+    }
+
+    # Use the from_legacy_csv method for proper field mapping
+    return DowntimeEventCreate.from_legacy_csv(csv_data)
+
+
 @router.post("/api/downtime/upload/csv", response_model=CSVUploadResponse)
 async def upload_downtime_csv(
     file: UploadFile = File(...),
@@ -137,82 +174,53 @@ async def upload_downtime_csv(
     - corrective_action (text)
     - notes (text)
     """
-    filename = file.filename or ""
-    if not filename.lower().endswith(_ALLOWED_EXTENSIONS):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File must be a .csv or .xlsx file")
-
-    contents = await file.read()
-    if len(contents) > _MAX_CSV_SIZE:
-        raise HTTPException(status_code=413, detail="File size exceeds 10MB limit")
-    rows_list = _read_upload_file(contents, filename, sheet_name=sheet_name)
-
-    total_rows = 0
-    successful = 0
-    failed = 0
-    errors = []
-    created_ids = []
-
-    for row_num, row in enumerate(rows_list, start=2):
-        total_rows += 1
-
-        try:
-            # SECURITY: Validate client_id - REQUIRED
-            client_id = sanitize_csv_value(row.get("client_id", ""))
-            if not client_id:
-                raise ValueError("client_id is required")
-            verify_client_access(current_user, client_id)
-
-            # Parse date - support both field names
-            shift_date_str = row.get("shift_date") or row.get("production_date")
-            if not shift_date_str:
-                raise ValueError("shift_date or production_date is required")
-            shift_date = datetime.strptime(shift_date_str, "%Y-%m-%d").date()
-
-            # Build data dict for legacy CSV mapping
-            csv_data = {
-                "client_id": client_id,
-                "work_order_number": sanitize_csv_value(row.get("work_order_number") or row.get("work_order_id") or ""),
-                "shift_date": shift_date,
-                "downtime_category": sanitize_csv_value(row.get("downtime_category") or ""),
-                "downtime_reason": sanitize_csv_value(row.get("downtime_reason") or ""),
-                "duration_hours": row.get("duration_hours"),
-                "downtime_duration_minutes": (
-                    int(row["downtime_duration_minutes"]) if row.get("downtime_duration_minutes") else None
-                ),
-                "machine_id": sanitize_csv_value(row.get("machine_id") or ""),
-                "equipment_code": sanitize_csv_value(row.get("equipment_code") or ""),
-                "root_cause_category": sanitize_csv_value(row.get("root_cause_category") or ""),
-                "corrective_action": sanitize_csv_value(row.get("corrective_action") or ""),
-                "notes": sanitize_csv_value(row.get("notes") or ""),
-            }
-
-            # Use the from_legacy_csv method for proper field mapping
-            entry = DowntimeEventCreate.from_legacy_csv(csv_data)
-
-            # Create entry
-            created = create_downtime_event(db, entry, current_user)
-            created_ids.append(created.downtime_entry_id)
-            successful += 1
-
-        except ValidationError as e:
-            logger.warning("CSV row %d validation failed: %s", row_num, e)
-            failed += 1
-            errors.append({"row": row_num, "error": "Validation error in CSV row data", "data": row})
-        except SQLAlchemyError:
-            logger.exception("Database error processing CSV row %d", row_num)
-            failed += 1
-            errors.append({"row": row_num, "error": "Database error processing row", "data": row})
-        except (ValueError, TypeError, KeyError, InvalidOperation) as e:
-            logger.warning("Data parsing error in CSV row %d: %s", row_num, e)
-            failed += 1
-            errors.append({"row": row_num, "error": "Data parsing error in CSV row", "data": row})
-
-    return CSVUploadResponse(
-        total_rows=total_rows, successful=successful, failed=failed, errors=errors[:100], created_entries=created_ids
+    rows = read_upload(await file.read(), file.filename or "", sheet_name)
+    return process_csv_upload(
+        rows,
+        db,
+        current_user,
+        row_mapper=_map_downtime_row,
+        create_fn=create_downtime_event,
+        id_getter=lambda c: c.downtime_entry_id,
     )
 
 
 # ==================== 2. WIP HOLDS CSV UPLOAD ====================
+def _map_holds_row(row: dict, current_user: User) -> WIPHoldCreate:
+    # SECURITY: Validate client_id - REQUIRED
+    client_id = sanitize_csv_value(row.get("client_id", ""))
+    if not client_id:
+        raise ValueError("client_id is required")
+    verify_client_access(current_user, client_id)
+
+    # Parse expected resolution date if present
+    expected_date = None
+    if row.get("expected_resolution_date"):
+        expected_date = datetime.strptime(row["expected_resolution_date"], "%Y-%m-%d").date()
+
+    # Parse hold date if present
+    hold_date = None
+    if row.get("hold_date"):
+        hold_date = datetime.strptime(row["hold_date"], "%Y-%m-%d").date()
+
+    # Build data dict for legacy CSV mapping
+    csv_data = {
+        "client_id": client_id,
+        "work_order_number": sanitize_csv_value(row.get("work_order_number") or row.get("work_order_id") or ""),
+        "job_id": sanitize_csv_value(row.get("job_id") or ""),
+        "hold_date": hold_date,
+        "hold_category": sanitize_csv_value(row.get("hold_category") or row.get("hold_reason_category") or ""),
+        "hold_reason": sanitize_csv_value(row.get("hold_reason") or ""),
+        "hold_reason_description": sanitize_csv_value(row.get("hold_reason_description") or ""),
+        "quality_issue_type": sanitize_csv_value(row.get("quality_issue_type") or ""),
+        "expected_resolution_date": expected_date,
+        "notes": sanitize_csv_value(row.get("notes") or ""),
+    }
+
+    # Use the from_legacy_csv method for proper field mapping
+    return WIPHoldCreate.from_legacy_csv(csv_data)
+
+
 @router.post("/api/holds/upload/csv", response_model=CSVUploadResponse)
 async def upload_holds_csv(
     file: UploadFile = File(...),
@@ -239,81 +247,50 @@ async def upload_holds_csv(
     - expected_resolution_date (YYYY-MM-DD)
     - notes (text)
     """
-    filename = file.filename or ""
-    if not filename.lower().endswith(_ALLOWED_EXTENSIONS):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File must be a .csv or .xlsx file")
-
-    contents = await file.read()
-    if len(contents) > _MAX_CSV_SIZE:
-        raise HTTPException(status_code=413, detail="File size exceeds 10MB limit")
-    rows_list = _read_upload_file(contents, filename, sheet_name=sheet_name)
-
-    total_rows = 0
-    successful = 0
-    failed = 0
-    errors = []
-    created_ids = []
-
-    for row_num, row in enumerate(rows_list, start=2):
-        total_rows += 1
-
-        try:
-            # SECURITY: Validate client_id - REQUIRED
-            client_id = sanitize_csv_value(row.get("client_id", ""))
-            if not client_id:
-                raise ValueError("client_id is required")
-            verify_client_access(current_user, client_id)
-
-            # Parse expected resolution date if present
-            expected_date = None
-            if row.get("expected_resolution_date"):
-                expected_date = datetime.strptime(row["expected_resolution_date"], "%Y-%m-%d").date()
-
-            # Parse hold date if present
-            hold_date = None
-            if row.get("hold_date"):
-                hold_date = datetime.strptime(row["hold_date"], "%Y-%m-%d").date()
-
-            # Build data dict for legacy CSV mapping
-            csv_data = {
-                "client_id": client_id,
-                "work_order_number": sanitize_csv_value(row.get("work_order_number") or row.get("work_order_id") or ""),
-                "job_id": sanitize_csv_value(row.get("job_id") or ""),
-                "hold_date": hold_date,
-                "hold_category": sanitize_csv_value(row.get("hold_category") or row.get("hold_reason_category") or ""),
-                "hold_reason": sanitize_csv_value(row.get("hold_reason") or ""),
-                "hold_reason_description": sanitize_csv_value(row.get("hold_reason_description") or ""),
-                "quality_issue_type": sanitize_csv_value(row.get("quality_issue_type") or ""),
-                "expected_resolution_date": expected_date,
-                "notes": sanitize_csv_value(row.get("notes") or ""),
-            }
-
-            # Use the from_legacy_csv method for proper field mapping
-            entry = WIPHoldCreate.from_legacy_csv(csv_data)
-
-            created = create_wip_hold(db, entry, current_user)
-            created_ids.append(created.hold_entry_id)
-            successful += 1
-
-        except ValidationError as e:
-            logger.warning("CSV row %d validation failed: %s", row_num, e)
-            failed += 1
-            errors.append({"row": row_num, "error": "Validation error in CSV row data", "data": row})
-        except SQLAlchemyError:
-            logger.exception("Database error processing CSV row %d", row_num)
-            failed += 1
-            errors.append({"row": row_num, "error": "Database error processing row", "data": row})
-        except (ValueError, TypeError, KeyError, InvalidOperation) as e:
-            logger.warning("Data parsing error in CSV row %d: %s", row_num, e)
-            failed += 1
-            errors.append({"row": row_num, "error": "Data parsing error in CSV row", "data": row})
-
-    return CSVUploadResponse(
-        total_rows=total_rows, successful=successful, failed=failed, errors=errors[:100], created_entries=created_ids
+    rows = read_upload(await file.read(), file.filename or "", sheet_name)
+    return process_csv_upload(
+        rows,
+        db,
+        current_user,
+        row_mapper=_map_holds_row,
+        create_fn=create_wip_hold,
+        id_getter=lambda c: c.hold_entry_id,
     )
 
 
 # ==================== 3. ATTENDANCE RECORDS CSV UPLOAD ====================
+def _map_attendance_row(row: dict, current_user: User) -> AttendanceRecordCreate:
+    # SECURITY: Validate client_id - REQUIRED
+    client_id = sanitize_csv_value(row.get("client_id", ""))
+    if not client_id:
+        raise ValueError("client_id is required")
+    verify_client_access(current_user, client_id)
+
+    # Parse date - support both field names
+    shift_date_str = row.get("shift_date") or row.get("attendance_date")
+    if not shift_date_str:
+        raise ValueError("shift_date or attendance_date is required")
+    shift_date = datetime.strptime(shift_date_str, "%Y-%m-%d").date()
+
+    # Build data dict for legacy CSV mapping
+    csv_data = {
+        "client_id": client_id,
+        "employee_id": row.get("employee_id"),
+        "shift_date": shift_date,
+        "shift_id": row.get("shift_id"),
+        "status": sanitize_csv_value(row.get("status", "Present")),
+        "scheduled_hours": row.get("scheduled_hours", 8),
+        "actual_hours_worked": row.get("actual_hours_worked") or row.get("actual_hours"),
+        "covered_by_employee_id": row.get("covered_by_employee_id"),
+        "coverage_confirmed": row.get("coverage_confirmed", 0),
+        "absence_reason": sanitize_csv_value(row.get("absence_reason") or ""),
+        "notes": sanitize_csv_value(row.get("notes") or ""),
+    }
+
+    # Use the from_legacy_csv method for proper field mapping
+    return AttendanceRecordCreate.from_legacy_csv(csv_data)
+
+
 @router.post("/api/attendance/upload/csv", response_model=CSVUploadResponse)
 async def upload_attendance_csv(
     file: UploadFile = File(...),
@@ -348,74 +325,14 @@ async def upload_attendance_csv(
     - absence_reason (text)
     - notes (text)
     """
-    filename = file.filename or ""
-    if not filename.lower().endswith(_ALLOWED_EXTENSIONS):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File must be a .csv or .xlsx file")
-
-    contents = await file.read()
-    if len(contents) > _MAX_CSV_SIZE:
-        raise HTTPException(status_code=413, detail="File size exceeds 10MB limit")
-    rows_list = _read_upload_file(contents, filename, sheet_name=sheet_name)
-
-    total_rows = 0
-    successful = 0
-    failed = 0
-    errors = []
-    created_ids = []
-
-    for row_num, row in enumerate(rows_list, start=2):
-        total_rows += 1
-
-        try:
-            # SECURITY: Validate client_id - REQUIRED
-            client_id = sanitize_csv_value(row.get("client_id", ""))
-            if not client_id:
-                raise ValueError("client_id is required")
-            verify_client_access(current_user, client_id)
-
-            # Parse date - support both field names
-            shift_date_str = row.get("shift_date") or row.get("attendance_date")
-            if not shift_date_str:
-                raise ValueError("shift_date or attendance_date is required")
-            shift_date = datetime.strptime(shift_date_str, "%Y-%m-%d").date()
-
-            # Build data dict for legacy CSV mapping
-            csv_data = {
-                "client_id": client_id,
-                "employee_id": row.get("employee_id"),
-                "shift_date": shift_date,
-                "shift_id": row.get("shift_id"),
-                "status": sanitize_csv_value(row.get("status", "Present")),
-                "scheduled_hours": row.get("scheduled_hours", 8),
-                "actual_hours_worked": row.get("actual_hours_worked") or row.get("actual_hours"),
-                "covered_by_employee_id": row.get("covered_by_employee_id"),
-                "coverage_confirmed": row.get("coverage_confirmed", 0),
-                "absence_reason": sanitize_csv_value(row.get("absence_reason") or ""),
-                "notes": sanitize_csv_value(row.get("notes") or ""),
-            }
-
-            # Use the from_legacy_csv method for proper field mapping
-            entry = AttendanceRecordCreate.from_legacy_csv(csv_data)
-
-            created = create_attendance_record(db, entry, current_user)
-            created_ids.append(created.attendance_entry_id)
-            successful += 1
-
-        except ValidationError as e:
-            logger.warning("CSV row %d validation failed: %s", row_num, e)
-            failed += 1
-            errors.append({"row": row_num, "error": "Validation error in CSV row data", "data": row})
-        except SQLAlchemyError:
-            logger.exception("Database error processing CSV row %d", row_num)
-            failed += 1
-            errors.append({"row": row_num, "error": "Database error processing row", "data": row})
-        except (ValueError, TypeError, KeyError, InvalidOperation) as e:
-            logger.warning("Data parsing error in CSV row %d: %s", row_num, e)
-            failed += 1
-            errors.append({"row": row_num, "error": "Data parsing error in CSV row", "data": row})
-
-    return CSVUploadResponse(
-        total_rows=total_rows, successful=successful, failed=failed, errors=errors[:100], created_entries=created_ids
+    rows = read_upload(await file.read(), file.filename or "", sheet_name)
+    return process_csv_upload(
+        rows,
+        db,
+        current_user,
+        row_mapper=_map_attendance_row,
+        create_fn=create_attendance_record,
+        id_getter=lambda c: c.attendance_entry_id,
     )
 
 
@@ -498,6 +415,56 @@ async def upload_coverage_csv(
 
 
 # ==================== 5. QUALITY INSPECTIONS CSV UPLOAD ====================
+def _map_quality_row(row: dict, current_user: User) -> QualityInspectionCreate:
+    # SECURITY: Validate client_id - REQUIRED
+    client_id = sanitize_csv_value(row.get("client_id", ""))
+    if not client_id:
+        raise ValueError("client_id is required")
+    verify_client_access(current_user, client_id)
+
+    # Parse date - support both field names
+    shift_date_str = row.get("shift_date") or row.get("inspection_date")
+    if not shift_date_str:
+        raise ValueError("shift_date or inspection_date is required")
+    shift_date = datetime.strptime(shift_date_str, "%Y-%m-%d").date()
+
+    # Parse inspection_date if separate from shift_date
+    inspection_date = None
+    if row.get("inspection_date"):
+        inspection_date = datetime.strptime(row["inspection_date"], "%Y-%m-%d").date()
+
+    # Calculate units_passed if not provided
+    units_inspected = int(row.get("units_inspected", 0))
+    defects_found = int(row.get("defects_found") or row.get("units_defective") or 0)
+    units_passed = int(row.get("units_passed", units_inspected - defects_found))
+
+    # Build data dict for legacy CSV mapping
+    csv_data = {
+        "client_id": client_id,
+        "work_order_number": sanitize_csv_value(row.get("work_order_number") or row.get("work_order_id") or ""),
+        "job_id": sanitize_csv_value(row.get("job_id") or ""),
+        "shift_date": shift_date,
+        "inspection_date": inspection_date,
+        "units_inspected": units_inspected,
+        "units_passed": units_passed,
+        "defects_found": defects_found,
+        "units_defective": defects_found,
+        "total_defects_count": int(row.get("total_defects_count") or defects_found),
+        "inspection_stage": sanitize_csv_value(row.get("inspection_stage") or ""),
+        "process_step": sanitize_csv_value(row.get("process_step") or ""),
+        "operation_checked": sanitize_csv_value(row.get("operation_checked") or ""),
+        "is_first_pass": int(row.get("is_first_pass", 1)),
+        "scrap_units": int(row.get("scrap_units") or row.get("units_scrapped") or 0),
+        "rework_units": int(row.get("rework_units") or row.get("units_reworked") or 0),
+        "units_requiring_repair": int(row.get("units_requiring_repair", 0)),
+        "inspection_method": sanitize_csv_value(row.get("inspection_method") or ""),
+        "notes": sanitize_csv_value(row.get("notes") or ""),
+    }
+
+    # Use the from_legacy_csv method for proper field mapping
+    return QualityInspectionCreate.from_legacy_csv(csv_data)
+
+
 @router.post("/api/quality/upload/csv", response_model=CSVUploadResponse)
 async def upload_quality_csv(
     file: UploadFile = File(...),
@@ -531,92 +498,14 @@ async def upload_quality_csv(
     - inspection_method (str, max 100)
     - notes (text)
     """
-    filename = file.filename or ""
-    if not filename.lower().endswith(_ALLOWED_EXTENSIONS):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File must be a .csv or .xlsx file")
-
-    contents = await file.read()
-    if len(contents) > _MAX_CSV_SIZE:
-        raise HTTPException(status_code=413, detail="File size exceeds 10MB limit")
-    rows_list = _read_upload_file(contents, filename, sheet_name=sheet_name)
-
-    total_rows = 0
-    successful = 0
-    failed = 0
-    errors = []
-    created_ids = []
-
-    for row_num, row in enumerate(rows_list, start=2):
-        total_rows += 1
-
-        try:
-            # SECURITY: Validate client_id - REQUIRED
-            client_id = sanitize_csv_value(row.get("client_id", ""))
-            if not client_id:
-                raise ValueError("client_id is required")
-            verify_client_access(current_user, client_id)
-
-            # Parse date - support both field names
-            shift_date_str = row.get("shift_date") or row.get("inspection_date")
-            if not shift_date_str:
-                raise ValueError("shift_date or inspection_date is required")
-            shift_date = datetime.strptime(shift_date_str, "%Y-%m-%d").date()
-
-            # Parse inspection_date if separate from shift_date
-            inspection_date = None
-            if row.get("inspection_date"):
-                inspection_date = datetime.strptime(row["inspection_date"], "%Y-%m-%d").date()
-
-            # Calculate units_passed if not provided
-            units_inspected = int(row.get("units_inspected", 0))
-            defects_found = int(row.get("defects_found") or row.get("units_defective") or 0)
-            units_passed = int(row.get("units_passed", units_inspected - defects_found))
-
-            # Build data dict for legacy CSV mapping
-            csv_data = {
-                "client_id": client_id,
-                "work_order_number": sanitize_csv_value(row.get("work_order_number") or row.get("work_order_id") or ""),
-                "job_id": sanitize_csv_value(row.get("job_id") or ""),
-                "shift_date": shift_date,
-                "inspection_date": inspection_date,
-                "units_inspected": units_inspected,
-                "units_passed": units_passed,
-                "defects_found": defects_found,
-                "units_defective": defects_found,
-                "total_defects_count": int(row.get("total_defects_count") or defects_found),
-                "inspection_stage": sanitize_csv_value(row.get("inspection_stage") or ""),
-                "process_step": sanitize_csv_value(row.get("process_step") or ""),
-                "operation_checked": sanitize_csv_value(row.get("operation_checked") or ""),
-                "is_first_pass": int(row.get("is_first_pass", 1)),
-                "scrap_units": int(row.get("scrap_units") or row.get("units_scrapped") or 0),
-                "rework_units": int(row.get("rework_units") or row.get("units_reworked") or 0),
-                "units_requiring_repair": int(row.get("units_requiring_repair", 0)),
-                "inspection_method": sanitize_csv_value(row.get("inspection_method") or ""),
-                "notes": sanitize_csv_value(row.get("notes") or ""),
-            }
-
-            # Use the from_legacy_csv method for proper field mapping
-            entry = QualityInspectionCreate.from_legacy_csv(csv_data)
-
-            created = create_quality_inspection(db, entry, current_user)
-            created_ids.append(created.quality_entry_id)
-            successful += 1
-
-        except ValidationError as e:
-            logger.warning("CSV row %d validation failed: %s", row_num, e)
-            failed += 1
-            errors.append({"row": row_num, "error": "Validation error in CSV row data", "data": row})
-        except SQLAlchemyError:
-            logger.exception("Database error processing CSV row %d", row_num)
-            failed += 1
-            errors.append({"row": row_num, "error": "Database error processing row", "data": row})
-        except (ValueError, TypeError, KeyError, InvalidOperation) as e:
-            logger.warning("Data parsing error in CSV row %d: %s", row_num, e)
-            failed += 1
-            errors.append({"row": row_num, "error": "Data parsing error in CSV row", "data": row})
-
-    return CSVUploadResponse(
-        total_rows=total_rows, successful=successful, failed=failed, errors=errors[:100], created_entries=created_ids
+    rows = read_upload(await file.read(), file.filename or "", sheet_name)
+    return process_csv_upload(
+        rows,
+        db,
+        current_user,
+        row_mapper=_map_quality_row,
+        create_fn=create_quality_inspection,
+        id_getter=lambda c: c.quality_entry_id,
     )
 
 
