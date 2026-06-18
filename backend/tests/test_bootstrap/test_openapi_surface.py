@@ -14,10 +14,12 @@ def current_surface() -> dict[str, Any]:
 
 
 def test_openapi_tag_set_unchanged():
-    expected = json.load(open(SNAP))
+    with open(SNAP) as f:
+        expected = json.load(f)
     assert current_surface()["tags"] == expected["tags"]
 
 
 def test_openapi_route_set_unchanged():
-    expected = json.load(open(SNAP))
+    with open(SNAP) as f:
+        expected = json.load(f)
     assert current_surface()["routes"] == expected["routes"]

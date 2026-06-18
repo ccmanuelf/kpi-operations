@@ -107,24 +107,28 @@ def configure_middleware(app: FastAPI) -> None:
 
 def register_exception_handlers(app: FastAPI) -> None:
     async def domain_validation_error_handler(request: Request, exc: DomainValidationError) -> JSONResponse:
+        """Handle domain validation errors -> 400"""
         return JSONResponse(
             status_code=400,
             content={"detail": exc.message, "code": exc.code},
         )
 
     async def resource_not_found_handler(request: Request, exc: ResourceNotFoundError) -> JSONResponse:
+        """Handle resource not found -> 404"""
         return JSONResponse(
             status_code=404,
             content={"detail": exc.message, "code": exc.code},
         )
 
     async def domain_exception_handler(request: Request, exc: DomainException) -> JSONResponse:
+        """Handle all other domain exceptions -> 400"""
         return JSONResponse(
             status_code=400,
             content={"detail": exc.message, "code": exc.code},
         )
 
     async def sqlalchemy_error_handler(request: Request, exc: SQLAlchemyError) -> JSONResponse:
+        """Handle database errors -> 503"""
         logger.exception("Database error: %s", exc)
         return JSONResponse(
             status_code=503,
@@ -132,6 +136,7 @@ def register_exception_handlers(app: FastAPI) -> None:
         )
 
     async def generic_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+        """Handle unexpected errors -> 500 with sanitized message"""
         logger.exception("Unhandled exception: %s", exc)
         return JSONResponse(
             status_code=500,
