@@ -1,0 +1,202 @@
+"""Application lifecycle: startup/shutdown units + the FastAPI lifespan."""
+
+import logging
+from contextlib import asynccontextmanager
+from typing import Any, AsyncIterator, Callable, Optional
+
+from fastapi import FastAPI
+
+from backend.database import engine, Base
+from backend.events import register_all_handlers, get_event_bus
+from backend.orm.event_store import create_event_persistence_handler
+
+logger = logging.getLogger(__name__)
+
+# Optional scheduler import for lifecycle events. Typed as Optional[Any]
+# because the apscheduler-backed scheduler is import-shielded — the
+# type can't be resolved when apscheduler isn't installed (e.g. in
+# slim test images), and the only call sites (`.start()` / `.stop()`)
+# already guard with `if report_scheduler is not None`.
+report_scheduler: Optional[Any] = None
+try:
+    from backend.tasks.daily_reports import scheduler as _imported_scheduler
+
+    report_scheduler = _imported_scheduler
+except ImportError:
+    pass
+
+# Dual-view nightly calculation scheduler (F.4). Same import-shield pattern
+# so projects without apscheduler still boot.
+dual_view_scheduler: Optional[Any] = None
+try:
+    from backend.tasks.dual_view_calculation import scheduler as _imported_dv_scheduler
+
+    dual_view_scheduler = _imported_dv_scheduler
+except ImportError:
+    pass
+
+
+def _auto_seed_demo_data() -> None:
+    """
+    Auto-seed demo data if the database is empty or incomplete (DEMO_MODE only).
+
+    FORCE_RESEED=true: always drop and re-seed (one-time migration).
+    Otherwise: smart detection — re-seed only if data is missing/stale.
+
+    The re-seed path executes Base.metadata.drop_all(); the DEMO_MODE gate must
+    stay the first statement so a non-demo deployment can never reach it
+    (Run 7 C-1). Guarded by backend/tests/test_demo_seed_gate.py.
+    """
+    from backend.config import settings
+
+    if not settings.DEMO_MODE:
+        logger.info("DEMO_MODE disabled — skipping demo data auto-seed")
+        return
+
+    try:
+        import os
+        from backend.database import SessionLocal
+        from backend.orm.client import Client
+
+        EXPECTED_CLIENTS = {"ACME-MFG", "TEXTILE-PRO", "FASHION-WORKS", "QUALITY-STITCH", "GLOBAL-APPAREL"}
+        force_reseed = os.environ.get("FORCE_RESEED", "").lower() in ("1", "true", "yes")
+
+        db = SessionLocal()
+        try:
+            existing_clients = {c.client_id for c in db.query(Client.client_id).all()}
+            client_count = len(existing_clients)
+        finally:
+            db.close()
+
+        # Determine if re-seed is needed
+        if force_reseed:
+            logger.info(
+                "FORCE_RESEED enabled — dropping all tables and re-seeding (%d clients existed)",
+                client_count,
+            )
+            need_seed = True
+        elif client_count == 0:
+            logger.info("Empty database detected — seeding demo data...")
+            need_seed = True
+        elif not EXPECTED_CLIENTS.issubset(existing_clients):
+            missing = EXPECTED_CLIENTS - existing_clients
+            logger.info(
+                "Incomplete demo data detected (missing clients: %s) — re-seeding...",
+                ", ".join(sorted(missing)),
+            )
+            need_seed = True
+        else:
+            need_seed = False
+
+        if need_seed:
+            # Drop and recreate if there's stale data to replace
+            if client_count > 0:
+                Base.metadata.drop_all(bind=engine)
+                Base.metadata.create_all(bind=engine)
+
+            try:
+                # Prefer the dev seeder (has TestDataFactory for richer data)
+                from backend.scripts.init_demo_database import init_database
+
+                init_database()
+            except ImportError:
+                # Docker image doesn't include backend.tests — use Docker seeder
+                logger.info("Using Docker-safe demo seeder (test fixtures not available)")
+                from backend.db.migrations.demo_seeder import DemoDataSeeder
+
+                seed_db = SessionLocal()
+                try:
+                    seeder = DemoDataSeeder(seed_db)
+                    seeder.seed_all()
+                    seed_db.commit()
+                finally:
+                    seed_db.close()
+            logger.info("Auto-seeding complete")
+        else:
+            logger.info("Database OK (%d clients, all expected clients present)", client_count)
+    except Exception as e:
+        logger.warning("Auto-seed check failed: %s", e)
+
+
+def run_best_effort(name: str, fn: Callable[[], None]) -> None:
+    """Run a best-effort startup/shutdown step; log and swallow any exception."""
+    try:
+        fn()
+    except Exception as e:  # noqa: BLE001 - best-effort by design
+        logger.warning("%s failed: %s", name, e)
+
+
+def init_schema() -> None:
+    """FATAL: create all tables (idempotent) + warn if the registry looks incomplete."""
+    Base.metadata.create_all(bind=engine)
+    actual = len(Base.metadata.tables)
+    if actual < 45:
+        logger.warning(
+            "Schema registry may be incomplete: expected >=45 tables, got %d. "
+            "Check that all ORM models are imported in backend/orm/__init__.py.",
+            actual,
+        )
+
+
+def init_event_infrastructure() -> None:
+    """Register domain-event handlers + wire persistence."""
+    from backend.database import SessionLocal
+
+    register_all_handlers()
+    event_bus = get_event_bus()
+    event_bus.set_persistence_handler(create_event_persistence_handler(SessionLocal))
+    logger.info("Domain events infrastructure initialized")
+
+
+def start_schedulers() -> None:
+    """Start the report + dual-view schedulers (each None-guarded AND isolated:
+    one scheduler's start failure must not skip the other — matches the original's
+    two separate try/excepts)."""
+    run_best_effort("report scheduler start", lambda: report_scheduler.start() if report_scheduler else None)
+    run_best_effort("dual-view scheduler start", lambda: dual_view_scheduler.start() if dual_view_scheduler else None)
+
+
+def stop_schedulers() -> None:
+    """Stop the dual-view then report schedulers (each None-guarded AND isolated)."""
+    run_best_effort("dual-view scheduler stop", lambda: dual_view_scheduler.stop() if dual_view_scheduler else None)
+    run_best_effort("report scheduler stop", lambda: report_scheduler.stop() if report_scheduler else None)
+
+
+def seed_metric_dependencies_step() -> None:
+    """Idempotently seed the metric→assumption dependency map."""
+    from backend.database import SessionLocal
+    from backend.services.calculations.assumption_catalog import seed_metric_dependencies
+
+    dep_db = SessionLocal()
+    try:
+        inserted = seed_metric_dependencies(dep_db)
+        if inserted:
+            logger.info("Seeded %d metric->assumption dependency rows", inserted)
+    finally:
+        dep_db.close()
+
+
+def dispose_engine() -> None:
+    """Dispose the DB engine connection pool."""
+    engine.dispose()
+    logger.info("Database engine disposed")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    """Application lifespan: startup then shutdown, preserving order + failure semantics."""
+    # STARTUP — fatal steps unwrapped; best-effort steps via run_best_effort
+    init_schema()  # fatal
+    from backend.db.migrations.capacity_planning_tables import create_capacity_tables
+
+    create_capacity_tables()  # fatal
+    run_best_effort("event infrastructure init", init_event_infrastructure)
+    start_schedulers()  # per-scheduler isolation lives inside (see its definition)
+    run_best_effort("demo data seed", _auto_seed_demo_data)
+    run_best_effort("metric dependency seed", seed_metric_dependencies_step)
+
+    yield
+
+    # SHUTDOWN — all best-effort
+    stop_schedulers()
+    run_best_effort("engine dispose", dispose_engine)
