@@ -10,18 +10,11 @@ echo ""
 
 cd "$(dirname "$0")/.." || exit 1
 
-# Check if database exists
+# The backend (start-backend.sh) runs with DEMO_MODE=true, which auto-creates
+# the schema and seeds demo data on first boot — no manual seed step needed.
 if [ ! -f "database/kpi_platform.db" ]; then
-    echo "❌ Database not found!"
-    echo "   Initializing database..."
-    python3 database/init_sqlite_schema.py
-    echo ""
-    echo "   Generating sample data..."
-    python3 database/generators/generate_complete_sample_data.py
-    echo ""
+    echo "ℹ️  No database yet — the backend will auto-create and seed it on boot."
 fi
-
-echo "✅ Database ready"
 echo ""
 
 # macOS - Open new Terminal tabs

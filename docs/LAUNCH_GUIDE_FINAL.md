@@ -259,14 +259,11 @@ All 7 modules have full Create, Read, Update, Delete operations:
 ### Step 2: Initialize Database (2 minutes)
 
 ```bash
-cd /Users/mcampos.cerda/Developer/Programming/kpi-operations/database
+cd /Users/mcampos.cerda/Developer/Programming/kpi-operations/backend
 
-# Database already initialized! Verify:
-python init_sqlite_schema.py
-
-# Load demo data:
-cd generators
-python generate_complete_sample_data.py
+# DEMO_MODE auto-creates the schema and seeds demo data on first boot
+# (no manual seed scripts needed):
+DEMO_MODE=true PYTHONPATH=.. uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 **Expected Output:**
