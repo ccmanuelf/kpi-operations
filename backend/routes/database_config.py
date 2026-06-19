@@ -16,7 +16,6 @@ from backend.database import Base, engine as current_engine
 from backend.db.factory import DatabaseProviderFactory
 from backend.db.state import ProviderStateManager, MigrationState
 from backend.db.migrations.schema_initializer import SchemaInitializer
-from backend.db.migrations.demo_seeder import DemoDataSeeder
 from backend.db.migrations.data_migrator import DataMigrator, DataMigrationError
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import SQLAlchemyError
@@ -441,7 +440,6 @@ async def run_migration(
 
             SessionLocal = sessionmaker(bind=target_engine)
             with SessionLocal() as session:
-                seeder = DemoDataSeeder(session)
 
                 def seed_progress(entity_name: str) -> None:
                     state_manager.update_migration_state(
@@ -455,8 +453,14 @@ async def run_migration(
                         )
                     )
 
-                seeder.seed_all(seed_progress)
-                logger.info(f"Demo data seeded: {seeder.get_seeded_counts()}")
+                # Canonical demo seeder (Run 8 unification). The target schema was
+                # created above (create_all_tables covers the ORM capacity tables),
+                # so init_database seeds into this session and the `with` block
+                # closes it. Lazy import keeps the route module light.
+                from backend.scripts.init_demo_database import init_database
+
+                init_database(db=session, progress_callback=seed_progress)
+                logger.info("Demo data seeded into migration target")
 
         # Step 4: Update provider configuration
         state_manager.set_current_provider(target_provider)

@@ -94,23 +94,14 @@ def _auto_seed_demo_data() -> None:
                 Base.metadata.drop_all(bind=engine)
                 Base.metadata.create_all(bind=engine)
 
-            try:
-                # Prefer the dev seeder (has TestDataFactory for richer data)
-                from backend.scripts.init_demo_database import init_database
+            # Single canonical demo seeder (Run 8 unification). init_database
+            # creates the schema + seeds all demo data and is pure app code (no
+            # test-only deps), so it runs in every environment including the
+            # Docker image — the old demo_seeder fallback was unreachable and is
+            # removed. Any failure is caught below and by run_best_effort.
+            from backend.scripts.init_demo_database import init_database
 
-                init_database()
-            except ImportError:
-                # Docker image doesn't include backend.tests — use Docker seeder
-                logger.info("Using Docker-safe demo seeder (test fixtures not available)")
-                from backend.db.migrations.demo_seeder import DemoDataSeeder
-
-                seed_db = SessionLocal()
-                try:
-                    seeder = DemoDataSeeder(seed_db)
-                    seeder.seed_all()
-                    seed_db.commit()
-                finally:
-                    seed_db.close()
+            init_database()
             logger.info("Auto-seeding complete")
         else:
             logger.info("Database OK (%d clients, all expected clients present)", client_count)
