@@ -17,6 +17,8 @@ Stage 2 scope chosen by the maintainer: **gate integrity + quick wins**. Shipped
 - **H-3** — prod healthcheck → `/health/live`.
 - **H-5** — auth fixtures `pytest.fail` instead of `skip`.
 - **Quick wins** — demo creds, `main.py` version 1.1.0, python-jose→pyjwt doc, 5 stray `.bak` removed.
+- **A11y (CI-surfaced, fixed)** — the e2e a11y-contrast gate exposed a pre-existing WCAG-AA dark-theme violation: 8 KPI hero views rendered white text on status-color chips (`--cds-support-*` flip bright in dark; `amber-darken-3` #ff8f00) failing ~2.3–2.4:1. Fixed to theme-stable `success`/`error`/`#b45309` (~5:1) + updated unit assertions. Also hardened the a11y test's `goto` against a redirect-abort (`ERR_ABORTED`) flake. Verified: full a11y suite (light+dark, 13 screens) green, 2041 vitest pass.
+- **CI-iteration fixes** — health.py version assertions (1.0.1→1.1.0) and the auth-gate e2e route (`/production`→`/kpi-dashboard`, deterministic session-timeout) — failures caught on the first CI run and fixed.
 
 **Deferred (maintainer decision / follow-up):** M-1 (QR IDOR), M-2 (upload cap), H-4 (threadpool reports), M-3/M-4/M-5/M-7 (route refactors, pagination, store actions), L-tier, and C5 (schema mechanism, MariaDB go-live). The `operator1`-vs-`operator2` seeder divergence (two demo seeders with different user sets — `create_demo_users.py` vs `demo_seeder.py`) surfaced during the creds fix and is worth reconciling separately.
 
