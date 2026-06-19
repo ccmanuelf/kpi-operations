@@ -3,7 +3,7 @@
 # Stage 1: Build stage
 # Production: pin to @sha256: digest from docker.io for reproducible builds
 # docker pull python:3.11.11-slim-bookworm && docker inspect --format='{{index .RepoDigests 0}}' python:3.11.11-slim-bookworm
-FROM python:3.11.11-slim-bookworm as builder
+FROM python:3.11.11-slim-bookworm@sha256:081075da77b2b55c23c088251026fb69a7b2bf92471e491ff5fd75c192fd38e5 as builder
 
 WORKDIR /app
 
@@ -12,15 +12,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements first for layer caching
-COPY backend/requirements.txt ./backend/
+# Copy the hash-pinned lock first for layer caching
+COPY backend/requirements.lock ./backend/
 
-# Install Python dependencies
-RUN pip install --no-cache-dir --prefix=/usr/local -r backend/requirements.txt
+# Install Python dependencies — hash-verified, wheels-only (reproducible, tamper-resistant)
+RUN pip install --no-cache-dir --require-hashes --only-binary=:all: --prefix=/usr/local -r backend/requirements.lock
 
 # Stage 2: Production stage (same base as builder for consistency)
 # Production: pin to @sha256: digest from docker.io for reproducible builds
-FROM python:3.11.11-slim-bookworm as production
+FROM python:3.11.11-slim-bookworm@sha256:081075da77b2b55c23c088251026fb69a7b2bf92471e491ff5fd75c192fd38e5 as production
 
 LABEL maintainer="KPI Operations Team"
 LABEL version="1.1.0"

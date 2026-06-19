@@ -105,5 +105,5 @@ docs/
 # Reference files not needed in container
 reference_not_to_sync/
 
-# Package lock files for backend (poetry.lock is used)
+# Frontend package-lock.json is rebuilt in the image; backend uses requirements*.lock which MUST be copied in (do not ignore them).
 package-lock.json
