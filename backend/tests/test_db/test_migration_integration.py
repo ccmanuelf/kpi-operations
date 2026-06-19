@@ -1,17 +1,16 @@
 """
 Integration Tests for Migration Infrastructure
 
-Tests for SchemaInitializer, DemoDataSeeder, and MigrationState.
+Tests for SchemaInitializer, the canonical demo seeder (init_database), and MigrationState.
 """
 
 import pytest
 
-from sqlalchemy import create_engine, inspect, Column, Integer, String
+from sqlalchemy import create_engine, inspect, text, Column, Integer, String
 from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy.pool import NullPool
 
 from backend.db.migrations.schema_initializer import SchemaInitializer
-from backend.db.migrations.demo_seeder import DemoDataSeeder
 from backend.db.state import ProviderStateManager, MigrationState
 
 # Create a simple test Base for testing schema operations
@@ -244,12 +243,17 @@ class TestMigrationState:
         assert state.error_message == "Connection refused"
 
 
-class TestDemoDataSeeder:
-    """Tests for DemoDataSeeder."""
+class TestInitDatabaseSessionMode:
+    """The canonical demo seeder's migration-route mode: init_database(db=session).
+
+    Run 8 unification: init_database replaced DemoDataSeeder. In session mode it
+    seeds into a caller-supplied session (the SQLite->MariaDB migration target)
+    without creating the global schema or closing the session.
+    """
 
     @pytest.fixture
     def session_and_engine(self, tmp_path):
-        """Create session with Base tables."""
+        """Session bound to a fresh SQLite engine with the full ORM schema."""
         from backend.database import Base
 
         db_path = tmp_path / "seed_test.db"
@@ -261,44 +265,27 @@ class TestDemoDataSeeder:
         session.close()
         engine.dispose()
 
-    def test_seed_all_runs_without_error(self, session_and_engine):
-        """Test seed_all completes without raising."""
-        session, engine = session_and_engine
-        seeder = DemoDataSeeder(session)
+    def test_seeds_canonical_users_into_provided_session(self, session_and_engine):
+        """db=<session> seeds the canonical users into THAT session (no global schema create)."""
+        from backend.scripts.init_demo_database import init_database
 
-        # This may fail if schemas don't match, which is OK for unit test
-        # Just verify the seeder can be instantiated and called
-        try:
-            seeder.seed_all()
-        except Exception:
-            # Expected if schema doesn't have all tables
-            pass
+        session, _engine = session_and_engine
+        init_database(db=session)
 
-    def test_get_seeded_counts(self, session_and_engine):
-        """Test getting seeded counts."""
-        session, engine = session_and_engine
-        seeder = DemoDataSeeder(session)
+        rows = session.execute(text('SELECT username FROM "USER"')).fetchall()
+        usernames = {r[0] for r in rows}
+        # Canonical set seeded by init_database (verified against the live app).
+        assert {"admin", "supervisor1", "operator1", "poweruser"} <= usernames
 
-        # Initially empty
-        counts = seeder.get_seeded_counts()
-        assert counts == {}
+    def test_progress_callback_invoked(self, session_and_engine):
+        """progress_callback fires so the migration UI can report steps."""
+        from backend.scripts.init_demo_database import init_database
 
-    def test_progress_callback_called(self, session_and_engine):
-        """Test progress callback is invoked."""
-        session, engine = session_and_engine
-        seeder = DemoDataSeeder(session)
-        callback_calls = []
+        session, _engine = session_and_engine
+        steps: list[str] = []
+        init_database(db=session, progress_callback=steps.append)
 
-        def callback(name):
-            callback_calls.append(name)
-
-        try:
-            seeder.seed_all(progress_callback=callback)
-        except Exception:
-            pass
-
-        # Should have been called at least once
-        assert len(callback_calls) >= 0  # May be 0 if seeding fails early
+        assert len(steps) >= 1
 
 
 class TestTableOrderCompleteness:

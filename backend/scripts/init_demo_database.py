@@ -20,7 +20,9 @@ import uuid
 import random
 from datetime import datetime, date, timedelta, timezone
 from decimal import Decimal
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
+
+from sqlalchemy.orm import Session
 
 # Ensure backend module is importable when running as a standalone script
 # (the package isn't pip-installed, so we extend sys.path before importing
@@ -307,27 +309,46 @@ for _prod in MASTER_PRODUCTS:
             }
 
 
-def init_database() -> None:
-    """Initialize database with schema and comprehensive demo data."""
-    print("=" * 70)
-    print("KPI Operations Platform - Comprehensive Database Initialization")
-    print("=" * 70)
+def init_database(
+    db: Optional[Session] = None,
+    progress_callback: Optional[Callable[[str], None]] = None,
+) -> None:
+    """Initialize the database with schema and comprehensive demo data.
 
-    # ==================================================================
-    # Step 1: Create all tables (including capacity planning)
-    # ==================================================================
-    print("\n[1/10] Creating database schema...")
-    Base.metadata.create_all(bind=engine)
+    The single canonical demo seeder (Run 8 unification). Two call modes:
+      * db=None (CLI / CI / DEMO_MODE boot auto-seed): create the schema on the
+        global engine, open a session, seed, commit, and close it.
+      * db=<session> (the SQLite->MariaDB migration route): seed into the caller's
+        session on its target engine; the caller owns schema creation and closing
+        the session. progress_callback(step) feeds the migration UI.
+    """
+    owns_session = db is None
+    if owns_session:
+        print("=" * 70)
+        print("KPI Operations Platform - Comprehensive Database Initialization")
+        print("=" * 70)
 
-    from backend.db.migrations.capacity_planning_tables import create_capacity_tables
+        # ==================================================================
+        # Step 1: Create all tables (including capacity planning)
+        # ==================================================================
+        print("\n[1/10] Creating database schema...")
+        Base.metadata.create_all(bind=engine)
 
-    created_tables = create_capacity_tables()
-    if created_tables:
-        print(f"  + Created {len(created_tables)} capacity planning tables")
+        from backend.db.migrations.capacity_planning_tables import create_capacity_tables
 
-    print("  All tables created")
+        created_tables = create_capacity_tables()
+        if created_tables:
+            print(f"  + Created {len(created_tables)} capacity planning tables")
 
-    db = SessionLocal()
+        print("  All tables created")
+
+        db = SessionLocal()
+
+    # db is non-None here: either supplied by the caller or opened just above.
+    assert db is not None
+
+    if progress_callback:
+        progress_callback("clients, users, employees")
 
     try:
         # ==============================================================
@@ -1864,6 +1885,12 @@ def init_database() -> None:
 
         seed_metric_dependencies(db)
 
+        # Persist everything. The intermediate steps commit as they go; this
+        # final commit covers the tail and guarantees callers that don't manage
+        # their own commit (the migration route's `with` context only closes) see
+        # a fully-seeded database.
+        db.commit()
+
     except Exception as e:
         db.rollback()
         print(f"\nError: {str(e)}")
@@ -1872,7 +1899,10 @@ def init_database() -> None:
         traceback.print_exc()
         raise
     finally:
-        db.close()
+        # Only close sessions we opened; a caller-supplied session (migration
+        # route) is owned and closed by the caller.
+        if owns_session:
+            db.close()
 
 
 if __name__ == "__main__":

@@ -11,15 +11,13 @@ echo ""
 # Navigate to project root
 cd "$(dirname "$0")/.." || exit 1
 
-# Check if database exists
+# With DEMO_MODE=true the backend auto-creates the schema and seeds demo
+# data on first boot, so a missing database file is fine (it will be created).
 if [ ! -f "database/kpi_platform.db" ]; then
-    echo "❌ Database not found!"
-    echo "   Run: python3 database/init_sqlite_schema.py"
-    echo "   Then: python3 database/generators/generate_complete_sample_data.py"
-    exit 1
+    echo "ℹ️  No database yet — DEMO_MODE will auto-create and seed it on boot."
+else
+    echo "✓ Database found: database/kpi_platform.db"
 fi
-
-echo "✓ Database found: database/kpi_platform.db"
 echo ""
 
 # Kill any existing backend processes
@@ -36,5 +34,6 @@ echo "Press CTRL+C to stop the server"
 echo "=" * 70
 echo ""
 
-# Use python -m to ensure proper module resolution
-python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
+# Use python -m to ensure proper module resolution.
+# DEMO_MODE=true triggers the on-boot schema create + demo seed.
+DEMO_MODE=true python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
