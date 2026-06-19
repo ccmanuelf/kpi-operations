@@ -102,7 +102,7 @@ describe('useOnTimeDeliveryData', () => {
     it.each([
       [98, 'success'],
       [95, 'success'],
-      [90, 'amber-darken-3'],
+      [90, '#b45309'],
       [80, 'error'],
     ])('percentage=%d → %s', (percentage, expected) => {
       kpiStoreState.onTimeDelivery = { percentage }

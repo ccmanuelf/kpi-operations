@@ -24,7 +24,7 @@ from backend.bootstrap.app_config import configure_middleware, register_exceptio
 app = FastAPI(
     title="Manufacturing KPI Platform API",
     description="FastAPI backend for production tracking and KPI calculation",
-    version="1.0.0",
+    version="1.1.0",
     openapi_tags=tags_metadata,
     lifespan=lifespan,
 )
@@ -44,7 +44,7 @@ def root() -> Dict[str, Any]:
     return {
         "status": "healthy",
         "service": "Manufacturing KPI Platform API",
-        "version": "1.0.0",
+        "version": "1.1.0",
         "timestamp": datetime.now(tz=timezone.utc).isoformat(),
     }
 

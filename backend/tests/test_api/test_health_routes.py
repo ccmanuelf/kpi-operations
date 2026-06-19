@@ -56,7 +56,7 @@ class TestBasicHealthEndpoint:
         """Test root health endpoint returns version"""
         response = test_client.get("/health/")
         data = response.json()
-        assert data["version"] == "1.0.1"
+        assert data["version"] == "1.1.0"
 
     def test_health_root_response_structure(self, test_client):
         """Test root health endpoint has complete response structure"""
@@ -177,7 +177,7 @@ class TestDetailedHealthEndpoint:
         assert "service" in data
         service = data["service"]
         assert service["name"] == "KPI Operations API"
-        assert service["version"] == "1.0.1"
+        assert service["version"] == "1.1.0"
         assert "uptime" in service
         assert "uptime_seconds" in service
         assert "started_at" in service
@@ -599,12 +599,12 @@ class TestHealthNoAuthRequired:
     def test_detailed_requires_auth(self, test_client):
         """Test detailed health requires auth - returns 401/403 without token"""
         response = test_client.get("/health/detailed")
-        assert response.status_code in (401, 403)
+        assert response.status_code == 401
 
     def test_ready_requires_auth(self, test_client):
         """Test readiness probe requires auth - returns 401/403 without token"""
         response = test_client.get("/health/ready")
-        assert response.status_code in (401, 403)
+        assert response.status_code == 401
 
     def test_live_no_auth(self, test_client):
         """Test liveness probe doesn't require auth"""

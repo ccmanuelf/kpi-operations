@@ -252,7 +252,7 @@ class TestEquipmentCreateEndpoint:
         assert response.json()["equipment_name"] == "Admin Machine"
 
     def test_create_equipment_as_operator_forbidden(self, operator_client):
-        """Operator cannot create equipment (no supervisor override = 403/500)."""
+        """Operator cannot create equipment (supervisor role required = 403)."""
         client, db = operator_client
 
         payload = {
@@ -261,7 +261,7 @@ class TestEquipmentCreateEndpoint:
             "equipment_name": "Blocked Machine",
         }
         response = client.post("/api/equipment/", json=payload)
-        assert response.status_code in (403, 500)
+        assert response.status_code == 403
 
     def test_create_duplicate_equipment_conflict(self, supervisor_client):
         """Creating a duplicate equipment_code returns 409 Conflict."""
@@ -422,7 +422,7 @@ class TestEquipmentUpdateEndpoint:
 
         payload = {"equipment_name": "Blocked Update"}
         response = client.put(f"/api/equipment/{equip.equipment_id}", json=payload)
-        assert response.status_code in (403, 500)
+        assert response.status_code == 403
 
 
 # ============================================================================
@@ -468,4 +468,4 @@ class TestEquipmentDeleteEndpoint:
         equip = _seed_equipment(db, "MCH-BLKD", "Blocked Delete")
 
         response = client.delete(f"/api/equipment/{equip.equipment_id}")
-        assert response.status_code in (403, 500)
+        assert response.status_code == 403

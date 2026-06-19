@@ -48,8 +48,9 @@ test.describe('Capacity KPI Tracking — workbook-style AG Grid', () => {
       const headerVisible = await targetHeader.isVisible({ timeout: 3000 }).catch(() => false)
       expect(headerVisible !== undefined).toBeTruthy()
     } else {
-      // Empty state acceptable.
-      expect(true).toBeTruthy()
+      // Empty state is acceptable, but the KPI surface must still render
+      // (beforeEach navigated here) — assert that rather than fake a pass.
+      await expect(page.locator('text=/kpi/i').first()).toBeVisible({ timeout: 5000 })
     }
   })
 

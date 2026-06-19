@@ -188,7 +188,7 @@ class TestShiftCreateEndpoint:
         assert response.json()["data"]["shift_name"] == "Night"
 
     def test_create_shift_as_operator_forbidden(self, operator_client):
-        """Operator cannot create a shift (no supervisor override = 403/500)."""
+        """Operator cannot create a shift (supervisor role required = 403)."""
         client, db = operator_client
 
         payload = {
@@ -200,7 +200,7 @@ class TestShiftCreateEndpoint:
         response = client.post("/api/shifts/", json=payload)
         # Without supervisor dependency override, FastAPI tries real dependency
         # which returns 403 for operators
-        assert response.status_code in (403, 500)
+        assert response.status_code == 403
 
     def test_create_duplicate_shift_conflict(self, supervisor_client):
         """Creating a duplicate shift returns 409 Conflict."""

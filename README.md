@@ -132,8 +132,8 @@ npm run dev  # Starts on http://localhost:3000
 | Username | Password | Role |
 |----------|----------|------|
 | admin | admin123 | Admin |
-| supervisor1 | password123 | Supervisor |
-| operator1 | password123 | Operator |
+| supervisor | password123 | Supervisor |
+| operator | password123 | Operator |
 | operator2 | password123 | Operator |
 
 For detailed setup including MariaDB production configuration, see [QUICKSTART.md](QUICKSTART.md).

@@ -47,7 +47,7 @@ python3.11 -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 
 # Install dependencies
-pip install fastapi uvicorn sqlalchemy pymysql pydantic python-jose bcrypt
+pip install fastapi uvicorn sqlalchemy pymysql pydantic pyjwt bcrypt
 
 # Create project structure (see api_design.md)
 mkdir -p app/{models,schemas,crud,calculations,reports,auth,routers}

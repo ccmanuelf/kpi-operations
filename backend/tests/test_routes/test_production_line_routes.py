@@ -244,7 +244,7 @@ class TestCreateEndpoint:
             "line_name": "Blocked Line",
         }
         response = client.post("/api/production-lines/", json=payload)
-        assert response.status_code in (403, 500)
+        assert response.status_code == 403
 
     def test_create_duplicate_conflict(self, supervisor_client):
         """Creating a duplicate line returns 409 Conflict."""
@@ -451,7 +451,7 @@ class TestRouteAuth:
             "line_name": "Blocked",
         }
         response = client.post("/api/production-lines/", json=payload)
-        assert response.status_code in (403, 500)
+        assert response.status_code == 403
 
     def test_operator_cannot_update(self, operator_client):
         """Operator cannot update (PUT) production lines."""
@@ -460,7 +460,7 @@ class TestRouteAuth:
 
         payload = {"line_name": "Modified"}
         response = client.put(f"/api/production-lines/{line.line_id}", json=payload)
-        assert response.status_code in (403, 500)
+        assert response.status_code == 403
 
     def test_operator_cannot_delete(self, operator_client):
         """Operator cannot delete production lines."""
@@ -468,4 +468,4 @@ class TestRouteAuth:
         line = _create_line(db, "SEW-01", "Sewing")
 
         response = client.delete(f"/api/production-lines/{line.line_id}")
-        assert response.status_code in (403, 500)
+        assert response.status_code == 403

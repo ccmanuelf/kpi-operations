@@ -22,7 +22,13 @@ for (const theme of THEMES) {
 
       const all: Violation[] = []
       for (const screen of SCREENS) {
-        await page.goto(screen.path)
+        // A client-side guard redirect mid-navigation can abort page.goto
+        // (net::ERR_ABORTED). 'commit' resolves once navigation commits, and a
+        // single retry covers the transient race. (Run 8 a11y flake fix.)
+        await page.goto(screen.path, { waitUntil: 'commit' }).catch(async () => {
+          await page.waitForTimeout(400)
+          await page.goto(screen.path, { waitUntil: 'commit' })
+        })
         await page.waitForLoadState('networkidle').catch(() => {})
         await page.waitForTimeout(800)
         await page.addStyleTag({ content: FREEZE_CSS }).catch(() => {})

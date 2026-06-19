@@ -34,6 +34,16 @@ jobs:
           python -m pip install --upgrade pip
           pip install --require-hashes --only-binary=:all: -r requirements-dev.lock
 
+      - name: Install MiniZinc CLI
+        # The simulation_v2 optimization tests gate on is_minizinc_available()
+        # (the MiniZinc CLI). Only the Dockerfile installed it, so ~50 solver
+        # tests silently skipped in every required check (Run 8 H-1). Mirror the
+        # Dockerfile's apt install so the optimization suite actually runs here.
+        working-directory: .
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends minizinc
+
       - name: Lock drift check (sources must be re-locked)
         working-directory: .
         run: |
@@ -218,16 +228,27 @@ jobs:
             -H "Content-Type: application/json" \
             -d '{"username":"admin","password":"admin123"}' | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
           AUTH="Authorization: Bearer $TOKEN"
-          # Hit key workflow endpoints
-          curl -sf -H "$AUTH" "http://localhost:8001/api/capacity/orders?client_id=ACME-MFG" || echo "WARN: capacity/orders"
-          curl -sf -H "$AUTH" http://localhost:8001/api/work-orders || echo "WARN: work-orders"
-          curl -sf -H "$AUTH" http://localhost:8001/api/production || echo "WARN: production"
-          curl -sf -H "$AUTH" "http://localhost:8001/api/quality/" || echo "WARN: quality"
-          curl -sf -H "$AUTH" http://localhost:8001/api/downtime || echo "WARN: downtime"
-          curl -sf -H "$AUTH" http://localhost:8001/api/attendance || echo "WARN: attendance"
-          curl -sf -H "$AUTH" "http://localhost:8001/api/kpi/dashboard?client_id=ACME-MFG" || echo "WARN: kpi/dashboard"
-          curl -sf -H "$AUTH" "http://localhost:8001/api/alerts/dashboard?client_id=ACME-MFG" || echo "WARN: alerts/dashboard"
-          curl -sf -H "$AUTH" "http://localhost:8001/api/onboarding/status?client_id=ACME-MFG" || echo "WARN: onboarding"
-          curl -sf -H "$AUTH" http://localhost:8001/api/shifts || echo "WARN: shifts"
+          # Hit key workflow endpoints. A non-2xx from any of these is a real
+          # regression — collect every failure and fail the step (Run 8 H-2:
+          # these were `|| echo WARN`, so the step exited 0 and printed "All
+          # passed" even when an endpoint was broken).
+          FAILED=""
+          check() { curl -sf -H "$AUTH" "$1" > /dev/null || FAILED="$FAILED $2"; }
+          check "http://localhost:8001/api/capacity/orders?client_id=ACME-MFG" "capacity/orders"
+          check "http://localhost:8001/api/work-orders" "work-orders"
+          check "http://localhost:8001/api/production" "production"
+          check "http://localhost:8001/api/quality/" "quality"
+          check "http://localhost:8001/api/downtime" "downtime"
+          check "http://localhost:8001/api/attendance" "attendance"
+          check "http://localhost:8001/api/kpi/dashboard?client_id=ACME-MFG" "kpi/dashboard"
+          check "http://localhost:8001/api/alerts/dashboard?client_id=ACME-MFG" "alerts/dashboard"
+          check "http://localhost:8001/api/onboarding/status?client_id=ACME-MFG" "onboarding"
+          check "http://localhost:8001/api/shifts" "shifts"
+          if [ -n "$FAILED" ]; then
+            echo "::error::Smoke test failed for:$FAILED"
+            docker logs backend-freshdb | tail -50 || true
+            docker stop backend-freshdb && docker rm backend-freshdb
+            exit 1
+          fi
           echo "All workflow endpoints passed"
           docker stop backend-freshdb && docker rm backend-freshdb

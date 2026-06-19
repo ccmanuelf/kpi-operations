@@ -89,7 +89,7 @@ describe('useAvailabilityData', () => {
     it.each([
       [95, 'success'],
       [90, 'success'],
-      [85, 'amber-darken-3'],
+      [85, '#b45309'],
       [70, 'error'],
     ])('percentage=%d → %s', (percentage, expected) => {
       kpiStoreState.availability = { percentage }

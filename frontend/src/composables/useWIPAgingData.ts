@@ -39,7 +39,9 @@ export default function useWIPAgingData() {
   const statusColor = computed<string>(() => {
     const avg = (wipData.value?.average_days as number) || 0
     if (avg <= 7) return 'success'
-    if (avg <= 14) return 'amber-darken-3'
+    // AA: white text on the flat status chip — amber-darken-3 (#ff8f00) is too
+    // light (~2.3:1); #b45309 passes ~5:1 in both themes. (Run 8 a11y fix.)
+    if (avg <= 14) return '#b45309'
     return 'error'
   })
 

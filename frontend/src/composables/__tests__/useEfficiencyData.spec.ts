@@ -143,7 +143,7 @@ describe('useEfficiencyData', () => {
   describe('statusColor (computed) reflects efficiency value', () => {
     it.each([
       [90, 'success'],
-      [80, 'amber-darken-3'],
+      [80, '#b45309'],
       [50, 'error'],
     ])('current=%d → %s', (current, expected) => {
       kpiStoreState.efficiency = { current }
