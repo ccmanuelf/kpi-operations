@@ -480,8 +480,10 @@ def auth_headers(test_client, test_user_data):
             if token:
                 return {"Authorization": f"Bearer {token}"}
 
-    # Return empty dict if auth fails - tests can handle gracefully
-    pytest.skip("Authentication setup failed - cannot create test user")
+    # DEMO_MODE is forced on for the session (demo_mode_enabled), so register
+    # + login must succeed. Reaching here means an auth regression — fail loudly
+    # rather than skip (Run 8 H-5: skipping mass-greened auth breakage silently).
+    pytest.fail("Auth fixture setup failed: register or login did not succeed (auth regression)")
     return {}
 
 
@@ -525,7 +527,7 @@ def admin_auth_headers(test_client):
         if token:
             return {"Authorization": f"Bearer {token}"}
 
-    pytest.skip("Admin authentication setup failed")
+    pytest.fail("Admin auth fixture setup failed: ORM-seeded admin could not log in (auth regression)")
     return {}
 
 
