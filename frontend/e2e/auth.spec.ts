@@ -91,14 +91,15 @@ test.describe('Authentication', () => {
       // Wait for redirect/content to load
       await page.waitForTimeout(2000);
 
-      // Check if redirected to login OR still on production (if no auth required)
+      // /production has meta.requiresAuth; the router guard (router/index.ts:250)
+      // redirects unauthenticated access to /login. Assert that contract.
       const url = page.url();
       const isOnLogin = url.includes('login');
       const loginFormVisible = await page.locator('button:has-text("Sign In")').isVisible({ timeout: 5000 }).catch(() => false);
 
-      // Either redirected to login page OR the app handles this differently
-      // The key is that the app doesn't crash and handles the unauthenticated state
-      expect(isOnLogin || loginFormVisible || url.includes('production') || true).toBeTruthy();
+      // Unauthenticated access MUST land on the login page / show the login form;
+      // being left on /production would be an auth-gate bypass.
+      expect(isOnLogin || loginFormVisible).toBeTruthy();
     });
   });
 
@@ -195,31 +196,32 @@ test.describe('Authentication', () => {
       // Try to submit empty form - find any submit/save/create button in dialog
       const submitBtn = dialog.locator('button').filter({ hasText: /submit|save|create|register|add/i }).first();
 
-      if (await submitBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await submitBtn.click({ force: true });
+      // A registration dialog must expose a submit control; if it doesn't,
+      // the empty-submit scenario can't be exercised — skip honestly (visible
+      // in the report) rather than fake a pass.
+      const submitVisible = await submitBtn.isVisible({ timeout: 3000 }).catch(() => false);
+      test.skip(!submitVisible, 'Registration dialog exposed no submit/save/create control');
 
-        // Acceptable UX outcomes for an empty-form submit:
-        //  - inline `.v-messages__message` validation appears, OR
-        //  - the dialog stays open (browser-level required-field block,
-        //    OR the click was a no-op because the button was disabled), OR
-        //  - an error snackbar / alert reports the rejection.
-        // The contract is "empty submit is NOT silently treated as a
-        // successful registration": the page must NOT have navigated
-        // away (still on /login or wherever the dialog was opened from).
-        await page.waitForTimeout(500);
-        const hasValidation = await dialog.locator('.v-messages__message').first().isVisible({ timeout: 3000 }).catch(() => false);
-        const dialogStillOpen = await dialog.isVisible();
-        const hasErrorIndicator = await page.locator('.v-snackbar, .v-alert, [role="alert"]').first().isVisible({ timeout: 1000 }).catch(() => false);
-        // The actual contract: empty submit must NOT log the user in.
-        // If we're still on /login (or wherever the dialog spawned) and
-        // the user object isn't set, the form properly rejected the
-        // empty submit regardless of which UI signal was used.
-        const stillOnLogin = page.url().includes('login') || page.url().endsWith('/');
-        expect(hasValidation || dialogStillOpen || hasErrorIndicator || stillOnLogin).toBeTruthy();
-      } else {
-        // If no submit button, the test is not applicable for this dialog
-        expect(true).toBeTruthy();
-      }
+      await submitBtn.click({ force: true });
+
+      // Acceptable UX outcomes for an empty-form submit:
+      //  - inline `.v-messages__message` validation appears, OR
+      //  - the dialog stays open (browser-level required-field block,
+      //    OR the click was a no-op because the button was disabled), OR
+      //  - an error snackbar / alert reports the rejection.
+      // The contract is "empty submit is NOT silently treated as a
+      // successful registration": the page must NOT have navigated
+      // away (still on /login or wherever the dialog was opened from).
+      await page.waitForTimeout(500);
+      const hasValidation = await dialog.locator('.v-messages__message').first().isVisible({ timeout: 3000 }).catch(() => false);
+      const dialogStillOpen = await dialog.isVisible();
+      const hasErrorIndicator = await page.locator('.v-snackbar, .v-alert, [role="alert"]').first().isVisible({ timeout: 1000 }).catch(() => false);
+      // The actual contract: empty submit must NOT log the user in.
+      // If we're still on /login (or wherever the dialog spawned) and
+      // the user object isn't set, the form properly rejected the
+      // empty submit regardless of which UI signal was used.
+      const stillOnLogin = page.url().includes('login') || page.url().endsWith('/');
+      expect(hasValidation || dialogStillOpen || hasErrorIndicator || stillOnLogin).toBeTruthy();
     });
 
     test('should show success message after valid registration', async ({ page }) => {
@@ -532,12 +534,17 @@ test.describe('Authentication', () => {
       // Wait for any redirects to complete
       await page.waitForTimeout(2000);
 
+      // Clearing localStorage doesn't flip the in-memory auth store, but a
+      // reload re-hydrates it from the (now-empty) storage, so the guard
+      // (router/index.ts:250) deterministically redirects to /login.
+      await page.reload();
+
       // Should be redirected to login or show login page
       const onLoginPage = await page.locator('button:has-text("Sign In")').isVisible({ timeout: 5000 }).catch(() => false);
       const hasSessionExpired = await page.locator('text=session').or(page.locator('text=expired')).isVisible({ timeout: 1000 }).catch(() => false);
 
-      // Either on login page or session expired message shown
-      expect(onLoginPage || hasSessionExpired || true).toBeTruthy(); // Graceful - just verify no crash
+      // After token loss + reload the user MUST be returned to login.
+      expect(onLoginPage || hasSessionExpired).toBeTruthy();
     });
 
     test('should maintain session across tabs', async ({ page, context }) => {
@@ -549,24 +556,23 @@ test.describe('Authentication', () => {
       // Wait for login to complete - check for navigation or error
       const loginSucceeded = await page.locator('.v-navigation-drawer').isVisible({ timeout: 15000 }).catch(() => false);
 
-      if (loginSucceeded) {
-        // Open new tab
-        const newPage = await context.newPage();
-        await newPage.goto('/');
+      // Login must succeed to exercise cross-tab session sharing; if it
+      // didn't (e.g. transient rate-limit), skip honestly (visible in the
+      // report) instead of fake-passing.
+      test.skip(!loginSucceeded, 'Login did not succeed — cannot test cross-tab session sharing');
 
-        // Should be logged in - check for navigation drawer or login page
-        const isLoggedInNewTab = await newPage.locator('.v-navigation-drawer').isVisible({ timeout: 10000 }).catch(() => false);
-        const isLoginPage = await newPage.locator('button:has-text("Sign In")').isVisible({ timeout: 3000 }).catch(() => false);
+      // Open new tab
+      const newPage = await context.newPage();
+      await newPage.goto('/');
 
-        // Either logged in (session shared) or on login page (session not shared) - both are valid behaviors
-        expect(isLoggedInNewTab || isLoginPage).toBeTruthy();
+      // Should be logged in - check for navigation drawer or login page
+      const isLoggedInNewTab = await newPage.locator('.v-navigation-drawer').isVisible({ timeout: 10000 }).catch(() => false);
+      const isLoginPage = await newPage.locator('button:has-text("Sign In")').isVisible({ timeout: 3000 }).catch(() => false);
 
-        await newPage.close();
-      } else {
-        // Login failed - skip the cross-tab test as it can't be performed
-        // This can happen due to rate limiting or temporary issues
-        expect(true).toBeTruthy();
-      }
+      // Either logged in (session shared) or on login page (session not shared) - both are valid behaviors
+      expect(isLoggedInNewTab || isLoginPage).toBeTruthy();
+
+      await newPage.close();
     });
   });
 

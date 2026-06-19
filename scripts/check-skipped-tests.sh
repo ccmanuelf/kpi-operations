@@ -85,5 +85,33 @@ if [[ ${#ORPHAN_SKIPS[@]} -gt 0 ]]; then
     exit 1
 fi
 
-echo "OK: all $(grep -cE '(test\.describe\.skip|test\.skip)\s*\(' "$SPEC_DIR"/*.spec.ts | awk -F: '{sum+=$2} END {print sum+0}') skipped tests have tracking justifications."
+# ---------------------------------------------------------------------------
+# Tautological-assertion guard (Run 8 finding C-2).
+# `expect(true).toBeTruthy()` and any `... || true).toBeTruthy()` assertion
+# can NEVER fail — they silently neuter the test (the auth-gate redirect test
+# passed unconditionally for months). Forbid them outright: assert the real
+# contract, or if the scenario genuinely can't be exercised use
+# `test.skip(condition, reason)` so it surfaces as a visible skip.
+# ---------------------------------------------------------------------------
+TAUTOLOGIES=()
+while IFS= read -r match; do
+    TAUTOLOGIES+=("$match")
+done < <(grep -nE 'expect\(\s*true\s*\)\.toBe(Truthy\(\)|\(\s*true\s*\))|\|\|[[:space:]]*true[[:space:]]*\)\.toBeTruthy\(\)' "$SPEC_DIR"/*.spec.ts || true)
+
+if [[ ${#TAUTOLOGIES[@]} -gt 0 ]]; then
+    echo "ERROR: Found $(( ${#TAUTOLOGIES[@]} )) tautological assertion(s) that can never fail."
+    echo
+    echo "expect(true).toBeTruthy() and '... || true).toBeTruthy()' always pass,"
+    echo "neutering the test. Assert the real contract, or — if the scenario"
+    echo "genuinely can't be exercised — use test.skip(condition, reason) so it"
+    echo "shows as a visible skip instead of a fake pass."
+    echo
+    echo "Offending lines:"
+    for t in "${TAUTOLOGIES[@]}"; do
+        echo "  ${t}"
+    done
+    exit 1
+fi
+
+echo "OK: all $(grep -cE '(test\.describe\.skip|test\.skip)\s*\(' "$SPEC_DIR"/*.spec.ts | awk -F: '{sum+=$2} END {print sum+0}') skipped tests have tracking justifications; no tautological assertions."
 exit 0
