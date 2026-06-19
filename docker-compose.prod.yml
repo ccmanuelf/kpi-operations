@@ -34,7 +34,11 @@ services:
       - logs-data:/app/logs
     restart: always
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health/ready"]
+      # /health/live is unauthenticated; /health/ready requires a bearer token
+      # (routes/health.py:252) so it always 401s here -> container stuck
+      # `unhealthy` -> dependent frontend never starts (Run 8 H-3). Match the
+      # Dockerfile/dev-compose/Render probe.
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/live"]
       interval: 30s
       timeout: 10s
       retries: 3
