@@ -599,12 +599,12 @@ class TestHealthNoAuthRequired:
     def test_detailed_requires_auth(self, test_client):
         """Test detailed health requires auth - returns 401/403 without token"""
         response = test_client.get("/health/detailed")
-        assert response.status_code in (401, 403)
+        assert response.status_code == 401
 
     def test_ready_requires_auth(self, test_client):
         """Test readiness probe requires auth - returns 401/403 without token"""
         response = test_client.get("/health/ready")
-        assert response.status_code in (401, 403)
+        assert response.status_code == 401
 
     def test_live_no_auth(self, test_client):
         """Test liveness probe doesn't require auth"""

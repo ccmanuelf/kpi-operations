@@ -242,7 +242,7 @@ class TestHealthCheckAuthentication:
     def test_ready_requires_auth(self, test_client):
         """Test readiness probe requires authentication"""
         response = test_client.get("/health/ready")
-        assert response.status_code in (401, 403)
+        assert response.status_code == 401
 
     def test_root_health_no_auth_required(self, test_client):
         """Test root health endpoint doesn't require auth"""

@@ -181,7 +181,7 @@ class TestLinkCapacityEndpoint:
             f"/api/production-lines/{ops.line_id}/link-capacity",
             json={"capacity_line_id": cap.id},
         )
-        assert response.status_code in (403, 500)
+        assert response.status_code == 403
 
 
 # ============================================================================
@@ -218,7 +218,7 @@ class TestUnlinkCapacityEndpoint:
         ops = _create_ops_line(db, "SEW-01", "Sewing 1")
 
         response = client.delete(f"/api/production-lines/{ops.line_id}/link-capacity")
-        assert response.status_code in (403, 500)
+        assert response.status_code == 403
 
 
 # ============================================================================
@@ -285,7 +285,7 @@ class TestSyncCapacityEndpoint:
             "/api/production-lines/sync-capacity",
             params={"client_id": CLIENT_ID},
         )
-        assert response.status_code in (403, 500)
+        assert response.status_code == 403
 
     def test_sync_multi_tenant_isolation(self, supervisor_client):
         """Sync does not cross-match between clients."""

@@ -355,8 +355,8 @@ class TestCreateEndpoint:
 
         payload = _create_assignment_payload(emp.employee_id, line.line_id)
         response = client.post("/api/employee-line-assignments/", json=payload)
-        # Without supervisor dependency override, returns 403 or 500
-        assert response.status_code in (403, 500)
+        # Operator lacks supervisor role, returns 403
+        assert response.status_code == 403
 
     def test_create_duplicate_returns_409(self, supervisor_client):
         """Duplicate assignment returns 409 Conflict."""
@@ -603,15 +603,15 @@ class TestRouteAuth:
         # POST
         payload = _create_assignment_payload(emp.employee_id, line.line_id)
         post_resp = client.post("/api/employee-line-assignments/", json=payload)
-        assert post_resp.status_code in (403, 500)
+        assert post_resp.status_code == 403
 
         # PUT
         put_resp = client.put(
             "/api/employee-line-assignments/1",
             json={"is_primary": False},
         )
-        assert put_resp.status_code in (403, 500)
+        assert put_resp.status_code == 403
 
         # DELETE
         del_resp = client.delete("/api/employee-line-assignments/1")
-        assert del_resp.status_code in (403, 500)
+        assert del_resp.status_code == 403
