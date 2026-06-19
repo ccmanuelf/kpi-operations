@@ -406,7 +406,6 @@ Run-7 residual debt + a11y, each its own brainstorm→spec→plan→subagent-dri
 - **C4** — Python lockfile + hash pinning: pip-tools hash-pinned `requirements*.lock` (byte-reproducible, hermetic), installed `--require-hashes --only-binary=:all:` in Docker/CI/e2e; base image `@sha256`-pinned; lock-drift + dry-run-verify CI gate; `scripts/lock-deps.sh` (no dep versions changed) (#96)
 
 ### Still open
-- `.mcp.json.example` template (L)
 - **C5 — single schema-evolution mechanism (Alembic vs `create_all`): DEFERRED to MariaDB go-live.** Alembic is set up (`backend/alembic.ini` + `backend/alembic/versions/`) but `create_all()` (`bootstrap/lifecycle.py`) + an ad-hoc `backend/db/migrations/*.py` set coexist; collapsing to one + switching startup off `create_all` is dialect-coupled and the highest deploy risk, so the mechanism choice is settled at go-live.
 
 ### Audit Conventions
