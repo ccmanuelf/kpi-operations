@@ -43,9 +43,13 @@ export default function useOEEData() {
 
   const statusColor = computed<string>(() => {
     const oee = (oeeData.value?.percentage as number) || 0
-    if (oee >= 85) return 'var(--cds-support-success)'
+    // AA: this chip is variant="flat" with white text, so the background must be
+    // dark enough for white in BOTH themes. The --cds-support-* tokens flip to
+    // bright shades in dark (white -> ~2.4:1), so use the theme-stable semantic
+    // colors (#198038 / #da1e28) which pass ~5:1. (Run 8 a11y fix.)
+    if (oee >= 85) return 'success'
     if (oee >= 65) return '#b45309'
-    return 'var(--cds-support-error)'
+    return 'error'
   })
 
   const historyHeaders = computed<TableHeader[]>(() => [

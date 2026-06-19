@@ -41,7 +41,9 @@ export default function useEfficiencyData() {
   const statusColor = computed<string>(() => {
     const eff = (efficiencyData.value?.current as number) || 0
     if (eff >= 85) return 'success'
-    if (eff >= 70) return 'amber-darken-3'
+    // AA: white text on the flat status chip — amber-darken-3 (#ff8f00) is too
+    // light (~2.3:1); #b45309 passes ~5:1 in both themes. (Run 8 a11y fix.)
+    if (eff >= 70) return '#b45309'
     return 'error'
   })
 

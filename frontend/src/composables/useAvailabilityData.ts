@@ -36,7 +36,9 @@ export default function useAvailabilityData() {
   const statusColor = computed<string>(() => {
     const avail = (availabilityData.value?.percentage as number) || 0
     if (avail >= 90) return 'success'
-    if (avail >= 80) return 'amber-darken-3'
+    // AA: white text on the flat status chip — amber-darken-3 (#ff8f00) is too
+    // light (~2.3:1); #b45309 passes ~5:1 in both themes. (Run 8 a11y fix.)
+    if (avail >= 80) return '#b45309'
     return 'error'
   })
 

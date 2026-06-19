@@ -90,8 +90,8 @@ describe('useWIPAgingData', () => {
     it.each([
       [3, 'success'],
       [7, 'success'],
-      [10, 'amber-darken-3'],
-      [14, 'amber-darken-3'],
+      [10, '#b45309'],
+      [14, '#b45309'],
       [20, 'error'],
     ])('average_days=%d → %s', (avg, expected) => {
       kpiStoreState.wipAging = { average_days: avg }

@@ -41,7 +41,9 @@ export default function usePerformanceData() {
   const statusColor = computed<string>(() => {
     const perf = (performanceData.value?.percentage as number) || 0
     if (perf >= 95) return 'success'
-    if (perf >= 85) return 'amber-darken-3'
+    // AA: white text on the flat status chip — amber-darken-3 (#ff8f00) is too
+    // light (~2.3:1); #b45309 passes ~5:1 in both themes. (Run 8 a11y fix.)
+    if (perf >= 85) return '#b45309'
     return 'error'
   })
 

@@ -91,7 +91,7 @@ describe('useAbsenteeismData', () => {
     it.each([
       [3, 'success'],
       [5, 'success'],
-      [7, 'amber-darken-3'],
+      [7, '#b45309'],
       [12, 'error'],
     ])('rate=%d → %s', (rate, expected) => {
       kpiStoreState.absenteeism = { rate }

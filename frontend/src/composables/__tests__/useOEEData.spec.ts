@@ -88,12 +88,12 @@ describe('useOEEData', () => {
 
   describe('threshold colors', () => {
     it.each([
-      [90, 'var(--cds-support-success)'],
-      [85, 'var(--cds-support-success)'],
+      [90, 'success'],
+      [85, 'success'],
       [70, '#b45309'],
       [65, '#b45309'],
-      [60, 'var(--cds-support-error)'],
-      [0, 'var(--cds-support-error)'],
+      [60, 'error'],
+      [0, 'error'],
     ])('statusColor for OEE=%d returns %s', (oee, expected) => {
       kpiStoreState.oee = { percentage: oee }
       const c = useOEEData()
@@ -103,7 +103,7 @@ describe('useOEEData', () => {
     it('null OEE → error (treats as 0)', () => {
       kpiStoreState.oee = null
       const c = useOEEData()
-      expect(c.statusColor.value).toBe('var(--cds-support-error)')
+      expect(c.statusColor.value).toBe('error')
     })
 
     it.each([

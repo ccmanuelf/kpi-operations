@@ -45,7 +45,9 @@ export default function useAbsenteeismData() {
   const statusColor = computed<string>(() => {
     const rate = (absenteeismData.value?.rate as number) || 0
     if (rate <= 5) return 'success'
-    if (rate <= 10) return 'amber-darken-3'
+    // AA: white text on the flat status chip — amber-darken-3 (#ff8f00) is too
+    // light (~2.3:1); #b45309 passes ~5:1 in both themes. (Run 8 a11y fix.)
+    if (rate <= 10) return '#b45309'
     return 'error'
   })
 
