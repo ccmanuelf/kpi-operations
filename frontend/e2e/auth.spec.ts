@@ -85,20 +85,22 @@ test.describe('Authentication', () => {
     });
 
     test('should redirect to login when accessing protected route', async ({ page }) => {
-      // Try to access dashboard directly without login
-      await page.goto('/production');
+      // Access a real protected route (meta.requiresAuth) directly without login.
+      // (/kpi-dashboard exists and is guarded; the old target /production is not a
+      // defined route, so it rendered a blank page and never exercised the guard.)
+      await page.goto('/kpi-dashboard');
 
-      // Wait for redirect/content to load
+      // Wait for the guard's redirect to settle.
       await page.waitForTimeout(2000);
 
-      // /production has meta.requiresAuth; the router guard (router/index.ts:250)
-      // redirects unauthenticated access to /login. Assert that contract.
+      // The router guard (router/index.ts:250) redirects unauthenticated access to
+      // a requiresAuth route to /login.
       const url = page.url();
       const isOnLogin = url.includes('login');
       const loginFormVisible = await page.locator('button:has-text("Sign In")').isVisible({ timeout: 5000 }).catch(() => false);
 
       // Unauthenticated access MUST land on the login page / show the login form;
-      // being left on /production would be an auth-gate bypass.
+      // being left on the protected route would be an auth-gate bypass.
       expect(isOnLogin || loginFormVisible).toBeTruthy();
     });
   });
@@ -521,23 +523,12 @@ test.describe('Authentication', () => {
         sessionStorage.removeItem('access_token');
       });
 
-      // Try to navigate - the click may fail due to navigation redirect, which is expected
-      try {
-        const productionLink = page.locator('text=Production').first();
-        if (await productionLink.isVisible({ timeout: 3000 }).catch(() => false)) {
-          await productionLink.click({ timeout: 5000 });
-        }
-      } catch {
-        // Click may fail due to navigation/redirect which is expected behavior
-      }
-
-      // Wait for any redirects to complete
+      // Navigating to a protected route now re-loads the app with empty storage,
+      // so the auth store hydrates as unauthenticated (isAuthenticated = !!token)
+      // and the guard (router/index.ts:250) deterministically redirects to /login.
+      // (Deterministic goto, not a nav-link click + reload, to avoid CI flakiness.)
+      await page.goto('/kpi-dashboard');
       await page.waitForTimeout(2000);
-
-      // Clearing localStorage doesn't flip the in-memory auth store, but a
-      // reload re-hydrates it from the (now-empty) storage, so the guard
-      // (router/index.ts:250) deterministically redirects to /login.
-      await page.reload();
 
       // Should be redirected to login or show login page
       const onLoginPage = await page.locator('button:has-text("Sign In")').isVisible({ timeout: 5000 }).catch(() => false);
