@@ -397,9 +397,17 @@ Vuetify 3.5→4.1 + Material Design 3 with a Carbon-seeded tonal theme, shipped 
 - **PR3a/3b/3c (#76/#77/#78) §3e Excel behaviors** — ALL flag-isolated in one module `frontend/src/composables/agGridExcelBehaviors.ts` (per-feature flags + `master` switch + registry w/ Enterprise-deferral metadata): keyboard nav, paste, CSV/xlsx export, undo/redo, copy, cell-editing, freeze panes (registry/doc), quick-find (deferred-off), and a Community range-select + TSV-copy shim (`useGridRangeCopy.ts`). Docs: `docs/frontend/ag-grid-excel-behaviors.md` + a doc-coverage test. AG Grid stays **Community** (Enterprise deferral via the `rangeCopy` flag — `getCellRanges` is a Community no-op stub, so it can't feature-detect Enterprise).
 - **deps (#79)** — consolidated PR clearing newly-published advisories that deadlocked both audit gates: cryptography 46.0.7→48.0.1, python-multipart 0.0.27→0.0.31 (pip-audit) + npm dompurify/form-data/vite-7.x/ws.
 
-### Still open (lower-priority Run 7 items)
-- Python lockfile/hash pinning (L); `endpoints/csv_upload.py` consolidation (L); ~55 residual hardcoded i18n strings (L); `.mcp.json.example` template (L)
-- Architecture Mediums deferred: single schema-evolution mechanism (Alembic vs `create_all`), `main.py` lifespan decomposition
+### PR4 robustness slate — SHIPPED 2026-06-16…19 (merged to main, each triad-verified local==GitHub==Render)
+Run-7 residual debt + a11y, each its own brainstorm→spec→plan→subagent-driven-exec (per-task + final reviews)→PR→merge-on-green cycle. Specs/plans in `docs/superpowers/{specs,plans}/`.
+- **B** — blocking a11y browser contrast gate in `e2e-sqlite` (WCAG-AA, 14 screens × light/dark) (#81)
+- **C1** — residual hardcoded i18n strings localized (en+es) + `@intlify/vue-i18n/no-raw-text` CI gate (#92); **C1b** — script-side `.ts` i18n sweep (stores/composables/registries/render-fns, reactive) + `referenced-keys` gate asserting every i18n key resolves in both locales (#93)
+- **C2** — `endpoints/csv_upload.py` consolidation: 11 duplicated endpoints (1181→805 lines) → shared `services/csv_upload_processor.py`; characterization golden masters for all 11; inline auth checks → declarative `get_current_admin`/`get_current_planner` (#94)
+- **C3** — `main.py` (868→64 lines) → `backend/bootstrap/` package: `lifecycle.py` (lifespan decomposed into units behind `run_best_effort`, order + fatal-vs-best-effort + DEMO_MODE gate preserved), `openapi.py`, `app_config.py`, `routers.py`; golden-master OpenAPI route/tag snapshot gate (#95)
+- **C4** — Python lockfile + hash pinning: pip-tools hash-pinned `requirements*.lock` (byte-reproducible, hermetic), installed `--require-hashes --only-binary=:all:` in Docker/CI/e2e; base image `@sha256`-pinned; lock-drift + dry-run-verify CI gate; `scripts/lock-deps.sh` (no dep versions changed) (#96)
+
+### Still open
+- `.mcp.json.example` template (L)
+- **C5 — single schema-evolution mechanism (Alembic vs `create_all`): DEFERRED to MariaDB go-live.** Alembic is set up (`backend/alembic.ini` + `backend/alembic/versions/`) but `create_all()` (`bootstrap/lifecycle.py`) + an ad-hoc `backend/db/migrations/*.py` set coexist; collapsing to one + switching startup off `create_all` is dialect-coupled and the highest deploy risk, so the mechanism choice is settled at go-live.
 
 ### Audit Conventions
 - Audit reports in `_audit/` (current run at root, prior runs in subdirs/`_history/`)
