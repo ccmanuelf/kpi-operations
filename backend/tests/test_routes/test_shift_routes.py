@@ -188,7 +188,7 @@ class TestShiftCreateEndpoint:
         assert response.json()["data"]["shift_name"] == "Night"
 
     def test_create_shift_as_operator_forbidden(self, operator_client):
-        """Operator cannot create a shift (no supervisor override = 403/500)."""
+        """Operator cannot create a shift (supervisor role required = 403)."""
         client, db = operator_client
 
         payload = {
