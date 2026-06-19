@@ -111,15 +111,10 @@ python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 
-# Initialize database and seed demo data
-cd ../database
-python init_sqlite_schema.py
-python generators/generate_demo_data.py
-python create_demo_users.py
-cd ../backend
-
-# Start backend server (PYTHONPATH required for module imports)
-PYTHONPATH=.. uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
+# Start backend with demo seeding enabled. On first boot, DEMO_MODE
+# auto-creates the SQLite schema and seeds demo clients/users/data via the
+# canonical seeder (the same path Docker, Render, and the e2e suite use).
+DEMO_MODE=true PYTHONPATH=.. uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
 
 # Frontend setup (new terminal)
 cd ../frontend
@@ -132,9 +127,10 @@ npm run dev  # Starts on http://localhost:3000
 | Username | Password | Role |
 |----------|----------|------|
 | admin | admin123 | Admin |
-| supervisor | password123 | Supervisor |
-| operator | password123 | Operator |
-| operator2 | password123 | Operator |
+| supervisor1 | password123 | Supervisor |
+| operator1 | password123 | Operator |
+| leader1 | password123 | Leader (multi-client) |
+| poweruser | password123 | Power user |
 
 For detailed setup including MariaDB production configuration, see [QUICKSTART.md](QUICKSTART.md).
 
@@ -192,10 +188,8 @@ kpi-operations/
 │   ├── e2e/                    # Playwright E2E tests
 │   └── package.json
 │
-├── database/                   # Database initialization & generators
-│   ├── generators/             # Demo data generators (11 scripts)
-│   ├── create_demo_users.py    # Demo user creation
-│   └── init_sqlite_schema.py   # SQLite schema initialization
+├── database/                   # SQL migrations + legacy data generators
+│   └── generators/             # Legacy standalone generators (superseded by DEMO_MODE auto-seed)
 │
 ├── docs/                       # Documentation
 │   ├── API_DOCUMENTATION.md

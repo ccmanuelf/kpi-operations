@@ -26,15 +26,10 @@ source .venv/bin/activate
 # Install dependencies
 pip install -r requirements.txt
 
-# Initialize database and seed demo data
-cd ../database
-python init_sqlite_schema.py
-python generators/generate_demo_data.py
-python create_demo_users.py
-cd ../backend
-
-# Start backend (PYTHONPATH required for module imports)
-PYTHONPATH=.. uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
+# Start the backend with demo seeding enabled. On first boot, DEMO_MODE
+# auto-creates the SQLite schema and seeds demo clients/users/data via the
+# canonical seeder (the same path Docker, Render, and the e2e suite use).
+DEMO_MODE=true PYTHONPATH=.. uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 ### Step 2: Frontend Setup
@@ -51,7 +46,7 @@ npm run dev
 
 Open **http://localhost:3000** and login with `operator` / `password123`.
 
-The SQLite database file is created at `database/kpi_platform.db`. Delete it and re-run the seed command to reset demo data at any time.
+The SQLite database file is created at `database/kpi_platform.db`. To reset demo data, delete it and restart the backend with `DEMO_MODE=true` — it re-seeds on boot.
 
 ---
 
@@ -162,9 +157,10 @@ Visit: **http://localhost:8000/docs** for interactive Swagger UI
 | Username | Password | Role |
 |----------|----------|------|
 | admin | admin123 | admin |
-| supervisor | password123 | supervisor |
-| operator | password123 | operator |
-| operator2 | password123 | operator |
+| supervisor1 | password123 | supervisor |
+| operator1 | password123 | operator |
+| leader1 | password123 | leader (multi-client) |
+| poweruser | password123 | poweruser |
 
 ## Test the Features
 
@@ -232,9 +228,9 @@ npm install
 # Check the database file exists
 ls -la database/kpi_platform.db
 
-# Delete and regenerate if corrupted
+# Delete and re-seed on next boot (DEMO_MODE re-creates schema + demo data)
 rm database/kpi_platform.db
-cd database && python init_sqlite_schema.py && python generators/generate_demo_data.py && python create_demo_users.py
+# then restart: DEMO_MODE=true PYTHONPATH=.. uvicorn backend.main:app --reload
 ```
 
 ### Database issues (Option B - MariaDB)
