@@ -39,7 +39,18 @@ def calculate_oee(
 ) -> CalculationResult[Decimal]:
     """Compute OEE in the requested mode and return the dual-view envelope."""
 
-    value = (inputs.availability_pct * inputs.performance_pct * inputs.quality_pct) / Decimal("10000")
+    # OEE is the product of three ratios, each bounded at 100% (Nakajima): a
+    # machine cannot be >100% effective. A component — most often Performance —
+    # may exceed 100% on its own card to surface "beat the standard" (Performance
+    # is capped at 150% upstream), but that excess must NOT inflate OEE. Cap each
+    # factor at 100% for the rollup so OEE can never exceed 100%. inputs_consumed
+    # still records the raw component values for the audit trail.
+    _HUNDRED = Decimal("100")
+    availability = min(inputs.availability_pct, _HUNDRED)
+    performance = min(inputs.performance_pct, _HUNDRED)
+    quality = min(inputs.quality_pct, _HUNDRED)
+
+    value = (availability * performance * quality) / Decimal("10000")
 
     return CalculationResult[Decimal](
         metric_name=METRIC_NAME,
