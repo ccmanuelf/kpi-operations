@@ -274,7 +274,8 @@ class BOMHeaderResponse(BaseModel):
     style_model: Optional[str] = Field(description="Associated style/model")
     revision: str = Field(description="BOM revision number")
     is_active: bool = Field(description="Whether this BOM revision is active")
-    notes: Optional[str] = Field(description="Free-text notes")
+    notes: Optional[str] = Field(default=None, description="Free-text notes")
+    component_count: int = Field(default=0, description="Number of component lines on this BOM")
 
     model_config = ConfigDict(from_attributes=True)
 
