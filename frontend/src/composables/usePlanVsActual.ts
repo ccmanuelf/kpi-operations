@@ -162,9 +162,11 @@ export function usePlanVsActual() {
       HIGH: 'error',
       OVERDUE: 'red-darken-3',
       COMPLETED: 'info',
-      UNKNOWN: 'grey',
+      // grey (#9e9e9e) fails WCAG-AA with the chip's white text (2.68:1);
+      // grey-darken-2 (#616161) passes (~6.4:1).
+      UNKNOWN: 'grey-darken-2',
     }
-    return (risk && colors[risk]) || 'grey'
+    return (risk && colors[risk]) || 'grey-darken-2'
   }
 
   function getVarianceColor(variancePct: number): string {
