@@ -39,6 +39,7 @@ export interface BOMHeaderRow {
   revision?: string
   is_active?: boolean
   components?: BOMComponentRow[]
+  component_count?: number
   [key: string]: unknown
 }
 
@@ -177,10 +178,14 @@ export default function useBOMGridData(): UseBOMGridDataReturn {
       editable: false,
       sortable: false,
       filter: false,
-      valueGetter: (params) =>
-        Array.isArray((params.data as BOMHeaderRow).components)
-          ? (params.data as BOMHeaderRow).components!.length
-          : 0,
+      // The /bom list response carries component_count (the header has no inline
+      // components array there); fall back to the array length when a fully
+      // expanded header is present.
+      valueGetter: (params) => {
+        const row = params.data as BOMHeaderRow
+        if (typeof row.component_count === 'number') return row.component_count
+        return Array.isArray(row.components) ? row.components!.length : 0
+      },
       width: 130,
     },
     {

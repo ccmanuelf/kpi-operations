@@ -462,18 +462,17 @@ const {
   handleReset,
 } = useCapacityData()
 
-// Dual-view panel period: prefer the analysis date range when set, otherwise
-// the calendar month containing today.
+// Dual-view panel period: OEE/OTD/FPY are ACTUALS, which only exist in the past.
+// The analysis date range defaults forward (today → +30d) for capacity *planning*,
+// so binding the actuals panel to it showed 0% (no deliveries/quality in the
+// future). Use a trailing 30-day window ending today so the panel reflects real
+// recent actuals — consistent with the KPI dashboard, which also trails 30 days.
 const dualViewPeriodStart = computed(() => {
-  if (analysisStartDate.value) return new Date(analysisStartDate.value).toISOString()
   const d = new Date()
-  return new Date(d.getFullYear(), d.getMonth(), 1).toISOString()
+  d.setDate(d.getDate() - 30)
+  return d.toISOString()
 })
-const dualViewPeriodEnd = computed(() => {
-  if (analysisEndDate.value) return new Date(analysisEndDate.value).toISOString()
-  const d = new Date()
-  return new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59).toISOString()
-})
+const dualViewPeriodEnd = computed(() => new Date().toISOString())
 
 // Import/export functionality
 const {

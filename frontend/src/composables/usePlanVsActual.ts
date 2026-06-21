@@ -114,20 +114,24 @@ export function usePlanVsActual() {
   ])
 
   async function fetchData(): Promise<void> {
-    if (!clientId.value) return
-
+    // Admin/poweruser have no assigned client (clientId is null) and must still
+    // see all clients' orders. The backend applies tenant isolation via the
+    // user's role regardless of the client_id param, so only pass client_id when
+    // the user actually has one; never early-return on a null client.
     loading.value = true
     error.value = null
     try {
-      const params: Record<string, unknown> = { client_id: clientId.value }
+      const params: Record<string, unknown> = {}
+      if (clientId.value) params.client_id = clientId.value
       if (filters.value.startDate) params.start_date = filters.value.startDate
       if (filters.value.endDate) params.end_date = filters.value.endDate
       if (filters.value.lineId) params.line_id = filters.value.lineId
       if (filters.value.status) params.status = filters.value.status
 
+      const summaryParams: Record<string, unknown> = clientId.value ? { client_id: clientId.value } : {}
       const [detailRes, summaryRes] = await Promise.all([
         getPlanVsActual(params),
-        getPlanVsActualSummary({ client_id: clientId.value }),
+        getPlanVsActualSummary(summaryParams),
       ])
 
       orders.value = detailRes.data
@@ -158,9 +162,11 @@ export function usePlanVsActual() {
       HIGH: 'error',
       OVERDUE: 'red-darken-3',
       COMPLETED: 'info',
-      UNKNOWN: 'grey',
+      // grey (#9e9e9e) fails WCAG-AA with the chip's white text (2.68:1);
+      // grey-darken-2 (#616161) passes (~6.4:1).
+      UNKNOWN: 'grey-darken-2',
     }
-    return (risk && colors[risk]) || 'grey'
+    return (risk && colors[risk]) || 'grey-darken-2'
   }
 
   function getVarianceColor(variancePct: number): string {

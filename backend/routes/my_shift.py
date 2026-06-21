@@ -14,6 +14,7 @@ from backend.database import get_db
 from backend.orm.production_entry import ProductionEntry
 from backend.orm.downtime_entry import DowntimeEntry
 from backend.orm.quality_entry import QualityEntry
+from backend.orm.work_order import WorkOrder
 from backend.auth.jwt import get_current_user
 from backend.orm.user import User
 from backend.utils.logging_utils import get_module_logger
@@ -159,7 +160,10 @@ def get_my_shift_summary(
         defect_count=defect_count,
     )
 
-    # Group production entries by work_order_id for the progress widget.
+    # Work orders active in today's shift, shown with their OVERALL completion
+    # (cumulative produced vs the order's planned quantity). A today-only tally
+    # (produced/produced) always read 0% or 100%; cumulative-vs-planned gives a
+    # real progress bar (e.g. an in-progress order at ~50%).
     work_order_stats: Dict[str, Dict[str, Any]] = {}
     for p in productions:
         wo_id = p.work_order_id
@@ -169,31 +173,41 @@ def get_my_shift_summary(
             product_name = "Unknown"
             if getattr(p, "product", None) is not None:
                 product_name = getattr(p.product, "product_name", None) or "Unknown"
-            work_order_stats[wo_id] = {
-                "produced": 0,
-                "target": 0,
-                "product_name": product_name,
-            }
-        work_order_stats[wo_id]["produced"] += p.units_produced or 0
-        # No hard target field on PRODUCTION_ENTRY — use units_produced
-        # as the running tally so progress reads sanely until the order
-        # has its planned_quantity injected here.
-        work_order_stats[wo_id]["target"] += p.units_produced or 0
+            work_order_stats[wo_id] = {"product_name": product_name}
 
     assigned_work_orders: List[WorkOrderProgress] = []
-    for i, (wo_id, wo_data) in enumerate(work_order_stats.items(), 1):
-        target_qty = wo_data["target"] or 1
-        progress = (wo_data["produced"] / target_qty * 100) if target_qty > 0 else 0
-        assigned_work_orders.append(
-            WorkOrderProgress(
-                id=i,
-                work_order_id=wo_id,
-                product_name=wo_data["product_name"],
-                target_qty=target_qty,
-                produced=wo_data["produced"],
-                progress_percent=round(min(progress, 100), 1),
+    if work_order_stats:
+        wo_ids = list(work_order_stats.keys())
+        cumulative: Dict[str, int] = {
+            str(row[0]): int(row[1] or 0)
+            for row in db.query(
+                ProductionEntry.work_order_id,
+                func.coalesce(func.sum(ProductionEntry.units_produced), 0),
             )
-        )
+            .filter(ProductionEntry.work_order_id.in_(wo_ids))
+            .group_by(ProductionEntry.work_order_id)
+            .all()
+        }
+        planned = {
+            w.work_order_id: int(w.planned_quantity or 0)
+            for w in db.query(WorkOrder).filter(WorkOrder.work_order_id.in_(wo_ids)).all()
+        }
+        for i, (wo_id, wo_data) in enumerate(work_order_stats.items(), 1):
+            produced = int(cumulative.get(wo_id, 0) or 0)
+            # Prefer the order's planned quantity as the target; fall back to
+            # produced so progress never divides by zero.
+            target_qty = planned.get(wo_id) or produced or 1
+            progress = (produced / target_qty * 100) if target_qty > 0 else 0
+            assigned_work_orders.append(
+                WorkOrderProgress(
+                    id=i,
+                    work_order_id=wo_id,
+                    product_name=wo_data["product_name"],
+                    target_qty=target_qty,
+                    produced=produced,
+                    progress_percent=round(min(progress, 100), 1),
+                )
+            )
 
     # Recent activity (top 5, mixed types).
     activities: List[ActivityEntry] = []

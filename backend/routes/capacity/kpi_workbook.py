@@ -257,6 +257,9 @@ def load_workbook(client_id: str, db: Session = Depends(get_db), current_user: U
                 "revision": h.revision,
                 "is_active": h.is_active,
                 "notes": h.notes,
+                # Component-line count for the master grid's "Components" column
+                # (components is a dynamic relationship → use .count()).
+                "component_count": h.components.count(),
             }
             for h in bom_headers
         ],

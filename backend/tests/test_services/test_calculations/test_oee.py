@@ -49,6 +49,29 @@ class TestOEEOrchestrator:
 
         assert calculate_oee(inputs).value == Decimal("100.00")
 
+    def test_oee_never_exceeds_100_when_performance_beats_standard(self):
+        """Performance may reach its 150% cap on its own card ("beat the standard"),
+        but OEE is the product of three ratios each bounded at 100% (Nakajima) and
+        must never exceed 100%. Regression: Run 8 — capacity panel showed OEE 148%."""
+        inputs = OEEInputs(
+            availability_pct=Decimal("100"),
+            performance_pct=Decimal("150"),
+            quality_pct=Decimal("100"),
+        )
+
+        assert calculate_oee(inputs).value == Decimal("100.00")
+
+    def test_oee_caps_only_the_excess_performance_factor(self):
+        """Only the >100% factor is capped; the others compose normally
+        (A=100, P=150->100, Q=98.96 => 98.96), matching the reproduced demo case."""
+        inputs = OEEInputs(
+            availability_pct=Decimal("100"),
+            performance_pct=Decimal("150"),
+            quality_pct=Decimal("98.96"),
+        )
+
+        assert calculate_oee(inputs).value == Decimal("98.96")
+
     def test_zero_availability_yields_zero(self):
         inputs = OEEInputs(
             availability_pct=Decimal("0"),

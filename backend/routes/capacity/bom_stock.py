@@ -57,7 +57,13 @@ def list_bom_headers(
 ) -> Any:
     """Get BOM headers for a client."""
     verify_client_access(current_user, client_id, db)
-    return bom.get_bom_headers(db, client_id, skip, limit, include_inactive)
+    headers = bom.get_bom_headers(db, client_id, skip, limit, include_inactive)
+    # Surface the component-line count so the master grid's "Components" column
+    # is populated (response is built via from_attributes off the ORM row).
+    # components is a dynamic relationship, so use .count() not len().
+    for h in headers:
+        h.component_count = h.components.count()
+    return headers
 
 
 @bom_stock_router.post("/bom", response_model=BOMHeaderResponse, status_code=status.HTTP_201_CREATED)

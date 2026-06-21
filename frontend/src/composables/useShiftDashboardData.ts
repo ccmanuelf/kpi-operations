@@ -295,15 +295,21 @@ export function useShiftDashboardData() {
       )
       recentActivity.value = allActivities.slice(0, 5)
 
+      // Progress = overall order completion (cumulative actual vs planned), not
+      // just today's logged units — otherwise every bar reads 0% at the start of
+      // a shift. Fall back to today's production only when the order carries no
+      // cumulative actual.
       assignedWorkOrders.value = assignedWorkOrders.value.map((wo) => {
-        const woProductions = productions.filter(
-          (p) => p.work_order_id === wo.work_order_id,
-        )
-        const produced = woProductions.reduce(
-          (sum, p) => sum + (p.units_produced || 0),
-          0,
-        )
-        return { ...wo, produced }
+        const planned = (wo.planned_quantity as number | undefined) ?? wo.target_qty
+        const actual = wo.actual_quantity as number | undefined
+        const todayProduced = productions
+          .filter((p) => p.work_order_id === wo.work_order_id)
+          .reduce((sum, p) => sum + (p.units_produced || 0), 0)
+        return {
+          ...wo,
+          target_qty: wo.target_qty ?? planned,
+          produced: typeof actual === 'number' && actual > 0 ? actual : todayProduced,
+        }
       })
     } catch (error) {
       // eslint-disable-next-line no-console

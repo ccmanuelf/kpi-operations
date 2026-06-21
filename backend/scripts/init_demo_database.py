@@ -20,7 +20,7 @@ import uuid
 import random
 from datetime import datetime, date, timedelta, timezone
 from decimal import Decimal
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple, cast
 
 from sqlalchemy.orm import Session
 
@@ -812,21 +812,14 @@ def init_database(
                 week_working_days = sum(1 for d in range(7) if (week_start + timedelta(days=d)).weekday() < 5)
                 demand_fraction = weekly_demand_pct[week_idx]
 
+                # Deterministic per-week utilization spread.
+                random.seed(hash((client_id, "capacity-util", week_idx)) & 0xFFFFFFFF)
+                # Mid-month ramp: weeks 2-3 run hotter than weeks 1 and 4.
+                week_factor = [0.85, 1.05, 1.10, 0.80][week_idx]
                 for line in cap_lines:
                     dept = line.department
                     if dept is None:
                         continue
-                    dept_total_minutes = dept_demand_minutes.get(dept, 0) * demand_fraction
-                    dept_total_hours = dept_total_minutes / 60
-
-                    # Split sewing demand across 2 lines
-                    if dept == "SEWING":
-                        if "SEW_01" in line.line_code:
-                            demand_h = dept_total_hours * 0.55
-                        else:
-                            demand_h = dept_total_hours * 0.45
-                    else:
-                        demand_h = dept_total_hours
 
                     analysis = CapacityAnalysis(
                         client_id=client_id,
@@ -840,9 +833,21 @@ def init_database(
                         operators_available=line.max_operators,
                         efficiency_factor=line.efficiency_factor,
                         absenteeism_factor=line.absenteeism_factor,
-                        demand_hours=Decimal(str(round(demand_h, 2))),
+                        demand_hours=Decimal("0"),
                         demand_units=int(sum(o.order_quantity for o in cap_orders) * demand_fraction),
                     )
+                    # First pass computes capacity_hours; then set demand to a
+                    # realistic fraction of capacity so utilization reflects a
+                    # busy plant (~60-90%) with sewing bottlenecks in peak weeks,
+                    # not a near-idle 7%. (Prior demand was tiny vs full capacity.)
+                    analysis.calculate_metrics()
+                    cap_h = float(analysis.capacity_hours or 0)
+                    if dept == "SEWING" and week_idx in (1, 2):
+                        target_util = random.uniform(0.96, 1.06)  # peak-week bottleneck
+                    else:
+                        target_util = random.uniform(0.62, 0.88) * week_factor
+                    target_util = max(0.10, min(target_util, 1.15))
+                    analysis.demand_hours = Decimal(str(round(cap_h * target_util, 2)))
                     analysis.calculate_metrics()
                     db.add(analysis)
                     computed_counts["analysis"] += 1
@@ -1099,13 +1104,23 @@ def init_database(
                 },
             ]
             for sd in scenarios_data:
+                # The Scenarios grid reads total_output / avg_utilization /
+                # on_time_rate from results_json; derive them from the existing
+                # capacity/utilization figures so the grid shows projected
+                # outcomes instead of "--".
+                res: Dict[str, Any] = dict(cast(Dict[str, Any], sd["results"]))
+                util_after = float(res.get("utilization_after", res.get("utilization_before", 80.0)) or 80.0)
+                cap_hours = float(res.get("new_capacity_hours", res.get("original_capacity_hours", 6400)) or 6400)
+                res.setdefault("avg_utilization", round(util_after, 1))
+                res.setdefault("total_output", int(cap_hours * 4.0 * util_after / 100))
+                res.setdefault("on_time_rate", round(max(75.0, min(98.0, 175.0 - util_after)), 1))
                 scenario = CapacityScenario(
                     client_id=client_id,
                     scenario_name=sd["name"],
                     scenario_type=sd["type"],
                     base_schedule_id=schedule.id,
                     parameters_json=sd["params"],
-                    results_json=sd["results"],
+                    results_json=res,
                     is_active=True,
                     notes=f"Demo scenario: {sd['name']}",
                 )
@@ -1213,6 +1228,10 @@ def init_database(
                     planned_ship_date=datetime.combine(today_d + timedelta(days=req_off), datetime.min.time()),
                 )
                 wo.required_date = datetime.combine(today_d + timedelta(days=req_off), datetime.min.time())
+                # planned_start_date = received date (lead-time anchor). The OTD
+                # aggregator excludes any order missing this, so without it the
+                # capacity OTD panel shows 0% even for delivered orders.
+                wo.planned_start_date = datetime.combine(today_d + timedelta(days=recv_off), datetime.min.time())
                 wo.priority = "URGENT" if wo_scenario == "shipped_late" else ("HIGH" if idx <= 1 else "MEDIUM")
 
                 expected_units = int(planned * completion_pct)
@@ -1319,7 +1338,6 @@ def init_database(
                     client_products[0],
                 )
                 ideal_ct = product.ideal_cycle_time or Decimal("0.15")
-                run_time = Decimal("8.0")
 
                 # Active window: from received_date to delivery (if shipped)
                 # or today (otherwise). Capped at last 30 days for dashboard
@@ -1362,15 +1380,27 @@ def init_database(
                         units = max(1, min(int(base_per_entry * noise), target_total - running - (num_entries - k - 1)))
                     running += units
 
-                    # Realistic per-entry KPIs
-                    target_perf = Decimal(str(round(random.uniform(0.82, 0.98), 2)))
+                    # Realistic per-entry KPIs. Derive run_time from units, the
+                    # product ideal cycle time, and a target performance so the
+                    # LIVE dual-view recompute (Performance = ideal_ct*units/
+                    # run_time) lands at ~82-96% instead of pegging at the 150%
+                    # cap. Add downtime/setup/maintenance so Availability is
+                    # realistic (~90-92%) rather than a fake 100%.
+                    target_perf = Decimal(str(round(random.uniform(0.82, 0.96), 2)))
+                    run_time = (ideal_ct * Decimal(str(units)) / target_perf).quantize(Decimal("0.01"))
+                    downtime_h = (run_time * Decimal(str(round(random.uniform(0.05, 0.08), 4)))).quantize(
+                        Decimal("0.01")
+                    )
+                    setup_h = (run_time * Decimal("0.02")).quantize(Decimal("0.01"))
+                    maint_h = (run_time * Decimal("0.01")).quantize(Decimal("0.01"))
+                    actual_ct = (run_time / Decimal(str(units))).quantize(Decimal("0.0001"))
+
                     defects = max(1, int(units * random.uniform(0.003, 0.012)))
                     scrap = max(0, defects // 3)
                     rework = defects - scrap
-                    efficiency = Decimal(str(round(random.uniform(78, 95), 2)))
+                    efficiency = (target_perf * Decimal("100")).quantize(Decimal("0.01"))
                     performance = (target_perf * Decimal("100")).quantize(Decimal("0.01"))
                     quality = Decimal(str(round(100 - (defects + scrap) / units * 100, 2)))
-                    actual_ct = run_time / Decimal(str(units))
 
                     entry = ProductionEntry(
                         production_entry_id=f"PE-{client_id[:4]}-{entry_seq:03d}",
@@ -1384,6 +1414,9 @@ def init_database(
                         employees_assigned=5,
                         employees_present=random.choice([4, 5, 5, 5]),
                         run_time_hours=run_time,
+                        downtime_hours=downtime_h,
+                        setup_time_hours=setup_h,
+                        maintenance_hours=maint_h,
                         defect_count=defects,
                         scrap_count=scrap,
                         rework_count=rework,
