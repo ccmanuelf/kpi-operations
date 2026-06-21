@@ -9,7 +9,7 @@ pydantic[email]==2.13.4
 pydantic-settings==2.14.2  # GHSA-4xgf-cpjx-pc3j (disclosed 2026-06-21); 2.14.1 vulnerable
 
 # Database
-sqlalchemy==2.0.46
+sqlalchemy==2.0.51
 alembic==1.15.2
 pymysql==1.1.2
 cryptography==48.0.1  # GHSA-537c-gmf6-5ccf + prior CVEs; pinned for pymysql SSL; security-critical
