@@ -218,6 +218,23 @@ describe('Auth Store', () => {
       },
     )
 
+    // Regression: a hibernating free-tier service is throttled by Render's edge,
+    // which returns HTTP 429 ("Too Many Requests", x-render-routing:
+    // hibernate-rate-limited) for the entire ~90s cold start. That was classified
+    // 'error' -> "login failed". The app never emits 429 itself, so a 429 always
+    // means the backend is asleep and waking — must be 'waking' + auto-retry.
+    it('classifies a 429 (free-tier hibernation throttle) as the backend waking up', async () => {
+      api.login.mockRejectedValue({
+        response: { status: 429, headers: { 'x-render-routing': 'hibernate-rate-limited' } },
+      })
+
+      const store = useAuthStore()
+      const result = await store.login({ username: 'admin', password: 'admin123' }) // pragma: allowlist secret
+
+      expect(result.success).toBe(false)
+      expect(result.code).toBe('waking')
+    })
+
     it('classifies a network error (no HTTP response) as waking up', async () => {
       api.login.mockRejectedValue({ code: 'ERR_NETWORK' })
 
@@ -233,6 +250,22 @@ describe('Auth Store', () => {
       const store = useAuthStore()
       await expect(store.warmUpBackend()).resolves.toBeUndefined()
       expect(fetchSpy).toHaveBeenCalled()
+
+      fetchSpy.mockRestore()
+    })
+
+    // Regression: the warm-up MUST hit a path under the API base (proxied to the
+    // backend), not the SPA-relative /health/live — nginx answers the latter
+    // locally and never forwards it, so it would only wake the frontend.
+    it('warmUpBackend pings the backend through the /api proxy, not the SPA-local /health', async () => {
+      const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(undefined as unknown as Response)
+
+      const store = useAuthStore()
+      await store.warmUpBackend()
+
+      const url = String(fetchSpy.mock.calls[0]?.[0])
+      expect(url).toBe('/api/v1/health/live')
+      expect(url.startsWith('/api')).toBe(true)
 
       fetchSpy.mockRestore()
     })

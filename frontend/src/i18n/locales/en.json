@@ -209,7 +209,7 @@
     "accountCreationFailed": "Failed to create account. Please try again.",
     "registerAccount": "Register Account",
     "loginFailed": "Login failed",
-    "serverWaking": "The demo server is waking up (free hosting). This can take up to a minute — we'll sign you in automatically once it's ready.",
+    "serverWaking": "The demo server is waking up (free hosting). This can take a minute or two — we'll sign you in automatically once it's ready.",
     "serverStillStarting": "The demo server is still starting up. Please wait a few more seconds and try again.",
     "registrationFailed": "Registration failed",
     "forgotPasswordFailed": "Failed to send reset email",
