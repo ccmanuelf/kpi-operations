@@ -285,12 +285,14 @@ const handleLogin = async () => {
   loading.value = true
   wakingUp.value = false
 
-  // On free hosting the backend sleeps after inactivity and a cold start takes
-  // ~30-60s. During that window the login call gets a gateway/network error,
-  // which previously surfaced as "login failed" (looked like a bad password).
-  // Instead, detect the 'waking' state, tell the user, and retry automatically
-  // until the backend is up — without ever masking a real 401.
-  const MAX_ATTEMPTS = 8
+  // On free hosting the backend sleeps after inactivity and a cold start was
+  // measured at ~90s (Render throttles wake-up requests with HTTP 429 the whole
+  // time). During that window the login call previously surfaced as "login failed"
+  // (looked like a bad password). Instead, detect the 'waking' state, tell the
+  // user, and retry automatically until the backend is up — without ever masking a
+  // real 401. The budget (15 x 10s = 150s) must comfortably exceed the cold start
+  // so the loop recovers on its own rather than giving up just before the API is ready.
+  const MAX_ATTEMPTS = 15
   const RETRY_DELAY_MS = 10000
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     const result = await authStore.login({

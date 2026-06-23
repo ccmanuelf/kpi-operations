@@ -63,15 +63,22 @@ const classifyAuthFailure = (error: unknown): AuthFailureCode => {
   const ax = error as { response?: { status?: number }; code?: string }
   const status = ax?.response?.status
   if (status === 401) return 'invalid'
+  // While a free-tier service is hibernating, Render's edge throttles wake-up
+  // requests and answers HTTP 429 (text/plain "Too Many Requests") until the
+  // container is up — verified live, the response carries
+  // `x-render-routing: hibernate-rate-limited`. A cold start takes ~90s, during
+  // which every login attempt is a 429. The app itself never returns 429, so a 429
+  // here always means "the backend is asleep, hold on", not a bad password.
   // No HTTP response (network error / CORS), an aborted/timed-out request, or ANY
-  // server-side 5xx all indicate the backend is still spinning up on free hosting.
-  // A cold container returns 502/503/504 from the proxy while it boots, and can
-  // also return a transient 500 in the window where the app is accepting requests
-  // but is still (re-)seeding the demo database — none of which mean the user typed
-  // a bad password, so we surface "waking up" and auto-retry instead of "login failed".
+  // server-side 5xx are the other cold-start signatures: the proxy returns
+  // 502/503/504 before the app accepts connections, and the app can return a
+  // transient 500 in the window where it is up but still (re-)seeding the demo DB.
+  // None of these mean the user typed a bad password, so we surface "waking up" and
+  // auto-retry instead of the scary "login failed".
   if (
     status === undefined ||
     status === 0 ||
+    status === 429 ||
     (status >= 500 && status <= 599) ||
     ax?.code === 'ECONNABORTED' ||
     ax?.code === 'ERR_NETWORK'
@@ -122,17 +129,23 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
-    // Best-effort backend warm-up: ping the health endpoint as the login page
-    // mounts so a sleeping free-tier API starts booting while the user types.
-    // Uses a bare fetch (NOT the api client) on purpose — going through the
-    // shared axios client would run the 401 interceptor, which redirects to
-    // /login on any 401 and would loop the login page. `no-cors` is fine: we
-    // only need the request to reach (and wake) the backend, not read it.
+    // Best-effort backend warm-up: ping the backend health endpoint as the login
+    // page mounts so a sleeping free-tier API starts booting while the user reads
+    // and types (a cold start is ~90s, so the head start matters).
+    //
+    // Must hit a path UNDER the API base (e.g. /api/v1/health/live): nginx answers
+    // the SPA-relative /health locally and never forwards it, so pinging /health/live
+    // would only wake the frontend, not the backend. /api/* is proxied to the backend
+    // (and /api/v1/health/live + /api/health/live are real backend routes), so this
+    // reaches Render's edge and triggers the wake.
+    //
+    // Bare fetch (NOT the api client) on purpose — the shared axios client runs a 401
+    // interceptor that redirects to /login and would loop the page. `no-cors` is fine:
+    // we only need the request to reach (and wake) the backend, not read the response.
     async warmUpBackend(): Promise<void> {
       const base = (import.meta.env.VITE_API_URL as string | undefined) || '/api/v1'
-      const root = base.replace(/\/api(\/v1)?\/?$/, '')
       try {
-        await fetch(`${root}/health/live`, { method: 'GET', mode: 'no-cors' })
+        await fetch(`${base}/health/live`, { method: 'GET', mode: 'no-cors' })
       } catch {
         /* best-effort — a sleeping or unreachable backend just stays unwarmed */
       }

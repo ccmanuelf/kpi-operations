@@ -209,7 +209,7 @@
     "accountCreationFailed": "Error al crear la cuenta. Por favor intenta de nuevo.",
     "registerAccount": "Registrar Cuenta",
     "loginFailed": "Error al iniciar sesión",
-    "serverWaking": "El servidor de demostración se está activando (alojamiento gratuito). Esto puede tardar hasta un minuto; iniciaremos tu sesión automáticamente cuando esté listo.",
+    "serverWaking": "El servidor de demostración se está activando (alojamiento gratuito). Esto puede tardar uno o dos minutos; iniciaremos tu sesión automáticamente cuando esté listo.",
     "serverStillStarting": "El servidor de demostración aún se está iniciando. Espera unos segundos más e inténtalo de nuevo.",
     "registrationFailed": "Error en el registro",
     "forgotPasswordFailed": "Error al enviar el correo de restablecimiento",
