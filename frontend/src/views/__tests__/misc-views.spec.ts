@@ -60,6 +60,7 @@ vi.mock('@/stores/authStore', () => ({
     isAuthenticated: true,
     isAdmin: false,
     login: vi.fn(() => Promise.resolve({ success: true })),
+    warmUpBackend: vi.fn(() => Promise.resolve()),
     logout: vi.fn(),
   }),
 }))

@@ -28,9 +28,17 @@ interface AuthState {
   passwordResetError: string | null
 }
 
+// Classifies a failed auth call so the UI can distinguish a backend that is
+// still cold-starting (free hosting) from genuinely wrong credentials.
+//   'waking'  — no response / 502-504 / network/timeout → server warming up
+//   'invalid' — 401 → wrong username or password
+//   'error'   — any other failure
+type AuthFailureCode = 'waking' | 'invalid' | 'error'
+
 interface ActionResult<T = void> {
   success: boolean
   error?: string
+  code?: AuthFailureCode
   message?: string
   user?: AuthUser
   valid?: boolean
@@ -49,6 +57,26 @@ const readStoredUser = (): AuthUser | null => {
 const extractErrorDetail = (error: unknown, fallback: string): string => {
   const ax = error as { response?: { data?: { detail?: string } } }
   return ax?.response?.data?.detail || fallback
+}
+
+const classifyAuthFailure = (error: unknown): AuthFailureCode => {
+  const ax = error as { response?: { status?: number }; code?: string }
+  const status = ax?.response?.status
+  if (status === 401) return 'invalid'
+  // No HTTP response (network error / CORS), an aborted/timed-out request, or a
+  // gateway error are all signs the backend is still spinning up on free hosting.
+  if (
+    status === undefined ||
+    status === 0 ||
+    status === 502 ||
+    status === 503 ||
+    status === 504 ||
+    ax?.code === 'ECONNABORTED' ||
+    ax?.code === 'ERR_NETWORK'
+  ) {
+    return 'waking'
+  }
+  return 'error'
 }
 
 export const useAuthStore = defineStore('auth', {
@@ -86,8 +114,21 @@ export const useAuthStore = defineStore('auth', {
       } catch (error) {
         return {
           success: false,
+          code: classifyAuthFailure(error),
           error: extractErrorDetail(error, i18n.global.t('auth.loginFailed')),
         }
+      }
+    },
+
+    // Best-effort backend warm-up. POST /auth/login with no body returns a 422
+    // when the API is awake (harmless) and triggers the free-tier cold start when
+    // it's asleep — so calling it as the login page mounts gets the backend
+    // booting while the user is still typing. Never throws.
+    async warmUpBackend(): Promise<void> {
+      try {
+        await api.login({ username: '', password: '' })
+      } catch {
+        /* expected — we only care that the request reached/woke the backend */
       }
     },
 
