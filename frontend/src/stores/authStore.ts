@@ -120,15 +120,19 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
-    // Best-effort backend warm-up. POST /auth/login with no body returns a 422
-    // when the API is awake (harmless) and triggers the free-tier cold start when
-    // it's asleep — so calling it as the login page mounts gets the backend
-    // booting while the user is still typing. Never throws.
+    // Best-effort backend warm-up: ping the health endpoint as the login page
+    // mounts so a sleeping free-tier API starts booting while the user types.
+    // Uses a bare fetch (NOT the api client) on purpose — going through the
+    // shared axios client would run the 401 interceptor, which redirects to
+    // /login on any 401 and would loop the login page. `no-cors` is fine: we
+    // only need the request to reach (and wake) the backend, not read it.
     async warmUpBackend(): Promise<void> {
+      const base = (import.meta.env.VITE_API_URL as string | undefined) || '/api/v1'
+      const root = base.replace(/\/api(\/v1)?\/?$/, '')
       try {
-        await api.login({ username: '', password: '' })
+        await fetch(`${root}/health/live`, { method: 'GET', mode: 'no-cors' })
       } catch {
-        /* expected — we only care that the request reached/woke the backend */
+        /* best-effort — a sleeping or unreachable backend just stays unwarmed */
       }
     },
 

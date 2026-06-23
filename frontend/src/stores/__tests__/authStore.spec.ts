@@ -210,11 +210,14 @@ describe('Auth Store', () => {
       expect(result.code).toBe('waking')
     })
 
-    it('warmUpBackend never throws even when the backend is unreachable', async () => {
-      api.login.mockRejectedValue({ response: { status: 503 } })
+    it('warmUpBackend pings health and never throws even when unreachable', async () => {
+      const fetchSpy = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('backend asleep'))
 
       const store = useAuthStore()
       await expect(store.warmUpBackend()).resolves.toBeUndefined()
+      expect(fetchSpy).toHaveBeenCalled()
+
+      fetchSpy.mockRestore()
     })
 
     it('handles login failure with server error message', async () => {
