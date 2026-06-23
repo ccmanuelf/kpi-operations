@@ -157,3 +157,6 @@ memory/
 # Generated documentation reports
 docs/hive_mind/
 docs/analysis/SCHEMA_COMPARISON.json
+
+# Local marketing assets (LinkedIn carousel/video/PNGs + post drafts) — not source
+marketing/
