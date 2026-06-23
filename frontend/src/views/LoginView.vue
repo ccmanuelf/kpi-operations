@@ -38,6 +38,20 @@
               ></v-text-field>
               <div v-if="errors.password" id="password-error" class="sr-only">{{ errors.password[0] }}</div>
 
+              <v-alert
+                v-if="wakingUp"
+                type="info"
+                variant="tonal"
+                class="mb-4"
+                role="status"
+                aria-live="polite"
+              >
+                <div class="d-flex align-center ga-3">
+                  <v-progress-circular indeterminate size="20" width="2" />
+                  <span>{{ $t('auth.serverWaking') }}</span>
+                </div>
+              </v-alert>
+
               <v-alert v-if="errorMessage" type="error" class="mb-4" closable role="alert" aria-live="polite">
                 {{ errorMessage }}
               </v-alert>
@@ -207,7 +221,7 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/authStore'
@@ -219,11 +233,18 @@ const { t } = useI18n()
 const router = useRouter()
 const authStore = useAuthStore()
 
+// Start waking the (free-tier) backend the moment the page loads, so it's likely
+// ready by the time the user finishes typing their credentials.
+onMounted(() => {
+  authStore.warmUpBackend()
+})
+
 // Login state
 const username = ref('')
 const password = ref('')
 const loading = ref(false)
 const errorMessage = ref('')
+const wakingUp = ref(false)
 const errors = ref({})
 
 // Forgot password state
@@ -262,42 +283,64 @@ const handleLogin = async () => {
   }
 
   loading.value = true
+  wakingUp.value = false
 
-  const result = await authStore.login({
-    username: username.value,
-    password: password.value
-  })
+  // On free hosting the backend sleeps after inactivity and a cold start takes
+  // ~30-60s. During that window the login call gets a gateway/network error,
+  // which previously surfaced as "login failed" (looked like a bad password).
+  // Instead, detect the 'waking' state, tell the user, and retry automatically
+  // until the backend is up — without ever masking a real 401.
+  const MAX_ATTEMPTS = 8
+  const RETRY_DELAY_MS = 10000
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    const result = await authStore.login({
+      username: username.value,
+      password: password.value,
+    })
 
-  loading.value = false
-
-  if (result.success) {
-    // Role-based landing — keep this in sync with the same map in
-    // router/index.ts (the /login → role redirect for already-authed
-    // users). Defaults to '/' when the role isn't in the map.
-    const role = authStore.currentUser?.role
-    const landing = {
-      operator: '/my-shift',
-      leader: '/',
-      poweruser: '/capacity-planning',
-      admin: '/kpi-dashboard',
+    if (result.success) {
+      wakingUp.value = false
+      loading.value = false
+      // Role-based landing — keep this in sync with the same map in
+      // router/index.ts (the /login → role redirect for already-authed
+      // users). Defaults to '/' when the role isn't in the map.
+      const role = authStore.currentUser?.role
+      const landing = {
+        operator: '/my-shift',
+        leader: '/',
+        poweruser: '/capacity-planning',
+        admin: '/kpi-dashboard',
+      }
+      router.push((role && landing[role]) || '/')
+      return
     }
-    router.push((role && landing[role]) || '/')
-  } else {
-    errorMessage.value = result.error
+
+    if (result.code === 'waking' && attempt < MAX_ATTEMPTS) {
+      wakingUp.value = true
+      await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS))
+      continue
+    }
+
+    // Genuine failure (wrong credentials / other), or still not up after retries.
+    loading.value = false
+    wakingUp.value = false
+    errorMessage.value =
+      result.code === 'waking' ? t('auth.serverStillStarting') : (result.error || t('auth.loginFailed'))
+    return
   }
 }
 
 const handleForgotPassword = async () => {
   resetErrors.value = {}
   resetSuccess.value = ''
-  
+
   if (!resetEmail.value) {
     resetErrors.value.email = [t('validation.emailRequired')]
     return
   }
 
   resetLoading.value = true
-  
+
   try {
     await api.post('/auth/forgot-password', { email: resetEmail.value })
     resetSuccess.value = t('auth.resetEmailSent')

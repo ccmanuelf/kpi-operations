@@ -179,9 +179,50 @@ describe('Auth Store', () => {
       expect(localStorageMock.setItem).toHaveBeenCalledWith('user', JSON.stringify(mockResponse.data.user))
     })
 
+    it('classifies a 401 as invalid credentials (not a cold start)', async () => {
+      api.login.mockRejectedValue({
+        response: { status: 401, data: { detail: 'Incorrect username or password' } },
+      })
+
+      const store = useAuthStore()
+      const result = await store.login({ username: 'admin', password: 'wrong' })
+
+      expect(result.success).toBe(false)
+      expect(result.code).toBe('invalid')
+    })
+
+    it('classifies a 503 gateway error as the backend waking up', async () => {
+      api.login.mockRejectedValue({ response: { status: 503 } })
+
+      const store = useAuthStore()
+      const result = await store.login({ username: 'admin', password: 'admin123' }) // pragma: allowlist secret
+
+      expect(result.success).toBe(false)
+      expect(result.code).toBe('waking')
+    })
+
+    it('classifies a network error (no HTTP response) as waking up', async () => {
+      api.login.mockRejectedValue({ code: 'ERR_NETWORK' })
+
+      const store = useAuthStore()
+      const result = await store.login({ username: 'admin', password: 'admin123' }) // pragma: allowlist secret
+
+      expect(result.code).toBe('waking')
+    })
+
+    it('warmUpBackend pings health and never throws even when unreachable', async () => {
+      const fetchSpy = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('backend asleep'))
+
+      const store = useAuthStore()
+      await expect(store.warmUpBackend()).resolves.toBeUndefined()
+      expect(fetchSpy).toHaveBeenCalled()
+
+      fetchSpy.mockRestore()
+    })
+
     it('handles login failure with server error message', async () => {
       api.login.mockRejectedValue({
-        response: { data: { detail: 'Invalid credentials' } }
+        response: { status: 400, data: { detail: 'Invalid credentials' } }
       })
 
       const store = useAuthStore()

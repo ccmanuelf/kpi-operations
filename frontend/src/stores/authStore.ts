@@ -28,9 +28,17 @@ interface AuthState {
   passwordResetError: string | null
 }
 
+// Classifies a failed auth call so the UI can distinguish a backend that is
+// still cold-starting (free hosting) from genuinely wrong credentials.
+//   'waking'  — no response / 502-504 / network/timeout → server warming up
+//   'invalid' — 401 → wrong username or password
+//   'error'   — any other failure
+type AuthFailureCode = 'waking' | 'invalid' | 'error'
+
 interface ActionResult<T = void> {
   success: boolean
   error?: string
+  code?: AuthFailureCode
   message?: string
   user?: AuthUser
   valid?: boolean
@@ -49,6 +57,26 @@ const readStoredUser = (): AuthUser | null => {
 const extractErrorDetail = (error: unknown, fallback: string): string => {
   const ax = error as { response?: { data?: { detail?: string } } }
   return ax?.response?.data?.detail || fallback
+}
+
+const classifyAuthFailure = (error: unknown): AuthFailureCode => {
+  const ax = error as { response?: { status?: number }; code?: string }
+  const status = ax?.response?.status
+  if (status === 401) return 'invalid'
+  // No HTTP response (network error / CORS), an aborted/timed-out request, or a
+  // gateway error are all signs the backend is still spinning up on free hosting.
+  if (
+    status === undefined ||
+    status === 0 ||
+    status === 502 ||
+    status === 503 ||
+    status === 504 ||
+    ax?.code === 'ECONNABORTED' ||
+    ax?.code === 'ERR_NETWORK'
+  ) {
+    return 'waking'
+  }
+  return 'error'
 }
 
 export const useAuthStore = defineStore('auth', {
@@ -86,8 +114,25 @@ export const useAuthStore = defineStore('auth', {
       } catch (error) {
         return {
           success: false,
+          code: classifyAuthFailure(error),
           error: extractErrorDetail(error, i18n.global.t('auth.loginFailed')),
         }
+      }
+    },
+
+    // Best-effort backend warm-up: ping the health endpoint as the login page
+    // mounts so a sleeping free-tier API starts booting while the user types.
+    // Uses a bare fetch (NOT the api client) on purpose — going through the
+    // shared axios client would run the 401 interceptor, which redirects to
+    // /login on any 401 and would loop the login page. `no-cors` is fine: we
+    // only need the request to reach (and wake) the backend, not read it.
+    async warmUpBackend(): Promise<void> {
+      const base = (import.meta.env.VITE_API_URL as string | undefined) || '/api/v1'
+      const root = base.replace(/\/api(\/v1)?\/?$/, '')
+      try {
+        await fetch(`${root}/health/live`, { method: 'GET', mode: 'no-cors' })
+      } catch {
+        /* best-effort — a sleeping or unreachable backend just stays unwarmed */
       }
     },
 
