@@ -201,6 +201,23 @@ describe('Auth Store', () => {
       expect(result.code).toBe('waking')
     })
 
+    // Regression: on a free-tier cold start the backend can accept a request while
+    // it is still re-seeding the demo database and return a transient 500. That was
+    // previously classified 'error' and surfaced the scary "login failed" banner
+    // instead of "waking up + retry". Any 5xx is the backend not being ready yet.
+    it.each([500, 502, 504, 599])(
+      'classifies a %i server error as the backend waking up',
+      async (status) => {
+        api.login.mockRejectedValue({ response: { status } })
+
+        const store = useAuthStore()
+        const result = await store.login({ username: 'admin', password: 'admin123' }) // pragma: allowlist secret
+
+        expect(result.success).toBe(false)
+        expect(result.code).toBe('waking')
+      },
+    )
+
     it('classifies a network error (no HTTP response) as waking up', async () => {
       api.login.mockRejectedValue({ code: 'ERR_NETWORK' })
 

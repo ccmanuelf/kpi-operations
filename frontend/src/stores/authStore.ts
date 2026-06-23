@@ -63,14 +63,16 @@ const classifyAuthFailure = (error: unknown): AuthFailureCode => {
   const ax = error as { response?: { status?: number }; code?: string }
   const status = ax?.response?.status
   if (status === 401) return 'invalid'
-  // No HTTP response (network error / CORS), an aborted/timed-out request, or a
-  // gateway error are all signs the backend is still spinning up on free hosting.
+  // No HTTP response (network error / CORS), an aborted/timed-out request, or ANY
+  // server-side 5xx all indicate the backend is still spinning up on free hosting.
+  // A cold container returns 502/503/504 from the proxy while it boots, and can
+  // also return a transient 500 in the window where the app is accepting requests
+  // but is still (re-)seeding the demo database — none of which mean the user typed
+  // a bad password, so we surface "waking up" and auto-retry instead of "login failed".
   if (
     status === undefined ||
     status === 0 ||
-    status === 502 ||
-    status === 503 ||
-    status === 504 ||
+    (status >= 500 && status <= 599) ||
     ax?.code === 'ECONNABORTED' ||
     ax?.code === 'ERR_NETWORK'
   ) {
