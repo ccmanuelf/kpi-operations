@@ -7,7 +7,10 @@ input="$(cat)"
 cmd="$(printf '%s' "$input" | jq -r '.tool_input.command // ""')"
 
 # Only gate PR creation/merge; everything else passes through.
-if ! printf '%s' "$cmd" | grep -Eq 'gh[[:space:]]+pr[[:space:]]+(create|merge)'; then
+# Anchor to a command position (start of string or after a shell separator),
+# optionally rtk-prefixed, so the phrase inside a quoted arg (e.g. a commit
+# message) does NOT falsely match. BSD-grep-safe (no \b) for macOS.
+if ! printf '%s' "$cmd" | grep -Eq '(^|[;&|(])[[:space:]]*(rtk[[:space:]]+)?gh[[:space:]]+pr[[:space:]]+(create|merge)([[:space:]]|$)'; then
   exit 0
 fi
 
