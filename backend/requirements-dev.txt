@@ -4,7 +4,7 @@
 -r requirements.txt
 
 # Testing
-pytest==9.0.3          # CVE-2025-71176 fix (was 8.3.5)
+pytest==9.1.1          # CVE-2025-71176 fix (was 8.3.5)
 pytest-asyncio==1.4.0  # pytest 9 compat (was 0.25.3)
 pytest-cov==7.1.0      # pytest 9 compat (was 6.1.1)
 httpx==0.28.1
