@@ -20,8 +20,8 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
 
-    /* Paths */
-    "baseUrl": ".",
+    /* Paths (TS 5+ resolves `paths` relative to this tsconfig; `baseUrl`
+       removed — deprecated in TS 6.0, stops functioning in 7.0) */
     "paths": {
       "@/*": ["./src/*"]
     }
