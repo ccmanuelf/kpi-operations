@@ -18,6 +18,7 @@ out="$(cd "$SCRIPT_DIR" && "$MARK" reviewed)"
 [ "$(jq -r '.mode' "$TMP/$SHA.json")" = "reviewed" ]; assert "reviewed: mode=reviewed" $?
 [ "$(jq -r '.model' "$TMP/$SHA.json")" = "deepseek-reasoner" ]; assert "reviewed: default model" $?
 [ "$(jq -r '.sha' "$TMP/$SHA.json")" = "$SHA" ]; assert "reviewed: sha matches HEAD" $?
+[ "$out" = "$TMP/$SHA.json" ]; assert "reviewed: stdout is marker path" $?
 
 # Case 2: skipped marker records the reason
 (cd "$SCRIPT_DIR" && "$MARK" skipped "mcp unreachable") >/dev/null
@@ -26,6 +27,10 @@ out="$(cd "$SCRIPT_DIR" && "$MARK" reviewed)"
 
 # Case 3: invalid mode exits non-zero
 (cd "$SCRIPT_DIR" && "$MARK" bogus) >/dev/null 2>&1; [ $? -ne 0 ]; assert "invalid mode exits non-zero" $?
+
+# Case 4: CROSS_REVIEW_MODEL override propagates into the marker
+(cd "$SCRIPT_DIR" && CROSS_REVIEW_MODEL=custom-model "$MARK" reviewed) >/dev/null
+[ "$(jq -r '.model' "$TMP/$SHA.json")" = "custom-model" ]; assert "model override propagates" $?
 
 rm -rf "$TMP"
 exit $fail
