@@ -23,6 +23,24 @@ def _make_user(role: str) -> MagicMock:
     return user
 
 
+def _flatten_api_routes(routes):
+    """Yield the underlying APIRoute objects reachable from ``routes``.
+
+    FastAPI's ``include_router`` holds each include as a wrapper that references
+    the original sub-router via ``original_router`` instead of flattening its
+    routes into the parent's ``routes`` list. Descend through any such wrappers
+    (duck-typed, so the older flat structure also works) to reach the real
+    APIRoute objects that carry ``methods`` and ``dependencies``. Written
+    independently of the production injection helper so this stays a real check.
+    """
+    for route in routes:
+        included = getattr(route, "original_router", None)
+        if included is not None:
+            yield from _flatten_api_routes(included.routes)
+        elif hasattr(route, "methods") and hasattr(route, "dependencies"):
+            yield route
+
+
 # ---------------------------------------------------------------------------
 # require_capacity_write
 # ---------------------------------------------------------------------------
@@ -105,7 +123,7 @@ class TestCapacityRouterDependencyInjection:
 
         write_methods = {"POST", "PUT", "PATCH", "DELETE"}
 
-        write_routes = [r for r in router.routes if hasattr(r, "methods") and r.methods & write_methods]
+        write_routes = [r for r in _flatten_api_routes(router.routes) if r.methods & write_methods]
         assert len(write_routes) > 0, "Expected at least one write route"
 
         for route in write_routes:
@@ -118,7 +136,7 @@ class TestCapacityRouterDependencyInjection:
         """GET-only routes should NOT have require_capacity_write."""
         from backend.routes.capacity import router
 
-        get_only_routes = [r for r in router.routes if hasattr(r, "methods") and r.methods == {"GET"}]
+        get_only_routes = [r for r in _flatten_api_routes(router.routes) if r.methods == {"GET"}]
         # It's acceptable if there are no GET-only routes
         for route in get_only_routes:
             dep_callables = [d.dependency for d in route.dependencies if hasattr(d, "dependency")]

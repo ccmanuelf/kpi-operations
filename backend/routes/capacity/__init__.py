@@ -21,8 +21,11 @@ Write access control:
     injected on non-GET routes after sub-router assembly.
 """
 
+from collections.abc import Iterable, Iterator
+
 from fastapi import APIRouter, Depends
 from fastapi.routing import APIRoute
+from starlette.routing import BaseRoute
 
 from backend.middleware.write_access import require_capacity_write
 
@@ -57,10 +60,25 @@ router.include_router(work_order_bridge_router)
 _write_methods = {"POST", "PUT", "PATCH", "DELETE"}
 _cap_write_dep = Depends(require_capacity_write)
 
-for route in router.routes:
-    # Only APIRoute instances expose `methods` and `dependencies`;
-    # mypy widens `router.routes` to `Sequence[BaseRoute]` so cast
-    # via isinstance to keep the attribute access checked.
-    if isinstance(route, APIRoute) and route.methods & _write_methods:
-        if _cap_write_dep not in route.dependencies:
-            route.dependencies.append(_cap_write_dep)
+
+def _iter_api_routes(routes: Iterable[BaseRoute]) -> Iterator[APIRoute]:
+    """Yield the live APIRoute instances reachable from ``routes``.
+
+    FastAPI's ``include_router`` no longer flattens sub-router routes into the
+    parent's ``routes`` list — each include is held as a wrapper that references
+    the original sub-router via ``original_router``. Descend through any such
+    wrappers (duck-typed, so this also handles the older flat structure) to
+    reach the underlying APIRoute objects; mutating their ``dependencies``
+    propagates to request-time routing because the wrapper references them.
+    """
+    for route in routes:
+        included = getattr(route, "original_router", None)
+        if included is not None:
+            yield from _iter_api_routes(included.routes)
+        elif isinstance(route, APIRoute):
+            yield route
+
+
+for route in _iter_api_routes(router.routes):
+    if route.methods and route.methods & _write_methods and _cap_write_dep not in route.dependencies:
+        route.dependencies.append(_cap_write_dep)
