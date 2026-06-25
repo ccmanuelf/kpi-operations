@@ -1,6 +1,6 @@
 # IMPORTANT: Enable GitHub branch protection on 'main':
 # Settings > Branches > Add rule for 'main':
-# - Require status checks: backend-tests, frontend-lint-and-tests, docker-build
+# - Require status checks: backend-tests, frontend-lint-and-tests, docker-build, tooling-tests
 # - Require branches to be up to date before merging
 # This ensures broken builds (e.g. unclosed Vue template tags) never reach main.
 name: CI
@@ -252,3 +252,29 @@ jobs:
           fi
           echo "All workflow endpoints passed"
           docker stop backend-freshdb && docker rm backend-freshdb
+
+  tooling-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Run dev-tooling shell unit tests
+        # Guards the cross-review PR-gate scripts (scripts/cross-review-*.sh):
+        # if the gate regex or marker logic regresses, these fail here instead
+        # of silently letting unreviewed PRs through. jq + git are preinstalled
+        # on ubuntu-latest runners.
+        run: |
+          shopt -s nullglob
+          tests=(tests/scripts/*.sh)
+          if [ ${#tests[@]} -eq 0 ]; then
+            echo "::error::no tooling tests found under tests/scripts/"
+            exit 1
+          fi
+          # Run every test (don't abort on first failure) so one regression
+          # doesn't mask others, then fail the job if any failed.
+          failed=0
+          for t in "${tests[@]}"; do
+            echo "== $t =="
+            bash "$t" || failed=1
+          done
+          exit $failed
