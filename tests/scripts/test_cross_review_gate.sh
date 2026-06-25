@@ -19,6 +19,8 @@ run "gh pr view 12" >/dev/null 2>&1; [ $? -eq 0 ]; assert "gh pr view allowed" $
 run "gh pr create --fill" >/dev/null 2>&1; [ $? -eq 2 ]; assert "gh pr create blocked without marker" $?
 # gh pr merge with no marker -> blocked (exit 2)
 run "gh pr merge 12 --squash" >/dev/null 2>&1; [ $? -eq 2 ]; assert "gh pr merge blocked without marker" $?
+# rtk-rewritten command is still caught by the substring match
+run "rtk gh pr create --fill" >/dev/null 2>&1; [ $? -eq 2 ]; assert "rtk-prefixed gh pr create blocked" $?
 # create marker for HEAD -> now allowed
 echo '{}' > "$TMP/$SHA.json"
 run "gh pr create --fill" >/dev/null 2>&1; [ $? -eq 0 ]; assert "gh pr create allowed with marker" $?
