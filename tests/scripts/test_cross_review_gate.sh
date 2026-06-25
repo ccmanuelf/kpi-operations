@@ -27,6 +27,10 @@ run "rtk gh pr create --fill" >/dev/null 2>&1; [ $? -eq 2 ]; assert "rtk-prefixe
 run 'git commit -m "wire gate on gh pr merge"' >/dev/null 2>&1; [ $? -eq 0 ]; assert "gh pr in quoted arg allowed" $?
 # real invocation after a separator IS gated
 run "echo done && gh pr create --fill" >/dev/null 2>&1; [ $? -eq 2 ]; assert "gh pr create after && blocked" $?
+# env-var / command / env wrappers must NOT let a real invocation slip past
+run "FOO=1 gh pr create --fill" >/dev/null 2>&1; [ $? -eq 2 ]; assert "env-prefixed gh pr create blocked" $?
+run "GH_TOKEN=x gh pr merge 5" >/dev/null 2>&1; [ $? -eq 2 ]; assert "GH_TOKEN-prefixed gh pr merge blocked" $?
+run "command gh pr create" >/dev/null 2>&1; [ $? -eq 2 ]; assert "command-wrapped gh pr create blocked" $?
 # create marker for HEAD -> now allowed
 echo '{}' > "$TMP/$SHA.json"
 run "gh pr create --fill" >/dev/null 2>&1; [ $? -eq 0 ]; assert "gh pr create allowed with marker" $?

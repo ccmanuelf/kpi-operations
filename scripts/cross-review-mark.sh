@@ -10,7 +10,7 @@ case "$mode" in
   *) echo "usage: cross-review-mark.sh <reviewed|skipped> [reason]" >&2; exit 1 ;;
 esac
 
-dir="${CROSS_REVIEW_DIR:-.git/cross-review}"
+dir="${CROSS_REVIEW_DIR:-$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null)/cross-review}"
 model="${CROSS_REVIEW_MODEL:-deepseek-reasoner}"
 sha="$(git rev-parse HEAD)"
 ts="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
