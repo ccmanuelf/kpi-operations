@@ -8,8 +8,8 @@ export interface ColdStartLoginResult {
 }
 
 export type ColdStartLoginFn = (
-  credentials: Record<string, unknown>,
-  timeoutMs?: number,
+  _credentials: Record<string, unknown>,
+  _timeoutMs?: number,
 ) => Promise<ColdStartLoginResult>
 
 export interface ColdStartLoginOptions {
@@ -29,7 +29,7 @@ export function useColdStartLogin(
 ): {
   wakingUp: Ref<boolean>
   wakingElapsedSec: Ref<number>
-  run: (credentials: Record<string, unknown>) => Promise<ColdStartLoginResult>
+  run: (_credentials: Record<string, unknown>) => Promise<ColdStartLoginResult>
   cancel: () => void
 } {
   const budgetMs = options.budgetMs ?? 180000
@@ -64,7 +64,6 @@ export function useColdStartLogin(
   async function run(credentials: Record<string, unknown>): Promise<ColdStartLoginResult> {
     aborted = false
     const start = Date.now()
-    // eslint-disable-next-line no-constant-condition
     while (true) {
       const result = await loginFn(credentials, attemptTimeoutMs)
 
