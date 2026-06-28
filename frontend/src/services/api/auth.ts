@@ -15,7 +15,9 @@ export interface RegisterPayload {
 }
 
 export const login = (credentials: LoginCredentials, timeoutMs?: number) =>
-  api.post('/auth/login', credentials, timeoutMs ? { timeout: timeoutMs } : undefined)
+  timeoutMs
+    ? api.post('/auth/login', credentials, { timeout: timeoutMs })
+    : api.post('/auth/login', credentials)
 
 export const register = (userData: RegisterPayload) => api.post('/auth/register', userData)
 

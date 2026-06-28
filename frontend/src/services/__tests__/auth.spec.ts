@@ -35,6 +35,22 @@ describe('Auth API', () => {
       expect(result).toEqual(mockResponse)
     })
 
+    it('passes a per-request timeout to api.post when provided', async () => {
+      const credentials = { email: 'test@test.com', password: 'password123' } // pragma: allowlist secret
+      const mockResponse = {
+        data: { access_token: 't' }
+      }
+      api.post.mockResolvedValue(mockResponse)
+
+      await authApi.login(credentials, 20000)
+
+      expect(api.post).toHaveBeenCalledWith(
+        '/auth/login',
+        { email: 'test@test.com', password: 'password123' }, // pragma: allowlist secret
+        { timeout: 20000 },
+      )
+    })
+
     it('propagates errors from API', async () => {
       const credentials = { email: 'test@test.com', password: 'wrong' }
       const error = new Error('Invalid credentials')
