@@ -102,9 +102,46 @@ async login(credentials: LoginCredentials, timeoutMs?: number): Promise<ActionRe
 }
 ```
 
-### 2. Wall-clock retry budget in `LoginView.vue`
+### 2. Wall-clock retry budget — extracted into a `useColdStartLogin` composable
 
-Replace the fixed-attempt loop with a wall-clock budget:
+The retry loop and elapsed ticker move out of `LoginView.vue` into a pure composable
+`frontend/src/composables/useColdStartLogin.ts`. Rationale: `LoginView` uses
+`<script setup>`, whose internals are **not** accessible via Vue Test Utils `wrapper.vm`
+(the repo's existing `FloatingPoolManagement.spec.ts` works around this by re-implementing
+logic in an inline component — testing a copy, which we want to avoid). A pure composable
+lets us unit-test the real recovery logic directly with fake timers, and it matches the
+repo's composable-heavy pattern (`useShiftDashboardData`, `useFloatingPoolData`, …).
+
+The composable owns no Vue lifecycle hook (so it is callable from a test without a
+component instance); it returns `stopTicker` for the consumer to wire into `onUnmounted`.
+
+```ts
+// useColdStartLogin.ts (shape)
+export function useColdStartLogin(loginFn, options?) {
+  // BUDGET_MS=180000, ATTEMPT_TIMEOUT_MS=20000, RETRY_DELAY_MS=10000 (overridable via options)
+  const wakingUp = ref(false)
+  const wakingElapsedSec = ref(0)
+  // startTicker()/stopTicker() drive a 1s setInterval into wakingElapsedSec
+  async function run(credentials) {
+    const start = Date.now()
+    while (true) {
+      const result = await loginFn(credentials, ATTEMPT_TIMEOUT_MS)
+      if (result.success) { stopTicker(); wakingUp.value = false; return result }
+      if (result.code === 'waking' && Date.now() - start < BUDGET_MS) {
+        wakingUp.value = true; startTicker()
+        await delay(RETRY_DELAY_MS); continue
+      }
+      stopTicker(); wakingUp.value = false; return result   // 401 / other / budget exhausted
+    }
+  }
+  return { wakingUp, wakingElapsedSec, run, stopTicker }
+}
+```
+
+`LoginView.handleLogin` becomes a thin consumer that calls `run(credentials)`, then on the
+returned result either redirects by role (unchanged map) or maps `result.code` to the
+existing `auth.serverStillStarting` / `auth.loginFailed` messages. Equivalent loop logic
+the composable encapsulates:
 
 ```ts
 const BUDGET_MS = 180_000
@@ -173,14 +210,21 @@ Key behaviors preserved:
 
 ## Testing
 
-- **`authStore.spec.ts`** — `login` forwards `timeoutMs` to `api.login` as
-  `{ timeout }`; omitted when not passed; classifier mapping unchanged (`ECONNABORTED` →
+- **`authStore.spec.ts`** — `login` forwards `timeoutMs` to `api.login` as the second
+  argument; `undefined` when not passed; classifier mapping unchanged (`ECONNABORTED` →
   `waking`).
-- **`LoginView` tests** (fake timers):
-  - Retries on `'waking'` and succeeds on a later attempt within budget → redirects.
-  - Stops and shows `serverStillStarting` after the budget elapses while still `'waking'`.
-  - Breaks immediately and shows the credentials error on `401` (no retry).
-  - Ticker interval is cleared on unmount (no leaked timer).
+- **`useColdStartLogin.spec.ts`** (new, fake timers — tests the real recovery logic):
+  - Retries on `'waking'` and resolves success on a later attempt within budget; `run`
+    returns `{ success: true }`.
+  - Passes `ATTEMPT_TIMEOUT_MS` as the second arg to `loginFn` on every attempt.
+  - Returns the `'waking'` result after the budget elapses while still `'waking'` (caller
+    maps it to `serverStillStarting`).
+  - Returns immediately on `'invalid'` after one attempt (no retry) — a real 401 is never
+    masked.
+  - `wakingElapsedSec` advances ~1/second while waking; `stopTicker()` halts it (no leaked
+    interval).
+- **`LoginView`** — the existing smoke-mount test (`misc-views.spec.ts`) must stay green;
+  redirect-by-role and i18n message mapping are unchanged pre-existing code.
 - **Manual** — after merge, verify against the live Render cold start (hibernate the
   service, then log in) per the local==GitHub==Render convention.
 
