@@ -30,7 +30,7 @@ export function useColdStartLogin(
   wakingUp: Ref<boolean>
   wakingElapsedSec: Ref<number>
   run: (credentials: Record<string, unknown>) => Promise<ColdStartLoginResult>
-  stopTicker: () => void
+  cancel: () => void
 } {
   const budgetMs = options.budgetMs ?? 180000
   const attemptTimeoutMs = options.attemptTimeoutMs ?? 20000
@@ -39,6 +39,7 @@ export function useColdStartLogin(
   const wakingUp = ref(false)
   const wakingElapsedSec = ref(0)
   let ticker: ReturnType<typeof setInterval> | null = null
+  let aborted = false
 
   function startTicker(): void {
     if (ticker !== null) return
@@ -55,11 +56,23 @@ export function useColdStartLogin(
     }
   }
 
+  function cancel(): void {
+    stopTicker()
+    aborted = true
+  }
+
   async function run(credentials: Record<string, unknown>): Promise<ColdStartLoginResult> {
+    aborted = false
     const start = Date.now()
     // eslint-disable-next-line no-constant-condition
     while (true) {
       const result = await loginFn(credentials, attemptTimeoutMs)
+
+      if (aborted) {
+        stopTicker()
+        wakingUp.value = false
+        return result
+      }
 
       if (result.success) {
         stopTicker()
@@ -71,6 +84,13 @@ export function useColdStartLogin(
         wakingUp.value = true
         startTicker()
         await new Promise((resolve) => setTimeout(resolve, retryDelayMs))
+
+        if (aborted) {
+          stopTicker()
+          wakingUp.value = false
+          return result
+        }
+
         continue
       }
 
@@ -80,5 +100,5 @@ export function useColdStartLogin(
     }
   }
 
-  return { wakingUp, wakingElapsedSec, run, stopTicker }
+  return { wakingUp, wakingElapsedSec, run, cancel }
 }

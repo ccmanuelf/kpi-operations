@@ -63,24 +63,41 @@ describe('useColdStartLogin', () => {
     expect(loginFn).toHaveBeenCalledTimes(1)
   })
 
-  it('advances the elapsed counter while waking and stops it on stopTicker', async () => {
+  it('advances the elapsed counter while waking and stops it on cancel', async () => {
     const loginFn = vi.fn().mockResolvedValue({ success: false, code: 'waking' })
-    const { run, wakingElapsedSec, stopTicker } = useColdStartLogin(loginFn, OPTS)
+    const { run, wakingElapsedSec, cancel } = useColdStartLogin(loginFn, OPTS)
 
     const done = run(CREDS)
     await vi.advanceTimersByTimeAsync(0) // first attempt → 'waking' starts the ticker
     await vi.advanceTimersByTimeAsync(3000) // 3 one-second ticks
-    expect(wakingElapsedSec.value).toBeGreaterThanOrEqual(3)
+    expect(wakingElapsedSec.value).toBe(3)
 
-    stopTicker()
+    cancel()
     const before = wakingElapsedSec.value
     await vi.advanceTimersByTimeAsync(3000)
     expect(wakingElapsedSec.value).toBe(before) // no leaked interval
 
-    // let the budget run out so the pending run() resolves and leaves no open timers
-    for (let i = 0; i < 20; i++) {
-      await vi.advanceTimersByTimeAsync(10000)
-    }
+    // cancel() sets aborted; advance through the current retry delay so run() returns
+    await vi.advanceTimersByTimeAsync(10000)
     await done
+  })
+
+  it('cancel() aborts the retry loop', async () => {
+    const loginFn = vi.fn().mockResolvedValue({ success: false, code: 'waking' })
+    const { run, cancel } = useColdStartLogin(loginFn, OPTS)
+
+    const done = run(CREDS)
+    await vi.advanceTimersByTimeAsync(0) // attempt 1 completes
+    await vi.advanceTimersByTimeAsync(10000) // retry delay + attempt 2 completes
+
+    const callsBeforeCancel = loginFn.mock.calls.length // 2
+    cancel()
+
+    // advance through the in-flight retry delay → aborted check fires → run() returns
+    await vi.advanceTimersByTimeAsync(10000)
+
+    expect(loginFn.mock.calls.length).toBe(callsBeforeCancel) // no new calls after cancel
+    const result = await done
+    expect(result).toEqual({ success: false, code: 'waking' })
   })
 })
