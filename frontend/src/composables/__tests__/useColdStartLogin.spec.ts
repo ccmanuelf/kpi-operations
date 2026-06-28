@@ -102,7 +102,7 @@ describe('useColdStartLogin', () => {
   })
 
   it('does not report success when cancelled during an in-flight attempt', async () => {
-    let resolveLogin: (value: { success: boolean }) => void
+    let resolveLogin: (_value: { success: boolean }) => void
     const loginFn = vi.fn(
       () =>
         new Promise<{ success: boolean }>((resolve) => {

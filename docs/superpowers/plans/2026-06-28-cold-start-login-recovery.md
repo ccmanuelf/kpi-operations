@@ -28,7 +28,7 @@
 - `frontend/src/composables/useColdStartLogin.ts` — **new.** Pure retry-loop + elapsed-ticker composable.
 - `frontend/src/composables/__tests__/useColdStartLogin.spec.ts` — **new.** Unit tests (fake timers).
 - `frontend/src/i18n/locales/en.json` + `es.json` — parameterise `auth.serverWaking` with `{seconds}`.
-- `frontend/src/views/LoginView.vue` — consume the composable; bind elapsed seconds; wire `onUnmounted(stopTicker)`.
+- `frontend/src/views/LoginView.vue` — consume the composable; bind elapsed seconds; wire `onUnmounted(cancel)`.
 
 ---
 
@@ -137,10 +137,10 @@ git commit -m "feat(auth): thread optional per-attempt timeout through login"
     wakingUp: Ref<boolean>
     wakingElapsedSec: Ref<number>
     run: (credentials: Record<string, unknown>) => Promise<ColdStartLoginResult>
-    stopTicker: () => void
+    cancel: () => void
   }
   ```
-  `run` resolves with the terminal `loginFn` result (success, or the last failure when the budget is exhausted, or an immediate non-`waking` failure). It owns no Vue lifecycle hook — the consumer wires `stopTicker` into `onUnmounted`.
+  `run` resolves with the terminal `loginFn` result (success, or the last failure when the budget is exhausted, or an immediate non-`waking` failure). It owns no Vue lifecycle hook — the consumer wires `cancel` into `onUnmounted`. `cancel()` stops the elapsed ticker AND aborts an in-flight `run` loop (checked after each `await`), so an unmount mid-wait does not leave orphaned login attempts or a late redirect firing on a dead component.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -390,14 +390,14 @@ import { useColdStartLogin } from '@/composables/useColdStartLogin'
 (c) After `const authStore = useAuthStore()` (line 234), instantiate the composable and
 wire cleanup. `authStore.login` is a Pinia action (already bound), so it can be passed
 directly. `stopWakingTicker` is wired into `onUnmounted` to guard an unmount that happens
-mid-wait (the composable also calls it whenever `run()` settles):
+mid-wait (cancel also stops the ticker whenever `run()` settles internally):
 
 ```js
 const {
   wakingUp,
   wakingElapsedSec,
   run: runColdStartLogin,
-  stopTicker: stopWakingTicker,
+  cancel: stopWakingTicker,
 } = useColdStartLogin((credentials, timeoutMs) => authStore.login(credentials, timeoutMs))
 onUnmounted(stopWakingTicker)
 ```
@@ -491,7 +491,7 @@ git commit -m "chore(login): lint fixups for cold-start recovery"
 
 - **Spec coverage:** per-attempt timeout (spec §1 → Task 1); wall-clock budget loop extracted into `useColdStartLogin`, preserving 401-immediate / budget-exhaust behavior (spec §2 → Task 2); live progress via parameterised `auth.serverWaking` and ticker (spec §3 → Task 2 composable + Task 3 Steps 1, 4); thin `LoginView` consumer with `onUnmounted` cleanup (Task 3). No backend / no global timeout / no keep-warm (Global Constraints). All covered.
 - **Placeholder scan:** none — every code and test step contains complete, final content.
-- **Type consistency:** `login(credentials, timeoutMs?)` signature identical in `auth.ts`, `authStore.ts`, and the composable's `loginFn`; composable returns `{ wakingUp, wakingElapsedSec, run, stopTicker }`, consumed in `LoginView` as `wakingUp` / `wakingElapsedSec` (template) / `runColdStartLogin` / `stopWakingTicker` (onUnmounted); `auth.serverWaking` key name unchanged so both i18n gates hold.
+- **Type consistency:** `login(credentials, timeoutMs?)` signature identical in `auth.ts`, `authStore.ts`, and the composable's `loginFn`; composable returns `{ wakingUp, wakingElapsedSec, run, cancel }`, consumed in `LoginView` as `wakingUp` / `wakingElapsedSec` (template) / `runColdStartLogin` / `stopWakingTicker` = `cancel` (onUnmounted); `auth.serverWaking` key name unchanged so both i18n gates hold.
 
 ## Post-merge verification (manual)
 
