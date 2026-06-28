@@ -48,7 +48,7 @@
               >
                 <div class="d-flex align-center ga-3">
                   <v-progress-circular indeterminate size="20" width="2" />
-                  <span>{{ $t('auth.serverWaking') }}</span>
+                  <span>{{ $t('auth.serverWaking', { seconds: wakingElapsedSec }) }}</span>
                 </div>
               </v-alert>
 
@@ -221,17 +221,26 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/authStore'
 import api from '@/services/api'
 import LanguageToggle from '@/components/LanguageToggle.vue'
+import { useColdStartLogin } from '@/composables/useColdStartLogin'
 
 const { t } = useI18n()
 
 const router = useRouter()
 const authStore = useAuthStore()
+
+const {
+  wakingUp,
+  wakingElapsedSec,
+  run: runColdStartLogin,
+  cancel: stopWakingTicker,
+} = useColdStartLogin((credentials, timeoutMs) => authStore.login(credentials, timeoutMs))
+onUnmounted(stopWakingTicker)
 
 // Start waking the (free-tier) backend the moment the page loads, so it's likely
 // ready by the time the user finishes typing their credentials.
@@ -244,7 +253,6 @@ const username = ref('')
 const password = ref('')
 const loading = ref(false)
 const errorMessage = ref('')
-const wakingUp = ref(false)
 const errors = ref({})
 
 // Forgot password state
@@ -283,53 +291,30 @@ const handleLogin = async () => {
   }
 
   loading.value = true
-  wakingUp.value = false
 
-  // On free hosting the backend sleeps after inactivity and a cold start was
-  // measured at ~90s (Render throttles wake-up requests with HTTP 429 the whole
-  // time). During that window the login call previously surfaced as "login failed"
-  // (looked like a bad password). Instead, detect the 'waking' state, tell the
-  // user, and retry automatically until the backend is up — without ever masking a
-  // real 401. The budget (15 x 10s = 150s) must comfortably exceed the cold start
-  // so the loop recovers on its own rather than giving up just before the API is ready.
-  const MAX_ATTEMPTS = 15
-  const RETRY_DELAY_MS = 10000
-  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-    const result = await authStore.login({
-      username: username.value,
-      password: password.value,
-    })
+  const result = await runColdStartLogin({
+    username: username.value,
+    password: password.value,
+  })
 
-    if (result.success) {
-      wakingUp.value = false
-      loading.value = false
-      // Role-based landing — keep this in sync with the same map in
-      // router/index.ts (the /login → role redirect for already-authed
-      // users). Defaults to '/' when the role isn't in the map.
-      const role = authStore.currentUser?.role
-      const landing = {
-        operator: '/my-shift',
-        leader: '/',
-        poweruser: '/capacity-planning',
-        admin: '/kpi-dashboard',
-      }
-      router.push((role && landing[role]) || '/')
-      return
+  loading.value = false
+
+  if (result.success) {
+    // Role-based landing — keep this in sync with the same map in router/index.ts.
+    const role = authStore.currentUser?.role
+    const landing = {
+      operator: '/my-shift',
+      leader: '/',
+      poweruser: '/capacity-planning',
+      admin: '/kpi-dashboard',
     }
-
-    if (result.code === 'waking' && attempt < MAX_ATTEMPTS) {
-      wakingUp.value = true
-      await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS))
-      continue
-    }
-
-    // Genuine failure (wrong credentials / other), or still not up after retries.
-    loading.value = false
-    wakingUp.value = false
-    errorMessage.value =
-      result.code === 'waking' ? t('auth.serverStillStarting') : (result.error || t('auth.loginFailed'))
+    router.push((role && landing[role]) || '/')
     return
   }
+
+  // Genuine failure (wrong credentials / other) or still not up after the 3-min budget.
+  errorMessage.value =
+    result.code === 'waking' ? t('auth.serverStillStarting') : (result.error || t('auth.loginFailed'))
 }
 
 const handleForgotPassword = async () => {

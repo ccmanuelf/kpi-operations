@@ -14,7 +14,10 @@ export interface RegisterPayload {
   client_id_assigned?: string | null
 }
 
-export const login = (credentials: LoginCredentials) => api.post('/auth/login', credentials)
+export const login = (credentials: LoginCredentials, timeoutMs?: number) =>
+  timeoutMs
+    ? api.post('/auth/login', credentials, { timeout: timeoutMs })
+    : api.post('/auth/login', credentials)
 
 export const register = (userData: RegisterPayload) => api.post('/auth/register', userData)
 

@@ -292,6 +292,36 @@ describe('Auth Store', () => {
       expect(result.success).toBe(false)
       expect(result.error).toBe('Login failed')
     })
+
+    it('forwards a per-attempt timeout to api.login when provided', async () => {
+      const mockResponse = {
+        data: { access_token: 't', user: { user_id: 1, role: 'admin' } },
+      }
+      api.login.mockResolvedValue(mockResponse)
+
+      const store = useAuthStore()
+      await store.login({ username: 'admin', password: 'admin123' }, 20000) // pragma: allowlist secret
+
+      expect(api.login).toHaveBeenCalledWith(
+        { username: 'admin', password: 'admin123' }, // pragma: allowlist secret
+        20000,
+      )
+    })
+
+    it('calls api.login without a timeout when none is provided', async () => {
+      const mockResponse = {
+        data: { access_token: 't', user: { user_id: 1, role: 'admin' } },
+      }
+      api.login.mockResolvedValue(mockResponse)
+
+      const store = useAuthStore()
+      await store.login({ username: 'admin', password: 'admin123' }) // pragma: allowlist secret
+
+      expect(api.login).toHaveBeenCalledWith(
+        { username: 'admin', password: 'admin123' }, // pragma: allowlist secret
+        undefined,
+      )
+    })
   })
 
   describe('Register Action', () => {
