@@ -1,0 +1,84 @@
+import { ref, type Ref } from 'vue'
+
+export interface ColdStartLoginResult {
+  success: boolean
+  code?: string
+  error?: string
+  [key: string]: unknown
+}
+
+export type ColdStartLoginFn = (
+  credentials: Record<string, unknown>,
+  timeoutMs?: number,
+) => Promise<ColdStartLoginResult>
+
+export interface ColdStartLoginOptions {
+  budgetMs?: number
+  attemptTimeoutMs?: number
+  retryDelayMs?: number
+}
+
+// On free hosting the backend sleeps after inactivity; a cold start was measured at ~90s
+// (variable) and Render can hold the wake request open. We bound each attempt with a
+// timeout so a hung request cannot block the loop, retry on a wall-clock budget that
+// comfortably exceeds the cold start, and expose a live elapsed counter so the wait does
+// not look frozen — without ever masking a real 401 (only `code === 'waking'` retries).
+export function useColdStartLogin(
+  loginFn: ColdStartLoginFn,
+  options: ColdStartLoginOptions = {},
+): {
+  wakingUp: Ref<boolean>
+  wakingElapsedSec: Ref<number>
+  run: (credentials: Record<string, unknown>) => Promise<ColdStartLoginResult>
+  stopTicker: () => void
+} {
+  const budgetMs = options.budgetMs ?? 180000
+  const attemptTimeoutMs = options.attemptTimeoutMs ?? 20000
+  const retryDelayMs = options.retryDelayMs ?? 10000
+
+  const wakingUp = ref(false)
+  const wakingElapsedSec = ref(0)
+  let ticker: ReturnType<typeof setInterval> | null = null
+
+  function startTicker(): void {
+    if (ticker !== null) return
+    wakingElapsedSec.value = 0
+    ticker = setInterval(() => {
+      wakingElapsedSec.value += 1
+    }, 1000)
+  }
+
+  function stopTicker(): void {
+    if (ticker !== null) {
+      clearInterval(ticker)
+      ticker = null
+    }
+  }
+
+  async function run(credentials: Record<string, unknown>): Promise<ColdStartLoginResult> {
+    const start = Date.now()
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const result = await loginFn(credentials, attemptTimeoutMs)
+
+      if (result.success) {
+        stopTicker()
+        wakingUp.value = false
+        return result
+      }
+
+      if (result.code === 'waking' && Date.now() - start < budgetMs) {
+        wakingUp.value = true
+        startTicker()
+        await new Promise((resolve) => setTimeout(resolve, retryDelayMs))
+        continue
+      }
+
+      stopTicker()
+      wakingUp.value = false
+      return result
+    }
+  }
+
+  return { wakingUp, wakingElapsedSec, run, stopTicker }
+}
