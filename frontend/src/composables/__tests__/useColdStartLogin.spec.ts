@@ -100,4 +100,24 @@ describe('useColdStartLogin', () => {
     const result = await done
     expect(result).toEqual({ success: false, code: 'waking' })
   })
+
+  it('does not report success when cancelled during an in-flight attempt', async () => {
+    let resolveLogin: (value: { success: boolean }) => void
+    const loginFn = vi.fn(
+      () =>
+        new Promise<{ success: boolean }>((resolve) => {
+          resolveLogin = resolve
+        }),
+    )
+    const { run, cancel } = useColdStartLogin(loginFn, OPTS)
+
+    const done = run(CREDS)
+    await Promise.resolve() // let run() reach the await on loginFn
+    cancel() // unmount mid-attempt
+    resolveLogin!({ success: true }) // the in-flight attempt then succeeds
+    const result = await done
+
+    expect(result).toEqual({ success: false, code: 'aborted' })
+    expect(loginFn).toHaveBeenCalledTimes(1) // no further attempts after cancel
+  })
 })

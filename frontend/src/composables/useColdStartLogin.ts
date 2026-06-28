@@ -70,7 +70,7 @@ export function useColdStartLogin(
       if (aborted) {
         stopTicker()
         wakingUp.value = false
-        return result
+        return result.success ? { success: false, code: 'aborted' } : result
       }
 
       if (result.success) {
