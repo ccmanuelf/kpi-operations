@@ -105,9 +105,9 @@ export const useAuthStore = defineStore('auth', {
   },
 
   actions: {
-    async login(credentials: LoginCredentials): Promise<ActionResult> {
+    async login(credentials: LoginCredentials, timeoutMs?: number): Promise<ActionResult> {
       try {
-        const response = await api.login(credentials)
+        const response = await api.login(credentials, timeoutMs)
         const { access_token, user } = response.data as {
           access_token: string
           user: AuthUser
