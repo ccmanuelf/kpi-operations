@@ -120,4 +120,63 @@ describe('useColdStartLogin', () => {
     expect(result).toEqual({ success: false, code: 'aborted' })
     expect(loginFn).toHaveBeenCalledTimes(1) // no further attempts after cancel
   })
+
+  it('fires wakePing once per waking retry and survives a throwing hook', async () => {
+    const wakePing = vi.fn(() => {
+      throw new Error('boom')
+    })
+    const loginFn = vi
+      .fn()
+      .mockResolvedValueOnce({ success: false, code: 'waking' })
+      .mockResolvedValueOnce({ success: false, code: 'waking' })
+      .mockResolvedValueOnce({ success: true })
+    const { run } = useColdStartLogin(loginFn, { ...OPTS, wakePing })
+
+    const done = run(CREDS)
+    await vi.advanceTimersByTimeAsync(0)
+    await vi.advanceTimersByTimeAsync(10000)
+    await vi.advanceTimersByTimeAsync(10000)
+    const result = await done
+
+    expect(result).toEqual({ success: true })
+    expect(wakePing).toHaveBeenCalledTimes(2)
+  })
+
+  it('does not fire wakePing when login succeeds immediately', async () => {
+    const wakePing = vi.fn()
+    const loginFn = vi.fn().mockResolvedValue({ success: true })
+    const { run } = useColdStartLogin(loginFn, { ...OPTS, wakePing })
+
+    const done = run(CREDS)
+    await vi.advanceTimersByTimeAsync(0)
+    await done
+
+    expect(wakePing).not.toHaveBeenCalled()
+  })
+
+  it('does not fire wakePing on invalid credentials', async () => {
+    const wakePing = vi.fn()
+    const loginFn = vi.fn().mockResolvedValue({ success: false, code: 'invalid' })
+    const { run } = useColdStartLogin(loginFn, { ...OPTS, wakePing })
+
+    const done = run(CREDS)
+    await vi.advanceTimersByTimeAsync(0)
+    const result = await done
+
+    expect(result.code).toBe('invalid')
+    expect(wakePing).not.toHaveBeenCalled()
+  })
+
+  it('does not fire wakePing on the final waking result once the budget is exhausted', async () => {
+    const wakePing = vi.fn()
+    const loginFn = vi.fn().mockResolvedValue({ success: false, code: 'waking' })
+    const { run } = useColdStartLogin(loginFn, { budgetMs: 0, attemptTimeoutMs: 20000, retryDelayMs: 10000, wakePing })
+
+    const done = run(CREDS)
+    await vi.advanceTimersByTimeAsync(0)
+    const result = await done
+
+    expect(result.code).toBe('waking')
+    expect(wakePing).not.toHaveBeenCalled()
+  })
 })

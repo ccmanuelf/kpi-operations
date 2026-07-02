@@ -16,6 +16,9 @@ export interface ColdStartLoginOptions {
   budgetMs?: number
   attemptTimeoutMs?: number
   retryDelayMs?: number
+  // Fire-and-forget re-wake ping (e.g. a direct backend /health/live request on
+  // free-tier hosting), fired once per waking retry. Exceptions are swallowed.
+  wakePing?: () => void
 }
 
 // On free hosting the backend sleeps after inactivity; a cold start was measured at ~90s
@@ -35,6 +38,7 @@ export function useColdStartLogin(
   const budgetMs = options.budgetMs ?? 180000
   const attemptTimeoutMs = options.attemptTimeoutMs ?? 20000
   const retryDelayMs = options.retryDelayMs ?? 10000
+  const wakePing = options.wakePing
 
   const wakingUp = ref(false)
   const wakingElapsedSec = ref(0)
@@ -82,6 +86,11 @@ export function useColdStartLogin(
       if (result.code === 'waking' && Date.now() - start < budgetMs) {
         wakingUp.value = true
         startTicker()
+        try {
+          wakePing?.()
+        } catch {
+          /* best-effort re-wake ping — must never break the retry loop */
+        }
         await new Promise((resolve) => setTimeout(resolve, retryDelayMs))
 
         if (aborted) {

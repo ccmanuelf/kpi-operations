@@ -227,6 +227,7 @@ import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/authStore'
 import api from '@/services/api'
 import LanguageToggle from '@/components/LanguageToggle.vue'
+import { pingWake } from '@/services/backendWake'
 import { useColdStartLogin } from '@/composables/useColdStartLogin'
 
 const { t } = useI18n()
@@ -239,7 +240,11 @@ const {
   wakingElapsedSec,
   run: runColdStartLogin,
   cancel: stopWakingTicker,
-} = useColdStartLogin((credentials, timeoutMs) => authStore.login(credentials, timeoutMs))
+} = useColdStartLogin((credentials, timeoutMs) => authStore.login(credentials, timeoutMs), {
+  wakePing: () => {
+    void pingWake()
+  },
+})
 onUnmounted(stopWakingTicker)
 
 // Start waking the (free-tier) backend the moment the page loads, so it's likely
