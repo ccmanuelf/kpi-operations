@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import i18n from '@/i18n'
 import api from '@/services/api'
 import type { LoginCredentials, RegisterPayload } from '@/services/api/auth'
+import { getWakeOrigin, wakeBackend } from '@/services/backendWake'
 
 // SECURITY NOTE: JWT tokens are stored in localStorage for simplicity in the
 // demo/development phase. This is vulnerable to XSS but acceptable because:
@@ -129,20 +130,29 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
-    // Best-effort backend warm-up: ping the backend health endpoint as the login
-    // page mounts so a sleeping free-tier API starts booting while the user reads
-    // and types (a cold start is ~90s, so the head start matters).
+    // Best-effort backend warm-up as the login page mounts, so a sleeping
+    // free-tier API starts booting while the user reads and types (a cold
+    // start is ~90-100s, so the head start matters).
     //
-    // Must hit a path UNDER the API base (e.g. /api/v1/health/live): nginx answers
-    // the SPA-relative /health locally and never forwards it, so pinging /health/live
-    // would only wake the frontend, not the backend. /api/* is proxied to the backend
-    // (and /api/v1/health/live + /api/health/live are real backend routes), so this
-    // reaches Render's edge and triggers the wake.
+    // Two paths:
+    // - Wake origin injected (free-tier deploy, see frontend/docker-entrypoint.sh):
+    //   ping the backend origin DIRECTLY from the browser. Proxied pings
+    //   originate from the host's shared egress IPs, which the hosting edge
+    //   429s (hibernate-rate-limited) WITHOUT triggering the wake — the direct
+    //   path is the only one that reliably wakes the backend.
+    // - No wake origin (local dev / docker-compose): keep the same-origin ping
+    //   under the /api proxy as a harmless reachability best-effort. NOTE the
+    //   backend's real health route is /health/live (no /api prefix) — the
+    //   proxied path 404s once the app is up, which is fine for a wake signal
+    //   but do not rely on it returning 200.
     //
-    // Bare fetch (NOT the api client) on purpose — the shared axios client runs a 401
-    // interceptor that redirects to /login and would loop the page. `no-cors` is fine:
-    // we only need the request to reach (and wake) the backend, not read the response.
+    // Bare fetch (NOT the api client) on purpose — the shared axios client runs
+    // a 401 interceptor that redirects to /login and would loop the page.
     async warmUpBackend(): Promise<void> {
+      if (getWakeOrigin()) {
+        await wakeBackend()
+        return
+      }
       const base = (import.meta.env.VITE_API_URL as string | undefined) || '/api/v1'
       try {
         await fetch(`${base}/health/live`, { method: 'GET', mode: 'no-cors' })

@@ -270,6 +270,26 @@ describe('Auth Store', () => {
       fetchSpy.mockRestore()
     })
 
+    // With a backend-wake-origin meta tag (injected by the nginx entrypoint on
+    // free-tier hosting), the warm-up MUST go DIRECTLY to the backend origin:
+    // proxied pings originate from the host's shared egress IPs, which the
+    // hosting edge 429s without waking the backend.
+    it('warmUpBackend pings the backend origin directly when a wake origin is injected', async () => {
+      const meta = document.createElement('meta')
+      meta.setAttribute('name', 'backend-wake-origin')
+      meta.setAttribute('content', 'https://kpi-operations-api.onrender.com')
+      document.head.appendChild(meta)
+      const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(undefined as unknown as Response)
+
+      const store = useAuthStore()
+      await store.warmUpBackend()
+
+      expect(String(fetchSpy.mock.calls[0]?.[0])).toBe('https://kpi-operations-api.onrender.com/health/live')
+
+      fetchSpy.mockRestore()
+      meta.remove()
+    })
+
     it('handles login failure with server error message', async () => {
       api.login.mockRejectedValue({
         response: { status: 400, data: { detail: 'Invalid credentials' } }
