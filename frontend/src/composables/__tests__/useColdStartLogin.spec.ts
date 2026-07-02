@@ -166,4 +166,17 @@ describe('useColdStartLogin', () => {
     expect(result.code).toBe('invalid')
     expect(wakePing).not.toHaveBeenCalled()
   })
+
+  it('does not fire wakePing on the final waking result once the budget is exhausted', async () => {
+    const wakePing = vi.fn()
+    const loginFn = vi.fn().mockResolvedValue({ success: false, code: 'waking' })
+    const { run } = useColdStartLogin(loginFn, { budgetMs: 0, attemptTimeoutMs: 20000, retryDelayMs: 10000, wakePing })
+
+    const done = run(CREDS)
+    await vi.advanceTimersByTimeAsync(0)
+    const result = await done
+
+    expect(result.code).toBe('waking')
+    expect(wakePing).not.toHaveBeenCalled()
+  })
 })

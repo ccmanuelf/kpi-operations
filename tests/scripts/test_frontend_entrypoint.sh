@@ -39,15 +39,15 @@ rm -rf "$TMP"
 
 # --- internal Docker branch: no meta tag, no CSP origin, timeouts unchanged ---
 setup; run_entrypoint "http://backend:8000" ""
-grep -q 'backend-wake-origin' "$TMP/index.html"; [ $? -ne 0 ]; assert "internal: no meta tag" $?
+grep -q 'backend-wake-origin' "$TMP/index.html"; [ $? -eq 1 ]; assert "internal: no meta tag" $?
 grep -q 'proxy_read_timeout 60s' "$TMP/upstream.inc"; assert "internal: 60s timeout kept" $?
-grep -q 'CSP_CONNECT_EXTRA_PLACEHOLDER' "$TMP/default.conf"; [ $? -ne 0 ]; assert "internal: placeholder removed" $?
+grep -q 'CSP_CONNECT_EXTRA_PLACEHOLDER' "$TMP/default.conf"; [ $? -eq 1 ]; assert "internal: placeholder removed" $?
 rm -rf "$TMP"
 
 # --- no-backend branch: empty upstream, untouched index.html ---
 setup; run_entrypoint "" ""
 [ -s "$TMP/upstream.inc" ]; [ $? -ne 0 ]; assert "empty: upstream.inc empty" $?
-grep -q 'backend-wake-origin' "$TMP/index.html"; [ $? -ne 0 ]; assert "empty: no meta tag" $?
+grep -q 'backend-wake-origin' "$TMP/index.html"; [ $? -eq 1 ]; assert "empty: no meta tag" $?
 rm -rf "$TMP"
 
 exit $fail
