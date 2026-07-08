@@ -8,7 +8,7 @@ import enum
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Boolean, DateTime, String, Text
+from sqlalchemy import Boolean, DateTime, String
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
 
@@ -59,7 +59,7 @@ class User(Base):
     # Multi-client assignment - CRITICAL for tenant isolation
     # Format: Comma-separated client IDs (e.g., "BOOT-LINE-A,CLIENT-B")
     # NULL for ADMIN/POWERUSER (access all), required for LEADER/OPERATOR
-    client_id_assigned: Mapped[Optional[str]] = mapped_column(Text, index=True)
+    client_id_assigned: Mapped[Optional[str]] = mapped_column(String(500), index=True)
 
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
