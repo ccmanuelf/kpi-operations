@@ -20,7 +20,7 @@ class ImportLog(Base):
     __table_args__ = {"extend_existing": True}
 
     log_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("USER.user_id"), nullable=False, index=True)
+    user_id: Mapped[str] = mapped_column(String(50), ForeignKey("USER.user_id"), nullable=False, index=True)
     import_timestamp: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now(), index=True)
     file_name: Mapped[Optional[str]] = mapped_column(String(255))
     rows_attempted: Mapped[int] = mapped_column(Integer, nullable=False, default=0)

@@ -77,13 +77,13 @@ class ProductionEntry(Base):
 
     # Metadata
     notes: Mapped[Optional[str]] = mapped_column(Text)
-    entered_by: Mapped[int] = mapped_column(Integer, ForeignKey("USER.user_id"), nullable=False)
-    confirmed_by: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("USER.user_id"))
+    entered_by: Mapped[str] = mapped_column(String(50), ForeignKey("USER.user_id"), nullable=False)
+    confirmed_by: Mapped[Optional[str]] = mapped_column(String(50), ForeignKey("USER.user_id"))
     confirmation_timestamp: Mapped[Optional[datetime]] = mapped_column(DateTime)
     entry_method: Mapped[Optional[str]] = mapped_column(String(20), default="MANUAL_ENTRY")  # MANUAL/CSV/API
 
     # Audit field - tracks who last modified the record (per audit requirement)
-    updated_by: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("USER.user_id"))
+    updated_by: Mapped[Optional[str]] = mapped_column(String(50), ForeignKey("USER.user_id"))
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())

@@ -78,10 +78,10 @@ class AttendanceEntry(Base):
     # Metadata
     absence_reason: Mapped[Optional[str]] = mapped_column(Text)
     notes: Mapped[Optional[str]] = mapped_column(Text)
-    entered_by: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("USER.user_id"))
+    entered_by: Mapped[Optional[str]] = mapped_column(String(50), ForeignKey("USER.user_id"))
 
     # Audit field - tracks who last modified the record (per audit requirement)
-    updated_by: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("USER.user_id"))
+    updated_by: Mapped[Optional[str]] = mapped_column(String(50), ForeignKey("USER.user_id"))
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
