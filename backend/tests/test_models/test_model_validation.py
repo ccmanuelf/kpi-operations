@@ -14,6 +14,7 @@ Covers:
 import pytest
 from datetime import date, datetime, timezone
 from decimal import Decimal
+from types import SimpleNamespace
 from pydantic import ValidationError
 
 # ── ORM schemas (SQLAlchemy) ──
@@ -53,6 +54,9 @@ from backend.schemas.attendance import (
 )
 from backend.schemas.work_order import (
     WorkOrderCreate,
+)
+from backend.schemas.coverage import (
+    ShiftCoverageResponse,
 )
 from backend.schemas.workflow import (
     WorkflowStatusEnum,
@@ -986,3 +990,29 @@ class TestAlertORM:
         fetched = transactional_db.query(AlertConfig).filter(AlertConfig.config_id == "ACFG-GLOBAL-001").first()
         assert fetched.client_id is None
         assert fetched.alert_type == "efficiency"
+
+
+# ==========================================================================
+# 8. ShiftCoverageResponse — entered_by carries string user ids
+# ==========================================================================
+
+
+class TestShiftCoverageResponsePydantic:
+    """entered_by mirrors USER.user_id (String(50)) — real values are strings
+    like "USER-ADMIN", so the response field must be str, never int."""
+
+    def test_entered_by_string_user_id_roundtrips(self):
+        record = SimpleNamespace(
+            coverage_id=1,
+            shift_id=2,
+            coverage_date=date(2026, 7, 8),
+            required_employees=10,
+            actual_employees=8,
+            coverage_percentage=Decimal("80.00"),
+            notes=None,
+            entered_by="USER-ADMIN",
+            created_at=datetime(2026, 7, 8, 6, 0, 0),
+            updated_at=datetime(2026, 7, 8, 6, 0, 0),
+        )
+        resp = ShiftCoverageResponse.model_validate(record)
+        assert resp.entered_by == "USER-ADMIN"

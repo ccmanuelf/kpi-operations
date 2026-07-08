@@ -40,7 +40,7 @@ class ShiftCoverageResponse(BaseModel):
     actual_employees: int = Field(..., description="Number of employees actually present")
     coverage_percentage: Decimal = Field(..., description="Ratio of actual to required employees as a percentage")
     notes: Optional[str] = Field(None, description="Additional context or comments about coverage")
-    entered_by: int = Field(..., description="User ID of the person who recorded this entry")
+    entered_by: str = Field(..., description="User ID of the person who recorded this entry")
     created_at: datetime = Field(..., description="Timestamp when the record was created")
     updated_at: datetime = Field(..., description="Timestamp of the last modification")
 
