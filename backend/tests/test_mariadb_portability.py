@@ -61,3 +61,93 @@ def test_foreign_key_column_types_match_referenced_columns():
                         f"{remote.table.name}.{remote.name} ({remote.type!r})"
                     )
     assert mismatches == []
+
+
+# ---------------------------------------------------------------------------
+# Integration tests: build the FULL schema via create_all against a live
+# MariaDB and round-trip real data through it. These only run when the app
+# engine is MariaDB; on SQLite (the default local/CI suite) they are skipped
+# individually via @requires_mariadb rather than a module-level pytestmark,
+# so the unit tests above keep running on every engine.
+# ---------------------------------------------------------------------------
+
+import pytest  # noqa: E402
+from sqlalchemy import inspect, select  # noqa: E402
+
+from backend.database import SessionLocal, engine  # noqa: E402
+from backend.orm.event_store import EventStore  # noqa: E402
+
+_IS_MARIADB = "mysql" in str(engine.url).lower()
+requires_mariadb = pytest.mark.skipif(
+    not _IS_MARIADB, reason="requires the app engine to be MariaDB (DATABASE_URL=mysql+pymysql://...)"
+)
+
+
+@pytest.fixture(scope="module")
+def mariadb_schema():
+    """Create the full schema on the live MariaDB, drop it afterwards."""
+    Base.metadata.drop_all(bind=engine)
+    Base.metadata.create_all(bind=engine)  # would raise 1170 before the Task 1 fix
+    yield
+    Base.metadata.drop_all(bind=engine)
+
+
+@requires_mariadb
+def test_full_schema_creates_on_mariadb(mariadb_schema):
+    """create_all must succeed and produce the USER table with its index."""
+    inspector = inspect(engine)
+    assert "USER" in inspector.get_table_names()
+    indexed_cols = {c for ix in inspector.get_indexes("USER") for c in ix["column_names"]}
+    assert "client_id_assigned" in indexed_cols
+
+
+@requires_mariadb
+def test_user_client_id_assigned_roundtrip(mariadb_schema):
+    """A long, multi-byte (utf8mb4) comma-separated value round-trips intact."""
+    value = ",".join(f"CLÍENT-Ñ-{i:02d}" for i in range(20))  # ~260 chars, accented
+    session = SessionLocal()
+    try:
+        session.add(User(user_id="pt-user-1", username="pt-user-1", email="pt1@example.com", client_id_assigned=value))
+        session.commit()
+        fetched = session.execute(select(User.client_id_assigned).where(User.user_id == "pt-user-1")).scalar_one()
+        assert fetched == value
+    finally:
+        session.close()
+
+
+@requires_mariadb
+def test_event_store_json_roundtrip(mariadb_schema):
+    """A JSON column round-trips a nested dict on MariaDB."""
+    from datetime import datetime
+
+    payload = {"qty": 12, "nested": {"ok": True, "tags": ["a", "b"]}, "note": " café"}
+    session = SessionLocal()
+    try:
+        session.add(
+            EventStore(
+                event_id="pt-evt-1",
+                event_type="TEST",
+                aggregate_type="X",
+                aggregate_id="1",
+                occurred_at=datetime(2026, 6, 26, 12, 0, 0),
+                payload=payload,
+            )
+        )
+        session.commit()
+        fetched = session.execute(select(EventStore.payload).where(EventStore.event_id == "pt-evt-1")).scalar_one()
+        assert fetched == payload
+    finally:
+        session.close()
+
+
+@requires_mariadb
+def test_app_engine_connection_charset_is_utf8mb4(mariadb_schema):
+    """Proves the database.py fix: the app engine connects with utf8mb4."""
+    from sqlalchemy import text
+
+    session = SessionLocal()
+    try:
+        charset = session.execute(text("SELECT @@character_set_connection")).scalar()
+        assert charset == "utf8mb4"
+    finally:
+        session.close()
