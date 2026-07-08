@@ -46,6 +46,7 @@ else:
         pool_timeout=settings.DATABASE_POOL_TIMEOUT,  # Wait timeout: 30 seconds
         pool_recycle=settings.DATABASE_POOL_RECYCLE,  # Recycle after: 3600 seconds (1 hour)
         pool_pre_ping=True,  # Test connections before using (prevents invalid connections)
+        connect_args={"charset": "utf8mb4"},  # Ensure UTF-8 (utf8mb4) on MariaDB/MySQL
     )
     logger.info(
         f"Database engine created with connection pooling: "

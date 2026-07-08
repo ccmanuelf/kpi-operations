@@ -63,6 +63,11 @@ class MariaDBProvider(DatabaseProvider):
         pool_timeout = kwargs.pop("pool_timeout", pool_config["pool_timeout"])
         pool_recycle = kwargs.pop("pool_recycle", pool_config["pool_recycle"])
 
+        # MariaDB connection charset (parity with MySQLProvider)
+        connect_args = kwargs.pop("connect_args", {})
+        if "charset" not in connect_args:
+            connect_args["charset"] = "utf8mb4"
+
         engine = create_engine(
             url,
             echo=echo,
@@ -72,6 +77,7 @@ class MariaDBProvider(DatabaseProvider):
             pool_timeout=pool_timeout,
             pool_recycle=pool_recycle,
             pool_pre_ping=True,  # Always enable for production
+            connect_args=connect_args,
             **kwargs,
         )
 
