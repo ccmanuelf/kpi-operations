@@ -434,3 +434,132 @@ class TestEdgeCases:
         assert not is_valid
         # Should report multiple issues
         assert ";" in message or "," in message or len(message) > 50
+
+
+class TestWorkOrderUserIdFieldValidation:
+    """Tests for WorkOrder model user_id field boundary validation (max_length=50).
+
+    The ORM columns (closed_by, qc_approved_by, rejected_by) are String(50) ForeignKeys
+    to USER.user_id; MariaDB strict mode rejects overlong values with a 500 at the DB layer,
+    so the boundary must be validated at the API layer to produce a clean 422 instead.
+    """
+
+    def test_work_order_create_closed_by_over_50_chars_rejected(self):
+        """A closed_by value longer than 50 chars must be rejected with a 422."""
+        from backend.schemas.work_order import WorkOrderCreate
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError) as exc_info:
+            WorkOrderCreate(
+                work_order_id="WO-001",
+                client_id="CLIENT-A",
+                style_model="STYLE-1",
+                planned_quantity=100,
+                closed_by="U" * 51,
+            )
+
+        errors = exc_info.value.errors()
+        assert any(e["loc"] == ("closed_by",) for e in errors)
+
+    def test_work_order_create_closed_by_exactly_50_chars_accepted(self):
+        """A closed_by value at exactly the 50-char boundary must be accepted."""
+        from backend.schemas.work_order import WorkOrderCreate
+
+        value = "U" * 50
+        work_order = WorkOrderCreate(
+            work_order_id="WO-001",
+            client_id="CLIENT-A",
+            style_model="STYLE-1",
+            planned_quantity=100,
+            closed_by=value,
+        )
+
+        assert work_order.closed_by == value
+
+    def test_work_order_create_qc_approved_by_over_50_chars_rejected(self):
+        """A qc_approved_by value longer than 50 chars must be rejected with a 422."""
+        from backend.schemas.work_order import WorkOrderCreate
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError) as exc_info:
+            WorkOrderCreate(
+                work_order_id="WO-001",
+                client_id="CLIENT-A",
+                style_model="STYLE-1",
+                planned_quantity=100,
+                qc_approved_by="U" * 51,
+            )
+
+        errors = exc_info.value.errors()
+        assert any(e["loc"] == ("qc_approved_by",) for e in errors)
+
+    def test_work_order_create_qc_approved_by_exactly_50_chars_accepted(self):
+        """A qc_approved_by value at exactly the 50-char boundary must be accepted."""
+        from backend.schemas.work_order import WorkOrderCreate
+
+        value = "U" * 50
+        work_order = WorkOrderCreate(
+            work_order_id="WO-001",
+            client_id="CLIENT-A",
+            style_model="STYLE-1",
+            planned_quantity=100,
+            qc_approved_by=value,
+        )
+
+        assert work_order.qc_approved_by == value
+
+    def test_work_order_create_rejected_by_over_50_chars_rejected(self):
+        """A rejected_by value longer than 50 chars must be rejected with a 422."""
+        from backend.schemas.work_order import WorkOrderCreate
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError) as exc_info:
+            WorkOrderCreate(
+                work_order_id="WO-001",
+                client_id="CLIENT-A",
+                style_model="STYLE-1",
+                planned_quantity=100,
+                rejected_by="U" * 51,
+            )
+
+        errors = exc_info.value.errors()
+        assert any(e["loc"] == ("rejected_by",) for e in errors)
+
+    def test_work_order_create_rejected_by_exactly_50_chars_accepted(self):
+        """A rejected_by value at exactly the 50-char boundary must be accepted."""
+        from backend.schemas.work_order import WorkOrderCreate
+
+        value = "U" * 50
+        work_order = WorkOrderCreate(
+            work_order_id="WO-001",
+            client_id="CLIENT-A",
+            style_model="STYLE-1",
+            planned_quantity=100,
+            rejected_by=value,
+        )
+
+        assert work_order.rejected_by == value
+
+    def test_work_order_update_rejected_by_over_50_chars_rejected(self):
+        """A rejected_by value longer than 50 chars in Update must be rejected with a 422."""
+        from backend.schemas.work_order import WorkOrderUpdate
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError) as exc_info:
+            WorkOrderUpdate(
+                rejected_by="U" * 51,
+            )
+
+        errors = exc_info.value.errors()
+        assert any(e["loc"] == ("rejected_by",) for e in errors)
+
+    def test_work_order_update_rejected_by_exactly_50_chars_accepted(self):
+        """A rejected_by value at exactly the 50-char boundary in Update must be accepted."""
+        from backend.schemas.work_order import WorkOrderUpdate
+
+        value = "U" * 50
+        work_order = WorkOrderUpdate(
+            rejected_by=value,
+        )
+
+        assert work_order.rejected_by == value

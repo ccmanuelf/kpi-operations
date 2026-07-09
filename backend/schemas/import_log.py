@@ -29,7 +29,7 @@ class ImportLogResponse(BaseModel):
     """Import log entry response"""
 
     log_id: int
-    user_id: int
+    user_id: str
     import_timestamp: datetime
     file_name: Optional[str]
     rows_attempted: int
