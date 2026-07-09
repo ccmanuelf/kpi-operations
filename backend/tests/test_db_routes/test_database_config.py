@@ -75,7 +75,7 @@ class TestDatabaseConfigEndpoints:
         assert "current_provider" in data
         assert "migration_available" in data
         assert "supported_targets" in data
-        assert data["current_provider"] in ["sqlite", "mariadb", "mysql"]
+        assert data["current_provider"] == "sqlite"
         assert data["migration_available"] is False
         assert data["supported_targets"] == []
 

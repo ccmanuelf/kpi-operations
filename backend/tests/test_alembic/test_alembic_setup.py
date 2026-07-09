@@ -121,13 +121,18 @@ class TestModelMetadata:
             assert tbl in table_names, f"Expected capacity table {tbl!r} not in metadata"
 
     def test_metadata_table_count_minimum(self):
-        """Sanity check — we expect at least 25 tables total."""
+        """Sanity check — must match the Alembic baseline's table count.
+
+        Hardcoded rather than a floor: update when adding a migration that
+        creates/drops tables (backend/alembic/versions/0001_real_baseline.py
+        has 57 `op.create_table(` calls).
+        """
         from backend.database import Base
 
         import backend.orm  # noqa: F401
         import backend.orm.capacity  # noqa: F401
 
-        assert len(Base.metadata.tables) >= 25, f"Expected >= 25 tables, got {len(Base.metadata.tables)}"
+        assert len(Base.metadata.tables) == 57, f"Expected == 57 tables, got {len(Base.metadata.tables)}"
 
 
 # ---------------------------------------------------------------------------

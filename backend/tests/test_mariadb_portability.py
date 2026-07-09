@@ -31,11 +31,16 @@ def test_mariadb_provider_enforces_utf8mb4():
 
 
 def test_register_all_models_populates_full_metadata():
-    """The canonical registration helper must yield the complete table registry."""
+    """The canonical registration helper must yield the complete table registry.
+
+    Must match the Alembic baseline; update when adding a migration that
+    creates/drops tables (backend/alembic/versions/0001_real_baseline.py
+    has 57 `op.create_table(` calls).
+    """
     from backend.orm import register_all_models
 
     register_all_models()
-    assert len(Base.metadata.tables) >= 45
+    assert len(Base.metadata.tables) == 57
 
 
 # ---------------------------------------------------------------------------
