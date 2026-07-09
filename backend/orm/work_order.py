@@ -111,12 +111,14 @@ class WorkOrder(Base):
 
     # Quality gates
     qc_approved: Mapped[Optional[int]] = mapped_column(Integer, default=0)  # Boolean
-    qc_approved_by: Mapped[Optional[int]] = mapped_column(Integer)  # USER.user_id
+    # USER.user_id is String(50); FK column type-matched (see closed_by above).
+    qc_approved_by: Mapped[Optional[str]] = mapped_column(String(50), ForeignKey("USER.user_id"))
     qc_approved_date: Mapped[Optional[datetime]] = mapped_column(DateTime)
 
     # Rejection tracking
     rejection_reason: Mapped[Optional[str]] = mapped_column(Text)
-    rejected_by: Mapped[Optional[int]] = mapped_column(Integer)  # USER.user_id
+    # USER.user_id is String(50); FK column type-matched (see closed_by above).
+    rejected_by: Mapped[Optional[str]] = mapped_column(String(50), ForeignKey("USER.user_id"))
     rejected_date: Mapped[Optional[datetime]] = mapped_column(DateTime)
 
     # Production tracking

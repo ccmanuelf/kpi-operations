@@ -48,7 +48,7 @@ class WorkOrderCreate(BaseModel):
     dispatch_date: Optional[datetime] = Field(None, description="When released/dispatched to shopfloor")
     shipped_date: Optional[datetime] = Field(None, description="When shipped to client")
     closure_date: Optional[datetime] = Field(None, description="When formally closed")
-    closed_by: Optional[str] = Field(None, description="User ID who closed the order")
+    closed_by: Optional[str] = Field(None, max_length=50, description="User ID who closed the order")
 
     # Legacy date fields (OTD calculation)
     planned_start_date: Optional[datetime] = None
@@ -68,10 +68,10 @@ class WorkOrderCreate(BaseModel):
     priority: Optional[str] = Field(None, pattern="^(URGENT|HIGH|NORMAL|MEDIUM|LOW)$")
 
     qc_approved: Optional[int] = Field(default=0, ge=0, le=1, description="Boolean: 0=not approved, 1=approved")
-    qc_approved_by: Optional[int] = None
+    qc_approved_by: Optional[str] = Field(None, max_length=50, description="User ID who approved QC")
     qc_approved_date: Optional[datetime] = None
     rejection_reason: Optional[str] = None
-    rejected_by: Optional[int] = None
+    rejected_by: Optional[str] = Field(None, max_length=50, description="User ID who rejected the order")
     rejected_date: Optional[datetime] = None
     total_run_time_hours: Optional[Decimal] = Field(None, ge=0)
     total_employees_assigned: Optional[int] = Field(None, ge=0)
@@ -102,7 +102,7 @@ class WorkOrderUpdate(BaseModel):
     dispatch_date: Optional[datetime] = None
     shipped_date: Optional[datetime] = None
     closure_date: Optional[datetime] = None
-    closed_by: Optional[str] = None
+    closed_by: Optional[str] = Field(None, max_length=50)
 
     # Legacy date fields
     planned_start_date: Optional[datetime] = None
@@ -120,10 +120,10 @@ class WorkOrderUpdate(BaseModel):
     priority: Optional[str] = Field(None, pattern="^(URGENT|HIGH|NORMAL|MEDIUM|LOW)$")
 
     qc_approved: Optional[int] = Field(None, ge=0, le=1)
-    qc_approved_by: Optional[int] = None
+    qc_approved_by: Optional[str] = Field(None, max_length=50)
     qc_approved_date: Optional[datetime] = None
     rejection_reason: Optional[str] = None
-    rejected_by: Optional[int] = None
+    rejected_by: Optional[str] = Field(None, max_length=50)
     rejected_date: Optional[datetime] = None
     total_run_time_hours: Optional[Decimal] = Field(None, ge=0)
     total_employees_assigned: Optional[int] = Field(None, ge=0)
@@ -156,7 +156,7 @@ class WorkOrderResponse(BaseModel):
     dispatch_date: Optional[datetime] = None
     shipped_date: Optional[datetime] = None
     closure_date: Optional[datetime] = None
-    closed_by: Optional[str] = None
+    closed_by: Optional[str] = Field(None, max_length=50)
 
     # Legacy date fields
     planned_start_date: Optional[datetime] = None
@@ -174,10 +174,10 @@ class WorkOrderResponse(BaseModel):
     priority: Optional[str] = None
 
     qc_approved: Optional[int] = 0
-    qc_approved_by: Optional[int] = None
+    qc_approved_by: Optional[str] = Field(None, max_length=50)
     qc_approved_date: Optional[datetime] = None
     rejection_reason: Optional[str] = None
-    rejected_by: Optional[int] = None
+    rejected_by: Optional[str] = Field(None, max_length=50)
     rejected_date: Optional[datetime] = None
     total_run_time_hours: Optional[Decimal] = None
     total_employees_assigned: Optional[int] = None

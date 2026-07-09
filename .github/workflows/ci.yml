@@ -278,3 +278,60 @@ jobs:
             bash "$t" || failed=1
           done
           exit $failed
+
+  mariadb-portability:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      mariadb:
+        image: mariadb:11.4
+        env:
+          MARIADB_ROOT_PASSWORD: root  # pragma: allowlist secret
+          MARIADB_DATABASE: kpi_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s --health-timeout=5s --health-retries=10
+    env:
+      DATABASE_URL: mysql+pymysql://root:root@127.0.0.1:3306/kpi_test  # pragma: allowlist secret
+      SECRET_KEY: ci-portability-secret-key-not-used-in-prod-0001  # pragma: allowlist secret
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v5.3.0
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: backend/requirements-dev.lock
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install --require-hashes --only-binary=:all: -r requirements-dev.lock
+
+      - name: Run MariaDB portability tests
+        run: pytest tests/test_mariadb_portability.py -v --no-cov --junitxml=mariadb-report.xml
+
+      - name: Verify no integration tests were skipped
+        run: |
+          python - <<'EOF'
+          import xml.etree.ElementTree as ET
+
+          tree = ET.parse("mariadb-report.xml")
+          root = tree.getroot()
+          # pytest emits either a bare <testsuite> or <testsuites><testsuite>.
+          suite = root if root.tag == "testsuite" else root.find("testsuite")
+
+          skipped = suite.get("skipped")
+          errors = suite.get("errors")
+          failures = suite.get("failures")
+
+          assert skipped == "0", f"MariaDB integration tests skipped (expected 0, got {skipped}) - job proves nothing"
+          assert errors == "0", f"MariaDB portability tests had errors (expected 0, got {errors})"
+          assert failures == "0", f"MariaDB portability tests failed (expected 0, got {failures})"
+
+          print(f"OK: {suite.get('tests')} tests ran, 0 skipped/errors/failures")
+          EOF

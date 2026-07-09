@@ -263,7 +263,7 @@ class ScheduleCommitted(DomainEvent):
 
     schedule_id: int
     schedule_name: Optional[str] = None
-    committed_by: Optional[int] = None
+    committed_by: Optional[str] = None
     kpi_commitments: Dict[str, Any] = Field(default_factory=dict)
     period_start: Optional[date] = None
     period_end: Optional[date] = None

@@ -526,7 +526,7 @@ class TestDataFactory:
         db: Session,
         shift_id: int,
         client_id: str,
-        entered_by: int,
+        entered_by: str,
         **kwargs: Any,
     ) -> ShiftCoverage:
         """Create a ShiftCoverage record (shift_coverage table) for coverage CRUD tests"""

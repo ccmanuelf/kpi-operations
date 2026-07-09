@@ -859,11 +859,11 @@ class TestSchedulingService:
         svc = SchedulingService(cap_db)
         schedule = svc.create_schedule(CLIENT_ID, "To Commit", PERIOD_START, PERIOD_END, items=[])
 
-        committed = svc.commit_schedule(CLIENT_ID, schedule.id, committed_by=1)
+        committed = svc.commit_schedule(CLIENT_ID, schedule.id, committed_by="USER-1")
 
         assert committed.status == ScheduleStatus.COMMITTED
         assert committed.committed_at == date.today()
-        assert committed.committed_by == 1
+        assert committed.committed_by == "USER-1"
 
     def test_commit_schedule_not_found(self, cap_db):
         _create_client(cap_db)
@@ -871,24 +871,24 @@ class TestSchedulingService:
 
         svc = SchedulingService(cap_db)
         with pytest.raises(SchedulingError, match="not found"):
-            svc.commit_schedule(CLIENT_ID, 9999, committed_by=1)
+            svc.commit_schedule(CLIENT_ID, 9999, committed_by="USER-1")
 
     def test_commit_schedule_not_draft(self, cap_db):
         _seed_full_capacity_data(cap_db)
 
         svc = SchedulingService(cap_db)
         schedule = svc.create_schedule(CLIENT_ID, "Double Commit", PERIOD_START, PERIOD_END, items=[])
-        svc.commit_schedule(CLIENT_ID, schedule.id, committed_by=1)
+        svc.commit_schedule(CLIENT_ID, schedule.id, committed_by="USER-1")
 
         with pytest.raises(SchedulingError, match="not in DRAFT"):
-            svc.commit_schedule(CLIENT_ID, schedule.id, committed_by=1)
+            svc.commit_schedule(CLIENT_ID, schedule.id, committed_by="USER-1")
 
     def test_activate_schedule(self, cap_db):
         _seed_full_capacity_data(cap_db)
 
         svc = SchedulingService(cap_db)
         schedule = svc.create_schedule(CLIENT_ID, "Activate", PERIOD_START, PERIOD_END, items=[])
-        svc.commit_schedule(CLIENT_ID, schedule.id, committed_by=1)
+        svc.commit_schedule(CLIENT_ID, schedule.id, committed_by="USER-1")
         activated = svc.activate_schedule(CLIENT_ID, schedule.id)
 
         assert activated.status == ScheduleStatus.ACTIVE
@@ -955,7 +955,7 @@ class TestSchedulingService:
         svc = SchedulingService(cap_db)
         svc.create_schedule(CLIENT_ID, "Sched1", PERIOD_START, PERIOD_END, items=[])
         s2 = svc.create_schedule(CLIENT_ID, "Sched2", PERIOD_START, PERIOD_END, items=[])
-        svc.commit_schedule(CLIENT_ID, s2.id, committed_by=1)
+        svc.commit_schedule(CLIENT_ID, s2.id, committed_by="USER-1")
 
         drafts = svc.list_schedules(CLIENT_ID, status=ScheduleStatus.DRAFT)
         assert len(drafts) == 1
@@ -1451,7 +1451,7 @@ class TestCapacityPlanningService:
         committed = svc.commit_schedule(
             CLIENT_ID,
             schedule.id,
-            committed_by=1,
+            committed_by="USER-1",
             kpi_commitments={"efficiency": 85.0, "quality": 98.0},
         )
         assert committed.status == ScheduleStatus.COMMITTED
@@ -1747,7 +1747,7 @@ class TestCrossServiceIntegration:
         kpi_svc = KPIIntegrationService(cap_db)
 
         schedule = sched_svc.create_schedule(CLIENT_ID, "KPI Track", PERIOD_START, PERIOD_END, items=[])
-        sched_svc.commit_schedule(CLIENT_ID, schedule.id, committed_by=1)
+        sched_svc.commit_schedule(CLIENT_ID, schedule.id, committed_by="USER-1")
 
         kpi_svc.store_kpi_commitments(
             CLIENT_ID,

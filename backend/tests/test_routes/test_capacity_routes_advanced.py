@@ -36,9 +36,8 @@ def create_test_app(db_session):
         finally:
             pass
 
-    # user_id must be numeric string because schedule.committed_by is Integer column
     mock_user = User(
-        user_id="1",
+        user_id="USER-ADMIN",
         username="test_admin",
         email="admin@test.com",
         role=UserRole.ADMIN,
@@ -702,6 +701,25 @@ class TestScheduleEndpoints:
         )
         assert resp.status_code == 200
         assert resp.json()["status"] == "COMMITTED"
+
+    def test_commit_schedule_committed_by_roundtrips_as_string_user_id(self, cap_client_with_data):
+        """committed_by must store the real string user_id (e.g. 'USER-ADMIN'), not crash on int()."""
+        client, db = cap_client_with_data
+        body = {
+            "schedule_name": "String User Commit",
+            "period_start": date.today().isoformat(),
+            "period_end": (date.today() + timedelta(days=7)).isoformat(),
+        }
+        r = client.post("/api/capacity/schedules", json=body, params={"client_id": CLIENT_ID})
+        sched_id = r.json()["id"]
+
+        resp = client.post(
+            f"/api/capacity/schedules/{sched_id}/commit",
+            json={"kpi_commitments": {}},
+            params={"client_id": CLIENT_ID},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["committed_by"] == "USER-ADMIN"
 
     def test_commit_schedule_not_found(self, cap_client_with_data):
         client, db = cap_client_with_data

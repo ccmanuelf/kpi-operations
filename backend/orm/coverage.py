@@ -31,7 +31,7 @@ class ShiftCoverage(Base):
     actual_employees: Mapped[int] = mapped_column(Integer, nullable=False)
     coverage_percentage: Mapped[Optional[Decimal]] = mapped_column(Numeric(5, 2))  # Calculated field
     notes: Mapped[Optional[str]] = mapped_column(Text)
-    entered_by: Mapped[int] = mapped_column(Integer, ForeignKey("USER.user_id"), nullable=False)
+    entered_by: Mapped[str] = mapped_column(String(50), ForeignKey("USER.user_id"), nullable=False)
     created_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), onupdate=func.now(), server_default=func.now()

@@ -50,15 +50,15 @@ class DowntimeEntry(Base):
     corrective_action: Mapped[Optional[str]] = mapped_column(Text)
 
     # Responsible parties
-    reported_by: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("USER.user_id"))
-    resolved_by: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("USER.user_id"))
+    reported_by: Mapped[Optional[str]] = mapped_column(String(50), ForeignKey("USER.user_id"))
+    resolved_by: Mapped[Optional[str]] = mapped_column(String(50), ForeignKey("USER.user_id"))
     resolution_timestamp: Mapped[Optional[datetime]] = mapped_column(DateTime)
 
     # Metadata
     notes: Mapped[Optional[str]] = mapped_column(Text)
 
     # Audit field - tracks who last modified the record (per audit requirement)
-    updated_by: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("USER.user_id"))
+    updated_by: Mapped[Optional[str]] = mapped_column(String(50), ForeignKey("USER.user_id"))
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())

@@ -69,7 +69,8 @@ class CapacitySchedule(Base):
 
     # Commitment tracking
     committed_at: Mapped[Optional[date_type]] = mapped_column(Date, nullable=True)
-    committed_by: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)  # USER.user_id
+    # USER.user_id is String(50); FK column type-matched for MariaDB portability.
+    committed_by: Mapped[Optional[str]] = mapped_column(String(50), ForeignKey("USER.user_id"), nullable=True)
 
     # KPI commitments stored as JSON when schedule is committed
     # Example: {"efficiency": 85.0, "quality": 98.5, "otd": 95.0}

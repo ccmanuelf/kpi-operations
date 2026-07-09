@@ -446,7 +446,7 @@ class ScheduleResponse(BaseModel):
     period_end: date = Field(description="Last date of the scheduling period")
     status: ScheduleStatus = Field(description="Schedule lifecycle status (DRAFT, COMMITTED, ARCHIVED)")
     committed_at: Optional[date] = Field(description="Date the schedule was committed")
-    committed_by: Optional[int] = Field(description="User ID who committed the schedule")
+    committed_by: Optional[str] = Field(description="User ID who committed the schedule")
     notes: Optional[str] = Field(description="Free-text notes")
 
     model_config = ConfigDict(from_attributes=True)

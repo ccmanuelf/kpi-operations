@@ -31,7 +31,7 @@ class DomainEvent(BaseModel):
     aggregate_id: str
     aggregate_type: str
     client_id: Optional[str] = None
-    triggered_by: Optional[int] = None
+    triggered_by: Optional[str] = None
     metadata: Dict[str, Any] = Field(default_factory=dict)
 
     # Events are immutable
