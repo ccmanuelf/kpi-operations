@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Unit test for deploy/backup/backup-loop.sh: --once produces a pruned,
-# gzipped dump using the mysqldump on PATH; retention removes old files.
-# Stubs mysqldump so the test is hermetic (no DB needed).
+# gzipped dump using the mariadb-dump on PATH; retention removes old files.
+# Stubs mariadb-dump so the test is hermetic (no DB needed).
 set -u
 SCRIPT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 SCRIPT="$SCRIPT_DIR/deploy/backup/backup-loop.sh"
@@ -13,13 +13,14 @@ assert() { # assert <desc> <cond-exit>
 TMP="$(mktemp -d)"
 mkdir -p "$TMP/bin" "$TMP/backups"
 
-# Stub mysqldump: emits deterministic SQL, records its args.
-cat > "$TMP/bin/mysqldump" <<'EOF'
+# Stub mariadb-dump (the mariadb:11.x client name; mysql-* compat names are
+# gone): emits deterministic SQL, records its args.
+cat > "$TMP/bin/mariadb-dump" <<'EOF'
 #!/usr/bin/env bash
-echo "$@" > "$(dirname "$0")/mysqldump.args"
+echo "$@" > "$(dirname "$0")/mariadb-dump.args"
 echo "-- fake dump: CREATE TABLE x (id int);"
 EOF
-chmod +x "$TMP/bin/mysqldump"
+chmod +x "$TMP/bin/mariadb-dump"
 
 # An old backup that must be pruned (15 days) and a fresh one that must survive.
 touch -d "15 days ago" "$TMP/backups/kpi_platform-old.sql.gz" 2>/dev/null \
@@ -39,11 +40,14 @@ if [ -n "$new_dump" ]; then
   zcat < "$new_dump" 2>/dev/null | grep -q "fake dump"; assert "dump content present" $?
 fi
 
-grep -q -- "--single-transaction" "$TMP/bin/mysqldump.args" 2>/dev/null
-assert "--single-transaction passed to mysqldump" $?
+grep -q -- "--single-transaction" "$TMP/bin/mariadb-dump.args" 2>/dev/null
+assert "--single-transaction passed to mariadb-dump" $?
 
 [ ! -f "$TMP/backups/kpi_platform-old.sql.gz" ]; assert "old backup pruned" $?
 [ -f "$TMP/backups/kpi_platform-fresh.sql.gz" ]; assert "fresh backup not pruned" $?
+
+# tmp-then-rename: a successful dump must not leave its .tmp behind.
+[ -z "$(ls "$TMP/backups"/*.tmp 2>/dev/null)" ]; assert "no .tmp leftover on success" $?
 
 rm -rf "$TMP"
 exit $fail
