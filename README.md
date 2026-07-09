@@ -122,6 +122,10 @@ npm install --legacy-peer-deps
 npm run dev  # Starts on http://localhost:3000
 ```
 
+Startup applies Alembic migrations automatically (`RUN_MIGRATIONS_ON_STARTUP=true` by default). To migrate manually instead: `cd backend && python -m alembic upgrade head`.
+
+**Upgrading a pre-Alembic database:** if your database was created before this change (schema present, no `alembic_version` table), stamp it once: `cd backend && python -m alembic stamp head`. For demo databases, it's simpler to just delete the DB file and let startup rebuild and reseed it.
+
 ### **Default Login Credentials**
 
 | Username | Password | Role |

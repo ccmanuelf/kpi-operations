@@ -7,7 +7,7 @@ Provides SQLite-specific engine configuration with NullPool
 
 from typing import Dict, Any, List
 
-from sqlalchemy import create_engine, Engine, event, text
+from sqlalchemy import create_engine, Engine, event
 from sqlalchemy.pool import NullPool
 
 from backend.db.providers.base import DatabaseProvider
@@ -78,25 +78,6 @@ class SQLiteProvider(DatabaseProvider):
             "poolclass": NullPool,
             "pool_pre_ping": False,  # Not needed for NullPool
         }
-
-    def validate_connection(self, engine: Engine) -> bool:
-        """Test SQLite connection.
-
-        Args:
-            engine: SQLAlchemy engine to test.
-
-        Returns:
-            bool: True if connection is valid.
-        """
-        try:
-            with engine.connect() as conn:
-                result = conn.execute(text("SELECT sqlite_version()"))
-                version = result.scalar()
-                logger.debug(f"SQLite version: {version}")
-            return True
-        except Exception as e:
-            logger.error(f"SQLite connection validation failed: {e}")
-            return False
 
     def get_dialect_adapter(self) -> SQLiteDialect:
         """Return SQLite dialect adapter.

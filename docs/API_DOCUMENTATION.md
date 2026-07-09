@@ -1138,16 +1138,14 @@ Prefix: `/api/client-config` | Auth: Required
 
 ### Database Administration
 
-Prefix: `/api/admin/database` | Auth: Required (Admin)
+Prefix: `/api/admin/database` | Auth: Required (Supervisor or Admin)
+
+Runtime database migration was removed: schema evolution is handled by Alembic at deploy time, not via an in-app HTTP endpoint.
 
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/api/admin/database/status` | Get database connection status |
 | GET | `/api/admin/database/providers` | List available DB providers |
-| POST | `/api/admin/database/test-connection` | Test a database connection |
-| POST | `/api/admin/database/migrate` | Start database migration |
-| GET | `/api/admin/database/migration/status` | Get migration progress |
-| GET | `/api/admin/database/full-status` | Get comprehensive DB status |
 
 ### Cache Management
 

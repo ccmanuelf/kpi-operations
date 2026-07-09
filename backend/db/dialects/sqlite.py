@@ -63,8 +63,8 @@ class SQLiteDialect(DialectAdapter):
             update_columns = [c for c in columns if c not in conflict_columns]
 
         # nosec B608 — table/cols/conflict/updates are derived from ORM
-        # mapping (DataMigrator's TABLE_ORDER + SQLAlchemy column metadata),
-        # never from user-controllable input. SQL doesn't allow parameterizing
+        # mapping (SQLAlchemy table/column metadata), never from
+        # user-controllable input. SQL doesn't allow parameterizing
         # identifiers; whitelist enforcement is the standard mitigation.
         if not update_columns:
             # No columns to update, just ignore conflicts

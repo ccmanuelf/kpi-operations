@@ -17,7 +17,8 @@ import { setActivePinia, createPinia } from 'pinia'
 import { ref, computed } from 'vue'
 
 // ---------- shared mocks ----------
-const { apiMock } = vi.hoisted(() => ({
+const { apiMock, databaseConfigFetchStatus } = vi.hoisted(() => ({
+  databaseConfigFetchStatus: vi.fn(() => Promise.resolve()),
   apiMock: {
     get: vi.fn(() => Promise.resolve({ data: [] })),
     post: vi.fn(() => Promise.resolve({ data: {} })),
@@ -74,19 +75,13 @@ vi.mock('@/stores/databaseConfigStore', () => ({
     // resulting refs unwrap to non-undefined values during render.
     currentProvider: ref('sqlite'),
     connectionInfo: ref({}),
-    canMigrate: ref(false),
-    isMigrating: ref(false),
-    migrationStatus: ref(null),
-    migrationProgress: ref(0),
-    migrationCompleted: ref(false),
-    migrationFailed: ref(false),
+    availableProviders: ref({}),
     providerDisplayName: ref('SQLite'),
     isLoading: ref(false),
     error: ref(null),
-    connectionTestResult: ref(null),
-    fetchStatus: vi.fn(() => Promise.resolve()),
+    fetchStatus: databaseConfigFetchStatus,
     fetchProviders: vi.fn(() => Promise.resolve()),
-    runMigration: vi.fn(() => Promise.resolve()),
+    clearError: vi.fn(),
   }),
 }))
 
@@ -282,12 +277,6 @@ vi.mock('@/composables/useWorkflowConfigForms', () => ({
 vi.mock('@/components/grids/AGGridBase.vue', () => ({
   default: { template: '<div class="ag-grid-base-stub"><slot /></div>' },
 }))
-vi.mock('@/components/admin/MigrationWizard.vue', () => ({
-  default: { template: '<div class="migration-wizard-stub" />' },
-}))
-vi.mock('@/components/admin/MigrationProgress.vue', () => ({
-  default: { template: '<div class="migration-progress-stub" />' },
-}))
 vi.mock('@/components/admin/FloatingPoolGuideDialog.vue', () => ({
   default: { template: '<div class="floating-pool-guide-stub" />' },
 }))
@@ -474,6 +463,7 @@ describe('Admin views — smoke mount', () => {
     Object.values(apiMock).forEach((fn) => {
       if (typeof fn === 'function') (fn as { mockClear?: () => void }).mockClear?.()
     })
+    databaseConfigFetchStatus.mockClear()
   })
 
   it('AdminClients.vue mounts without errors', () => {
@@ -516,7 +506,10 @@ describe('Admin views — smoke mount', () => {
     expect(smokeMount(WorkflowDesignerView).exists()).toBe(true)
   })
 
-  it('DatabaseConfigView.vue mounts without errors', () => {
-    expect(smokeMount(DatabaseConfigView).exists()).toBe(true)
+  it('DatabaseConfigView.vue mounts without errors, renders the title, and fetches status', () => {
+    const wrapper = smokeMount(DatabaseConfigView)
+    expect(wrapper.exists()).toBe(true)
+    expect(wrapper.text()).toContain('databaseConfig.title')
+    expect(databaseConfigFetchStatus).toHaveBeenCalled()
   })
 })

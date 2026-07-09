@@ -46,15 +46,6 @@ class TestSQLiteProvider:
         assert engine.echo is True
         engine.dispose()
 
-    def test_validate_connection_success(self, tmp_path):
-        """Test connection validation succeeds for valid database."""
-        provider = SQLiteProvider()
-        db_path = tmp_path / "test.db"
-        engine = provider.create_engine(f"sqlite:///{db_path}")
-
-        assert provider.validate_connection(engine) is True
-        engine.dispose()
-
     def test_get_pool_config(self):
         """Test pool configuration returns NullPool settings."""
         provider = SQLiteProvider()
@@ -256,25 +247,6 @@ class TestDatabaseProviderFactory:
 
         assert provider is not None
         assert provider.provider_name == "sqlite"
-
-    def test_validate_connection(self, tmp_path):
-        """Test connection validation."""
-        factory = DatabaseProviderFactory.get_instance()
-        db_path = tmp_path / "test.db"
-
-        result = factory.validate_connection(f"sqlite:///{db_path}")
-
-        assert result["success"] is True
-        assert result["provider"] == "sqlite"
-
-    def test_validate_connection_invalid_url(self):
-        """Test validation with invalid URL."""
-        factory = DatabaseProviderFactory.get_instance()
-
-        result = factory.validate_connection("invalid://url")
-
-        assert result["success"] is False
-        assert "Unknown database provider" in result["message"]
 
     def test_get_available_providers(self):
         """Test getting available providers info."""

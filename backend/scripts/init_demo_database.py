@@ -20,9 +20,7 @@ import uuid
 import random
 from datetime import datetime, date, timedelta, timezone
 from decimal import Decimal
-from typing import Any, Callable, Dict, List, Optional, Tuple, cast
-
-from sqlalchemy.orm import Session
+from typing import Any, Dict, List, Optional, Tuple, cast
 
 # Ensure backend module is importable when running as a standalone script
 # (the package isn't pip-installed, so we extend sys.path before importing
@@ -30,13 +28,13 @@ from sqlalchemy.orm import Session
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from backend.database import engine, Base, SessionLocal  # noqa: E402
+from backend.database import SessionLocal  # noqa: E402
 from backend.db.factories import TestDataFactory  # noqa: E402
 
 # Import all ORM models via centralized registry (backend/orm/__init__.py).
-# This single import registers every model with Base.metadata so that
-# create_all() can never drift from the model registry. Only the names
-# actually referenced in seeder logic are listed explicitly.
+# This single import registers every model so Alembic's model registry can
+# never drift from the ORM. Only the names actually referenced in seeder
+# logic are listed explicitly.
 from backend.orm import (  # noqa: E402 — sys.path setup above is required for these imports
     # Enums used in seeder data
     ClientType,
@@ -309,46 +307,27 @@ for _prod in MASTER_PRODUCTS:
             }
 
 
-def init_database(
-    db: Optional[Session] = None,
-    progress_callback: Optional[Callable[[str], None]] = None,
-) -> None:
+def init_database() -> None:
     """Initialize the database with schema and comprehensive demo data.
 
-    The single canonical demo seeder (Run 8 unification). Two call modes:
-      * db=None (CLI / CI / DEMO_MODE boot auto-seed): create the schema on the
-        global engine, open a session, seed, commit, and close it.
-      * db=<session> (the SQLite->MariaDB migration route): seed into the caller's
-        session on its target engine; the caller owns schema creation and closing
-        the session. progress_callback(step) feeds the migration UI.
+    The single canonical demo seeder (Run 8 unification). Applies Alembic
+    migrations to head, opens its own session, seeds all demo data, commits,
+    and closes the session. Both callers invoke it with no arguments.
     """
-    owns_session = db is None
-    if owns_session:
-        print("=" * 70)
-        print("KPI Operations Platform - Comprehensive Database Initialization")
-        print("=" * 70)
+    print("=" * 70)
+    print("KPI Operations Platform - Comprehensive Database Initialization")
+    print("=" * 70)
 
-        # ==================================================================
-        # Step 1: Create all tables (including capacity planning)
-        # ==================================================================
-        print("\n[1/10] Creating database schema...")
-        Base.metadata.create_all(bind=engine)
+    # ==================================================================
+    # Step 1: Apply Alembic migrations (schema -> head)
+    # ==================================================================
+    print("\n[1/10] Applying Alembic migrations (schema -> head)...")
+    from backend.db.migrate import upgrade_to_head
 
-        from backend.db.migrations.capacity_planning_tables import create_capacity_tables
+    upgrade_to_head()
+    print("  Schema at Alembic head")
 
-        created_tables = create_capacity_tables()
-        if created_tables:
-            print(f"  + Created {len(created_tables)} capacity planning tables")
-
-        print("  All tables created")
-
-        db = SessionLocal()
-
-    # db is non-None here: either supplied by the caller or opened just above.
-    assert db is not None
-
-    if progress_callback:
-        progress_callback("clients, users, employees")
+    db = SessionLocal()
 
     try:
         # ==============================================================
@@ -1932,10 +1911,7 @@ def init_database(
         traceback.print_exc()
         raise
     finally:
-        # Only close sessions we opened; a caller-supplied session (migration
-        # route) is owned and closed by the caller.
-        if owns_session:
-            db.close()
+        db.close()
 
 
 if __name__ == "__main__":

@@ -15,11 +15,8 @@ Services tested:
 import pytest
 from datetime import date, timedelta
 from decimal import Decimal
-from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
 
-from backend.database import Base
 from backend.tests.fixtures.factories import TestDataFactory
 from backend.orm.client import Client, ClientType
 from backend.orm.capacity.calendar import CapacityCalendar
@@ -69,6 +66,7 @@ from backend.services.capacity.kpi_integration_service import (
 from backend.services.capacity.capacity_service import CapacityPlanningService
 
 from backend.exceptions.domain_exceptions import BOMExplosionError, SchedulingError
+from backend.tests.conftest import clone_template_engine
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -87,12 +85,7 @@ PERIOD_END = TODAY + timedelta(days=29)
 @pytest.fixture(scope="function")
 def cap_db():
     """Create a fresh in-memory database for each test."""
-    engine = create_engine(
-        "sqlite:///:memory:",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
-    Base.metadata.create_all(bind=engine)
+    engine = clone_template_engine()
     TestingSession = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     session = TestingSession()
     TestDataFactory.reset_counters()
@@ -101,7 +94,6 @@ def cap_db():
     finally:
         session.rollback()
         session.close()
-        Base.metadata.drop_all(bind=engine)
         engine.dispose()
 
 

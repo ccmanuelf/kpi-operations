@@ -10,6 +10,7 @@ Verifies that:
 """
 
 import configparser
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -120,13 +121,18 @@ class TestModelMetadata:
             assert tbl in table_names, f"Expected capacity table {tbl!r} not in metadata"
 
     def test_metadata_table_count_minimum(self):
-        """Sanity check — we expect at least 25 tables total."""
+        """Sanity check — must match the Alembic baseline's table count.
+
+        Hardcoded rather than a floor: update when adding a migration that
+        creates/drops tables (backend/alembic/versions/0001_real_baseline.py
+        has 57 `op.create_table(` calls).
+        """
         from backend.database import Base
 
         import backend.orm  # noqa: F401
         import backend.orm.capacity  # noqa: F401
 
-        assert len(Base.metadata.tables) >= 25, f"Expected >= 25 tables, got {len(Base.metadata.tables)}"
+        assert len(Base.metadata.tables) == 57, f"Expected == 57 tables, got {len(Base.metadata.tables)}"
 
 
 # ---------------------------------------------------------------------------
@@ -136,12 +142,12 @@ class TestModelMetadata:
 
 @pytest.fixture(scope="module")
 def baseline_module():
-    """Import the 001_baseline migration via importlib (digit-prefixed filename)."""
+    """Import the real baseline migration via importlib (digit-prefixed filename)."""
     import importlib.util
 
     spec = importlib.util.spec_from_file_location(
         "baseline",
-        str(BACKEND_DIR / "alembic" / "versions" / "001_baseline.py"),
+        str(BACKEND_DIR / "alembic" / "versions" / "0001_real_baseline.py"),
     )
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
@@ -149,10 +155,10 @@ def baseline_module():
 
 
 class TestBaselineMigrationImportlib:
-    """Baseline migration tests using importlib (avoids digit-prefix issues)."""
+    """Baseline migration revision-metadata tests (importlib avoids digit-prefix issues)."""
 
     def test_revision_id(self, baseline_module):
-        assert baseline_module.revision == "001_baseline"
+        assert baseline_module.revision == "0001_baseline"
 
     def test_down_revision_is_none(self, baseline_module):
         assert baseline_module.down_revision is None
@@ -163,11 +169,43 @@ class TestBaselineMigrationImportlib:
     def test_depends_on_is_none(self, baseline_module):
         assert baseline_module.depends_on is None
 
-    def test_upgrade_runs_without_error(self, baseline_module):
-        baseline_module.upgrade()
 
-    def test_downgrade_runs_without_error(self, baseline_module):
-        baseline_module.downgrade()
+class TestBaselineMigrationRuns:
+    """The real baseline creates/drops the full schema; exercise both directions
+    against a throwaway SQLite DB (upgrade()/downgrade() need a live Alembic
+    migration context, so they cannot be called bare)."""
+
+    def test_upgrade_head_creates_full_schema(self, tmp_path):
+        from alembic import command
+        from sqlalchemy import create_engine, inspect
+
+        from backend.db.migrate import alembic_config
+
+        url = f"sqlite:///{tmp_path}/baseline_up.db"
+        command.upgrade(alembic_config(url), "head")
+        engine = create_engine(url)
+        try:
+            tables = set(inspect(engine).get_table_names())
+        finally:
+            engine.dispose()
+        assert {"USER", "CLIENT", "PRODUCTION_ENTRY"} <= tables
+
+    def test_downgrade_base_drops_everything(self, tmp_path):
+        from alembic import command
+        from sqlalchemy import create_engine, inspect
+
+        from backend.db.migrate import alembic_config
+
+        url = f"sqlite:///{tmp_path}/baseline_down.db"
+        cfg = alembic_config(url)
+        command.upgrade(cfg, "head")
+        command.downgrade(cfg, "base")
+        engine = create_engine(url)
+        try:
+            remaining = [t for t in inspect(engine).get_table_names() if t != "alembic_version"]
+        finally:
+            engine.dispose()
+        assert remaining == []
 
 
 # ---------------------------------------------------------------------------
@@ -175,15 +213,23 @@ class TestBaselineMigrationImportlib:
 # ---------------------------------------------------------------------------
 
 
-def _run_alembic(*args: str) -> subprocess.CompletedProcess:
-    """Run ``python -m alembic <args>`` from the backend directory."""
+def _run_alembic(*args: str, db_url: str | None = None) -> subprocess.CompletedProcess:
+    """Run ``python -m alembic <args>`` from the backend directory.
+
+    ``db_url`` overrides DATABASE_URL for the subprocess so migration commands
+    run against a throwaway database, never the developer's default DB file.
+    """
     cmd = [sys.executable, "-m", "alembic"] + list(args)
+    env = os.environ.copy()
+    if db_url is not None:
+        env["DATABASE_URL"] = db_url
     return subprocess.run(
         cmd,
         cwd=str(BACKEND_DIR),
         capture_output=True,
         text=True,
-        timeout=30,
+        timeout=60,
+        env=env,
     )
 
 
@@ -194,36 +240,40 @@ class TestAlembicCLI:
         """``alembic heads`` should list the baseline revision."""
         result = _run_alembic("heads")
         assert result.returncode == 0, f"alembic heads failed: {result.stderr}"
-        assert "001_baseline" in result.stdout, f"001_baseline not in heads output: {result.stdout}"
+        assert "0001_baseline" in result.stdout, f"0001_baseline not in heads output: {result.stdout}"
 
     def test_alembic_history(self):
         """``alembic history`` should contain the baseline entry."""
         result = _run_alembic("history")
         assert result.returncode == 0, f"alembic history failed: {result.stderr}"
-        assert "001_baseline" in result.stdout, f"001_baseline not in history output: {result.stdout}"
+        assert "0001_baseline" in result.stdout, f"0001_baseline not in history output: {result.stdout}"
 
-    def test_alembic_current(self):
-        """``alembic current`` should run without error.
+    def test_alembic_current(self, tmp_path):
+        """``alembic current`` should run without error against a fresh DB.
 
-        The output may be empty (no stamp yet) or show a revision — both are OK.
+        The output is empty (no stamp yet) — that is expected.
         """
-        result = _run_alembic("current")
+        url = f"sqlite:///{tmp_path}/cli_current.db"
+        result = _run_alembic("current", db_url=url)
         assert result.returncode == 0, f"alembic current failed: {result.stderr}"
 
-    def test_alembic_upgrade_head(self):
-        """``alembic upgrade head`` should succeed (no-op baseline migration)."""
-        result = _run_alembic("upgrade", "head")
+    def test_alembic_upgrade_head(self, tmp_path):
+        """``alembic upgrade head`` should build the real baseline schema."""
+        url = f"sqlite:///{tmp_path}/cli_upgrade.db"
+        result = _run_alembic("upgrade", "head", db_url=url)
         assert result.returncode == 0, f"alembic upgrade head failed:\nstdout: {result.stdout}\nstderr: {result.stderr}"
 
-    def test_alembic_stamp_head(self):
+    def test_alembic_stamp_head(self, tmp_path):
         """``alembic stamp head`` should succeed (marks DB at current revision)."""
-        result = _run_alembic("stamp", "head")
+        url = f"sqlite:///{tmp_path}/cli_stamp.db"
+        result = _run_alembic("stamp", "head", db_url=url)
         assert result.returncode == 0, f"alembic stamp head failed:\nstdout: {result.stdout}\nstderr: {result.stderr}"
 
-    def test_alembic_current_after_stamp(self):
-        """After stamping, ``alembic current`` should report 001_baseline."""
-        # Ensure stamped first
-        _run_alembic("stamp", "head")
-        result = _run_alembic("current")
+    def test_alembic_current_after_stamp(self, tmp_path):
+        """After stamping, ``alembic current`` should report 0001_baseline."""
+        url = f"sqlite:///{tmp_path}/cli_current_after_stamp.db"
+        stamp = _run_alembic("stamp", "head", db_url=url)
+        assert stamp.returncode == 0, f"alembic stamp head failed: {stamp.stderr}"
+        result = _run_alembic("current", db_url=url)
         assert result.returncode == 0, f"alembic current failed: {result.stderr}"
-        assert "001_baseline" in result.stdout, f"Expected 001_baseline in current output: {result.stdout}"
+        assert "0001_baseline" in result.stdout, f"Expected 0001_baseline in current output: {result.stdout}"

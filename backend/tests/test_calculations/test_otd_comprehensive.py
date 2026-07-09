@@ -7,14 +7,12 @@ import pytest
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from unittest.mock import MagicMock
-from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
 
-from backend.database import Base
 from backend.orm import ClientType
 from backend.orm.work_order import WorkOrderStatus
 from backend.tests.fixtures.factories import TestDataFactory
+from backend.tests.conftest import clone_template_engine
 
 
 class TestInferredDate:
@@ -340,12 +338,7 @@ class TestCalculateOTDByProduct:
 @pytest.fixture(scope="function")
 def otd_real_db():
     """Create a fresh database for OTD real tests."""
-    engine = create_engine(
-        "sqlite:///:memory:",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
-    Base.metadata.create_all(bind=engine)
+    engine = clone_template_engine()
     TestingSession = sessionmaker(bind=engine)
     session = TestingSession()
     TestDataFactory.reset_counters()
@@ -354,7 +347,6 @@ def otd_real_db():
     finally:
         session.rollback()
         session.close()
-        Base.metadata.drop_all(bind=engine)
         engine.dispose()
 
 

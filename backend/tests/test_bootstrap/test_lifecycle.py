@@ -1,6 +1,5 @@
 # backend/tests/test_bootstrap/test_lifecycle.py
 import logging
-import pytest
 from backend.bootstrap import lifecycle
 
 
@@ -17,15 +16,6 @@ def test_run_best_effort_runs_fn():
     calls = []
     lifecycle.run_best_effort("ok", lambda: calls.append(1))
     assert calls == [1]
-
-
-def test_init_schema_is_fatal_on_error(monkeypatch):
-    def boom(bind):
-        raise RuntimeError("db down")
-
-    monkeypatch.setattr(lifecycle.Base.metadata, "create_all", boom)
-    with pytest.raises(RuntimeError):
-        lifecycle.init_schema()
 
 
 def test_start_schedulers_noop_when_none(monkeypatch):

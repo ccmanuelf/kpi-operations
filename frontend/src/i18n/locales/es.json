@@ -3386,10 +3386,6 @@
       "product": "Producto"
     }
   },
-  "migration": {
-    "dbConnectionUrl": "URL de Conexión a Base de Datos",
-    "typeToConfirm": "Escribe MIGRATE para confirmar"
-  },
   "alerts": {
     "urgent": "Urgente",
     "critical": "Critico",
@@ -3919,24 +3915,14 @@
   },
   "databaseConfig": {
     "title": "Configuración de Base de Datos",
-    "subtitle": "Administrar proveedor de base de datos y migración opcional a base de datos de producción",
+    "subtitle": "Ver el proveedor de base de datos activo y los detalles de conexión (solo lectura)",
     "currentProvider": "Proveedor de Base de Datos Actual",
     "sqliteInfo": "SQLite es totalmente compatible para fases de demostración y prueba. La migración a MariaDB/MySQL es opcional y está disponible cuando esté listo para producción.",
     "productionActive": "Base de datos de producción configurada y activa.",
     "property": "Propiedad",
     "value": "Valor",
-    "migrateTitle": "Migrar a Base de Datos de Producción",
-    "oneWayMigration": "Migración Unidireccional",
-    "oneWayWarning": "La migración de base de datos es una operación unidireccional. Una vez migrado a MariaDB o MySQL, no puede revertir a SQLite. La migración:",
-    "createTables": "Crear todas las tablas en la base de datos destino",
-    "seedDemoData": "Poblar datos de demostración (los datos existentes de SQLite no se transfieren)",
-    "updateApp": "Actualizar la aplicación para usar la nueva base de datos",
-    "productionDbActive": "Base de Datos de Producción Activa",
-    "noFurtherMigration": "Su aplicación está configurada para producción usando {provider}. No se necesita migración adicional.",
-    "importOperations": "Importar Operaciones desde CSV",
-    "pasteCSV": "Pegue datos CSV aquí",
-    "requiredColumns": "Columnas requeridas: product, step, operation, machine_tool, sam_min",
-    "optionalColumns": "Opcional: sequence, grouping, operators, variability, rework_pct, grade_pct, fpd_pct"
+    "schemaManagedByMigrations": "El esquema se gestiona exclusivamente con migraciones de Alembic aplicadas al desplegar/arrancar — no existe migración en tiempo de ejecución.",
+    "importOperations": "Importar Operaciones desde CSV"
   },
   "capacityInstructions": {
     "title": "Guía de Referencia de Planificación de Capacidad",
@@ -4113,47 +4099,6 @@
     "viewShiftDetails": "Ver Detalles del Turno",
     "startShift": "Iniciar Turno",
     "activeShiftDetails": "Detalles del Turno Activo"
-  },
-  "migrationWizard": {
-    "selectTarget": "Seleccionar Base de Datos Destino",
-    "mariadb": "MariaDB",
-    "mariadbRecommended": "(Recomendado)",
-    "mariadbDesc": "Base de datos de código abierto, compatible con MySQL con excelente rendimiento",
-    "mysql": "MySQL",
-    "mysqlDesc": "Base de datos relacional ampliamente utilizada",
-    "connectionFormat": "Formato de URL de Conexión",
-    "testConnection": "Probar Conexión",
-    "testConnectionDesc": "Haga clic en el botón para verificar la conexión a su base de datos destino.",
-    "connectionSuccess": "Conexión Exitosa",
-    "connectionFailed": "Conexión Fallida",
-    "confirmMigration": "Confirmar Migración",
-    "finalWarning": "Advertencia Final",
-    "irreversible": "Esta acción es irreversible. Está a punto de:",
-    "createSchema": "Crear esquema en {provider}",
-    "seedDemo": "Poblar datos de demostración en la nueva base de datos",
-    "switchApp": "Cambiar la aplicación para usar la nueva base de datos",
-    "typeConfirm": "Escriba MIGRATE abajo para confirmar esta operación.",
-    "startMigration": "Iniciar Migración",
-    "providerLabel": "Proveedor:",
-    "hostLabel": "Host:",
-    "databaseLabel": "Base de Datos:",
-    "mustTypeMigrate": "Debe escribir MIGRATE exactamente"
-  },
-  "migrationProgress": {
-    "currentTable": "Tabla Actual",
-    "tablesProgress": "Progreso de Tablas",
-    "migrationError": "Error de Migración",
-    "migrationComplete": "Migración Completa",
-    "migrationFailed": "Migración Fallida",
-    "migrationInProgress": "Migración en Progreso",
-    "migrationStatus": "Estado de Migración",
-    "complete": "Completo",
-    "failed": "Fallido",
-    "inProgress": "En Progreso",
-    "idle": "Inactivo",
-    "done": "Listo",
-    "tryAgain": "Reintentar",
-    "tables": "tablas"
   },
   "dataCompleteness": {
     "title": "Completitud de Datos",

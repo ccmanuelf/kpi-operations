@@ -6,7 +6,8 @@ from typing import Any, AsyncIterator, Callable, Optional
 
 from fastapi import FastAPI
 
-from backend.database import engine, Base
+from backend.database import engine
+from backend.db.migrate import SchemaRebuildError
 from backend.events import register_all_handlers, get_event_bus
 from backend.orm.event_store import create_event_persistence_handler
 
@@ -43,8 +44,8 @@ def _auto_seed_demo_data() -> None:
     FORCE_RESEED=true: always drop and re-seed (one-time migration).
     Otherwise: smart detection — re-seed only if data is missing/stale.
 
-    The re-seed path executes Base.metadata.drop_all(); the DEMO_MODE gate must
-    stay the first statement so a non-demo deployment can never reach it
+    The re-seed path executes a destructive rebuild_schema(); the DEMO_MODE gate
+    must stay the first statement so a non-demo deployment can never reach it
     (Run 7 C-1). Guarded by backend/tests/test_demo_seed_gate.py.
     """
     from backend.config import settings
@@ -89,10 +90,14 @@ def _auto_seed_demo_data() -> None:
             need_seed = False
 
         if need_seed:
-            # Drop and recreate if there's stale data to replace
+            # Drop and rebuild the schema first if there's stale data to replace.
+            # rebuild_schema is DESTRUCTIVE and FATAL on failure: a half-rebuilt
+            # database must crash the boot, not serve 500s. Its SchemaRebuildError
+            # is deliberately re-raised past the best-effort except below.
             if client_count > 0:
-                Base.metadata.drop_all(bind=engine)
-                Base.metadata.create_all(bind=engine)
+                from backend.db.migrate import rebuild_schema
+
+                rebuild_schema()
 
             # Single canonical demo seeder (Run 8 unification). init_database
             # creates the schema + seeds all demo data and is pure app code (no
@@ -105,6 +110,10 @@ def _auto_seed_demo_data() -> None:
             logger.info("Auto-seeding complete")
         else:
             logger.info("Database OK (%d clients, all expected clients present)", client_count)
+    except SchemaRebuildError:
+        # A destructive rebuild failed partway — fatal. Never swallow as a
+        # best-effort seed error; let it propagate so the boot crashes.
+        raise
     except Exception as e:
         logger.warning("Auto-seed check failed: %s", e)
 
@@ -117,16 +126,35 @@ def run_best_effort(name: str, fn: Callable[[], None]) -> None:
         logger.warning("%s failed: %s", name, e)
 
 
-def init_schema() -> None:
-    """FATAL: create all tables (idempotent) + warn if the registry looks incomplete."""
-    Base.metadata.create_all(bind=engine)
-    actual = len(Base.metadata.tables)
-    if actual < 45:
-        logger.warning(
-            "Schema registry may be incomplete: expected >=45 tables, got %d. "
-            "Check that all ORM models are imported in backend/orm/__init__.py.",
-            actual,
-        )
+def run_best_effort_unless(name: str, fn: Callable[[], None], fatal_exc: type[BaseException]) -> None:
+    """Best-effort, EXCEPT ``fatal_exc`` which is re-raised.
+
+    Ordinary failures are logged and swallowed (same semantic as
+    run_best_effort); a fatal exception (e.g. SchemaRebuildError from a
+    half-completed destructive rebuild) must crash the boot instead.
+    """
+    try:
+        fn()
+    except fatal_exc:
+        raise
+    except Exception as e:  # noqa: BLE001 - best-effort by design
+        logger.warning("%s failed: %s", name, e)
+
+
+def run_startup_migrations() -> None:
+    """FATAL: bring the schema to Alembic head (the ONLY schema mechanism).
+
+    Gated by RUN_MIGRATIONS_ON_STARTUP — false in multi-worker prod where the
+    container entrypoint runs the upgrade exactly once before workers start.
+    """
+    from backend.config import settings
+    from backend.db.migrate import upgrade_to_head
+
+    if not settings.RUN_MIGRATIONS_ON_STARTUP:
+        logger.info("RUN_MIGRATIONS_ON_STARTUP disabled — entrypoint owns migrations")
+        return
+    upgrade_to_head()
+    logger.info("Alembic migrations applied (head)")
 
 
 def init_event_infrastructure() -> None:
@@ -177,13 +205,12 @@ def dispose_engine() -> None:
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Application lifespan: startup then shutdown, preserving order + failure semantics."""
     # STARTUP — fatal steps unwrapped; best-effort steps via run_best_effort
-    init_schema()  # fatal
-    from backend.db.migrations.capacity_planning_tables import create_capacity_tables
-
-    create_capacity_tables()  # fatal
+    run_startup_migrations()  # fatal
     run_best_effort("event infrastructure init", init_event_infrastructure)
     start_schedulers()  # per-scheduler isolation lives inside (see its definition)
-    run_best_effort("demo data seed", _auto_seed_demo_data)
+    # Demo seeding is best-effort EXCEPT a failed destructive rebuild
+    # (SchemaRebuildError), which is fatal: a half-rebuilt DB must crash the boot.
+    run_best_effort_unless("demo data seed", _auto_seed_demo_data, SchemaRebuildError)
     run_best_effort("metric dependency seed", seed_metric_dependencies_step)
 
     yield

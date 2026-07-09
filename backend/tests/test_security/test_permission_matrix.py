@@ -118,7 +118,6 @@ MATRIX = [
     # Admin tier
     ("POST", "/api/employees/upload/csv", ["operator", "leader", "supervisor"], "admin", 422),
     ("POST", "/api/clients/upload/csv", ["operator", "leader", "supervisor"], "admin", 422),
-    ("POST", "/api/admin/database/migrate", ["operator", "leader", "supervisor"], "admin", 422),
 ]
 
 

@@ -5,17 +5,16 @@ Follows the pattern from test_capacity_routes_crud.py.
 """
 
 import pytest
-from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
 from fastapi.testclient import TestClient
 from fastapi import FastAPI
 
-from backend.database import Base, get_db
+from backend.database import get_db
 from backend.auth.jwt import get_current_user, get_current_active_supervisor
 from backend.orm.user import User
 from backend.routes.shifts import router as shifts_router
 from backend.tests.fixtures.factories import TestDataFactory
+from backend.tests.conftest import clone_template_engine
 
 # =============================================================================
 # Test App Factory and Fixtures
@@ -56,12 +55,7 @@ def _create_test_app(db_session, role="supervisor"):
 @pytest.fixture(scope="function")
 def shift_db():
     """Create a fresh in-memory database for each test."""
-    engine = create_engine(
-        "sqlite:///:memory:",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
-    Base.metadata.create_all(bind=engine)
+    engine = clone_template_engine()
     TestingSession = sessionmaker(bind=engine)
     session = TestingSession()
     TestDataFactory.reset_counters()
@@ -70,7 +64,6 @@ def shift_db():
     finally:
         session.rollback()
         session.close()
-        Base.metadata.drop_all(bind=engine)
         engine.dispose()
 
 

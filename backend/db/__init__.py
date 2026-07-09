@@ -7,7 +7,6 @@ migration capability.
 
 Key Components:
 - DatabaseProviderFactory: Creates appropriate provider based on URL
-- ProviderStateManager: Tracks migration state and locking
 - DialectAdapters: Handle SQL dialect differences
 
 Usage:
@@ -18,12 +17,9 @@ Usage:
 """
 
 from backend.db.factory import DatabaseProviderFactory
-from backend.db.state import ProviderStateManager, MigrationState
 from backend.db.config import DatabaseConfig
 
 __all__ = [
     "DatabaseProviderFactory",
-    "ProviderStateManager",
-    "MigrationState",
     "DatabaseConfig",
 ]

@@ -5,12 +5,9 @@ Target: Increase crud/saved_filter.py coverage from 20% to 85%+
 """
 
 import pytest
-from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
 from fastapi import HTTPException
 
-from backend.database import Base
 from backend.orm import ClientType
 from backend.schemas.filters import (
     FilterType,
@@ -22,17 +19,13 @@ from backend.schemas.filters import (
 )
 from backend.crud import saved_filter as saved_filter_crud
 from backend.tests.fixtures.factories import TestDataFactory
+from backend.tests.conftest import clone_template_engine
 
 
 @pytest.fixture(scope="function")
 def filter_db():
     """Create a fresh database for each test."""
-    engine = create_engine(
-        "sqlite:///:memory:",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
-    Base.metadata.create_all(bind=engine)
+    engine = clone_template_engine()
     TestingSession = sessionmaker(bind=engine)
     session = TestingSession()
     TestDataFactory.reset_counters()
@@ -41,7 +34,6 @@ def filter_db():
     finally:
         session.rollback()
         session.close()
-        Base.metadata.drop_all(bind=engine)
         engine.dispose()
 
 

@@ -1,7 +1,10 @@
 /**
  * E2E Tests for Database Configuration
  *
- * Tests the admin database configuration view and migration wizard.
+ * Tests the admin database configuration view: a read-only status panel
+ * (current provider, connection info, Alembic-managed-schema notice).
+ * The runtime migration wizard and its API were removed as part of the
+ * C5 schema-evolution collapse (Alembic-only; no in-app migration).
  */
 import { test, expect, Page } from '@playwright/test'
 import { login, waitForBackend } from './helpers'
@@ -30,102 +33,32 @@ test.describe('Database Configuration', () => {
     await expect(page.getByText('SQLite').first()).toBeVisible()
   })
 
-  test('shows migration section for SQLite', async ({ page }) => {
-    // Check if migration section is visible (only for SQLite)
-    const migrationSection = page.locator('text=Migrate to Production Database')
+  test('renders the read-only status panel with no migration UI', async ({ page }) => {
+    // Status card + the Alembic-only notice are the entire panel now.
+    await expect(page.locator('text=Current Database Provider')).toBeVisible()
+    await expect(
+      page.getByText(/Schema is managed exclusively by Alembic migrations/)
+    ).toBeVisible()
 
-    // If current provider is SQLite, migration should be available
-    const providerText = await page.textContent('body')
-    if (providerText?.includes('SQLite')) {
-      await expect(migrationSection).toBeVisible()
-    }
-  })
-
-  test('shows MariaDB and MySQL options in wizard', async ({ page }) => {
-    // Check if wizard options are visible
-    const mariadbOption = page.getByText('MariaDB').first()
-    const mysqlOption = page.getByText('MySQL').first()
-
-    // These should be visible if migration is available
-    const pageContent = await page.textContent('body')
-    if (pageContent?.includes('Migrate to Production')) {
-      await expect(mariadbOption).toBeVisible()
-      await expect(mysqlOption).toBeVisible()
-    }
-  })
-
-  test('displays one-way migration warning', async ({ page }) => {
-    // Check for warning about irreversible operation
-    const warningText = page.getByText(/one-way/i).first()
-
-    const pageContent = await page.textContent('body')
-    if (pageContent?.includes('Migrate to Production')) {
-      await expect(warningText).toBeVisible()
-    }
+    // The runtime migration wizard was deleted alongside the
+    // /api/admin/database/test-connection endpoint (C5 collapse) —
+    // assert its marker text is absent rather than conditionally
+    // skipping, since the old page's stepper/wizard no longer exists.
+    await expect(page.locator('text=Migrate to Production Database')).toHaveCount(0)
   })
 })
 
-test.describe('Migration Wizard Steps', () => {
-  test.beforeEach(async ({ page }) => {
-    await loginAndNavigateToDatabaseConfig(page)
-  })
-
-  test('wizard has three steps', async ({ page }) => {
-    const pageContent = await page.textContent('body')
-
-    // Only test if migration is available
-    if (pageContent?.includes('Migrate to Production')) {
-      // Check for step labels
-      await expect(page.getByText('Select Target').first()).toBeVisible()
-      await expect(page.getByText('Test Connection').first()).toBeVisible()
-      await expect(page.getByText('Confirm').first()).toBeVisible()
-    }
-  })
-
-  test('shows connection URL format help', async ({ page }) => {
-    const pageContent = await page.textContent('body')
-
-    if (pageContent?.includes('Migrate to Production')) {
-      // Should show URL format hint - the page shows mysql+pymysql://
-      const urlHint = page.getByText(/mysql\+pymysql:\/\//i).first()
-      await expect(urlHint).toBeVisible()
-    }
-  })
-})
-
-test.describe('Migration Confirmation', () => {
-  test.beforeEach(async ({ page }) => {
-    await loginAndNavigateToDatabaseConfig(page)
-  })
-
-  test('requires MIGRATE confirmation text', async ({ page }) => {
-    const pageContent = await page.textContent('body')
-
-    if (pageContent?.includes('Migrate to Production')) {
-      // Navigate to confirmation step (if possible in test)
-      // This depends on the stepper implementation
-      const confirmInput = page.locator('input[placeholder*="MIGRATE"]')
-
-      if (await confirmInput.isVisible({ timeout: 2000 }).catch(() => false)) {
-        // Should require exact text
-        await expect(page.getByText(/Type MIGRATE/i).first()).toBeVisible()
-      }
-    }
-  })
-})
-
-test.describe('Already Migrated State', () => {
-  test('shows production database active message', async ({ page }) => {
+test.describe('SQLite Status Variant', () => {
+  test('status card shows the SQLite info branch, not the production-active branch', async ({ page }) => {
     await loginAndNavigateToDatabaseConfig(page)
 
-    const pageContent = await page.textContent('body')
-
-    // If already migrated, should show appropriate message
-    if (pageContent?.includes('MariaDB') || pageContent?.includes('MySQL')) {
-      if (!pageContent?.includes('Migrate to Production')) {
-        await expect(page.getByText(/Production Database Active|No further migration/i).first()).toBeVisible()
-      }
-    }
+    // On a SQLite-backed run, the v-if/v-else in DatabaseConfigView.vue
+    // must render the sqliteInfo copy and never the productionActive
+    // copy — they're mutually exclusive branches of the same alert.
+    await expect(
+      page.getByText(/SQLite is fully supported for demo and prove-in phases/)
+    ).toBeVisible()
+    await expect(page.getByText('Production database configured and active.')).toHaveCount(0)
   })
 })
 
@@ -141,14 +74,15 @@ test.describe('API Integration', () => {
     await expect(page.getByText('SQLite').first()).toBeVisible({ timeout: 5000 })
   })
 
-  test('test connection endpoint rejects unauthenticated callers', async ({ request }) => {
-    // Hit via the configured baseURL so Render/local both work; no auth header
-    // is provided so the supervisor-protected endpoint must respond 401.
-    const response = await request.post('/api/admin/database/test-connection', {
-      data: { target_url: 'sqlite:///test.db' },
-    })
+  test('status and providers endpoints reject unauthenticated callers', async ({ request }) => {
+    // Hit via the configured baseURL so Render/local both work; no auth
+    // header is provided so both admin-only endpoints must respond 401.
+    // (test-connection was deleted with the runtime migration API.)
+    const statusResponse = await request.get('/api/admin/database/status')
+    expect(statusResponse.status()).toBe(401)
 
-    expect(response.status()).toBe(401)
+    const providersResponse = await request.get('/api/admin/database/providers')
+    expect(providersResponse.status()).toBe(401)
   })
 })
 

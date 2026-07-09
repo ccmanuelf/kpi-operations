@@ -64,7 +64,7 @@ FLUSH PRIVILEGES;
 EOF
 ```
 
-> **Note:** You do not need to run any SQL files manually. The backend automatically creates all tables (via SQLAlchemy `create_all()`) and seeds demo data on first startup when the database is empty.
+> **Note:** You do not need to run any SQL files manually. The backend automatically applies Alembic migrations to create the schema and seeds demo data on first startup when the database is empty.
 
 ## Step 2: Backend Setup (1 minute)
 

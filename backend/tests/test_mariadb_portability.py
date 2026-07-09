@@ -30,6 +30,19 @@ def test_mariadb_provider_enforces_utf8mb4():
     assert kwargs["connect_args"]["charset"] == "utf8mb4"
 
 
+def test_register_all_models_populates_full_metadata():
+    """The canonical registration helper must yield the complete table registry.
+
+    Must match the Alembic baseline; update when adding a migration that
+    creates/drops tables (backend/alembic/versions/0001_real_baseline.py
+    has 57 `op.create_table(` calls).
+    """
+    from backend.orm import register_all_models
+
+    register_all_models()
+    assert len(Base.metadata.tables) == 57
+
+
 # ---------------------------------------------------------------------------
 # FK type-consistency guard (always-on, dialect-agnostic). InnoDB (MariaDB)
 # refuses to create a table whose FK column type differs from the referenced
@@ -39,11 +52,11 @@ def test_mariadb_provider_enforces_utf8mb4():
 
 from backend.database import Base  # noqa: E402
 
-# Populate Base.metadata with EVERY table. Model-import block copied VERBATIM
-# from backend/alembic/env.py (the canonical list that registers all core +
-# capacity models).
-import backend.orm  # noqa: E402,F401 — registers core ORM models
-import backend.orm.capacity  # noqa: E402,F401 — registers capacity planning models
+# Populate Base.metadata with EVERY table using the canonical registration helper
+# to avoid import-block drift.
+from backend.orm import register_all_models  # noqa: E402
+
+register_all_models()
 
 
 def test_foreign_key_column_types_match_referenced_columns():
@@ -85,11 +98,47 @@ requires_mariadb = pytest.mark.skipif(
 
 @pytest.fixture(scope="module")
 def mariadb_schema():
-    """Create the full schema on the live MariaDB, drop it afterwards."""
-    Base.metadata.drop_all(bind=engine)
-    Base.metadata.create_all(bind=engine)  # would raise 1170 before the Task 1 fix
+    """Build the full schema on live MariaDB via Alembic; drop it afterwards."""
+    from backend.db.migrate import rebuild_schema
+
+    # render_as_string(hide_password=False): str(engine.url) masks the password
+    # as "***", which Alembic would then use verbatim and fail to authenticate.
+    rebuild_schema(engine.url.render_as_string(hide_password=False))
     yield
     Base.metadata.drop_all(bind=engine)
+
+
+def _autogen_diff_is_empty(url: str) -> list:
+    """Upgrade a throwaway DB to head and diff Base.metadata against it."""
+    from alembic.autogenerate import compare_metadata
+    from alembic.migration import MigrationContext
+    from sqlalchemy import create_engine as sa_create_engine
+
+    from backend.db.migrate import upgrade_to_head
+
+    upgrade_to_head(url)
+    diff_engine = sa_create_engine(url)
+    try:
+        with diff_engine.connect() as conn:
+            ctx = MigrationContext.configure(conn, opts={"compare_type": True, "render_as_batch": "sqlite" in url})
+            return list(compare_metadata(ctx, Base.metadata))
+    finally:
+        diff_engine.dispose()
+
+
+def test_baseline_builds_schema_equal_to_metadata_sqlite(tmp_path):
+    """alembic upgrade head on SQLite must reproduce Base.metadata exactly."""
+    url = f"sqlite:///{tmp_path}/baseline_guard.db"
+    assert _autogen_diff_is_empty(url) == []
+
+
+@requires_mariadb
+def test_baseline_builds_schema_equal_to_metadata_mariadb(mariadb_schema):
+    """Same guarantee against live MariaDB (runs in the mariadb-portability job)."""
+    from backend.database import engine as app_engine
+
+    # render_as_string(hide_password=False): str(url) masks the password as "***".
+    assert _autogen_diff_is_empty(app_engine.url.render_as_string(hide_password=False)) == []
 
 
 @requires_mariadb
@@ -151,3 +200,45 @@ def test_app_engine_connection_charset_is_utf8mb4(mariadb_schema):
         assert charset == "utf8mb4"
     finally:
         session.close()
+
+
+# ---------------------------------------------------------------------------
+# Schema-mechanism guard (always-on, dialect-agnostic). Alembic is the only
+# schema mechanism, in app code AND in tests: test fixtures get a fresh
+# schema by cloning the Alembic-built template (conftest.clone_template_engine
+# / db_engine / db_session), never by calling create_all() imperatively.  # schema-guard: allow
+# ---------------------------------------------------------------------------
+
+
+def test_no_create_all_outside_alembic():
+    """Alembic is the only schema mechanism: create_all() and raw CREATE TABLE  # schema-guard: allow
+    DDL must not exist anywhere in backend/ outside Alembic itself.
+
+    Catches both the ORM path (Base.metadata.create_all()) and hand-written  # schema-guard: allow
+    SQL (e.g. a standalone script re-creating a table Alembic already owns —
+    see backend/scripts/seed_defect_types.py's history).
+
+    Line-level exemption: any individual line carrying the marker
+    ``# schema-guard: allow`` is skipped. That lets this guard scan its OWN
+    host file too — its regex literals and docstring mentions carry the marker,
+    so it no longer needs a whole-file allowlist that could hide a real
+    offender added to this file.
+    """
+    import pathlib
+    import re
+
+    backend_root = pathlib.Path(__file__).resolve().parent.parent
+    marker = "# schema-guard: allow"
+    create_all_re = re.compile(r"\bcreate_all\s*\(")  # schema-guard: allow
+    create_table_re = re.compile(r"CREATE TABLE", re.IGNORECASE)  # schema-guard: allow
+
+    offenders = []
+    for py in backend_root.rglob("*.py"):
+        if "alembic" in py.parts or ".venv" in py.parts:
+            continue
+        for lineno, line in enumerate(py.read_text(encoding="utf-8").splitlines(), start=1):
+            if marker in line:
+                continue
+            if create_all_re.search(line) or create_table_re.search(line):
+                offenders.append(f"{py.relative_to(backend_root)}:{lineno}")
+    assert sorted(offenders) == []

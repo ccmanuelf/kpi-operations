@@ -118,8 +118,8 @@ backend/
   events/                  # Domain event bus (collect/flush pattern)
   simulation_v2/           # SimPy discrete-event engine + Monte Carlo + MiniZinc optimization/ (4 patterns)
   reports/                 # PDF/Excel generation
-  db/migrations/           # Demo seeder (demo_seeder.py) + capacity table creation
-  scripts/                 # init_demo_database.py, backup utilities
+  alembic/versions/        # Alembic migrations -- the single schema mechanism
+  scripts/                 # init_demo_database.py (canonical seeder), backup utilities
   utils/
     logging_utils.py       # get_module_logger() -- used by all route modules
 ```
@@ -185,13 +185,12 @@ All route modules use `get_module_logger(__name__)` from `backend.utils.logging_
 
 #### 5. Lifespan Context Manager
 
-The application uses FastAPI's `lifespan` context manager (not the deprecated `@app.on_event`). The lifespan handler:
-1. Runs `Base.metadata.create_all()` to ensure all tables exist
-2. Validates ORM registry completeness (warns if <45 tables detected)
-3. Creates capacity planning tables
-4. Initializes domain event infrastructure
-5. Starts the daily report scheduler
-6. Auto-seeds demo data if the database is empty
+The application uses FastAPI's `lifespan` context manager (not the deprecated `@app.on_event`), decomposed into ordered units in `backend/bootstrap/lifecycle.py`. The lifespan handler:
+1. Applies Alembic migrations to head (fatal on failure; gated by `RUN_MIGRATIONS_ON_STARTUP`)
+2. Initializes domain event infrastructure
+3. Starts the daily report + dual-view calculation schedulers
+4. Auto-seeds demo data if the database is empty or incomplete (`DEMO_MODE` only)
+5. Seeds metric dependencies
 
 ### API Endpoints Summary
 
@@ -219,36 +218,24 @@ The project maintains a strict discipline to prevent schema-ORM drift, which was
 
 ### ORM Registry Pattern
 
-All SQLAlchemy ORM models are centrally imported in `backend/orm/__init__.py`. This file serves as the authoritative registry of every database table. `Base.metadata.create_all()` can only create tables for models that have been imported into the Python process, so a missing import means a missing table.
+All SQLAlchemy ORM models are centrally imported in `backend/orm/__init__.py`. This file serves as the authoritative registry of every database table, driving both `Base.metadata` (used by Alembic's autogenerate diffing) and the Alembic-built schema itself — a missing import means a missing table.
 
 **Rule**: Every new ORM model file added to `backend/orm/` MUST be imported in `backend/orm/__init__.py` and exported in `__all__`.
 
-### Lifespan Safety Check
+### Schema Registry Guard
 
-`backend/main.py` includes a runtime check during application startup:
+Registry completeness is enforced as a test guard rather than a runtime warning: `backend/tests/test_mariadb_portability.py::test_register_all_models_populates_full_metadata` asserts `len(Base.metadata.tables) == 57` (must match the Alembic baseline; update when a migration adds/drops a table).
 
-```python
-_actual_table_count = len(Base.metadata.tables)
-if _actual_table_count < 45:
-    _logger.warning(
-        "Schema registry may be incomplete: expected >=45 tables, got %d. "
-        "Check that all ORM models are imported in backend/orm/__init__.py.",
-        _actual_table_count,
-    )
-```
+### Seeder Architecture
 
-As of Run 7 (2026-06), the database has 57 tables. The threshold of 45 provides margin for the check to remain useful without false positives.
-
-### Dual Seeder Architecture
-
-Two seeders must stay aligned:
+A single canonical seeder (Run 8 unification) is pure app code — no test-only
+dependencies — so it runs in every environment, including the Docker image:
 
 | Seeder | Location | Used By |
 |--------|----------|---------|
-| `init_demo_database.py` | `backend/scripts/` | Local development (`python scripts/init_demo_database.py`) |
-| `demo_seeder.py` | `backend/db/migrations/` | Docker / auto-seed on empty DB (called from `main.py` lifespan) |
+| `init_demo_database.py` | `backend/scripts/` | Local development (`python scripts/init_demo_database.py`) AND the Docker / auto-seed path (called from `backend/bootstrap/lifecycle.py`'s lifespan) |
 
-Both seeders import ALL ORM models and create the same comprehensive demo dataset (5 clients, employees, work orders, production data, quality entries, capacity planning data, hold catalogs, break times, production lines, equipment, and assignments).
+It imports ALL ORM models and creates the comprehensive demo dataset (5 clients, employees, work orders, production data, quality entries, capacity planning data, hold catalogs, break times, production lines, equipment, and assignments). Schema creation itself is Alembic's job (`backend/alembic/versions/`), not the seeder's.
 
 ---
 

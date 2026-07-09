@@ -6,26 +6,19 @@ Target: Increase crud/work_order.py coverage from 39% to 85%+
 
 import pytest
 from datetime import datetime, timedelta, timezone
-from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
 from fastapi import HTTPException
 
-from backend.database import Base
 from backend.orm import WorkOrderStatus, ClientType
 from backend.crud import work_order as work_order_crud
 from backend.tests.fixtures.factories import TestDataFactory
+from backend.tests.conftest import clone_template_engine
 
 
 @pytest.fixture(scope="function")
 def work_order_db():
     """Create a fresh database for each test with work-order-related tables."""
-    engine = create_engine(
-        "sqlite:///:memory:",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
-    Base.metadata.create_all(bind=engine)
+    engine = clone_template_engine()
     TestingSession = sessionmaker(bind=engine)
     session = TestingSession()
     TestDataFactory.reset_counters()
@@ -34,7 +27,6 @@ def work_order_db():
     finally:
         session.rollback()
         session.close()
-        Base.metadata.drop_all(bind=engine)
         engine.dispose()
 
 

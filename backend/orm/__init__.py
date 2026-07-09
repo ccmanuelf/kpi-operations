@@ -3,9 +3,10 @@ SQLAlchemy ORM models for database tables
 Complete multi-tenant implementation with all tables
 
 IMPORTANT: Every ORM model file in this package MUST be imported here
-so that Base.metadata.create_all() discovers all tables. Failure to
-import a model here was the root cause of 503 errors on fresh installs
-(2026-02-23 schema-ORM mismatch incident).
+so that Base.metadata reflects every table (Alembic autogenerate and
+test fixtures rely on this). Failure to import a model here was the
+root cause of 503 errors on fresh installs (2026-02-23 schema-ORM
+mismatch incident).
 """
 
 # Core multi-tenant foundation
@@ -117,6 +118,18 @@ from .capacity import (
 
 # D3 — SimPy V2 / MiniZinc scenario persistence
 from .simulation_scenario import SimulationScenario
+
+
+def register_all_models() -> None:
+    """Register EVERY ORM model on Base.metadata (idempotent).
+
+    Importing backend.orm registers all core models; this additionally pulls
+    in the capacity-planning package. This is the single canonical
+    registration entrypoint — alembic/env.py, conftest.py, and the
+    portability tests must all use it instead of hand-copied import blocks.
+    """
+    import backend.orm.capacity  # noqa: F401 — registers capacity models
+
 
 __all__ = [
     # Core foundation

@@ -7,7 +7,7 @@ and production-ready connection management.
 
 from typing import Dict, Any, List
 
-from sqlalchemy import create_engine, Engine, text
+from sqlalchemy import create_engine, Engine
 from sqlalchemy.pool import QueuePool
 
 from backend.db.providers.base import DatabaseProvider
@@ -102,33 +102,6 @@ class MariaDBProvider(DatabaseProvider):
             "pool_recycle": 3600,
             "pool_pre_ping": True,
         }
-
-    def validate_connection(self, engine: Engine) -> bool:
-        """Test MariaDB connection and verify it's MariaDB.
-
-        Args:
-            engine: SQLAlchemy engine to test.
-
-        Returns:
-            bool: True if connection is valid and server is MariaDB/MySQL.
-        """
-        try:
-            with engine.connect() as conn:
-                result = conn.execute(text("SELECT VERSION()"))
-                version = result.scalar()
-                logger.debug(f"MariaDB server version: {version}")
-
-                # Check if it's MariaDB or MySQL
-                is_mariadb = "MariaDB" in str(version)
-                is_mysql = "mysql" in str(version).lower()
-
-                if not (is_mariadb or is_mysql):
-                    logger.warning(f"Unexpected server version: {version}")
-
-                return True
-        except Exception as e:
-            logger.error(f"MariaDB connection validation failed: {e}")
-            return False
 
     def get_dialect_adapter(self) -> MariaDBDialect:
         """Return MariaDB dialect adapter.

@@ -19,12 +19,13 @@ services:
       # Logging
       - DEBUG=false
       - LOG_LEVEL=INFO
-      # Feature flags
-      - CAPACITY_PLANNING_ENABLED=true
       # Demo mode (set to true to seed demo data on startup)
       - DEMO_MODE=${DEMO_MODE:-false}
       # Database initialization (set to true to run migrations on startup)
       - RUN_MIGRATIONS=${RUN_MIGRATIONS:-true}
+      # The entrypoint (RUN_MIGRATIONS) owns migrations here — runs once before
+      # workers start — so disable the redundant in-process startup migration.
+      - RUN_MIGRATIONS_ON_STARTUP=false
     volumes:
       - ./database:/app/database
       - ./uploads:/app/uploads

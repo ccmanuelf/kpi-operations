@@ -22,11 +22,12 @@ services:
       # Logging
       - DEBUG=false
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
-      # Feature flags
-      - CAPACITY_PLANNING_ENABLED=${CAPACITY_PLANNING_ENABLED:-true}
       # Production settings
       - DEMO_MODE=false
       - RUN_MIGRATIONS=${RUN_MIGRATIONS:-true}
+      # The entrypoint (RUN_MIGRATIONS) owns migrations here — runs once before
+      # workers start — so disable the redundant in-process startup migration.
+      - RUN_MIGRATIONS_ON_STARTUP=false
     volumes:
       - database-data:/app/database
       - uploads-data:/app/uploads

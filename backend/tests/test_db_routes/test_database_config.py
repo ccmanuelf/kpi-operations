@@ -6,7 +6,6 @@ All endpoints require supervisor or admin authentication.
 """
 
 import pytest
-from unittest.mock import patch, MagicMock
 
 from backend.database import get_db
 from backend.orm.user import User
@@ -17,12 +16,10 @@ def supervisor_headers(test_client):
     """
     Create admin auth headers for the database-config endpoints.
 
-    POST /migrate is admin-only per docs/user-guide/10-roles-permissions.md
-    ("Trigger DB migrations: Admin only", enforced in Run 7 T2.7); the other
-    database-config endpoints accept the supervisory tier, which admin also
-    satisfies. Self-registration always yields role='operator' (Run 7 C-2),
-    so this fixture registers a user, elevates the role directly in the DB
-    (the way an admin would via the users API), then logs in.
+    The database-config endpoints accept the supervisory tier, which admin
+    also satisfies. Self-registration always yields role='operator' (Run 7
+    C-2), so this fixture registers a user, elevates the role directly in
+    the DB (the way an admin would via the users API), then logs in.
     """
     from backend.main import app
 
@@ -70,15 +67,19 @@ class TestDatabaseConfigEndpoints:
     """Tests for database configuration API endpoints."""
 
     def test_get_status_returns_current_provider(self, test_client, supervisor_headers):
-        """Test GET /status returns provider info."""
+        """Test GET /status returns provider info derived from the live engine."""
         response = test_client.get("/api/admin/database/status", headers=supervisor_headers)
         assert response.status_code == 200
 
         data = response.json()
         assert "current_provider" in data
-        assert "migration_available" in data
-        assert "supported_targets" in data
-        assert data["current_provider"] in ["sqlite", "mariadb", "mysql"]
+        assert "connection_info" in data
+        # Provider + connection_info are derived from the real app engine, which
+        # is SQLite in the test suite.
+        assert data["current_provider"] == "sqlite"
+        assert data["connection_info"], "connection_info must be populated from the live engine"
+        assert data["connection_info"]["provider"] == "sqlite"
+        assert data["connection_info"]["database"]
 
     def test_get_providers_returns_available(self, test_client, supervisor_headers):
         """Test GET /providers returns provider info."""
@@ -90,155 +91,12 @@ class TestDatabaseConfigEndpoints:
         assert "sqlite" in data["providers"]
         assert "mariadb" in data["providers"]
 
-    def test_test_connection_requires_url(self, test_client, supervisor_headers):
-        """Test POST /test-connection validates input."""
-        response = test_client.post("/api/admin/database/test-connection", json={}, headers=supervisor_headers)
-        assert response.status_code == 422  # Validation error
 
-    def test_test_connection_with_valid_sqlite(self, test_client, supervisor_headers, tmp_path):
-        """Test connection testing with SQLite."""
-        db_path = tmp_path / "test.db"
-        response = test_client.post(
-            "/api/admin/database/test-connection",
-            json={"target_url": f"sqlite:///{db_path}"},
-            headers=supervisor_headers,
-        )
-        assert response.status_code == 200
-
-        data = response.json()
-        assert data["success"] is True
-        assert data["provider"] == "sqlite"
-
-    def test_test_connection_with_invalid_url(self, test_client, supervisor_headers):
-        """Test connection testing with invalid URL."""
-        response = test_client.post(
-            "/api/admin/database/test-connection",
-            json={"target_url": "invalid://not-a-real-url"},
-            headers=supervisor_headers,
-        )
-        assert response.status_code == 200
-
-        data = response.json()
-        assert data["success"] is False
-
-    def test_migrate_requires_confirmation(self, test_client, supervisor_headers):
-        """Test POST /migrate requires MIGRATE confirmation."""
-        response = test_client.post(
-            "/api/admin/database/migrate",
-            json={"target_provider": "mariadb", "target_url": "mysql://test", "confirmation_text": "wrong"},
-            headers=supervisor_headers,
-        )
-        assert response.status_code == 400
-        assert "MIGRATE" in response.json()["detail"]
-
-    def test_migrate_requires_valid_provider(self, test_client, supervisor_headers):
-        """Test POST /migrate validates provider."""
-        response = test_client.post(
-            "/api/admin/database/migrate",
-            json={"target_provider": "invalid", "target_url": "mysql://test", "confirmation_text": "MIGRATE"},
-            headers=supervisor_headers,
-        )
-        assert response.status_code == 400
-
-    @patch("backend.routes.database_config.ProviderStateManager")
-    def test_migrate_blocks_if_not_sqlite(self, mock_manager_class, test_client, supervisor_headers):
-        """Test migration blocked if current provider is not SQLite."""
-        mock_manager = MagicMock()
-        mock_manager.get_current_provider.return_value = "mariadb"
-        mock_manager_class.return_value = mock_manager
-
-        response = test_client.post(
-            "/api/admin/database/migrate",
-            json={"target_provider": "mysql", "target_url": "mysql://localhost/db", "confirmation_text": "MIGRATE"},
-            headers=supervisor_headers,
-        )
-        assert response.status_code == 400
-        assert "SQLite" in response.json()["detail"]
-
-    @patch("backend.routes.database_config.ProviderStateManager")
-    def test_migrate_blocks_if_locked(self, mock_manager_class, test_client, supervisor_headers):
-        """Test migration blocked if already in progress."""
-        mock_manager = MagicMock()
-        mock_manager.get_current_provider.return_value = "sqlite"
-        mock_manager.acquire_migration_lock.return_value = False
-        mock_manager_class.return_value = mock_manager
-
-        response = test_client.post(
-            "/api/admin/database/migrate",
-            json={"target_provider": "mariadb", "target_url": "mysql://localhost/db", "confirmation_text": "MIGRATE"},
-            headers=supervisor_headers,
-        )
-        assert response.status_code == 409
-        assert "already in progress" in response.json()["detail"]
-
-    def test_migration_status_returns_idle(self, test_client, supervisor_headers):
-        """Test GET /migration/status returns idle when no migration."""
-        response = test_client.get("/api/admin/database/migration/status", headers=supervisor_headers)
-        assert response.status_code == 200
-
-        data = response.json()
-        assert "status" in data
-
-    def test_full_status_returns_complete_info(self, test_client, supervisor_headers):
-        """Test GET /full-status returns complete info."""
-        response = test_client.get("/api/admin/database/full-status", headers=supervisor_headers)
-        assert response.status_code == 200
-
-        data = response.json()
-        assert "current_provider" in data
-        assert "migration_locked" in data
-        assert "migration_history" in data
+def test_status_requires_supervisor(test_client):
+    r = test_client.get("/api/admin/database/status")
+    assert r.status_code == 401
 
 
-class TestMigrationRequestValidation:
-    """Tests for MigrationRequest validation."""
-
-    def test_missing_target_provider(self, test_client, supervisor_headers):
-        """Test missing target_provider field."""
-        response = test_client.post(
-            "/api/admin/database/migrate",
-            json={"target_url": "mysql://test", "confirmation_text": "MIGRATE"},
-            headers=supervisor_headers,
-        )
-        assert response.status_code == 422
-
-    def test_missing_target_url(self, test_client, supervisor_headers):
-        """Test missing target_url field."""
-        response = test_client.post(
-            "/api/admin/database/migrate",
-            json={"target_provider": "mariadb", "confirmation_text": "MIGRATE"},
-            headers=supervisor_headers,
-        )
-        assert response.status_code == 422
-
-    def test_missing_confirmation_text(self, test_client, supervisor_headers):
-        """Test missing confirmation_text field."""
-        response = test_client.post(
-            "/api/admin/database/migrate",
-            json={"target_provider": "mariadb", "target_url": "mysql://test"},
-            headers=supervisor_headers,
-        )
-        assert response.status_code == 422
-
-    def test_case_sensitive_confirmation(self, test_client, supervisor_headers):
-        """Test confirmation is case-sensitive."""
-        response = test_client.post(
-            "/api/admin/database/migrate",
-            json={
-                "target_provider": "mariadb",
-                "target_url": "mysql://test",
-                "confirmation_text": "migrate",  # lowercase
-            },
-            headers=supervisor_headers,
-        )
-        assert response.status_code == 400
-        assert "MIGRATE" in response.json()["detail"]
-
-    def test_confirmation_with_spaces(self, test_client, supervisor_headers):
-        """Test confirmation rejects extra spaces."""
-        response = test_client.post(
-            "/api/admin/database/migrate",
-            json={"target_provider": "mariadb", "target_url": "mysql://test", "confirmation_text": " MIGRATE "},
-            headers=supervisor_headers,
-        )
-        assert response.status_code == 400
+def test_providers_requires_supervisor(test_client):
+    r = test_client.get("/api/admin/database/providers")
+    assert r.status_code == 401

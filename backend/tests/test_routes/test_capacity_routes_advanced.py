@@ -8,18 +8,17 @@ Uses real in-memory SQLite database with TestDataFactory.
 
 import pytest
 from datetime import date, timedelta
-from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
 from fastapi.testclient import TestClient
 from fastapi import FastAPI
 
-from backend.database import Base, get_db
+from backend.database import get_db
 from backend.auth.jwt import get_current_user
 from backend.orm import ClientType
 from backend.orm.user import User, UserRole
 from backend.routes.capacity import router as capacity_router
 from backend.tests.fixtures.factories import TestDataFactory
+from backend.tests.conftest import clone_template_engine
 
 # =============================================================================
 # Fixtures
@@ -52,12 +51,7 @@ def create_test_app(db_session):
 
 @pytest.fixture(scope="function")
 def cap_db():
-    engine = create_engine(
-        "sqlite:///:memory:",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
-    Base.metadata.create_all(bind=engine)
+    engine = clone_template_engine()
     TestingSession = sessionmaker(bind=engine)
     session = TestingSession()
     TestDataFactory.reset_counters()
@@ -66,7 +60,6 @@ def cap_db():
     finally:
         session.rollback()
         session.close()
-        Base.metadata.drop_all(bind=engine)
         engine.dispose()
 
 

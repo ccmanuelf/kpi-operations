@@ -89,6 +89,13 @@ class Settings(BaseSettings):
     # production deployment can never destroy real data.
     DEMO_MODE: bool = False
 
+    # C5: run `alembic upgrade head` in-process at startup. Default true serves
+    # bare uvicorn dev and any boot path that bypasses the container entrypoint;
+    # every container deploy config (render.yaml, docker-compose.yml,
+    # docker-compose.prod.yml) sets it false because the entrypoint runs
+    # migrations exactly once before workers start.
+    RUN_MIGRATIONS_ON_STARTUP: bool = True
+
     # File Upload
     MAX_UPLOAD_SIZE: int = 10485760  # 10MB
     UPLOAD_DIR: str = "./uploads"
@@ -119,7 +126,6 @@ class Settings(BaseSettings):
     CACHE_MAX_ENTRIES: int = 1000
 
     # Feature Flags
-    CAPACITY_PLANNING_ENABLED: bool = True
     CAPACITY_CACHING_ENABLED: bool = True
 
     @field_validator("CORS_ORIGINS")

@@ -5,26 +5,21 @@ Target: 90% coverage for routes and middleware
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
 
-from backend.database import Base, get_db
+from backend.database import get_db
 from backend.main import app
 from backend.auth.jwt import get_password_hash, create_access_token
 from backend.orm.user import User, UserRole
 from backend.orm.client import Client, ClientType
-
-# Test database setup
-TEST_DATABASE_URL = "sqlite:///:memory:"
+from backend.tests.conftest import clone_template_engine
 
 
 @pytest.fixture(scope="function")
 def test_client():
     """Create test client with fresh database"""
-    engine = create_engine(TEST_DATABASE_URL, connect_args={"check_same_thread": False}, poolclass=StaticPool)
+    engine = clone_template_engine()
     TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-    Base.metadata.create_all(bind=engine)
 
     def override_get_db():
         db = TestingSessionLocal()
@@ -58,7 +53,7 @@ def test_client():
     yield client
 
     app.dependency_overrides.clear()
-    Base.metadata.drop_all(bind=engine)
+    engine.dispose()
 
 
 @pytest.fixture

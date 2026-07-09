@@ -13,49 +13,19 @@ echo ""
 # Environment variables with defaults
 RUN_MIGRATIONS=${RUN_MIGRATIONS:-true}
 DEMO_MODE=${DEMO_MODE:-false}
-CAPACITY_PLANNING_ENABLED=${CAPACITY_PLANNING_ENABLED:-true}
 
 echo "Configuration:"
 echo "  RUN_MIGRATIONS: $RUN_MIGRATIONS"
 echo "  DEMO_MODE: $DEMO_MODE"
-echo "  CAPACITY_PLANNING_ENABLED: $CAPACITY_PLANNING_ENABLED"
 echo ""
 
-# Function to run database migrations
+# Function to run database migrations (Alembic is the ONLY schema mechanism — C5)
 run_migrations() {
-    echo "[INIT] Running database migrations..."
-
-    # Create capacity planning tables if enabled
-    if [ "$CAPACITY_PLANNING_ENABLED" = "true" ]; then
-        echo "[INIT] Creating capacity planning tables..."
-        python -c "
-from backend.db.migrations.capacity_planning_tables import create_capacity_tables, verify_capacity_tables
-try:
-    created = create_capacity_tables()
-    if created:
-        print(f'[INIT] Created capacity tables: {created}')
-    else:
-        print('[INIT] All capacity tables already exist')
-
-    # Verify tables
-    result = verify_capacity_tables()
-    if result['valid']:
-        print(f'[INIT] Capacity tables verified: {result[\"present_count\"]} tables')
-    else:
-        print(f'[WARN] Missing capacity tables: {result[\"missing_tables\"]}')
-except Exception as e:
-    print(f'[WARN] Failed to create capacity tables: {e}')
-" 2>&1 || echo "[WARN] Capacity table creation returned non-zero (may be expected if tables exist)"
-    fi
-
-    # Run Alembic migrations (if alembic.ini exists)
-    if [ -f "/app/backend/alembic.ini" ]; then
-        echo "[INIT] Running Alembic migrations..."
-        cd /app/backend && python -m alembic upgrade head 2>&1 || echo "[WARN] Alembic migration returned non-zero"
-        cd /app
-    fi
-
-    echo "[INIT] Migrations complete"
+    echo "[INIT] Running Alembic migrations..."
+    cd /app/backend
+    python -m alembic upgrade head
+    cd /app
+    echo "[INIT] Migrations complete (head)"
 }
 
 # Demo seeding is handled by main.py lifespan (smart reseed with TestDataFactory).

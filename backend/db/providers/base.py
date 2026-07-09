@@ -65,18 +65,6 @@ class DatabaseProvider(ABC):
         pass
 
     @abstractmethod
-    def validate_connection(self, engine: "Engine") -> bool:
-        """Test connection and return True if valid.
-
-        Args:
-            engine: SQLAlchemy engine to test.
-
-        Returns:
-            bool: True if connection is valid, False otherwise.
-        """
-        pass
-
-    @abstractmethod
     def get_dialect_adapter(self) -> "DialectAdapter":
         """Return dialect-specific SQL adapter.
 

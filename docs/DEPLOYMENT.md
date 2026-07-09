@@ -110,6 +110,12 @@ CORS_ORIGINS=https://kpi.yourdomain.com,https://www.kpi.yourdomain.com
 DEBUG=False
 LOG_LEVEL=INFO
 
+# Schema migrations run in-process at startup on this systemd/gunicorn deploy
+# (there is no container entrypoint to own them), so keep the default true:
+RUN_MIGRATIONS_ON_STARTUP=true
+# NOTE: container deploys (Render, docker-compose*.yml) set this to false —
+# their entrypoint runs `alembic upgrade head` exactly once before workers start.
+
 # ============================================
 # FILE UPLOAD
 # ============================================
@@ -203,15 +209,17 @@ EXIT;
 
 ### 3. Initialize Schema and Data
 
-No manual SQL import is required. The backend automatically creates all 51 tables (via SQLAlchemy `Base.metadata.create_all()` and `create_capacity_tables()`) and seeds comprehensive demo data on first startup when it detects an empty database.
+No manual SQL import is required. Alembic is the single schema mechanism (`backend/alembic/versions/`): startup applies migrations automatically (`RUN_MIGRATIONS_ON_STARTUP=true` by default, or the entrypoint's `RUN_MIGRATIONS` in Docker — see [Environment Variables](#environment-variables)), and `DEMO_MODE=true` seeds comprehensive demo data on first startup when it detects an empty database.
 
-Simply ensure the database exists and the connection is configured (see [Environment Variables](#environment-variables)), then start the backend. Tables and demo data will be created automatically.
+Simply ensure the database exists and the connection is configured (see [Environment Variables](#environment-variables)), then start the backend. The schema and demo data will be created automatically.
 
-The auto-seed creates 5 demo clients (ACME-MFG, TechCorp, GlobalMfg, PrecisionParts, SmartFactory) with employees, work orders, production entries, quality data, capacity planning records, hold catalogs, break times, production lines, equipment, and assignments.
+The auto-seed creates 5 demo clients (ACME-MFG, TEXTILE-PRO, FASHION-WORKS, QUALITY-STITCH, GLOBAL-APPAREL) with employees, work orders, production entries, quality data, capacity planning records, hold catalogs, break times, production lines, equipment, and assignments.
+
+> **Note:** The old `CAPACITY_PLANNING_ENABLED` flag has been removed — capacity tables are always part of the Alembic schema and the flag had no effect since the Alembic collapse.
 
 **Demo credentials**: admin/admin123, all other users use password123.
 
-> **Note:** This project does not use Alembic or any migration tooling for production. Schema is managed directly by SQLAlchemy model definitions in the `backend/orm/` package. All ORM models must be imported in `backend/orm/__init__.py` for table creation to work. To reset the database, drop and recreate it in MariaDB, then restart the backend to re-initialize.
+**Upgrading a pre-Alembic database:** if your database was created before this change (schema present, no `alembic_version` table), stamp it once: `cd backend && python -m alembic stamp head`. For demo databases, it's simpler to just delete the DB file and let startup rebuild and reseed it.
 
 ---
 
@@ -660,7 +668,8 @@ If you prefer manual configuration over the `render.yaml` blueprint:
 | `CORS_ORIGINS` | `https://kpi-operations-frontend.onrender.com` | Must match the frontend service URL exactly |
 | `DEBUG` | `false` | Never enable in production |
 | `DEMO_MODE` | `true` | Seeds demo data on first startup |
-| `RUN_MIGRATIONS` | `true` | Creates tables on startup |
+| `RUN_MIGRATIONS` | `true` | Docker entrypoint: applies Alembic migrations before the app starts (fatal on failure) |
+| `RUN_MIGRATIONS_ON_STARTUP` | `true` | In-process (FastAPI lifespan) migrate-on-boot; set `false` in multi-worker prod where the entrypoint already owns migrations, to avoid every worker racing to migrate |
 | `LOG_LEVEL` | `INFO` | Set to `DEBUG` for troubleshooting |
 | `REPORT_EMAIL_ENABLED` | `false` | Enable only after configuring SMTP/SendGrid |
 
@@ -737,7 +746,7 @@ SQLite is suitable for demos and small single-user deployments. For production w
 4. Remove the persistent disk
 5. Redeploy
 
-> **Note:** The backend uses SQLAlchemy ORM, so switching databases requires only changing `DATABASE_URL`. All table creation is handled automatically on startup via `Base.metadata.create_all()`.
+> **Note:** The backend uses SQLAlchemy ORM, so switching databases requires only changing `DATABASE_URL`. Schema creation is handled automatically on startup via Alembic migrations (`backend/alembic/versions/`).
 
 ### CORS Configuration
 

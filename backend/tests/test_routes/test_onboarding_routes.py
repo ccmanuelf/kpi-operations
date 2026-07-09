@@ -4,18 +4,17 @@ Uses real in-memory SQLite database -- NO mocks for DB layer.
 """
 
 import pytest
-from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
 from fastapi.testclient import TestClient
 from fastapi import FastAPI
 
-from backend.database import Base, get_db
+from backend.database import get_db
 from backend.auth.jwt import get_current_user
 from backend.orm.user import User
 from backend.orm.capacity.orders import CapacityOrder, OrderStatus, OrderPriority
 from backend.routes.onboarding import router as onboarding_router
 from backend.tests.fixtures.factories import TestDataFactory
+from backend.tests.conftest import clone_template_engine
 
 # =============================================================================
 # Test App Factory and Fixtures
@@ -54,12 +53,7 @@ def _create_test_app(db_session, role="operator", client_id=CLIENT_ID):
 @pytest.fixture(scope="function")
 def onboard_db():
     """Create a fresh in-memory database for each test."""
-    engine = create_engine(
-        "sqlite:///:memory:",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
-    Base.metadata.create_all(bind=engine)
+    engine = clone_template_engine()
     TestingSession = sessionmaker(bind=engine)
     session = TestingSession()
     TestDataFactory.reset_counters()
@@ -68,7 +62,6 @@ def onboard_db():
     finally:
         session.rollback()
         session.close()
-        Base.metadata.drop_all(bind=engine)
         engine.dispose()
 
 
