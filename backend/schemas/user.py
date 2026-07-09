@@ -51,7 +51,7 @@ class UserCreate(BaseModel):
         description="Access role determining permissions: admin, poweruser, supervisor, operator, or viewer",
     )
     client_id_assigned: Optional[str] = Field(
-        None, description="Client tenant ID this user is assigned to for data isolation"
+        None, max_length=500, description="Client tenant ID this user is assigned to for data isolation"
     )
 
     @field_validator("password")
@@ -99,7 +99,7 @@ class UserUpdate(BaseModel):
         pattern="^(admin|poweruser|leader|supervisor|operator|viewer)$",
         description="Updated access role for permissions",
     )
-    client_id_assigned: Optional[str] = Field(None, description="Updated client tenant ID assignment")
+    client_id_assigned: Optional[str] = Field(None, max_length=500, description="Updated client tenant ID assignment")
     is_active: Optional[bool] = Field(None, description="Whether the user account is active or disabled")
 
 
@@ -111,7 +111,9 @@ class UserResponse(BaseModel):
     email: str = Field(..., description="User email address")
     full_name: Optional[str] = Field(None, description="User display name")
     role: Optional[str] = Field(None, description="Access role: admin, poweruser, supervisor, operator, or viewer")
-    client_id_assigned: Optional[str] = Field(None, description="Client tenant ID this user is assigned to")
+    client_id_assigned: Optional[str] = Field(
+        None, max_length=500, description="Client tenant ID this user is assigned to"
+    )
     is_active: bool = Field(True, description="Whether the user account is currently active")
     created_at: Optional[datetime] = Field(None, description="Timestamp when the user account was created")
     updated_at: Optional[datetime] = Field(None, description="Timestamp of the last account modification")

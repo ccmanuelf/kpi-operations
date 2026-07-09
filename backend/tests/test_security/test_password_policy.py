@@ -358,6 +358,49 @@ class TestUserCreateModelValidation:
         assert any(e["loc"] == ("password",) for e in errors)
 
 
+class TestUserCreateClientIdAssignedValidation:
+    """Tests for UserCreate.client_id_assigned boundary validation (max_length=500).
+
+    The ORM column is String(500); MariaDB strict mode rejects overlong values
+    with a 500 at the DB layer, so the boundary must be validated at the API
+    layer to produce a clean 422 instead.
+    """
+
+    def test_client_id_assigned_over_500_chars_rejected(self):
+        """A value longer than 500 chars must be rejected with a 422."""
+        from backend.schemas.user import UserCreate
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError) as exc_info:
+            UserCreate(
+                username="testuser",
+                email="test@example.com",
+                password="ValidP@ss123",
+                full_name="Test User",
+                role="operator",
+                client_id_assigned="C" * 501,
+            )
+
+        errors = exc_info.value.errors()
+        assert any(e["loc"] == ("client_id_assigned",) for e in errors)
+
+    def test_client_id_assigned_exactly_500_chars_accepted(self):
+        """A value at exactly the 500-char boundary must be accepted."""
+        from backend.schemas.user import UserCreate
+
+        value = "C" * 500
+        user = UserCreate(
+            username="testuser",
+            email="test@example.com",
+            password="ValidP@ss123",
+            full_name="Test User",
+            role="operator",
+            client_id_assigned=value,
+        )
+
+        assert user.client_id_assigned == value
+
+
 class TestEdgeCases:
     """Edge case tests for password validation"""
 
