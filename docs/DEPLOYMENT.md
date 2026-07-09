@@ -4,12 +4,11 @@ This guide covers deploying the KPI Operations Platform to a **self-hosted
 MariaDB production environment** (systemd + MariaDB + nginx/TLS). This is the
 go-live target described in `_audit/Follow_up_hardening.md`.
 
-> **Note:** the repo's checked-in `docker-compose.yml` and
-> `docker-compose.prod.yml` run the **SQLite demo** (the Render deployment),
-> not the MariaDB stack below. The compose example in this guide is the
-> reference MariaDB topology for go-live, not a file that ships in the repo.
-> When the MariaDB migration happens, that compose file gets created from
-> this reference.
+> **Note:** `docker-compose.prod.yml` IS the production VM stack (MariaDB 11.4 +
+> Caddy internal-CA TLS + gunicorn backend + static frontend + nightly-backup
+> sidecar), proven by the `compose-stack-smoke` CI job on every PR.
+> `docker-compose.yml` remains the SQLite development stack. Render deploys the
+> Dockerfiles natively (`render.yaml`) and is unaffected by the prod stack.
 
 ---
 
@@ -79,11 +78,11 @@ ENVIRONMENT=production
 # DATABASE (MariaDB Production)
 # ============================================
 DATABASE_URL=mysql+pymysql://kpi_user:SECURE_PASSWORD@localhost:3306/kpi_platform
-DB_HOST=localhost
-DB_PORT=3306
-DB_NAME=kpi_platform
-DB_USER=kpi_user
-DB_PASSWORD=SECURE_PASSWORD
+# DB_HOST/DB_PORT/DB_NAME/DB_USER/DB_PASSWORD are NOT app settings — the
+# backend only reads DATABASE_URL above. DB_PASSWORD/DB_ROOT_PASSWORD exist
+# only as compose-level (.env) values for docker-compose.prod.yml, which
+# builds the MariaDB container and the backend's DATABASE_URL from them; see
+# the Docker Deployment section.
 
 # Connection Pool Settings
 DATABASE_POOL_SIZE=20
@@ -490,103 +489,107 @@ sudo certbot --nginx -d kpi.yourdomain.com -d api.kpi.yourdomain.com
 
 ## Docker Deployment
 
-### Using Docker Compose
+This is the real, checked-in production stack for the VM: `docker-compose.prod.yml`
+(MariaDB 11.4 + gunicorn backend + static frontend + Caddy internal-CA TLS +
+nightly-backup sidecar). It is proven end-to-end by `deploy/smoke/compose-smoke.sh`
+(6 proofs) via the `compose-stack-smoke` CI job on every PR, and the same script
+verifies it locally.
 
-The project includes Docker configuration files:
+### Prerequisites
+
+- Docker Engine + Compose v2 on the VM.
+- Persistent state directories under `${KPI_DATA_ROOT:-/opt/kpi-operations}`:
+  `mariadb-data`, `backups`, `uploads`, `reports`, `logs`, `caddy/data`,
+  `caddy/config`. PR-4's bootstrap creates these with correct ownership before
+  the first `up`.
+
+> **Hard requirement — Linux case-sensitive filesystem only.** The MariaDB
+> datadir bind mount (`${KPI_DATA_ROOT}/mariadb-data`) requires a
+> case-sensitive filesystem (ext4 and similar). macOS/Docker Desktop shared
+> mounts (virtiofs) are case-insensitive and **corrupt the datadir** (MariaDB
+> errno 1033, crash-loop on restart). The Ubuntu/ext4 VM is the supported
+> target; local macOS verification of this stack substitutes a named Docker
+> volume for the `db` service's bind mount instead.
+
+### Setup
 
 ```bash
-cd /var/www/kpi-platform
-
-# Create environment file
-cp .env.example .env
-nano .env  # Edit production values
-
-# Build and start containers
-docker-compose up -d --build
-
-# View logs
-docker-compose logs -f
-
-# Stop containers
-docker-compose down
+cp .env.prod.example .env
+# Edit .env: SECRET_KEY, DB_PASSWORD, DB_ROOT_PASSWORD, CORS_ORIGINS are
+# required — compose fails fast (":?" defaults) if any is unset. KPI_DATA_ROOT,
+# DEMO_MODE, BACKUP_RETENTION_DAYS, BACKUP_HOUR are optional overrides;
+# see the comments in .env.prod.example.
 ```
 
-### docker-compose.yml (MariaDB reference)
+### Run
 
-```yaml
-services:
-  db:
-    image: mariadb:10.11
-    container_name: kpi_db
-    restart: unless-stopped
-    environment:
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
-      MYSQL_DATABASE: kpi_platform
-      MYSQL_USER: kpi_user
-      MYSQL_PASSWORD: ${DB_PASSWORD}
-    volumes:
-      - db_data:/var/lib/mysql
-      # No init SQL needed — the backend auto-creates tables on startup
-    networks:
-      - kpi_network
-    healthcheck:
-      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  backend:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: kpi_backend
-    restart: unless-stopped
-    environment:
-      DATABASE_URL: mysql+pymysql://kpi_user:${DB_PASSWORD}@db:3306/kpi_platform
-      SECRET_KEY: ${SECRET_KEY}
-      CORS_ORIGINS: ${CORS_ORIGINS}
-      ENVIRONMENT: production
-      DEBUG: "False"
-    depends_on:
-      db:
-        condition: service_healthy
-    volumes:
-      - uploads:/app/uploads
-      - reports:/app/reports
-    networks:
-      - kpi_network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    container_name: kpi_frontend
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-    depends_on:
-      - backend
-    volumes:
-      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
-      - ./ssl:/etc/nginx/ssl:ro
-    networks:
-      - kpi_network
-
-volumes:
-  db_data:
-  uploads:
-  reports:
-
-networks:
-  kpi_network:
-    driver: bridge
+```bash
+docker compose -f docker-compose.prod.yml up -d --build
+bash deploy/smoke/compose-smoke.sh
 ```
+
+The smoke script proves: (1) health through Caddy TLS, (2) login, (3) write +
+readback, (4) data survives a backend restart, (5) backup + restore into a
+scratch database, (6) single migration owner (entrypoint, not the app
+lifespan). With `DEMO_MODE=false` (the production default), proofs 2–3 need an
+admin user to already exist — PR-4's `create_admin.py` provisions the first
+admin on a fresh VM; run it before the login/write proofs will pass. CI runs
+the identical script with `DEMO_MODE=true`, so all 6 proofs pass unattended on
+every PR — that CI run is the release evidence for this stack.
+
+### TLS
+
+Caddy terminates TLS with its **internal CA** (`tls internal { on_demand }` in
+`deploy/caddy/Caddyfile` — deliberate, since the VM is reached by bare IP with
+no public hostname). The root CA certificate is written on first boot to
+`${KPI_DATA_ROOT}/caddy/data/caddy/pki/authorities/local/root.crt`.
+Distributing that cert to client machines/browsers and verifying bare-IP SNI
+trust are PR-4 runbook items, not covered here.
+
+### Backups
+
+The `backup` sidecar (`deploy/backup/backup-loop.sh`) dumps nightly at
+`BACKUP_HOUR` (default `02`, i.e. 02:00) to `${KPI_DATA_ROOT}/backups`,
+retaining `BACKUP_RETENTION_DAYS` days (default 14). It uses **`mariadb-dump`**,
+not `mysqldump` — the `mariadb:11` image only ships the `mariadb-*` binary
+names — and writes to a `.tmp` file before renaming on success, so a dump that
+fails partway can never be mistaken for a good one.
+
+Manual run:
+
+```bash
+docker compose -f docker-compose.prod.yml exec backup bash /backup-loop.sh --once
+```
+
+Restore procedure (mirrors `compose-smoke.sh` step 5 — verify into a scratch
+database before touching the real one):
+
+```bash
+# Find the latest dump
+dump=$(docker compose -f docker-compose.prod.yml exec -T backup sh -c \
+  'ls -t /backups/kpi_platform-*.sql.gz | head -1' | tr -d '\r')
+
+# Restore into a scratch database first to verify the dump is good
+docker compose -f docker-compose.prod.yml exec -T db sh -c \
+  'mariadb -u root -p"$MARIADB_ROOT_PASSWORD" -e "DROP DATABASE IF EXISTS restore_check; CREATE DATABASE restore_check"'
+docker compose -f docker-compose.prod.yml exec -T backup sh -c \
+  "zcat < $dump | mariadb -h db -u root -p\"\$DB_ROOT_PASSWORD\" restore_check"
+
+# Once verified: stop the backend, restore into the real database, restart
+docker compose -f docker-compose.prod.yml stop backend
+docker compose -f docker-compose.prod.yml exec -T backup sh -c \
+  "zcat < $dump | mariadb -h db -u root -p\"\$DB_ROOT_PASSWORD\" kpi_platform"
+docker compose -f docker-compose.prod.yml start backend
+```
+
+### Failed-migration recovery
+
+MariaDB DDL is non-transactional: a migration that fails partway through
+leaves a partially-applied schema with `alembic_version` unadvanced, and it is
+not safe to assume `alembic upgrade head` can simply be re-run against that
+half-migrated state. Recovery is restore-from-the-latest-backup (procedure
+above) or drop and recreate the database, then bring the stack back up so the
+entrypoint re-applies migrations from a clean slate.
 
 ---
 
