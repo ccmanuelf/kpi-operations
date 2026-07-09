@@ -3,9 +3,10 @@ SQLAlchemy ORM models for database tables
 Complete multi-tenant implementation with all tables
 
 IMPORTANT: Every ORM model file in this package MUST be imported here
-so that Base.metadata.create_all() discovers all tables. Failure to
-import a model here was the root cause of 503 errors on fresh installs
-(2026-02-23 schema-ORM mismatch incident).
+so that Base.metadata reflects every table (Alembic autogenerate and
+test fixtures rely on this). Failure to import a model here was the
+root cause of 503 errors on fresh installs (2026-02-23 schema-ORM
+mismatch incident).
 """
 
 # Core multi-tenant foundation

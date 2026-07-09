@@ -199,3 +199,29 @@ def test_app_engine_connection_charset_is_utf8mb4(mariadb_schema):
         assert charset == "utf8mb4"
     finally:
         session.close()
+
+
+# ---------------------------------------------------------------------------
+# Schema-mechanism guard (always-on, dialect-agnostic). Alembic is the only
+# schema-evolution mechanism for the running app/deploy code; create_all()
+# must not reappear there. `tests/` is intentionally out of scope: many test
+# modules build a disposable in-memory SQLite schema via
+# `Base.metadata.create_all()` for fast per-file isolation, which is a
+# standard test-isolation pattern orthogonal to the production/deploy-time
+# schema mechanism this guard protects.
+# ---------------------------------------------------------------------------
+
+
+def test_no_create_all_outside_alembic():
+    """Alembic is the only schema mechanism: create_all must not exist in app code."""
+    import pathlib
+    import re
+
+    backend_root = pathlib.Path(__file__).resolve().parent.parent
+    offenders = []
+    for py in backend_root.rglob("*.py"):
+        if "alembic" in py.parts or ".venv" in py.parts or "tests" in py.parts:
+            continue
+        if re.search(r"\bcreate_all\s*\(", py.read_text(encoding="utf-8")):
+            offenders.append(str(py.relative_to(backend_root)))
+    assert offenders == []
