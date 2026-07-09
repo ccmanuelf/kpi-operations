@@ -10,7 +10,7 @@ from sqlalchemy.orm import sessionmaker
 from fastapi.testclient import TestClient
 from fastapi import FastAPI
 
-from backend.database import Base, get_db
+from backend.database import get_db
 from backend.orm import ClientType
 from backend.routes.kpi import router as kpi_router, thresholds_router
 from backend.tests.fixtures.factories import TestDataFactory
@@ -45,7 +45,6 @@ def kpi_db():
     finally:
         session.rollback()
         session.close()
-        Base.metadata.drop_all(bind=engine)
         engine.dispose()
 
 

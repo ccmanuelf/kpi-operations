@@ -10,7 +10,6 @@ from unittest.mock import MagicMock, patch
 from sqlalchemy.orm import sessionmaker
 from fastapi import HTTPException
 
-from backend.database import Base
 from backend.orm import ClientType
 from backend.tests.fixtures.factories import TestDataFactory
 from backend.tests.conftest import clone_template_engine
@@ -32,7 +31,6 @@ def auth_db():
     finally:
         session.rollback()
         session.close()
-        Base.metadata.drop_all(bind=engine)
         engine.dispose()
 
 

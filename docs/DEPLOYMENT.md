@@ -215,6 +215,8 @@ Simply ensure the database exists and the connection is configured (see [Environ
 
 The auto-seed creates 5 demo clients (ACME-MFG, TEXTILE-PRO, FASHION-WORKS, QUALITY-STITCH, GLOBAL-APPAREL) with employees, work orders, production entries, quality data, capacity planning records, hold catalogs, break times, production lines, equipment, and assignments.
 
+> **Note:** The old `CAPACITY_PLANNING_ENABLED` flag has been removed — capacity tables are always part of the Alembic schema and the flag had no effect since the Alembic collapse.
+
 **Demo credentials**: admin/admin123, all other users use password123.
 
 **Upgrading a pre-Alembic database:** if your database was created before this change (schema present, no `alembic_version` table), stamp it once: `cd backend && python -m alembic stamp head`. For demo databases, it's simpler to just delete the DB file and let startup rebuild and reseed it.

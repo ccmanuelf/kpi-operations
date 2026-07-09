@@ -22,8 +22,6 @@ services:
       # Logging
       - DEBUG=false
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
-      # Feature flags
-      - CAPACITY_PLANNING_ENABLED=${CAPACITY_PLANNING_ENABLED:-true}
       # Production settings
       - DEMO_MODE=false
       - RUN_MIGRATIONS=${RUN_MIGRATIONS:-true}

@@ -7,7 +7,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import sessionmaker
 
-from backend.database import Base, get_db
+from backend.database import get_db
 from backend.main import app
 from backend.auth.jwt import get_password_hash, create_access_token
 from backend.orm.user import User, UserRole
@@ -53,7 +53,7 @@ def test_client():
     yield client
 
     app.dependency_overrides.clear()
-    Base.metadata.drop_all(bind=engine)
+    engine.dispose()
 
 
 @pytest.fixture

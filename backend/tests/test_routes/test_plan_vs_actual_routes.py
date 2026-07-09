@@ -12,7 +12,7 @@ from sqlalchemy.orm import sessionmaker
 from fastapi.testclient import TestClient
 from fastapi import FastAPI
 
-from backend.database import Base, get_db
+from backend.database import get_db
 from backend.orm.client import ClientType
 from backend.orm.capacity.orders import CapacityOrder, OrderStatus, OrderPriority
 from backend.orm.work_order import WorkOrder, WorkOrderStatus
@@ -82,7 +82,6 @@ def pva_route_db():
     finally:
         session.rollback()
         session.close()
-        Base.metadata.drop_all(bind=engine)
         engine.dispose()
 
 

@@ -10,7 +10,6 @@ from decimal import Decimal
 
 from sqlalchemy.orm import sessionmaker
 
-from backend.database import Base
 from backend.orm import ClientType
 from backend.orm.product import Product
 from backend.orm.production_entry import ProductionEntry
@@ -354,7 +353,6 @@ def perf_db():
     finally:
         session.rollback()
         session.close()
-        Base.metadata.drop_all(bind=engine)
         engine.dispose()
 
 

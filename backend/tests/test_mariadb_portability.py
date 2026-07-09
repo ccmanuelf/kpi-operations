@@ -206,35 +206,39 @@ def test_app_engine_connection_charset_is_utf8mb4(mariadb_schema):
 # Schema-mechanism guard (always-on, dialect-agnostic). Alembic is the only
 # schema mechanism, in app code AND in tests: test fixtures get a fresh
 # schema by cloning the Alembic-built template (conftest.clone_template_engine
-# / db_engine / db_session), never by calling create_all() imperatively.
+# / db_engine / db_session), never by calling create_all() imperatively.  # schema-guard: allow
 # ---------------------------------------------------------------------------
 
 
 def test_no_create_all_outside_alembic():
-    """Alembic is the only schema mechanism: create_all() and raw CREATE TABLE
+    """Alembic is the only schema mechanism: create_all() and raw CREATE TABLE  # schema-guard: allow
     DDL must not exist anywhere in backend/ outside Alembic itself.
 
-    Catches both the ORM path (Base.metadata.create_all()) and hand-written
+    Catches both the ORM path (Base.metadata.create_all()) and hand-written  # schema-guard: allow
     SQL (e.g. a standalone script re-creating a table Alembic already owns —
     see backend/scripts/seed_defect_types.py's history).
+
+    Line-level exemption: any individual line carrying the marker
+    ``# schema-guard: allow`` is skipped. That lets this guard scan its OWN
+    host file too — its regex literals and docstring mentions carry the marker,
+    so it no longer needs a whole-file allowlist that could hide a real
+    offender added to this file.
     """
     import pathlib
     import re
 
     backend_root = pathlib.Path(__file__).resolve().parent.parent
-    allowed = {
-        # This guard file itself: hosts the create_all/CREATE-TABLE-matching
-        # regexes below and the MariaDB integration fixtures, so it can never
-        # self-trip.
-        backend_root
-        / "tests"
-        / "test_mariadb_portability.py",
-    }
+    marker = "# schema-guard: allow"
+    create_all_re = re.compile(r"\bcreate_all\s*\(")  # schema-guard: allow
+    create_table_re = re.compile(r"CREATE TABLE", re.IGNORECASE)  # schema-guard: allow
+
     offenders = []
     for py in backend_root.rglob("*.py"):
-        if "alembic" in py.parts or ".venv" in py.parts or py in allowed:
+        if "alembic" in py.parts or ".venv" in py.parts:
             continue
-        content = py.read_text(encoding="utf-8")
-        if re.search(r"\bcreate_all\s*\(", content) or re.search(r"CREATE TABLE", content, re.IGNORECASE):
-            offenders.append(str(py.relative_to(backend_root)))
+        for lineno, line in enumerate(py.read_text(encoding="utf-8").splitlines(), start=1):
+            if marker in line:
+                continue
+            if create_all_re.search(line) or create_table_re.search(line):
+                offenders.append(f"{py.relative_to(backend_root)}:{lineno}")
     assert sorted(offenders) == []

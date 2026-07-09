@@ -9,7 +9,6 @@ from decimal import Decimal
 
 from sqlalchemy.orm import sessionmaker
 
-from backend.database import Base
 from backend.orm import ClientType
 from backend.orm.hold_entry import HoldEntry, HoldStatus
 from backend.orm.work_order import WorkOrder
@@ -295,7 +294,6 @@ def wip_db():
     finally:
         session.rollback()
         session.close()
-        Base.metadata.drop_all(bind=engine)
         engine.dispose()
 
 

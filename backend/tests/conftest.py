@@ -6,7 +6,9 @@ Shared test fixtures for all test modules
 pyproject.toml's [tool.pytest.ini_options], so this file only needs imports.
 """
 
+import atexit
 import os
+import pathlib
 import sqlite3
 import tempfile
 
@@ -180,6 +182,13 @@ def _template_db_path() -> str:
         os.close(fd)
         upgrade_to_head(f"sqlite:///{path}")
         _template_path = path
+
+        # Best-effort removal of the template DB at interpreter exit so the
+        # mkstemp file isn't left behind in the temp dir after the run.
+        def _cleanup_template(p: str = path) -> None:
+            pathlib.Path(p).unlink(missing_ok=True)
+
+        atexit.register(_cleanup_template)
     return _template_path
 
 

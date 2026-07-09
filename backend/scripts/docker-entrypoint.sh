@@ -13,12 +13,10 @@ echo ""
 # Environment variables with defaults
 RUN_MIGRATIONS=${RUN_MIGRATIONS:-true}
 DEMO_MODE=${DEMO_MODE:-false}
-CAPACITY_PLANNING_ENABLED=${CAPACITY_PLANNING_ENABLED:-true}
 
 echo "Configuration:"
 echo "  RUN_MIGRATIONS: $RUN_MIGRATIONS"
 echo "  DEMO_MODE: $DEMO_MODE"
-echo "  CAPACITY_PLANNING_ENABLED: $CAPACITY_PLANNING_ENABLED"
 echo ""
 
 # Function to run database migrations (Alembic is the ONLY schema mechanism — C5)

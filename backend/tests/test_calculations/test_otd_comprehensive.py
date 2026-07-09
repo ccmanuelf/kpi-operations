@@ -9,7 +9,6 @@ from decimal import Decimal
 from unittest.mock import MagicMock
 from sqlalchemy.orm import sessionmaker
 
-from backend.database import Base
 from backend.orm import ClientType
 from backend.orm.work_order import WorkOrderStatus
 from backend.tests.fixtures.factories import TestDataFactory
@@ -348,7 +347,6 @@ def otd_real_db():
     finally:
         session.rollback()
         session.close()
-        Base.metadata.drop_all(bind=engine)
         engine.dispose()
 
 

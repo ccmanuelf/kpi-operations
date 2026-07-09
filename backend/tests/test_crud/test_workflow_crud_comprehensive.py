@@ -8,7 +8,6 @@ import pytest
 from sqlalchemy.orm import sessionmaker
 from fastapi import HTTPException
 
-from backend.database import Base
 from backend.tests.fixtures.factories import TestDataFactory
 from backend.orm import WorkOrderStatus
 from backend.tests.conftest import clone_template_engine
@@ -29,7 +28,6 @@ def workflow_db():
     finally:
         session.rollback()
         session.close()
-        Base.metadata.drop_all(bind=engine)
         engine.dispose()
 
 

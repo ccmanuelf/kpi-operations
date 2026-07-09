@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import sessionmaker
 
-from backend.database import Base, get_db
+from backend.database import get_db
 from backend.routes.break_times import router as break_times_router
 from backend.tests.fixtures.factories import TestDataFactory
 from backend.tests.conftest import clone_template_engine
@@ -51,7 +51,6 @@ def break_time_db():
     finally:
         session.rollback()
         session.close()
-        Base.metadata.drop_all(bind=engine)
         engine.dispose()
 
 

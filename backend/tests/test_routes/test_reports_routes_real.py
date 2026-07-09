@@ -12,7 +12,7 @@ from sqlalchemy.orm import sessionmaker
 from fastapi.testclient import TestClient
 from fastapi import FastAPI
 
-from backend.database import Base, get_db
+from backend.database import get_db
 from backend.orm import ClientType
 from backend.routes.reports import router as reports_router
 from backend.tests.fixtures.factories import TestDataFactory
@@ -46,7 +46,6 @@ def reports_db():
     finally:
         session.rollback()
         session.close()
-        Base.metadata.drop_all(bind=engine)
         engine.dispose()
 
 

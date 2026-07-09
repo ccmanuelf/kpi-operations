@@ -8,7 +8,6 @@ import pytest
 from sqlalchemy.orm import sessionmaker
 from fastapi import HTTPException
 
-from backend.database import Base
 from backend.orm import ClientType
 from backend.crud import client_config as client_config_crud
 from backend.tests.fixtures.factories import TestDataFactory
@@ -27,7 +26,6 @@ def config_db():
     finally:
         session.rollback()
         session.close()
-        Base.metadata.drop_all(bind=engine)
         engine.dispose()
 
 

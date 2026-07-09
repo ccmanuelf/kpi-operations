@@ -16,7 +16,6 @@ from decimal import Decimal
 
 from sqlalchemy.orm import sessionmaker
 
-from backend.database import Base
 from backend.orm.production_line import ProductionLine
 from backend.orm.client import Client, ClientType
 from backend.orm.user import User, UserRole
@@ -61,7 +60,6 @@ def line_test_db():
     finally:
         session.rollback()
         session.close()
-        Base.metadata.drop_all(bind=engine)
         engine.dispose()
 
 

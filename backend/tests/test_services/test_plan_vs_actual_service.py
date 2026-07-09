@@ -10,7 +10,6 @@ from datetime import date, timedelta, datetime, timezone
 from decimal import Decimal
 from sqlalchemy.orm import sessionmaker
 
-from backend.database import Base
 from backend.orm.capacity.orders import CapacityOrder, OrderStatus, OrderPriority
 from backend.orm.work_order import WorkOrder, WorkOrderStatus
 from backend.orm.production_entry import ProductionEntry
@@ -48,7 +47,6 @@ def pva_db():
     finally:
         session.rollback()
         session.close()
-        Base.metadata.drop_all(bind=engine)
         engine.dispose()
 
 

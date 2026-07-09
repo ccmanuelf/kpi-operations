@@ -126,7 +126,6 @@ class Settings(BaseSettings):
     CACHE_MAX_ENTRIES: int = 1000
 
     # Feature Flags
-    CAPACITY_PLANNING_ENABLED: bool = True
     CAPACITY_CACHING_ENABLED: bool = True
 
     @field_validator("CORS_ORIGINS")

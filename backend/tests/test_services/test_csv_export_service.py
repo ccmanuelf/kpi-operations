@@ -15,7 +15,6 @@ from decimal import Decimal
 import pytest
 from sqlalchemy.orm import sessionmaker
 
-from backend.database import Base
 from backend.orm.production_entry import ProductionEntry
 from backend.orm.work_order import WorkOrderStatus
 from backend.orm.user import UserRole
@@ -46,7 +45,6 @@ def csv_db():
     finally:
         session.rollback()
         session.close()
-        Base.metadata.drop_all(bind=engine)
         engine.dispose()
 
 

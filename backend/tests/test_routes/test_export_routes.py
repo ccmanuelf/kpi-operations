@@ -16,7 +16,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import sessionmaker
 
-from backend.database import Base, get_db
+from backend.database import get_db
 from backend.orm.production_entry import ProductionEntry
 from backend.orm.quality_entry import QualityEntry
 from backend.orm.downtime_entry import DowntimeEntry
@@ -102,7 +102,6 @@ def export_db():
     finally:
         session.rollback()
         session.close()
-        Base.metadata.drop_all(bind=engine)
         engine.dispose()
 
 

@@ -18,7 +18,7 @@ from sqlalchemy.orm import sessionmaker
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from backend.database import Base, get_db
+from backend.database import get_db
 from backend.schemas.production import ProductionEntryCreate
 from backend.routes.production import router as production_router
 from backend.orm import ClientType
@@ -57,7 +57,6 @@ def shift_date_db():
     finally:
         session.rollback()
         session.close()
-        Base.metadata.drop_all(bind=engine)
         engine.dispose()
 
 

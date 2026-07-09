@@ -8,7 +8,6 @@ import pytest
 from sqlalchemy.orm import sessionmaker
 from fastapi import HTTPException
 
-from backend.database import Base
 from backend.orm import ClientType
 from backend.schemas.filters import (
     FilterType,
@@ -35,7 +34,6 @@ def filter_db():
     finally:
         session.rollback()
         session.close()
-        Base.metadata.drop_all(bind=engine)
         engine.dispose()
 
 

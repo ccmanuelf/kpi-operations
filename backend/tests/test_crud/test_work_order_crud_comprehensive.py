@@ -9,7 +9,6 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import sessionmaker
 from fastapi import HTTPException
 
-from backend.database import Base
 from backend.orm import WorkOrderStatus, ClientType
 from backend.crud import work_order as work_order_crud
 from backend.tests.fixtures.factories import TestDataFactory
@@ -28,7 +27,6 @@ def work_order_db():
     finally:
         session.rollback()
         session.close()
-        Base.metadata.drop_all(bind=engine)
         engine.dispose()
 
 

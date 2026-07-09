@@ -19,8 +19,6 @@ services:
       # Logging
       - DEBUG=false
       - LOG_LEVEL=INFO
-      # Feature flags
-      - CAPACITY_PLANNING_ENABLED=true
       # Demo mode (set to true to seed demo data on startup)
       - DEMO_MODE=${DEMO_MODE:-false}
       # Database initialization (set to true to run migrations on startup)

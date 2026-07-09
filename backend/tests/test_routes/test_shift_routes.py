@@ -9,7 +9,7 @@ from sqlalchemy.orm import sessionmaker
 from fastapi.testclient import TestClient
 from fastapi import FastAPI
 
-from backend.database import Base, get_db
+from backend.database import get_db
 from backend.auth.jwt import get_current_user, get_current_active_supervisor
 from backend.orm.user import User
 from backend.routes.shifts import router as shifts_router
@@ -64,7 +64,6 @@ def shift_db():
     finally:
         session.rollback()
         session.close()
-        Base.metadata.drop_all(bind=engine)
         engine.dispose()
 
 

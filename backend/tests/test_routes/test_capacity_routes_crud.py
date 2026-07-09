@@ -13,7 +13,7 @@ from sqlalchemy.orm import sessionmaker
 from fastapi.testclient import TestClient
 from fastapi import FastAPI
 
-from backend.database import Base, get_db
+from backend.database import get_db
 from backend.orm import ClientType
 from backend.auth.jwt import get_current_user
 from backend.orm.user import User, UserRole
@@ -66,7 +66,6 @@ def cap_db():
     finally:
         session.rollback()
         session.close()
-        Base.metadata.drop_all(bind=engine)
         engine.dispose()
 
 

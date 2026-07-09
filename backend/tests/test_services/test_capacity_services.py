@@ -17,7 +17,6 @@ from datetime import date, timedelta
 from decimal import Decimal
 from sqlalchemy.orm import sessionmaker
 
-from backend.database import Base
 from backend.tests.fixtures.factories import TestDataFactory
 from backend.orm.client import Client, ClientType
 from backend.orm.capacity.calendar import CapacityCalendar
@@ -95,7 +94,6 @@ def cap_db():
     finally:
         session.rollback()
         session.close()
-        Base.metadata.drop_all(bind=engine)
         engine.dispose()
 
 
