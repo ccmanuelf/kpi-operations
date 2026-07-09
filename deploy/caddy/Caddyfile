@@ -8,7 +8,14 @@
 }
 
 :443 {
-	tls internal
+	# on_demand is REQUIRED here: a host-less :443 site has no hostnames to
+	# pre-provision, so without it Caddy holds zero leaf certs and every TLS
+	# handshake fails (alert internal error). With it, the internal CA mints
+	# a cert for whatever SNI arrives (localhost, the VM hostname/IP). Safe
+	# on a LAN edge with a local CA — no public issuance to abuse.
+	tls internal {
+		on_demand
+	}
 
 	# Capacity endpoints run long analyses — extended upstream timeout
 	# (moved here from the frontend nginx proxy, which the VM topology bypasses).
