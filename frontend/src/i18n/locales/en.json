@@ -3386,10 +3386,6 @@
       "product": "Product"
     }
   },
-  "migration": {
-    "dbConnectionUrl": "Database Connection URL",
-    "typeToConfirm": "Type MIGRATE to confirm"
-  },
   "alerts": {
     "urgent": "Urgent",
     "critical": "Critical",
@@ -4103,22 +4099,6 @@
     "viewShiftDetails": "View Shift Details",
     "startShift": "Start Shift",
     "activeShiftDetails": "Active Shift Details"
-  },
-  "migrationProgress": {
-    "currentTable": "Current Table",
-    "tablesProgress": "Tables Progress",
-    "migrationError": "Migration Error",
-    "migrationComplete": "Migration Complete",
-    "migrationFailed": "Migration Failed",
-    "migrationInProgress": "Migration In Progress",
-    "migrationStatus": "Migration Status",
-    "complete": "Complete",
-    "failed": "Failed",
-    "inProgress": "In Progress",
-    "idle": "Idle",
-    "done": "Done",
-    "tryAgain": "Try Again",
-    "tables": "tables"
   },
   "dataCompleteness": {
     "title": "Data Completeness",

@@ -3386,10 +3386,6 @@
       "product": "Producto"
     }
   },
-  "migration": {
-    "dbConnectionUrl": "URL de Conexión a Base de Datos",
-    "typeToConfirm": "Escribe MIGRATE para confirmar"
-  },
   "alerts": {
     "urgent": "Urgente",
     "critical": "Critico",
@@ -4103,22 +4099,6 @@
     "viewShiftDetails": "Ver Detalles del Turno",
     "startShift": "Iniciar Turno",
     "activeShiftDetails": "Detalles del Turno Activo"
-  },
-  "migrationProgress": {
-    "currentTable": "Tabla Actual",
-    "tablesProgress": "Progreso de Tablas",
-    "migrationError": "Error de Migración",
-    "migrationComplete": "Migración Completa",
-    "migrationFailed": "Migración Fallida",
-    "migrationInProgress": "Migración en Progreso",
-    "migrationStatus": "Estado de Migración",
-    "complete": "Completo",
-    "failed": "Fallido",
-    "inProgress": "En Progreso",
-    "idle": "Inactivo",
-    "done": "Listo",
-    "tryAgain": "Reintentar",
-    "tables": "tablas"
   },
   "dataCompleteness": {
     "title": "Completitud de Datos",
