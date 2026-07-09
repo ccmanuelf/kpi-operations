@@ -1,0 +1,39 @@
+# KPI Operations — VM edge (TLS termination, path routing).
+# Internal CA: Caddy self-manages a local root cert at
+# /data/caddy/pki/authorities/local/root.crt — PR-4's runbook distributes it
+# to client machines. Data persists via the ${KPI_DATA_ROOT}/caddy volumes.
+{
+	# LAN deployment: no public ACME; issue from the internal CA.
+	local_certs
+}
+
+:443 {
+	tls internal
+
+	# Capacity endpoints run long analyses — extended upstream timeout
+	# (moved here from the frontend nginx proxy, which the VM topology bypasses).
+	handle /api/capacity/* {
+		reverse_proxy backend:8000 {
+			transport http {
+				response_header_timeout 120s
+			}
+		}
+	}
+
+	# All other API + health probes go straight to the backend.
+	handle /api/* {
+		reverse_proxy backend:8000
+	}
+	handle /health/* {
+		reverse_proxy backend:8000
+	}
+
+	# Everything else: the static SPA (nginx, static-only branch).
+	handle {
+		reverse_proxy frontend:80
+	}
+}
+
+:80 {
+	redir https://{host}{uri} permanent
+}
