@@ -34,7 +34,7 @@ Manufacturing KPI tracking and capacity planning platform with multi-tenant arch
 ```bash
 cd backend
 pip install -r requirements.txt
-python scripts/init_demo_database.py   # Seeds demo data (5 clients, 51 tables)
+python scripts/init_demo_database.py   # Seeds demo data (5 clients, 57 tables)
 uvicorn backend.main:app --reload
 ```
 
@@ -126,8 +126,8 @@ kpi-operations/
     services/capacity/       # 7 capacity planning services
     events/                  # Domain event bus (collect/flush pattern)
     simulation_v2/           # SimPy-based simulation engine
-    db/migrations/           # Demo seeder + capacity table creation
-    scripts/                 # init_demo_database.py, backup, utilities
+    alembic/versions/        # Alembic migrations -- the single schema mechanism
+    scripts/                 # init_demo_database.py (canonical seeder), backup, utilities
   frontend/src/
     views/                   # Page views (admin/, kpi/, CapacityPlanning/, etc.)
     components/              # Vue components (grids, entries, widgets, filters)

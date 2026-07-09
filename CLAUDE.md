@@ -405,9 +405,9 @@ Run-7 residual debt + a11y, each its own brainstorm→spec→plan→subagent-dri
 - **C2** — `endpoints/csv_upload.py` consolidation: 11 duplicated endpoints (1181→805 lines) → shared `services/csv_upload_processor.py`; characterization golden masters for all 11; inline auth checks → declarative `get_current_admin`/`get_current_planner` (#94)
 - **C3** — `main.py` (868→64 lines) → `backend/bootstrap/` package: `lifecycle.py` (lifespan decomposed into units behind `run_best_effort`, order + fatal-vs-best-effort + DEMO_MODE gate preserved), `openapi.py`, `app_config.py`, `routers.py`; golden-master OpenAPI route/tag snapshot gate (#95)
 - **C4** — Python lockfile + hash pinning: pip-tools hash-pinned `requirements*.lock` (byte-reproducible, hermetic), installed `--require-hashes --only-binary=:all:` in Docker/CI/e2e; base image `@sha256`-pinned; lock-drift + dry-run-verify CI gate; `scripts/lock-deps.sh` (no dep versions changed) (#96)
-
-### Still open (none — C5 resolved in PR-2)
 - **C5 — RESOLVED (PR-2, 2026-07): Alembic is the single schema-evolution mechanism.** Startup runs `alembic upgrade head` (env-gated by `RUN_MIGRATIONS_ON_STARTUP`; the container entrypoint owns it in multi-worker prod). `create_all` is gone from app and tests (guarded by `test_no_create_all_outside_alembic`); the baseline is asserted equal to `Base.metadata` on SQLite and MariaDB every CI run. Schema changes = new Alembic revisions, never edits to shipped ones.
+
+### Still open: none
 
 ### Audit Conventions
 - Audit reports in `_audit/` (current run at root, prior runs in subdirs/`_history/`)
