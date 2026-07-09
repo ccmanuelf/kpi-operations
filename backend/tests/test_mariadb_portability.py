@@ -85,7 +85,7 @@ def test_foreign_key_column_types_match_referenced_columns():
 # ---------------------------------------------------------------------------
 
 import pytest  # noqa: E402
-from sqlalchemy import inspect, select, text  # noqa: E402
+from sqlalchemy import inspect, select  # noqa: E402
 
 from backend.database import SessionLocal, engine  # noqa: E402
 from backend.orm.event_store import EventStore  # noqa: E402
@@ -99,15 +99,11 @@ requires_mariadb = pytest.mark.skipif(
 @pytest.fixture(scope="module")
 def mariadb_schema():
     """Build the full schema on live MariaDB via Alembic; drop it afterwards."""
-    from backend.db.migrate import upgrade_to_head
+    from backend.db.migrate import rebuild_schema
 
-    Base.metadata.drop_all(bind=engine)
-    with engine.connect() as conn:
-        conn.execute(text("DROP TABLE IF EXISTS alembic_version"))
-        conn.commit()
     # render_as_string(hide_password=False): str(engine.url) masks the password
     # as "***", which Alembic would then use verbatim and fail to authenticate.
-    upgrade_to_head(engine.url.render_as_string(hide_password=False))
+    rebuild_schema(engine.url.render_as_string(hide_password=False))
     yield
     Base.metadata.drop_all(bind=engine)
 
