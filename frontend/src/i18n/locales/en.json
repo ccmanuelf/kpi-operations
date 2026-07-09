@@ -3915,7 +3915,7 @@
   },
   "databaseConfig": {
     "title": "Database Configuration",
-    "subtitle": "Manage database provider and optional migration to production database",
+    "subtitle": "View the active database provider and connection details (read-only)",
     "currentProvider": "Current Database Provider",
     "sqliteInfo": "SQLite is fully supported for demo and prove-in phases. Migration to MariaDB/MySQL is optional and available when ready for production.",
     "productionActive": "Production database configured and active.",
