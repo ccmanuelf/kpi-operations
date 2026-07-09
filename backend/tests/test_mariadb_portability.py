@@ -30,6 +30,14 @@ def test_mariadb_provider_enforces_utf8mb4():
     assert kwargs["connect_args"]["charset"] == "utf8mb4"
 
 
+def test_register_all_models_populates_full_metadata():
+    """The canonical registration helper must yield the complete table registry."""
+    from backend.orm import register_all_models
+
+    register_all_models()
+    assert len(Base.metadata.tables) >= 45
+
+
 # ---------------------------------------------------------------------------
 # FK type-consistency guard (always-on, dialect-agnostic). InnoDB (MariaDB)
 # refuses to create a table whose FK column type differs from the referenced
@@ -39,11 +47,11 @@ def test_mariadb_provider_enforces_utf8mb4():
 
 from backend.database import Base  # noqa: E402
 
-# Populate Base.metadata with EVERY table. Model-import block copied VERBATIM
-# from backend/alembic/env.py (the canonical list that registers all core +
-# capacity models).
-import backend.orm  # noqa: E402,F401 — registers core ORM models
-import backend.orm.capacity  # noqa: E402,F401 — registers capacity planning models
+# Populate Base.metadata with EVERY table using the canonical registration helper
+# to avoid import-block drift.
+from backend.orm import register_all_models  # noqa: E402
+
+register_all_models()
 
 
 def test_foreign_key_column_types_match_referenced_columns():

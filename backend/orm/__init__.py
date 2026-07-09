@@ -118,6 +118,18 @@ from .capacity import (
 # D3 — SimPy V2 / MiniZinc scenario persistence
 from .simulation_scenario import SimulationScenario
 
+
+def register_all_models() -> None:
+    """Register EVERY ORM model on Base.metadata (idempotent).
+
+    Importing backend.orm registers all core models; this additionally pulls
+    in the capacity-planning package. This is the single canonical
+    registration entrypoint — alembic/env.py, conftest.py, and the
+    portability tests must all use it instead of hand-copied import blocks.
+    """
+    import backend.orm.capacity  # noqa: F401 — registers capacity models
+
+
 __all__ = [
     # Core foundation
     "Client",

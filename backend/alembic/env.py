@@ -18,11 +18,11 @@ from backend.config import settings
 
 # ---------------------------------------------------------------------------
 # 2. Import ALL ORM models so they register with Base.metadata
-#    backend.orm.__init__ re-exports every core model.
-#    backend.orm.capacity.__init__ re-exports every capacity model.
+#    Use the canonical registration helper to avoid import-block drift.
 # ---------------------------------------------------------------------------
-import backend.orm  # noqa: F401 — registers core ORM models
-import backend.orm.capacity  # noqa: F401 — registers capacity planning models
+from backend.orm import register_all_models
+
+register_all_models()
 
 # ---------------------------------------------------------------------------
 # 3. Alembic Config object (provides access to alembic.ini values)
