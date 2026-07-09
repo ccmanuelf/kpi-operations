@@ -6,6 +6,10 @@ Shared test fixtures for all test modules
 pyproject.toml's [tool.pytest.ini_options], so this file only needs imports.
 """
 
+import os
+import sqlite3
+import tempfile
+
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -13,7 +17,7 @@ from sqlalchemy.pool import StaticPool
 from datetime import date, datetime
 from decimal import Decimal
 
-from backend.database import Base, get_db
+from backend.database import get_db
 
 # Import ALL schemas to ensure tables are created in the correct order
 # This is critical for foreign key relationships to work
@@ -65,7 +69,8 @@ from backend.orm.import_log import ImportLog
 # Capacity Planning ORM models — needed so WORK_ORDER.capacity_order_id FK resolves
 from backend.orm.capacity.orders import CapacityOrder  # noqa: F401
 
-# Alert ORM model (in models/, not schemas/) — needed for Base.metadata.create_all()
+# Alert ORM model (in models/, not schemas/) — imported so it registers on the
+# ORM metadata that the Alembic template build reflects.
 from backend.orm.alert import Alert, AlertConfig, AlertHistory  # noqa: F401
 
 # Test fixtures (factories, auth fixtures, seed data) — moved up from below the
@@ -155,6 +160,49 @@ def clear_token_blacklist():
     _wipe()
 
 
+# ---------------------------------------------------------------------------
+# C5: Alembic-built template DB. `alembic upgrade head` runs ONCE per session
+# into a file-based template; every fixture engine is a byte-identical clone
+# via SQLite's backup API. Schema is never built imperatively in tests.
+# ---------------------------------------------------------------------------
+_template_path: str | None = None
+
+
+def _template_db_path() -> str:
+    """Build (once) and return the Alembic-migrated template database file."""
+    global _template_path
+    if _template_path is None:
+        from backend.orm import register_all_models
+        from backend.db.migrate import upgrade_to_head
+
+        register_all_models()
+        fd, path = tempfile.mkstemp(prefix="kpi_test_template_", suffix=".db")
+        os.close(fd)
+        upgrade_to_head(f"sqlite:///{path}")
+        _template_path = path
+    return _template_path
+
+
+def _clone_template_engine():
+    """New in-memory engine seeded from the template via the backup API."""
+    engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    src = sqlite3.connect(_template_db_path())
+    try:
+        raw = engine.raw_connection()
+        try:
+            src.backup(raw.driver_connection)
+            raw.commit()
+        finally:
+            raw.close()
+    finally:
+        src.close()
+    return engine
+
+
 # Test Database Engine (shared across tests)
 TEST_DATABASE_URL = "sqlite:///:memory:"
 
@@ -163,18 +211,10 @@ _TestingSessionLocal = None
 
 
 def get_test_engine():
-    """Get or create test engine singleton"""
+    """Get or create test engine singleton (clone of the Alembic template)."""
     global _test_engine, _TestingSessionLocal
     if _test_engine is None:
-        _test_engine = create_engine(
-            TEST_DATABASE_URL,
-            connect_args={"check_same_thread": False},
-            poolclass=StaticPool,
-        )
-        # CRITICAL: Drop all tables first to avoid index conflicts
-        # This prevents 'index ix_CLIENT_client_id already exists' errors
-        Base.metadata.drop_all(bind=_test_engine)
-        Base.metadata.create_all(bind=_test_engine)
+        _test_engine = _clone_template_engine()
         _TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=_test_engine)
     return _test_engine
 
@@ -193,15 +233,9 @@ def get_test_db():
 # Test Database Setup
 @pytest.fixture(scope="function")
 def db_engine():
-    """Create in-memory SQLite database for testing"""
-    engine = create_engine(
-        "sqlite:///:memory:",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
-    Base.metadata.create_all(bind=engine)
+    """Fresh Alembic-schema database per test (clone of the template)."""
+    engine = _clone_template_engine()
     yield engine
-    Base.metadata.drop_all(bind=engine)
     engine.dispose()
 
 
@@ -588,21 +622,51 @@ def authenticated_client(test_client, auth_headers):
 # ============================================================================
 
 
-@pytest.fixture(scope="function")
-def transactional_db():
-    """
-    Create a database session with automatic rollback after each test.
-    This ensures test isolation without needing to delete data.
-    """
-    engine = create_engine(
-        "sqlite:///:memory:",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
-    Base.metadata.create_all(bind=engine)
+@pytest.fixture(scope="session")
+def _txn_engine():
+    """One Alembic-schema engine shared by all transactional_db tests.
 
-    TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-    session = TestingSessionLocal()
+    pysqlite manages BEGIN/COMMIT itself by default, which lets committed data
+    escape the wrapping ``connection.begin()`` transaction and leak across
+    tests. We take over transaction emission (SQLAlchemy's documented pysqlite
+    SAVEPOINT recipe) so ``transactional_db``'s outer rollback truly discards
+    every test's writes.
+    """
+    from sqlalchemy import event
+
+    engine = _clone_template_engine()
+
+    @event.listens_for(engine, "connect")
+    def _sqlite_disable_pysqlite_begin(dbapi_connection, connection_record):
+        dbapi_connection.isolation_level = None
+
+    @event.listens_for(engine, "begin")
+    def _sqlite_emit_begin(conn):
+        conn.exec_driver_sql("BEGIN")
+
+    # The StaticPool DBAPI connection is created during the clone above, so the
+    # "connect" event won't re-fire for it — apply the setting directly.
+    raw = engine.raw_connection()
+    raw.driver_connection.isolation_level = None
+    raw.close()
+
+    yield engine
+    engine.dispose()
+
+
+@pytest.fixture(scope="function")
+def transactional_db(_txn_engine):
+    """DB session with true per-test transaction rollback (SAVEPOINT pattern).
+
+    A connection-level transaction wraps the test; the session joins it and
+    restarts a SAVEPOINT whenever test code commits. Rollback on teardown
+    discards everything — schema built once per session via Alembic.
+    """
+    from sqlalchemy.orm import Session
+
+    connection = _txn_engine.connect()
+    trans = connection.begin()
+    session = Session(bind=connection, join_transaction_mode="create_savepoint")
 
     # Reset factory counters for clean IDs
     TestDataFactory.reset_counters()
@@ -610,10 +674,9 @@ def transactional_db():
     try:
         yield session
     finally:
-        session.rollback()
         session.close()
-        Base.metadata.drop_all(bind=engine)
-        engine.dispose()
+        trans.rollback()
+        connection.close()
 
 
 @pytest.fixture(scope="function")
