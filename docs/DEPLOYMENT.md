@@ -207,7 +207,7 @@ No manual SQL import is required. Alembic is the single schema mechanism (`backe
 
 Simply ensure the database exists and the connection is configured (see [Environment Variables](#environment-variables)), then start the backend. The schema and demo data will be created automatically.
 
-The auto-seed creates 5 demo clients (ACME-MFG, TechCorp, GlobalMfg, PrecisionParts, SmartFactory) with employees, work orders, production entries, quality data, capacity planning records, hold catalogs, break times, production lines, equipment, and assignments.
+The auto-seed creates 5 demo clients (ACME-MFG, TEXTILE-PRO, FASHION-WORKS, QUALITY-STITCH, GLOBAL-APPAREL) with employees, work orders, production entries, quality data, capacity planning records, hold catalogs, break times, production lines, equipment, and assignments.
 
 **Demo credentials**: admin/admin123, all other users use password123.
 
