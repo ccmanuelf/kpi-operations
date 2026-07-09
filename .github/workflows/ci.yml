@@ -313,4 +313,25 @@ jobs:
           pip install --require-hashes --only-binary=:all: -r requirements-dev.lock
 
       - name: Run MariaDB portability tests
-        run: pytest tests/test_mariadb_portability.py -v
+        run: pytest tests/test_mariadb_portability.py -v --no-cov --junitxml=mariadb-report.xml
+
+      - name: Verify no integration tests were skipped
+        run: |
+          python - <<'EOF'
+          import xml.etree.ElementTree as ET
+
+          tree = ET.parse("mariadb-report.xml")
+          root = tree.getroot()
+          # pytest emits either a bare <testsuite> or <testsuites><testsuite>.
+          suite = root if root.tag == "testsuite" else root.find("testsuite")
+
+          skipped = suite.get("skipped")
+          errors = suite.get("errors")
+          failures = suite.get("failures")
+
+          assert skipped == "0", f"MariaDB integration tests skipped (expected 0, got {skipped}) - job proves nothing"
+          assert errors == "0", f"MariaDB portability tests had errors (expected 0, got {errors})"
+          assert failures == "0", f"MariaDB portability tests failed (expected 0, got {failures})"
+
+          print(f"OK: {suite.get('tests')} tests ran, 0 skipped/errors/failures")
+          EOF
