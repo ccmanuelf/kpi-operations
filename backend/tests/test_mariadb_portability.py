@@ -210,14 +210,21 @@ def test_app_engine_connection_charset_is_utf8mb4(mariadb_schema):
 
 
 def test_no_create_all_outside_alembic():
-    """Alembic is the only schema mechanism: create_all must not exist in backend/."""
+    """Alembic is the only schema mechanism: create_all() and raw CREATE TABLE
+    DDL must not exist anywhere in backend/ outside Alembic itself.
+
+    Catches both the ORM path (Base.metadata.create_all()) and hand-written
+    SQL (e.g. a standalone script re-creating a table Alembic already owns —
+    see backend/scripts/seed_defect_types.py's history).
+    """
     import pathlib
     import re
 
     backend_root = pathlib.Path(__file__).resolve().parent.parent
     allowed = {
-        # This guard file itself: hosts the create_all-matching regex below
-        # and the MariaDB integration fixtures, so it can never self-trip.
+        # This guard file itself: hosts the create_all/CREATE-TABLE-matching
+        # regexes below and the MariaDB integration fixtures, so it can never
+        # self-trip.
         backend_root
         / "tests"
         / "test_mariadb_portability.py",
@@ -226,6 +233,7 @@ def test_no_create_all_outside_alembic():
     for py in backend_root.rglob("*.py"):
         if "alembic" in py.parts or ".venv" in py.parts or py in allowed:
             continue
-        if re.search(r"\bcreate_all\s*\(", py.read_text(encoding="utf-8")):
+        content = py.read_text(encoding="utf-8")
+        if re.search(r"\bcreate_all\s*\(", content) or re.search(r"CREATE TABLE", content, re.IGNORECASE):
             offenders.append(str(py.relative_to(backend_root)))
     assert sorted(offenders) == []

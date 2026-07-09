@@ -516,29 +516,15 @@ def generate_id(client_id: str, code: str) -> str:
 
 
 def seed_defect_types() -> None:
-    """Seed defect types for all clients including global types"""
+    """Seed defect types for all clients including global types.
+
+    Requires the target database to already be migrated to head (Alembic
+    creates DEFECT_TYPE_CATALOG — see backend/alembic/versions/0001_real_baseline.py);
+    this script only inserts rows and will fail fast against an unmigrated DB.
+    """
     engine = create_engine(DATABASE_URL)
 
     with engine.connect() as conn:
-        # Create table if not exists (note: GLOBAL doesn't have FK constraint)
-        conn.execute(text("""
-            CREATE TABLE IF NOT EXISTS DEFECT_TYPE_CATALOG (
-                defect_type_id VARCHAR(50) PRIMARY KEY,
-                client_id VARCHAR(50) NOT NULL,
-                defect_code VARCHAR(20) NOT NULL,
-                defect_name VARCHAR(100) NOT NULL,
-                description TEXT,
-                category VARCHAR(50),
-                severity_default VARCHAR(20) DEFAULT 'MAJOR',
-                industry_standard_code VARCHAR(50),
-                is_active INTEGER DEFAULT 1,
-                sort_order INTEGER DEFAULT 0,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                updated_at DATETIME
-            )
-        """))
-        conn.commit()
-
         # Check existing data. fetchone() returns Optional[Row] —
         # the COUNT(*) query always returns one row, but mypy can't
         # know that from the typing alone.
