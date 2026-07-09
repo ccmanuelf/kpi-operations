@@ -122,6 +122,8 @@ npm install --legacy-peer-deps
 npm run dev  # Starts on http://localhost:3000
 ```
 
+Startup applies Alembic migrations automatically (`RUN_MIGRATIONS_ON_STARTUP=true` by default). To migrate manually instead: `cd backend && python -m alembic upgrade head`.
+
 ### **Default Login Credentials**
 
 | Username | Password | Role |
