@@ -154,14 +154,6 @@
     ],
     [
       "GET",
-      "/api/admin/database/full-status"
-    ],
-    [
-      "GET",
-      "/api/admin/database/migration/status"
-    ],
-    [
-      "GET",
       "/api/admin/database/providers"
     ],
     [
@@ -1219,14 +1211,6 @@
     [
       "PATCH",
       "/api/work-orders/{work_order_id}/status"
-    ],
-    [
-      "POST",
-      "/api/admin/database/migrate"
-    ],
-    [
-      "POST",
-      "/api/admin/database/test-connection"
     ],
     [
       "POST",
