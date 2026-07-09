@@ -44,13 +44,53 @@ class _FakeSession:
         pass
 
 
+class _FakeConnection:
+    """Records execute/commit calls against a stubbed engine connection.
+
+    Proves the reseed's raw `DROP TABLE IF EXISTS alembic_version` never
+    reaches the real module-level `backend.database.engine` (bound to the
+    developer's default database/kpi_platform.db) during a test run.
+    """
+
+    def __init__(self, calls):
+        self._calls = calls
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        return False
+
+    def execute(self, statement, *args, **kwargs):
+        self._calls.append(("execute", str(statement)))
+
+    def commit(self):
+        self._calls.append(("commit", None))
+
+
+class _FakeEngine:
+    def __init__(self, calls):
+        self._calls = calls
+
+    def connect(self):
+        return _FakeConnection(self._calls)
+
+
 def _install_recorders(monkeypatch, rows):
-    """Stub out the DB layer; return (session_calls, drop_calls, create_calls)."""
+    """Stub out the DB layer; return (session_calls, drop_calls, create_calls, engine_calls).
+
+    `lifecycle.engine` is stubbed here too: the reseed path opens a raw
+    connection to drop the alembic_version table, and left unstubbed that
+    hits the real module-level `backend.database.engine` on every suite run
+    (Run 7 C-1 follow-up — was silently mutating the developer's default
+    sqlite file).
+    """
     import backend.database
 
     session_calls = []
     drop_calls = []
     create_calls = []
+    engine_calls = []
 
     def _session_factory():
         session_calls.append(1)
@@ -59,31 +99,34 @@ def _install_recorders(monkeypatch, rows):
     monkeypatch.setattr(backend.database, "SessionLocal", _session_factory)
     monkeypatch.setattr(lifecycle.Base.metadata, "drop_all", lambda **kw: drop_calls.append(kw))
     monkeypatch.setattr(lifecycle.Base.metadata, "create_all", lambda **kw: create_calls.append(kw))
-    return session_calls, drop_calls, create_calls
+    monkeypatch.setattr(lifecycle, "engine", _FakeEngine(engine_calls))
+    return session_calls, drop_calls, create_calls, engine_calls
 
 
 def test_auto_seed_skipped_when_demo_mode_off(monkeypatch):
     """DEMO_MODE=False must return before any database access."""
     monkeypatch.setattr(backend.config.settings, "DEMO_MODE", False)
     monkeypatch.delenv("FORCE_RESEED", raising=False)
-    session_calls, drop_calls, _ = _install_recorders(monkeypatch, [_Row("REAL-CLIENT")])
+    session_calls, drop_calls, _, engine_calls = _install_recorders(monkeypatch, [_Row("REAL-CLIENT")])
 
     lifecycle._auto_seed_demo_data()
 
     assert session_calls == []
     assert drop_calls == []
+    assert engine_calls == []
 
 
 def test_force_reseed_does_not_bypass_demo_gate(monkeypatch):
     """FORCE_RESEED is a demo-mode tool; it must not drop tables when DEMO_MODE is off."""
     monkeypatch.setattr(backend.config.settings, "DEMO_MODE", False)
     monkeypatch.setenv("FORCE_RESEED", "true")
-    session_calls, drop_calls, _ = _install_recorders(monkeypatch, [_Row("REAL-CLIENT")])
+    session_calls, drop_calls, _, engine_calls = _install_recorders(monkeypatch, [_Row("REAL-CLIENT")])
 
     lifecycle._auto_seed_demo_data()
 
     assert session_calls == []
     assert drop_calls == []
+    assert engine_calls == []
 
 
 def test_demo_mode_with_complete_data_does_not_drop(monkeypatch):
@@ -91,29 +134,50 @@ def test_demo_mode_with_complete_data_does_not_drop(monkeypatch):
     monkeypatch.setattr(backend.config.settings, "DEMO_MODE", True)
     monkeypatch.delenv("FORCE_RESEED", raising=False)
     rows = [_Row(c) for c in _DEMO_CLIENTS]
-    session_calls, drop_calls, _ = _install_recorders(monkeypatch, rows)
+    session_calls, drop_calls, _, engine_calls = _install_recorders(monkeypatch, rows)
 
     lifecycle._auto_seed_demo_data()
 
     assert session_calls, "demo mode should inspect the database"
     assert drop_calls == []
+    assert engine_calls == []
 
 
 def test_demo_mode_incomplete_data_reseeds(monkeypatch):
     """DEMO_MODE=True with stale/incomplete data preserves the smart-reseed behavior.
 
     Post-C5, the reseed rebuilds schema via Alembic (upgrade_to_head), not
-    Base.metadata.create_all — pin that here.
+    Base.metadata.create_all — pin that here. Also pins that (a) the raw
+    `DROP TABLE IF EXISTS alembic_version` runs against the STUBBED engine —
+    never backend.database's real module-level engine, which is bound to the
+    developer's default database/kpi_platform.db (an earlier version of this
+    test left lifecycle.engine unstubbed and mutated that file on every
+    suite run) — and (b) upgrade_to_head runs strictly after drop_all, the
+    load-bearing rebuild order.
     """
     import backend.db.migrate as migrate_mod
     import backend.scripts.init_demo_database as seeder_mod
 
     monkeypatch.setattr(backend.config.settings, "DEMO_MODE", True)
     monkeypatch.delenv("FORCE_RESEED", raising=False)
-    session_calls, drop_calls, _ = _install_recorders(monkeypatch, [_Row("STALE-CLIENT")])
+    session_calls, drop_calls, _, engine_calls = _install_recorders(monkeypatch, [_Row("STALE-CLIENT")])
+
+    sequence = []
+    _orig_drop_all = lifecycle.Base.metadata.drop_all
+
+    def _drop_all_and_tag(**kw):
+        sequence.append("drop_all")
+        _orig_drop_all(**kw)
+
+    monkeypatch.setattr(lifecycle.Base.metadata, "drop_all", _drop_all_and_tag)
 
     upgrade_calls = []
-    monkeypatch.setattr(migrate_mod, "upgrade_to_head", lambda *a, **kw: upgrade_calls.append(1))
+
+    def _upgrade_to_head(*a, **kw):
+        sequence.append("upgrade_to_head")
+        upgrade_calls.append(1)
+
+    monkeypatch.setattr(migrate_mod, "upgrade_to_head", _upgrade_to_head)
 
     seed_calls = []
     monkeypatch.setattr(seeder_mod, "init_database", lambda: seed_calls.append(1))
@@ -124,3 +188,12 @@ def test_demo_mode_incomplete_data_reseeds(monkeypatch):
     assert len(drop_calls) == 1
     assert upgrade_calls == [1]
     assert seed_calls == [1]
+
+    # (i) the alembic_version drop SQL was executed — against the stubbed
+    # engine, proving the real backend.database.engine was never touched.
+    executed_sql = [sql for kind, sql in engine_calls if kind == "execute"]
+    assert any("DROP TABLE IF EXISTS alembic_version" in sql for sql in executed_sql)
+    assert ("commit", None) in engine_calls
+
+    # (ii) upgrade_to_head runs after drop_all — the load-bearing sequence.
+    assert sequence == ["drop_all", "upgrade_to_head"]
