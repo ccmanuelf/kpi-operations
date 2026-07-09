@@ -193,42 +193,6 @@ class DatabaseProviderFactory:
             return self._current_provider.get_dialect_adapter()
         return None
 
-    def validate_connection(self, url: str) -> Dict[str, Any]:
-        """Test connection to a database URL.
-
-        Creates a temporary provider and engine to test connection.
-        Does not affect the current engine.
-
-        Args:
-            url: Database connection URL to test.
-
-        Returns:
-            Dict[str, Any]: Validation result with success status and info.
-        """
-        try:
-            provider = self.create_provider(url)
-            engine = provider.create_engine(url)
-
-            is_valid = provider.validate_connection(engine)
-            conn_info = provider.get_connection_info(engine) if is_valid else {}
-
-            # Clean up test engine
-            engine.dispose()
-
-            return {
-                "success": is_valid,
-                "provider": provider.provider_name,
-                "connection_info": conn_info,
-                "message": "Connection successful" if is_valid else "Connection validation failed",
-            }
-        except Exception as e:
-            return {
-                "success": False,
-                "provider": None,
-                "connection_info": {},
-                "message": str(e),
-            }
-
     def get_available_providers(self) -> Dict[str, Dict[str, Any]]:
         """Get information about available providers.
 

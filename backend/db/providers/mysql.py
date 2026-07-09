@@ -7,7 +7,7 @@ and production-ready connection management.
 
 from typing import Dict, Any, List
 
-from sqlalchemy import create_engine, Engine, text
+from sqlalchemy import create_engine, Engine
 from sqlalchemy.pool import QueuePool
 
 from backend.db.providers.base import DatabaseProvider
@@ -102,25 +102,6 @@ class MySQLProvider(DatabaseProvider):
             "pool_recycle": 3600,
             "pool_pre_ping": True,
         }
-
-    def validate_connection(self, engine: Engine) -> bool:
-        """Test MySQL connection.
-
-        Args:
-            engine: SQLAlchemy engine to test.
-
-        Returns:
-            bool: True if connection is valid.
-        """
-        try:
-            with engine.connect() as conn:
-                result = conn.execute(text("SELECT VERSION()"))
-                version = result.scalar()
-                logger.debug(f"MySQL server version: {version}")
-                return True
-        except Exception as e:
-            logger.error(f"MySQL connection validation failed: {e}")
-            return False
 
     def get_dialect_adapter(self) -> MySQLDialect:
         """Return MySQL dialect adapter.

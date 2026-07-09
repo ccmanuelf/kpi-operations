@@ -67,17 +67,19 @@ class TestDatabaseConfigEndpoints:
     """Tests for database configuration API endpoints."""
 
     def test_get_status_returns_current_provider(self, test_client, supervisor_headers):
-        """Test GET /status returns provider info."""
+        """Test GET /status returns provider info derived from the live engine."""
         response = test_client.get("/api/admin/database/status", headers=supervisor_headers)
         assert response.status_code == 200
 
         data = response.json()
         assert "current_provider" in data
-        assert "migration_available" in data
-        assert "supported_targets" in data
+        assert "connection_info" in data
+        # Provider + connection_info are derived from the real app engine, which
+        # is SQLite in the test suite.
         assert data["current_provider"] == "sqlite"
-        assert data["migration_available"] is False
-        assert data["supported_targets"] == []
+        assert data["connection_info"], "connection_info must be populated from the live engine"
+        assert data["connection_info"]["provider"] == "sqlite"
+        assert data["connection_info"]["database"]
 
     def test_get_providers_returns_available(self, test_client, supervisor_headers):
         """Test GET /providers returns provider info."""
