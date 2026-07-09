@@ -30,13 +30,13 @@ from sqlalchemy.orm import Session
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from backend.database import engine, Base, SessionLocal  # noqa: E402
+from backend.database import SessionLocal  # noqa: E402
 from backend.db.factories import TestDataFactory  # noqa: E402
 
 # Import all ORM models via centralized registry (backend/orm/__init__.py).
-# This single import registers every model with Base.metadata so that
-# create_all() can never drift from the model registry. Only the names
-# actually referenced in seeder logic are listed explicitly.
+# This single import registers every model so Alembic's model registry can
+# never drift from the ORM. Only the names actually referenced in seeder
+# logic are listed explicitly.
 from backend.orm import (  # noqa: E402 — sys.path setup above is required for these imports
     # Enums used in seeder data
     ClientType,
@@ -329,18 +329,13 @@ def init_database(
         print("=" * 70)
 
         # ==================================================================
-        # Step 1: Create all tables (including capacity planning)
+        # Step 1: Apply Alembic migrations (schema -> head)
         # ==================================================================
-        print("\n[1/10] Creating database schema...")
-        Base.metadata.create_all(bind=engine)
+        print("\n[1/10] Applying Alembic migrations (schema -> head)...")
+        from backend.db.migrate import upgrade_to_head
 
-        from backend.db.migrations.capacity_planning_tables import create_capacity_tables
-
-        created_tables = create_capacity_tables()
-        if created_tables:
-            print(f"  + Created {len(created_tables)} capacity planning tables")
-
-        print("  All tables created")
+        upgrade_to_head()
+        print("  Schema at Alembic head")
 
         db = SessionLocal()
 

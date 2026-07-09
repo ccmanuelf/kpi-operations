@@ -100,12 +100,20 @@ def test_demo_mode_with_complete_data_does_not_drop(monkeypatch):
 
 
 def test_demo_mode_incomplete_data_reseeds(monkeypatch):
-    """DEMO_MODE=True with stale/incomplete data preserves the smart-reseed behavior."""
+    """DEMO_MODE=True with stale/incomplete data preserves the smart-reseed behavior.
+
+    Post-C5, the reseed rebuilds schema via Alembic (upgrade_to_head), not
+    Base.metadata.create_all — pin that here.
+    """
+    import backend.db.migrate as migrate_mod
     import backend.scripts.init_demo_database as seeder_mod
 
     monkeypatch.setattr(backend.config.settings, "DEMO_MODE", True)
     monkeypatch.delenv("FORCE_RESEED", raising=False)
-    session_calls, drop_calls, create_calls = _install_recorders(monkeypatch, [_Row("STALE-CLIENT")])
+    session_calls, drop_calls, _ = _install_recorders(monkeypatch, [_Row("STALE-CLIENT")])
+
+    upgrade_calls = []
+    monkeypatch.setattr(migrate_mod, "upgrade_to_head", lambda *a, **kw: upgrade_calls.append(1))
 
     seed_calls = []
     monkeypatch.setattr(seeder_mod, "init_database", lambda: seed_calls.append(1))
@@ -114,5 +122,5 @@ def test_demo_mode_incomplete_data_reseeds(monkeypatch):
 
     assert session_calls
     assert len(drop_calls) == 1
-    assert len(create_calls) == 1
+    assert upgrade_calls == [1]
     assert seed_calls == [1]

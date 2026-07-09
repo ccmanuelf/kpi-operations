@@ -89,6 +89,12 @@ class Settings(BaseSettings):
     # production deployment can never destroy real data.
     DEMO_MODE: bool = False
 
+    # C5: run `alembic upgrade head` in-process at startup. True keeps local
+    # dev (uvicorn --reload) and the Render demo zero-touch; the prod compose
+    # sets it false because the container entrypoint (which runs once, before
+    # gunicorn's workers) owns migrations there.
+    RUN_MIGRATIONS_ON_STARTUP: bool = True
+
     # File Upload
     MAX_UPLOAD_SIZE: int = 10485760  # 10MB
     UPLOAD_DIR: str = "./uploads"

@@ -91,8 +91,15 @@ def _auto_seed_demo_data() -> None:
         if need_seed:
             # Drop and recreate if there's stale data to replace
             if client_count > 0:
+                from backend.db.migrate import upgrade_to_head
+
                 Base.metadata.drop_all(bind=engine)
-                Base.metadata.create_all(bind=engine)
+                with engine.connect() as conn:
+                    from sqlalchemy import text
+
+                    conn.execute(text("DROP TABLE IF EXISTS alembic_version"))
+                    conn.commit()
+                upgrade_to_head()
 
             # Single canonical demo seeder (Run 8 unification). init_database
             # creates the schema + seeds all demo data and is pure app code (no
@@ -117,16 +124,20 @@ def run_best_effort(name: str, fn: Callable[[], None]) -> None:
         logger.warning("%s failed: %s", name, e)
 
 
-def init_schema() -> None:
-    """FATAL: create all tables (idempotent) + warn if the registry looks incomplete."""
-    Base.metadata.create_all(bind=engine)
-    actual = len(Base.metadata.tables)
-    if actual < 45:
-        logger.warning(
-            "Schema registry may be incomplete: expected >=45 tables, got %d. "
-            "Check that all ORM models are imported in backend/orm/__init__.py.",
-            actual,
-        )
+def run_startup_migrations() -> None:
+    """FATAL: bring the schema to Alembic head (the ONLY schema mechanism).
+
+    Gated by RUN_MIGRATIONS_ON_STARTUP — false in multi-worker prod where the
+    container entrypoint runs the upgrade exactly once before workers start.
+    """
+    from backend.config import settings
+    from backend.db.migrate import upgrade_to_head
+
+    if not settings.RUN_MIGRATIONS_ON_STARTUP:
+        logger.info("RUN_MIGRATIONS_ON_STARTUP disabled — entrypoint owns migrations")
+        return
+    upgrade_to_head()
+    logger.info("Alembic migrations applied (head)")
 
 
 def init_event_infrastructure() -> None:
@@ -177,10 +188,7 @@ def dispose_engine() -> None:
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Application lifespan: startup then shutdown, preserving order + failure semantics."""
     # STARTUP — fatal steps unwrapped; best-effort steps via run_best_effort
-    init_schema()  # fatal
-    from backend.db.migrations.capacity_planning_tables import create_capacity_tables
-
-    create_capacity_tables()  # fatal
+    run_startup_migrations()  # fatal
     run_best_effort("event infrastructure init", init_event_infrastructure)
     start_schedulers()  # per-scheduler isolation lives inside (see its definition)
     run_best_effort("demo data seed", _auto_seed_demo_data)
