@@ -194,7 +194,7 @@ class TestDomainEvent:
     def test_to_dict_returns_all_base_fields(self):
         event = _make_event(
             client_id="client-A",
-            triggered_by=42,
+            triggered_by="USER-42",
             metadata={"action": "create"},
         )
         d = event.to_dict()
@@ -203,7 +203,7 @@ class TestDomainEvent:
         assert d["aggregate_id"] == "agg-1"
         assert d["aggregate_type"] == "TestAggregate"
         assert d["client_id"] == "client-A"
-        assert d["triggered_by"] == 42
+        assert d["triggered_by"] == "USER-42"
         assert d["metadata"] == {"action": "create"}
         # occurred_at should be ISO-formatted string
         assert isinstance(d["occurred_at"], str)

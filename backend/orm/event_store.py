@@ -9,7 +9,7 @@ Enables event replay, audit trails, and event sourcing.
 from datetime import datetime
 from typing import Any, Optional
 
-from sqlalchemy import DateTime, Index, Integer, JSON, String, func
+from sqlalchemy import DateTime, ForeignKey, Index, Integer, JSON, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.database import Base
@@ -34,7 +34,8 @@ class EventStore(Base):
     aggregate_type: Mapped[str] = mapped_column(String(50), nullable=False)
     aggregate_id: Mapped[str] = mapped_column(String(50), nullable=False)
     client_id: Mapped[Optional[str]] = mapped_column(String(50), index=True)
-    triggered_by: Mapped[Optional[int]] = mapped_column(Integer)
+    # USER.user_id is String(50); FK column type-matched for MariaDB portability.
+    triggered_by: Mapped[Optional[str]] = mapped_column(String(50), ForeignKey("USER.user_id"))
     occurred_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
     payload: Mapped[Any] = mapped_column(JSON, nullable=False)
     created_at: Mapped[Optional[datetime]] = mapped_column(DateTime, server_default=func.now())

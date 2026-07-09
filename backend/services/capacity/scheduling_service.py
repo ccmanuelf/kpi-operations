@@ -243,7 +243,7 @@ class SchedulingService:
         return schedule
 
     def commit_schedule(
-        self, client_id: str, schedule_id: int, committed_by: int, kpi_commitments: Optional[Dict] = None
+        self, client_id: str, schedule_id: int, committed_by: str, kpi_commitments: Optional[Dict] = None
     ) -> CapacitySchedule:
         """
         Commit a schedule for KPI tracking.
@@ -251,7 +251,7 @@ class SchedulingService:
         Args:
             client_id: Client ID for tenant isolation
             schedule_id: Schedule ID to commit
-            committed_by: User ID committing the schedule
+            committed_by: User ID (string) committing the schedule
             kpi_commitments: Optional KPI targets to commit
 
         Returns:

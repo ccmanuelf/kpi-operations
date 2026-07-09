@@ -68,10 +68,10 @@ class WorkOrderCreate(BaseModel):
     priority: Optional[str] = Field(None, pattern="^(URGENT|HIGH|NORMAL|MEDIUM|LOW)$")
 
     qc_approved: Optional[int] = Field(default=0, ge=0, le=1, description="Boolean: 0=not approved, 1=approved")
-    qc_approved_by: Optional[int] = None
+    qc_approved_by: Optional[str] = None
     qc_approved_date: Optional[datetime] = None
     rejection_reason: Optional[str] = None
-    rejected_by: Optional[int] = None
+    rejected_by: Optional[str] = None
     rejected_date: Optional[datetime] = None
     total_run_time_hours: Optional[Decimal] = Field(None, ge=0)
     total_employees_assigned: Optional[int] = Field(None, ge=0)
@@ -120,10 +120,10 @@ class WorkOrderUpdate(BaseModel):
     priority: Optional[str] = Field(None, pattern="^(URGENT|HIGH|NORMAL|MEDIUM|LOW)$")
 
     qc_approved: Optional[int] = Field(None, ge=0, le=1)
-    qc_approved_by: Optional[int] = None
+    qc_approved_by: Optional[str] = None
     qc_approved_date: Optional[datetime] = None
     rejection_reason: Optional[str] = None
-    rejected_by: Optional[int] = None
+    rejected_by: Optional[str] = None
     rejected_date: Optional[datetime] = None
     total_run_time_hours: Optional[Decimal] = Field(None, ge=0)
     total_employees_assigned: Optional[int] = Field(None, ge=0)
@@ -174,10 +174,10 @@ class WorkOrderResponse(BaseModel):
     priority: Optional[str] = None
 
     qc_approved: Optional[int] = 0
-    qc_approved_by: Optional[int] = None
+    qc_approved_by: Optional[str] = None
     qc_approved_date: Optional[datetime] = None
     rejection_reason: Optional[str] = None
-    rejected_by: Optional[int] = None
+    rejected_by: Optional[str] = None
     rejected_date: Optional[datetime] = None
     total_run_time_hours: Optional[Decimal] = None
     total_employees_assigned: Optional[int] = None

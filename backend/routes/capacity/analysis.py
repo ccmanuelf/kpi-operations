@@ -426,7 +426,7 @@ def commit_schedule(
 
     schedule.status = ScheduleStatus.COMMITTED
     schedule.committed_at = date_type.today()
-    schedule.committed_by = int(current_user.user_id) if current_user.user_id else None
+    schedule.committed_by = current_user.user_id if current_user.user_id else None
     schedule.kpi_commitments_json = request.kpi_commitments
 
     db.commit()
