@@ -6,9 +6,7 @@ Follows the pattern from test_production_line_bridge_routes.py.
 
 import pytest
 from datetime import date
-from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
 from fastapi.testclient import TestClient
 from fastapi import FastAPI
 
@@ -20,6 +18,7 @@ from backend.orm.capacity.orders import CapacityOrder, OrderStatus, OrderPriorit
 from backend.routes.work_orders import router as work_orders_router
 from backend.routes.capacity import router as capacity_router
 from backend.tests.fixtures.factories import TestDataFactory
+from backend.tests.conftest import clone_template_engine
 
 # =============================================================================
 # Test App Factory and Fixtures
@@ -59,12 +58,7 @@ def _create_test_app(db_session, role="admin"):
 @pytest.fixture(scope="function")
 def wocap_db():
     """Create a fresh in-memory database for each test."""
-    engine = create_engine(
-        "sqlite:///:memory:",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
-    Base.metadata.create_all(bind=engine)
+    engine = clone_template_engine()
     TestingSession = sessionmaker(bind=engine)
     session = TestingSession()
     TestDataFactory.reset_counters()

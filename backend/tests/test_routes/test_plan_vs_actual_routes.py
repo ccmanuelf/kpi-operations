@@ -8,9 +8,7 @@ Follows the pattern from test_capacity_routes_crud.py (isolated FastAPI app).
 
 import pytest
 from datetime import date, timedelta, datetime, timezone
-from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
 from fastapi.testclient import TestClient
 from fastapi import FastAPI
 
@@ -22,6 +20,7 @@ from backend.orm.user import User, UserRole
 from backend.auth.jwt import get_current_user
 from backend.routes.plan_vs_actual import router as plan_vs_actual_router
 from backend.tests.fixtures.factories import TestDataFactory
+from backend.tests.conftest import clone_template_engine
 
 # ---------------------------------------------------------------------------
 # Test App Factory and Fixtures
@@ -74,12 +73,7 @@ def create_unauthenticated_app(db_session):
 @pytest.fixture(scope="function")
 def pva_route_db():
     """Create a fresh in-memory database for each test."""
-    engine = create_engine(
-        "sqlite:///:memory:",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
-    Base.metadata.create_all(bind=engine)
+    engine = clone_template_engine()
     TestingSession = sessionmaker(bind=engine)
     session = TestingSession()
     TestDataFactory.reset_counters()

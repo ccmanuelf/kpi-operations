@@ -203,25 +203,29 @@ def test_app_engine_connection_charset_is_utf8mb4(mariadb_schema):
 
 # ---------------------------------------------------------------------------
 # Schema-mechanism guard (always-on, dialect-agnostic). Alembic is the only
-# schema-evolution mechanism for the running app/deploy code; create_all()
-# must not reappear there. `tests/` is intentionally out of scope: many test
-# modules build a disposable in-memory SQLite schema via
-# `Base.metadata.create_all()` for fast per-file isolation, which is a
-# standard test-isolation pattern orthogonal to the production/deploy-time
-# schema mechanism this guard protects.
+# schema mechanism, in app code AND in tests: test fixtures get a fresh
+# schema by cloning the Alembic-built template (conftest.clone_template_engine
+# / db_engine / db_session), never by calling create_all() imperatively.
 # ---------------------------------------------------------------------------
 
 
 def test_no_create_all_outside_alembic():
-    """Alembic is the only schema mechanism: create_all must not exist in app code."""
+    """Alembic is the only schema mechanism: create_all must not exist in backend/."""
     import pathlib
     import re
 
     backend_root = pathlib.Path(__file__).resolve().parent.parent
+    allowed = {
+        # This guard file itself: hosts the create_all-matching regex below
+        # and the MariaDB integration fixtures, so it can never self-trip.
+        backend_root
+        / "tests"
+        / "test_mariadb_portability.py",
+    }
     offenders = []
     for py in backend_root.rglob("*.py"):
-        if "alembic" in py.parts or ".venv" in py.parts or "tests" in py.parts:
+        if "alembic" in py.parts or ".venv" in py.parts or py in allowed:
             continue
         if re.search(r"\bcreate_all\s*\(", py.read_text(encoding="utf-8")):
             offenders.append(str(py.relative_to(backend_root)))
-    assert offenders == []
+    assert sorted(offenders) == []

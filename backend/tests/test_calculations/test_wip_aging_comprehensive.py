@@ -7,15 +7,14 @@ import pytest
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 
-from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
 
 from backend.database import Base
 from backend.orm import ClientType
 from backend.orm.hold_entry import HoldEntry, HoldStatus
 from backend.orm.work_order import WorkOrder
 from backend.tests.fixtures.factories import TestDataFactory
+from backend.tests.conftest import clone_template_engine
 
 
 class TestWIPAgingBasic:
@@ -287,12 +286,7 @@ class TestWIPAgingTrend:
 @pytest.fixture(scope="function")
 def wip_db():
     """Create a fresh database for each test."""
-    engine = create_engine(
-        "sqlite:///:memory:",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
-    Base.metadata.create_all(bind=engine)
+    engine = clone_template_engine()
     TestingSession = sessionmaker(bind=engine)
     session = TestingSession()
     TestDataFactory.reset_counters()

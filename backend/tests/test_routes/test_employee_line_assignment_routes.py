@@ -6,9 +6,7 @@ Follows the pattern from test_shift_routes.py.
 
 import pytest
 from datetime import date
-from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
 from fastapi.testclient import TestClient
 from fastapi import FastAPI
 
@@ -18,6 +16,7 @@ from backend.orm.user import User
 from backend.orm.production_line import ProductionLine
 from backend.routes.employee_line_assignments import router as ela_router
 from backend.tests.fixtures.factories import TestDataFactory
+from backend.tests.conftest import clone_template_engine
 
 # =============================================================================
 # Test App Factory and Fixtures
@@ -59,12 +58,7 @@ def _create_test_app(db_session, role="supervisor"):
 @pytest.fixture(scope="function")
 def ela_db():
     """Create a fresh in-memory database for each test."""
-    engine = create_engine(
-        "sqlite:///:memory:",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
-    Base.metadata.create_all(bind=engine)
+    engine = clone_template_engine()
     TestingSession = sessionmaker(bind=engine)
     session = TestingSession()
     TestDataFactory.reset_counters()

@@ -7,9 +7,7 @@ Target: Increase routes/quality.py coverage from 21% to 80%+
 import pytest
 from datetime import date, timedelta
 from decimal import Decimal
-from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
 from fastapi.testclient import TestClient
 from fastapi import FastAPI
 
@@ -17,6 +15,7 @@ from backend.database import Base, get_db
 from backend.orm import ClientType
 from backend.routes.quality import router as quality_router
 from backend.tests.fixtures.factories import TestDataFactory
+from backend.tests.conftest import clone_template_engine
 
 
 def create_test_app(db_session):
@@ -37,12 +36,7 @@ def create_test_app(db_session):
 @pytest.fixture(scope="function")
 def quality_db():
     """Create a fresh database for each test."""
-    engine = create_engine(
-        "sqlite:///:memory:",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
-    Base.metadata.create_all(bind=engine)
+    engine = clone_template_engine()
     TestingSession = sessionmaker(bind=engine)
     session = TestingSession()
     TestDataFactory.reset_counters()

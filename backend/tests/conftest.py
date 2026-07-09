@@ -183,6 +183,14 @@ def _template_db_path() -> str:
     return _template_path
 
 
+def clone_template_engine():
+    """Public helper for test modules that manage their own engine lifecycle:
+    fresh in-memory engine with the full Alembic-built schema (template clone).
+    Importable as `from backend.tests.conftest import clone_template_engine`.
+    """
+    return _clone_template_engine()
+
+
 def _clone_template_engine():
     """New in-memory engine seeded from the template via the backup API."""
     engine = create_engine(

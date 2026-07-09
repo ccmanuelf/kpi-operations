@@ -14,9 +14,7 @@ import pytest
 from datetime import datetime, date, timedelta
 from decimal import Decimal
 
-from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
 
 from backend.database import Base
 from backend.orm.production_line import ProductionLine
@@ -45,6 +43,7 @@ from backend.schemas.attendance import (
     AttendanceRecordUpdate,
     AttendanceRecordResponse,
 )
+from backend.tests.conftest import clone_template_engine
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -54,12 +53,7 @@ from backend.schemas.attendance import (
 @pytest.fixture(scope="function")
 def line_test_db():
     """In-memory SQLite session with all tables created."""
-    engine = create_engine(
-        "sqlite:///:memory:",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
-    Base.metadata.create_all(bind=engine)
+    engine = clone_template_engine()
     Session = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     session = Session()
     try:

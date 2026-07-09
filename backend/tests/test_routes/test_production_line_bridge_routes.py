@@ -5,9 +5,7 @@ Follows the pattern from test_production_line_routes.py.
 """
 
 import pytest
-from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
 from fastapi.testclient import TestClient
 from fastapi import FastAPI
 
@@ -18,6 +16,7 @@ from backend.orm.production_line import ProductionLine
 from backend.orm.capacity.production_lines import CapacityProductionLine
 from backend.routes.production_lines import router as production_lines_router
 from backend.tests.fixtures.factories import TestDataFactory
+from backend.tests.conftest import clone_template_engine
 
 # =============================================================================
 # Test App Factory and Fixtures
@@ -58,12 +57,7 @@ def _create_test_app(db_session, role="supervisor"):
 @pytest.fixture(scope="function")
 def plb_db():
     """Create a fresh in-memory database for each test."""
-    engine = create_engine(
-        "sqlite:///:memory:",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
-    Base.metadata.create_all(bind=engine)
+    engine = clone_template_engine()
     TestingSession = sessionmaker(bind=engine)
     session = TestingSession()
     TestDataFactory.reset_counters()

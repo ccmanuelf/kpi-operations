@@ -13,9 +13,7 @@ from datetime import date, datetime, time
 from decimal import Decimal
 
 import pytest
-from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
 
 from backend.database import Base
 from backend.orm.production_entry import ProductionEntry
@@ -27,6 +25,7 @@ from backend.services.csv_export_service import (
     stream_csv_export,
 )
 from backend.tests.fixtures.factories import TestDataFactory
+from backend.tests.conftest import clone_template_engine
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -38,12 +37,7 @@ CLIENT_ID = "CSV-SVC-CLIENT"
 @pytest.fixture(scope="function")
 def csv_db():
     """Create a fresh in-memory database for each test."""
-    engine = create_engine(
-        "sqlite:///:memory:",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
-    Base.metadata.create_all(bind=engine)
+    engine = clone_template_engine()
     TestingSession = sessionmaker(bind=engine)
     session = TestingSession()
     TestDataFactory.reset_counters()

@@ -7,14 +7,13 @@ import pytest
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from unittest.mock import MagicMock, patch
-from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
 from fastapi import HTTPException
 
 from backend.database import Base
 from backend.orm import ClientType
 from backend.tests.fixtures.factories import TestDataFactory
+from backend.tests.conftest import clone_template_engine
 
 # =============================================================================
 # Test Fixtures
@@ -24,12 +23,7 @@ from backend.tests.fixtures.factories import TestDataFactory
 @pytest.fixture(scope="function")
 def auth_db():
     """Create a fresh database for auth tests."""
-    engine = create_engine(
-        "sqlite:///:memory:",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
-    Base.metadata.create_all(bind=engine)
+    engine = clone_template_engine()
     TestingSession = sessionmaker(bind=engine)
     session = TestingSession()
     TestDataFactory.reset_counters()

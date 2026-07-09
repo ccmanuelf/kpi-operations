@@ -8,15 +8,14 @@ from unittest.mock import MagicMock
 from datetime import date
 from decimal import Decimal
 
-from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
 
 from backend.database import Base
 from backend.orm import ClientType
 from backend.orm.product import Product
 from backend.orm.production_entry import ProductionEntry
 from backend.tests.fixtures.factories import TestDataFactory
+from backend.tests.conftest import clone_template_engine
 
 
 class TestPerformanceCalculations:
@@ -346,12 +345,7 @@ class TestPerformanceIntegration:
 @pytest.fixture(scope="function")
 def perf_db():
     """Create a fresh database for each test."""
-    engine = create_engine(
-        "sqlite:///:memory:",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
-    Base.metadata.create_all(bind=engine)
+    engine = clone_template_engine()
     TestingSession = sessionmaker(bind=engine)
     session = TestingSession()
     TestDataFactory.reset_counters()

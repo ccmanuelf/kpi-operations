@@ -8,9 +8,7 @@ Uses real in-memory SQLite database -- NO mocks for DB layer.
 import pytest
 from datetime import date, timedelta, datetime, timezone
 from decimal import Decimal
-from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
 
 from backend.database import Base
 from backend.orm.capacity.orders import CapacityOrder, OrderStatus, OrderPriority
@@ -28,6 +26,7 @@ from backend.services.plan_vs_actual_service import (
     _calculate_risk,
     _project_completion,
 )
+from backend.tests.conftest import clone_template_engine
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -40,12 +39,7 @@ CLIENT_B_ID = "PVA-TEST-CLIENT-B"
 @pytest.fixture(scope="function")
 def pva_db():
     """Create a fresh in-memory database for each test."""
-    engine = create_engine(
-        "sqlite:///:memory:",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
-    Base.metadata.create_all(bind=engine)
+    engine = clone_template_engine()
     TestingSession = sessionmaker(bind=engine)
     session = TestingSession()
     TestDataFactory.reset_counters()
