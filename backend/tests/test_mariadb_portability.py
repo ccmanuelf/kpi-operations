@@ -80,7 +80,7 @@ def test_foreign_key_column_types_match_referenced_columns():
 # ---------------------------------------------------------------------------
 
 import pytest  # noqa: E402
-from sqlalchemy import inspect, select  # noqa: E402
+from sqlalchemy import inspect, select, text  # noqa: E402
 
 from backend.database import SessionLocal, engine  # noqa: E402
 from backend.orm.event_store import EventStore  # noqa: E402
@@ -93,11 +93,51 @@ requires_mariadb = pytest.mark.skipif(
 
 @pytest.fixture(scope="module")
 def mariadb_schema():
-    """Create the full schema on the live MariaDB, drop it afterwards."""
+    """Build the full schema on live MariaDB via Alembic; drop it afterwards."""
+    from backend.db.migrate import upgrade_to_head
+
     Base.metadata.drop_all(bind=engine)
-    Base.metadata.create_all(bind=engine)  # would raise 1170 before the Task 1 fix
+    with engine.connect() as conn:
+        conn.execute(text("DROP TABLE IF EXISTS alembic_version"))
+        conn.commit()
+    # render_as_string(hide_password=False): str(engine.url) masks the password
+    # as "***", which Alembic would then use verbatim and fail to authenticate.
+    upgrade_to_head(engine.url.render_as_string(hide_password=False))
     yield
     Base.metadata.drop_all(bind=engine)
+
+
+def _autogen_diff_is_empty(url: str) -> list:
+    """Upgrade a throwaway DB to head and diff Base.metadata against it."""
+    from alembic.autogenerate import compare_metadata
+    from alembic.migration import MigrationContext
+    from sqlalchemy import create_engine as sa_create_engine
+
+    from backend.db.migrate import upgrade_to_head
+
+    upgrade_to_head(url)
+    diff_engine = sa_create_engine(url)
+    try:
+        with diff_engine.connect() as conn:
+            ctx = MigrationContext.configure(conn, opts={"compare_type": True, "render_as_batch": "sqlite" in url})
+            return list(compare_metadata(ctx, Base.metadata))
+    finally:
+        diff_engine.dispose()
+
+
+def test_baseline_builds_schema_equal_to_metadata_sqlite(tmp_path):
+    """alembic upgrade head on SQLite must reproduce Base.metadata exactly."""
+    url = f"sqlite:///{tmp_path}/baseline_guard.db"
+    assert _autogen_diff_is_empty(url) == []
+
+
+@requires_mariadb
+def test_baseline_builds_schema_equal_to_metadata_mariadb(mariadb_schema):
+    """Same guarantee against live MariaDB (runs in the mariadb-portability job)."""
+    from backend.database import engine as app_engine
+
+    # render_as_string(hide_password=False): str(url) masks the password as "***".
+    assert _autogen_diff_is_empty(app_engine.url.render_as_string(hide_password=False)) == []
 
 
 @requires_mariadb

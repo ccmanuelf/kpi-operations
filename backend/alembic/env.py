@@ -30,9 +30,11 @@ register_all_models()
 config = context.config
 
 # Interpret the config file for Python logging (unless we are in a test
-# harness that has already configured logging).
+# harness that has already configured logging). disable_existing_loggers=False
+# so in-process upgrades (the test suite's template-DB builder, the lifespan
+# startup unit) do not silence loggers other code has already configured.
 if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 # ---------------------------------------------------------------------------
 # 4. Metadata target — this is what autogenerate diffs against
@@ -40,9 +42,14 @@ if config.config_file_name is not None:
 target_metadata = Base.metadata
 
 # ---------------------------------------------------------------------------
-# 5. Override sqlalchemy.url from application settings
+# 5. Resolve sqlalchemy.url — a caller-supplied URL (e.g. from
+#    backend.db.migrate.alembic_config) wins; otherwise fall through to
+#    application settings. The alembic.ini default is a "placeholder" URL,
+#    which is treated as "no URL supplied".
 # ---------------------------------------------------------------------------
-config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+_configured_url = config.get_main_option("sqlalchemy.url")
+if not _configured_url or "placeholder" in _configured_url:
+    config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
 
 
 def run_migrations_offline() -> None:
