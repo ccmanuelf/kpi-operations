@@ -110,6 +110,12 @@ CORS_ORIGINS=https://kpi.yourdomain.com,https://www.kpi.yourdomain.com
 DEBUG=False
 LOG_LEVEL=INFO
 
+# Schema migrations run in-process at startup on this systemd/gunicorn deploy
+# (there is no container entrypoint to own them), so keep the default true:
+RUN_MIGRATIONS_ON_STARTUP=true
+# NOTE: container deploys (Render, docker-compose*.yml) set this to false —
+# their entrypoint runs `alembic upgrade head` exactly once before workers start.
+
 # ============================================
 # FILE UPLOAD
 # ============================================
