@@ -5,6 +5,11 @@
 {
 	# LAN deployment: no public ACME; issue from the internal CA.
 	local_certs
+	# Bare-IP clients send no SNI (RFC 6066); treat no-SNI as the VM IP so
+	# on_demand mints a leaf with the correct IP SAN. Without this, no-SNI
+	# handshakes got a container-IP-SAN cert -> ERR_CERT_COMMON_NAME_INVALID
+	# (observed on the 2026-07-10 live deploy — the runbook Phase 4 knob).
+	default_sni 192.168.2.234
 }
 
 :443 {

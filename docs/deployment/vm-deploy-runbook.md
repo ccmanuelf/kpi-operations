@@ -22,14 +22,14 @@ Fill in during execution; commit the completed block back to this file
 afterwards (docs-only follow-up commit).
 
 ```text
-deploy date/time         :
-main commit deployed     :
-backend image uid        :
-ufw rules applied        :
-CA root SHA-256 fp       :
-admin username           :
-phase 5 verification     :
-notes / deviations       :
+deploy date/time         : 2026-07-10, ~12:45–13:45 America/Monterrey (first production deploy)
+main commit deployed     : 30cc8f8
+backend image uid        : 999
+ufw rules applied        : default deny incoming / allow outgoing; allow 22,443,80,7070,5443,3389/tcp (v4+v6); enabled after 22/tcp guard
+CA root SHA-256 fp       : 6D:6D:10:07:C0:9B:BA:1A:4F:56:EA:73:FB:E0:E8:EA:0F:D9:D7:1E:6E:EE:52:54:60:4F:02:BD:E8:12:3F:35
+admin username           : kpi_admin (USER-KPI_ADMIN; first attempt correctly rejected by SEC-002 policy)
+phase 5 verification     : /health/live 200 over TRUSTED TLS (no -k); UI login + dashboard on empty prod DB; backup --once dump 12K; restore-verify OK (58 tables into scratch); nightly loop armed 02:00/14d
+notes / deviations       : bare-IP no-SNI handshakes served a container-IP-SAN leaf (ERR_CERT_COMMON_NAME_INVALID) — fixed live with the documented default_sni 192.168.2.234 knob, codified in this commit. sudo made passwordless by owner pre-deploy (Phase 1 ran gates-approved over ssh). Alembic 0001_baseline ran exactly once, entrypoint-owned.
 ```
 
 ## Phase 0 — Preflight (read-only)
