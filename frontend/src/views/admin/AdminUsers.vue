@@ -226,7 +226,7 @@ import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
 import api from '@/services/api'
-import { clientFieldMode } from '@/composables/useUserRoleForm'
+import { clientFieldMode, buildUserUpdatePayload } from '@/composables/useUserRoleForm'
 
 const loading = ref(false)
 const saving = ref(false)
@@ -291,7 +291,7 @@ const rules = {
 const clientMulti = computed({
   get: () => {
     const v = userFormData.value.client_id_assigned
-    return v ? v.split(',') : []
+    return v ? v.split(',').map(s => s.trim()).filter(Boolean) : []
   },
   set: (arr) => {
     userFormData.value.client_id_assigned = arr && arr.length ? arr.join(',') : null
@@ -405,7 +405,7 @@ const saveUser = async () => {
   saving.value = true
   try {
     if (editingUser.value) {
-      await api.updateUser(editingUser.value.user_id, userFormData.value)
+      await api.updateUser(editingUser.value.user_id, buildUserUpdatePayload(userFormData.value))
       showSnackbar(t('admin.users.userUpdated'))
     } else {
       await api.createUser(userFormData.value)

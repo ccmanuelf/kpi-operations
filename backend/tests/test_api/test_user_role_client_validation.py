@@ -1,6 +1,10 @@
 """Role ↔ client-assignment invariant on the admin user API (all-client roles carry
 no client; scoped roles require one). Backend mirror of the Add-User UI rules."""
 
+import pytest
+
+from backend.auth.role_rules import validate_role_client_assignment
+
 STRONG = "Str0ng#Pass1"  # pragma: allowlist secret
 
 
@@ -95,3 +99,49 @@ class TestUpdateRoleClientInvariant:
         uid = self._create_operator(test_client, admin_auth_headers, "upd_usr3")
         r = test_client.put(f"/api/users/{uid}", json={"client_id_assigned": ""}, headers=admin_auth_headers)
         assert r.status_code == 422
+
+    def test_is_active_only_update_does_not_trigger_role_client_validation(self, test_client, admin_auth_headers):
+        """An orthogonal update (no role/client in the payload) must not re-validate
+        the effective role/client pair — this is the deactivation-blocking bug: a
+        partial update like {"is_active": false} was rejected with 422 even though
+        it doesn't touch role or client_id_assigned."""
+        uid = self._create_operator(test_client, admin_auth_headers, "upd_usr4")
+        r = test_client.put(f"/api/users/{uid}", json={"is_active": False}, headers=admin_auth_headers)
+        assert r.status_code == 200
+
+    def test_name_only_update_does_not_trigger_role_client_validation(self, test_client, admin_auth_headers):
+        uid = self._create_operator(test_client, admin_auth_headers, "upd_usr5")
+        r = test_client.put(
+            f"/api/users/{uid}",
+            json={"full_name": "Renamed User", "email": "upd_usr5_new@e.com"},
+            headers=admin_auth_headers,
+        )
+        assert r.status_code == 200
+
+    def test_update_role_to_null_rejected(self, test_client, admin_auth_headers):
+        uid = self._create_operator(test_client, admin_auth_headers, "upd_usr6")
+        r = test_client.put(f"/api/users/{uid}", json={"role": None}, headers=admin_auth_headers)
+        assert r.status_code == 422
+
+
+class TestValidateRoleClientAssignmentHelper:
+    """Unit tests for backend.auth.role_rules.validate_role_client_assignment directly
+    (hardening: unknown role, None role, single-vs-multi enforcement)."""
+
+    def test_unknown_role_raises(self):
+        with pytest.raises(ValueError):
+            validate_role_client_assignment("bogus", "CLIENT-A")
+
+    def test_none_role_raises(self):
+        with pytest.raises(ValueError):
+            validate_role_client_assignment(None, "CLIENT-A")
+
+    def test_supervisor_with_multi_client_list_raises(self):
+        with pytest.raises(ValueError):
+            validate_role_client_assignment("supervisor", "C1,C2")
+
+    def test_leader_with_multi_client_list_ok(self):
+        validate_role_client_assignment("leader", "C1,C2")
+
+    def test_operator_with_single_client_ok(self):
+        validate_role_client_assignment("operator", "C1")

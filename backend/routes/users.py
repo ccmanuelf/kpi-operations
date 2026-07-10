@@ -88,12 +88,13 @@ def update_user(
 
     update_data = user_data.model_dump(exclude_unset=True)
 
-    effective_role = str(update_data.get("role", user.role))
-    effective_client = update_data.get("client_id_assigned", user.client_id_assigned)
-    try:
-        validate_role_client_assignment(effective_role, effective_client)
-    except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+    if "role" in update_data or "client_id_assigned" in update_data:
+        effective_role = str(update_data.get("role", user.role))
+        effective_client = update_data.get("client_id_assigned", user.client_id_assigned)
+        try:
+            validate_role_client_assignment(effective_role, effective_client)
+        except ValueError as exc:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
 
     for field, value in update_data.items():
         if field == "password" and value:

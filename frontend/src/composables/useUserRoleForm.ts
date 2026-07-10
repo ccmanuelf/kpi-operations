@@ -23,3 +23,12 @@ export function clientFieldMode(role: string): ClientFieldMode {
 export function clientRequired(role: string): boolean {
   return (SCOPED_ROLES as readonly string[]).includes(role)
 }
+
+/** Build the PUT payload for an existing user: omit password when blank
+ * (the edit dialog hides the password field, so an empty string must not
+ * be sent — UserUpdate rejects password shorter than 8 chars). */
+export function buildUserUpdatePayload(form: Record<string, unknown>): Record<string, unknown> {
+  const payload = { ...form }
+  if (!payload.password) delete payload.password
+  return payload
+}
