@@ -352,39 +352,85 @@ jobs:
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
-      - name: Prepare data root
-        run: mkdir -p "$KPI_DATA_ROOT"/{mariadb-data,backups,uploads,reports,logs,caddy/data,caddy/config}
+      - name: Preflight + prepare data root
+        # preflight.sh: fail fast if the datadir path is case-insensitive.
+        # init-data-root.sh: the single-source manifest (same script the VM uses).
+        run: |
+          bash deploy/preflight.sh "$KPI_DATA_ROOT"
+          bash deploy/init-data-root.sh "$KPI_DATA_ROOT"
 
       - name: Validate compose config
         run: docker compose -f docker-compose.prod.yml config -q
 
-      - name: Build and start the stack
-        run: docker compose -f docker-compose.prod.yml up -d --build
+      - name: Build the stack
+        run: docker compose -f docker-compose.prod.yml build
 
-      - name: Wait for backend healthy (demo seed on first boot)
+      - name: Chown host mounts to the backend image uid + start
+        # The backend runs as a build-time-dynamic non-root uid; the writable
+        # bind mounts must be owned by it or uploads/reports/logs writes EACCES.
+        # Query the uid from the built image (no deps, entrypoint overridden to a
+        # plain id -u), chown via the shared script, then start (no rebuild).
         run: |
-          for i in $(seq 1 120); do
-            # Fail fast if the container exited (crash) instead of waiting out
-            # the full budget on a dead stack.
-            state=$(docker inspect --format='{{.State.Status}}' kpi-backend 2>/dev/null || echo missing)
-            if [ "$state" = "exited" ]; then
-              echo "backend exited"; docker compose -f docker-compose.prod.yml logs backend | tail -100
-              exit 1
-            fi
-            status=$(docker inspect --format='{{.State.Health.Status}}' kpi-backend 2>/dev/null || echo starting)
-            [ "$status" = "healthy" ] && exit 0
-            sleep 5
-          done
-          echo "backend never became healthy"; docker compose -f docker-compose.prod.yml logs backend | tail -100
-          exit 1
+          uid=$(docker compose -f docker-compose.prod.yml run --rm --no-deps \
+            --entrypoint "id -u" backend | tr -d '\r' | tail -n1)
+          echo "backend image uid=$uid"
+          sudo bash deploy/init-data-root.sh "$KPI_DATA_ROOT" --chown "$uid"
+          docker compose -f docker-compose.prod.yml up -d
 
       - name: Run smoke proofs
+        # The smoke script's proof 0 owns the readiness/seed wait — no separate
+        # CI health-wait step.
         run: bash deploy/smoke/compose-smoke.sh
 
       - name: Dump logs on failure
         if: failure()
         run: docker compose -f docker-compose.prod.yml logs --tail 200
 
-      - name: Tear down
+      - name: Tear down demo stack
         if: always()
+        run: docker compose -f docker-compose.prod.yml down -v
+
+      # --- DEMO_MODE=false boot-only proof (the ACTUAL VM configuration) -------
+      # The demo-mode phase above is the data-path proof; this proves the prod
+      # config boots against an EMPTY database with no seeder: /health/database
+      # serves and POST /api/auth/login returns exactly 401 because no users
+      # exist (PR-4's create_admin provisions the first admin on the real VM).
+      # Runs after the demo teardown because the container_names collide.
+      - name: Prod-config boot-only (DEMO_MODE=false)
+        env:
+          KPI_DATA_ROOT: ${{ runner.temp }}/kpi-prod
+          DEMO_MODE: "false"
+        run: |
+          bash deploy/preflight.sh "$KPI_DATA_ROOT"
+          bash deploy/init-data-root.sh "$KPI_DATA_ROOT"
+          uid=$(docker compose -f docker-compose.prod.yml run --rm --no-deps \
+            --entrypoint "id -u" backend | tr -d '\r' | tail -n1)
+          sudo bash deploy/init-data-root.sh "$KPI_DATA_ROOT" --chown "$uid"
+          docker compose -f docker-compose.prod.yml up -d --no-build db backend
+          # Wait for the backend healthy (no Caddy in this phase — exec inside).
+          ready=0
+          for i in $(seq 1 60); do
+            state=$(docker inspect --format='{{.State.Status}}' kpi-backend 2>/dev/null || echo missing)
+            if [ "$state" = "exited" ]; then
+              echo "backend exited"; docker compose -f docker-compose.prod.yml logs backend | tail -100; exit 1
+            fi
+            if docker compose -f docker-compose.prod.yml exec -T backend \
+                 curl -sf http://localhost:8000/health/database >/dev/null 2>&1; then
+              ready=1; break
+            fi
+            sleep 5
+          done
+          [ "$ready" = "1" ] || { echo "FAIL: backend never healthy (DEMO_MODE=false)"; docker compose -f docker-compose.prod.yml logs backend | tail -100; exit 1; }
+          # Login must be exactly 401 on the empty prod DB (no seeded users).
+          code=$(docker compose -f docker-compose.prod.yml exec -T backend \
+            curl -s -o /dev/null -w '%{http_code}' -X POST http://localhost:8000/api/auth/login \
+            -H 'Content-Type: application/json' \
+            -d '{"username":"admin","password":"admin123"}')  # pragma: allowlist secret
+          [ "$code" = "401" ] || { echo "FAIL: login -> $code (want 401 on empty prod DB)"; exit 1; }
+          echo "OK prod config boots empty: /health/database 200 + login 401"
+
+      - name: Tear down prod-config stack
+        if: always()
+        env:
+          KPI_DATA_ROOT: ${{ runner.temp }}/kpi-prod
         run: docker compose -f docker-compose.prod.yml down -v
