@@ -103,7 +103,7 @@ docker compose -f docker-compose.prod.yml exec backend \
 Non-TTY alternative (still never on argv, never in shell history):
 
 ```bash
-read -rs ADMIN_PASSWORD && export ADMIN_PASSWORD <!-- pragma: allowlist secret -->
+read -rs ADMIN_PASSWORD && export ADMIN_PASSWORD  # pragma: allowlist secret
 docker compose -f docker-compose.prod.yml exec -e ADMIN_PASSWORD backend \
     python -m backend.scripts.create_admin --username <name>
 unset ADMIN_PASSWORD
