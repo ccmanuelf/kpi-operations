@@ -73,6 +73,11 @@ gen_secret_key() {
   python3 -c "import secrets;print(secrets.token_urlsafe(64))"
 }
 
+# NOTE: this function is invoked from a conditional context (`if ! scaffold_env
+# ...`), which suspends `set -e` for the ENTIRE function body — and `set -e`
+# inside the body cannot re-enable it (same class of pitfall documented in
+# deploy/backup/backup-loop.sh:24-27). Every risky step below must therefore
+# propagate failure explicitly instead of relying on errexit.
 scaffold_env() { # scaffold_env <dir with .env.prod.example> — writes <dir>/.env
   local dir="$1" env_file secret_key db_pw root_pw
   env_file="$dir/.env"
@@ -84,22 +89,35 @@ scaffold_env() { # scaffold_env <dir with .env.prod.example> — writes <dir>/.e
     echo "ERROR: $dir/.env.prod.example not found — is the app checked out?" >&2
     return 1
   fi
-  secret_key="$(gen_secret_key)"
-  db_pw="$(gen_db_secret)"
-  root_pw="$(gen_db_secret)"
+  secret_key="$(gen_secret_key)" || { echo "ERROR: SECRET_KEY generation failed" >&2; return 1; }
+  db_pw="$(gen_db_secret)" || { echo "ERROR: DB_PASSWORD generation failed" >&2; return 1; }
+  root_pw="$(gen_db_secret)" || { echo "ERROR: DB_ROOT_PASSWORD generation failed" >&2; return 1; }
+  [ -n "$secret_key" ] || { echo "ERROR: SECRET_KEY generation produced no output" >&2; return 1; }
+  [ -n "$db_pw" ] || { echo "ERROR: DB_PASSWORD generation produced no output" >&2; return 1; }
+  [ -n "$root_pw" ] || { echo "ERROR: DB_ROOT_PASSWORD generation produced no output" >&2; return 1; }
+  # errexit is ALSO suspended inside this subshell — do not rely on set -e
+  # here either; chain the writes with && and guard the whole group.
   ( umask 077
     sed -e "s|^SECRET_KEY=.*|SECRET_KEY=${secret_key}|" \
         -e "s|^DB_PASSWORD=.*|DB_PASSWORD=${db_pw}|" \
         -e "s|^DB_ROOT_PASSWORD=.*|DB_ROOT_PASSWORD=${root_pw}|" \
         -e "s|^CORS_ORIGINS=.*|CORS_ORIGINS=https://${HOST_IP}|" \
-        "$dir/.env.prod.example" > "$env_file"
-    printf 'TZ=America/Monterrey\n' >> "$env_file"
+        "$dir/.env.prod.example" > "$env_file" \
+      && printf 'TZ=America/Monterrey\n' >> "$env_file" \
+      && printf 'KPI_DATA_ROOT=%s\n' "$ROOT" >> "$env_file"
     # docker-compose.prod.yml falls back to /opt/kpi-operations if unset;
     # writing it unconditionally keeps a non-default --root coherent with
     # the data root prepared in phases 1/5.
-    printf 'KPI_DATA_ROOT=%s\n' "$ROOT" >> "$env_file"
-  )
-  chmod 600 "$env_file"
+  ) || { rm -f "$env_file"; echo "ERROR: failed writing $env_file — partial file removed" >&2; return 1; }
+  chmod 600 "$env_file" || { rm -f "$env_file"; echo "ERROR: chmod 600 failed — partial file removed" >&2; return 1; }
+  local key
+  for key in SECRET_KEY DB_PASSWORD DB_ROOT_PASSWORD; do
+    if ! grep -qE "^${key}=.+" "$env_file"; then
+      rm -f "$env_file"
+      echo "ERROR: generated .env has no value for ${key} — partial secrets file removed" >&2
+      return 1
+    fi
+  done
   echo "   wrote $env_file (mode 600; secrets generated, intentionally not shown)."
 }
 

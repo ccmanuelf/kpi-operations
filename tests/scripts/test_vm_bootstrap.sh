@@ -92,6 +92,25 @@ EMPTY="$TMP/empty"; mkdir -p "$EMPTY"
 bash "$BOOTSTRAP" --scaffold-env-only "$EMPTY" >/dev/null 2>&1
 [ "$?" -ne 0 ]; assert "scaffold without example exits nonzero" $?
 
+# --- scaffold-env: forced internal failure (generator emits nothing) is caught,
+# even though scaffold_env is called from a conditional context that suspends
+# errexit for its whole body (deploy/vm-bootstrap.sh:232, backup-loop.sh:24-27
+# precedent) ---------------------------------------------------------------------
+STUB_FAIL="$TMP/bin-fail"; mkdir -p "$STUB_FAIL"
+cat > "$STUB_FAIL/python3" <<'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+chmod +x "$STUB_FAIL/python3"
+FAILDIR="$TMP/appfail"; mkdir -p "$FAILDIR"
+cp "$SCRIPT_DIR/.env.prod.example" "$FAILDIR/"
+out=$(PATH="$STUB_FAIL:$PATH" bash "$BOOTSTRAP" --scaffold-env-only "$FAILDIR" 2>&1)
+rc=$?
+[ "$rc" -ne 0 ]; assert "scaffold-env fails when generator emits nothing" $?
+[ ! -f "$FAILDIR/.env" ]; assert "no partial .env left after internal failure" $?
+echo "$out" | grep -q "wrote "
+[ "$?" -ne 0 ]; assert "no false 'wrote' success message on failure" $?
+
 # --- confirm gate: declining every y/N prompt invokes zero sudo commands -------
 # Full run with all confirms declined. On a case-insensitive dev FS the script
 # exits at the phase-1 preflight (also sudo-free); on ext4 CI it declines each
