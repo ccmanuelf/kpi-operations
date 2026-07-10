@@ -435,6 +435,10 @@ def get_top_aging_items(
     from backend.orm.hold_entry import HoldEntry, HoldStatus
     from backend.orm.work_order import WorkOrder
 
+    # Aging is measured from the DB's current time: func.now() → CURRENT_TIMESTAMP
+    # on SQLite (UTC) and NOW() on MariaDB (session timezone — containers default
+    # to UTC). hold_date is stored UTC-ish; keep the DB server on UTC so ages don't
+    # shift at the int()-day boundary.
     query = (
         db.query(
             HoldEntry.work_order_id,

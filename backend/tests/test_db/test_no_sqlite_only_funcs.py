@@ -1,19 +1,37 @@
-"""Guard: the SQLite-only `julianday` function must never reappear in route handlers.
+"""Guard: the SQLite-only `julianday` function must never appear in application code.
 
 It compiles on the SQLite test suite but 500s on MariaDB (errno 1305), so a
-green suite cannot catch its reintroduction — this static check does.
-Use backend.db.sql_functions.date_diff_days instead. `func.date()` is portable
+green suite cannot catch its reintroduction — this static check does. Use
+backend.db.sql_functions.date_diff_days instead. `func.date()` is portable
 (DATE() exists in both dialects) and is intentionally NOT restricted.
+
+Two files legitimately contain the token and are allow-listed:
+  - backend/db/sql_functions.py  — the portable helper's SQLite compiler emits it
+  - backend/db/dialects/sqlite.py — the SQLite dialect adapter's date-diff SQL
 """
 
 import pathlib
 
+# Paths (relative to the backend/ package root) where `julianday` is a correct,
+# dialect-scoped emission rather than a portability bug.
+_ALLOWLIST = {
+    "db/sql_functions.py",
+    "db/dialects/sqlite.py",
+}
 
-def test_routes_do_not_use_sqlite_only_julianday():
-    routes_dir = pathlib.Path(__file__).resolve().parents[2] / "routes"
+
+def test_application_code_has_no_sqlite_only_julianday():
+    backend_root = pathlib.Path(__file__).resolve().parents[2]
+    assert backend_root.is_dir(), f"backend root not found at {backend_root}"
     offenders = []
-    for py in routes_dir.rglob("*.py"):
-        text = py.read_text(encoding="utf-8")
-        if "julianday" in text:
-            offenders.append(str(py.relative_to(routes_dir.parents[1])))
+    for py in backend_root.rglob("*.py"):
+        rel = py.relative_to(backend_root).as_posix()
+        # Skip the test tree (this guard + fixtures reference the token in strings)
+        # and the .venv, and the allow-listed legitimate emitters.
+        if rel.startswith("tests/") or "/.venv/" in f"/{rel}" or rel.startswith(".venv/"):
+            continue
+        if rel in _ALLOWLIST:
+            continue
+        if "julianday" in py.read_text(encoding="utf-8"):
+            offenders.append(rel)
     assert offenders == []
