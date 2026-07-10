@@ -4,6 +4,10 @@
 #   4 restart persistence    5 backup+restore  6 migration-ownership logs
 # CI (compose-stack-smoke) and local verification both run exactly this file.
 #
+# SIDE EFFECTS: writes SMOKE-#### hold-status rows (client ACME-MFG) and leaves a
+# `smoke_restore` scratch database behind (proof 5's restore target). Harmless on
+# CI / fresh installs; run knowingly against a live system.
+#
 # Write endpoint: POST /api/hold-catalogs/statuses (201, supervisor tier — the
 # demo `admin` satisfies it). Chosen over the brief's placeholder
 # /api/holds/catalog (which does not exist) because a hold-status catalog entry

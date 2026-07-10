@@ -1,8 +1,10 @@
 # Deployment Guide - KPI Operations Platform
 
-This guide covers deploying the KPI Operations Platform to a **self-hosted
-MariaDB production environment** (systemd + MariaDB + nginx/TLS). This is the
-go-live target described in `_audit/Follow_up_hardening.md`.
+This guide covers deploying the KPI Operations Platform to a self-hosted MariaDB
+production environment. **The go-live target is the Docker Compose stack**
+(`docker-compose.prod.yml` — see the [Docker Deployment](#docker-deployment)
+section). The systemd + MariaDB + nginx/TLS path documented below remains a
+supported alternative for hosts without Docker.
 
 > **Note:** `docker-compose.prod.yml` IS the production VM stack (MariaDB 11.4 +
 > Caddy internal-CA TLS + gunicorn backend + static frontend + nightly-backup
@@ -502,6 +504,20 @@ verifies it locally.
   `mariadb-data`, `backups`, `uploads`, `reports`, `logs`, `caddy/data`,
   `caddy/config`. PR-4's bootstrap creates these with correct ownership before
   the first `up`.
+- **Bind-mount ownership for the backend's dynamic UID (PR-4 bootstrap
+  requirement).** The backend image runs as a non-root user (`kpiuser`) whose
+  UID is assigned dynamically at image-build time, so it will not match the
+  host directory owner. Before the first boot, discover the UID and chown the
+  three host-writable mounts:
+
+  ```bash
+  uid=$(docker compose -f docker-compose.prod.yml run --rm --entrypoint "id -u" backend)
+  sudo chown -R "$uid" "${KPI_DATA_ROOT:-/opt/kpi-operations}"/{uploads,reports,logs}
+  ```
+
+  Without this, CSV uploads and report generation fail with permission errors
+  (the container can't write to the mounts) while everything else — login,
+  reads, the database, backups — works, so the failure is easy to misdiagnose.
 
 > **Hard requirement — Linux case-sensitive filesystem only.** The MariaDB
 > datadir bind mount (`${KPI_DATA_ROOT}/mariadb-data`) requires a
@@ -536,6 +552,11 @@ admin user to already exist — PR-4's `create_admin.py` provisions the first
 admin on a fresh VM; run it before the login/write proofs will pass. CI runs
 the identical script with `DEMO_MODE=true`, so all 6 proofs pass unattended on
 every PR — that CI run is the release evidence for this stack.
+
+> **The smoke has side effects.** It writes `SMOKE-####` hold-status rows to the
+> `ACME-MFG` client and leaves a `smoke_restore` scratch database behind
+> (proof 5's restore target). This is harmless on CI and fresh installs; run it
+> knowingly against a live system.
 
 ### TLS
 
