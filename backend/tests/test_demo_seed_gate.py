@@ -181,3 +181,110 @@ def test_generic_seed_failure_is_swallowed(monkeypatch):
 
     # Must NOT raise — generic failures stay best-effort.
     run_best_effort_unless("demo data seed", lifecycle._auto_seed_demo_data, SchemaRebuildError)
+
+
+# --- Cross-worker seed serialization (F1) -----------------------------------
+#
+# On MariaDB/MySQL the 4 gunicorn workers race the seeder; the entire
+# check+seed must run while holding a server-wide GET_LOCK named lock so
+# exactly one worker seeds and the losers re-check inside the lock and skip.
+# SQLite (single-process here) must take the byte-identical no-lock path. These
+# fakes record a single ordered sequence across the lock cursor and the client
+# query so we can pin GET_LOCK-before-query-before-RELEASE_LOCK.
+
+
+class _RecordingCursor:
+    def __init__(self, sequence):
+        self._sequence = sequence
+
+    def execute(self, sql, params=None):
+        if "GET_LOCK" in sql:
+            self._sequence.append("GET_LOCK")
+        elif "RELEASE_LOCK" in sql:
+            self._sequence.append("RELEASE_LOCK")
+
+    def fetchall(self):
+        return [(1,)]
+
+    def close(self):
+        pass
+
+
+class _RecordingRawConn:
+    def __init__(self, sequence):
+        self._sequence = sequence
+        self.closed = False
+
+    def cursor(self):
+        return _RecordingCursor(self._sequence)
+
+    def close(self):
+        self.closed = True
+
+
+class _FakeDialect:
+    def __init__(self, name):
+        self.name = name
+
+
+class _FakeEngine:
+    def __init__(self, name, sequence):
+        self.dialect = _FakeDialect(name)
+        self._sequence = sequence
+        self.raw_connection_calls = 0
+
+    def raw_connection(self):
+        self.raw_connection_calls += 1
+        return _RecordingRawConn(self._sequence)
+
+
+def _install_seq_engine(monkeypatch, dialect_name, sequence):
+    """Patch engine + SessionLocal so both record into a shared ordered list.
+
+    Complete demo clients → no reseed, so the recorded sequence is only the
+    lock/query steps (no init_database noise).
+    """
+    import backend.database
+
+    class _SeqSession:
+        def query(self, *args):
+            sequence.append("client_query")
+            return _FakeQuery([_Row(c) for c in _DEMO_CLIENTS])
+
+        def close(self):
+            pass
+
+    monkeypatch.setattr(backend.database, "SessionLocal", lambda: _SeqSession())
+    fake_engine = _FakeEngine(dialect_name, sequence)
+    monkeypatch.setattr(backend.database, "engine", fake_engine)
+    return fake_engine
+
+
+def test_mysql_dialect_acquires_named_lock_around_client_query(monkeypatch):
+    """MariaDB/MySQL: GET_LOCK is taken before the client query and released
+    after — the whole check runs inside the named lock (one worker serialized)."""
+    monkeypatch.setattr(backend.config.settings, "DEMO_MODE", True)
+    monkeypatch.delenv("FORCE_RESEED", raising=False)
+
+    sequence = []
+    fake_engine = _install_seq_engine(monkeypatch, "mysql", sequence)
+
+    lifecycle._auto_seed_demo_data()
+
+    assert fake_engine.raw_connection_calls == 1
+    assert sequence == ["GET_LOCK", "client_query", "RELEASE_LOCK"]
+
+
+def test_sqlite_dialect_never_acquires_named_lock(monkeypatch):
+    """SQLite is single-process → the no-lock path: GET_LOCK is never called and
+    no dedicated raw connection is opened."""
+    monkeypatch.setattr(backend.config.settings, "DEMO_MODE", True)
+    monkeypatch.delenv("FORCE_RESEED", raising=False)
+
+    sequence = []
+    fake_engine = _install_seq_engine(monkeypatch, "sqlite", sequence)
+
+    lifecycle._auto_seed_demo_data()
+
+    assert fake_engine.raw_connection_calls == 0
+    assert sequence == ["client_query"]

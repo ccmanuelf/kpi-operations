@@ -37,6 +37,13 @@ except ImportError:
     pass
 
 
+# Server-wide advisory lock name + timeout (seconds) used to serialize the
+# demo seed across gunicorn workers on MariaDB/MySQL. 600s comfortably exceeds a
+# cold-boot migrate+seed.
+_DEMO_SEED_LOCK = "kpi_demo_seed"
+_DEMO_SEED_LOCK_TIMEOUT = 600
+
+
 def _auto_seed_demo_data() -> None:
     """
     Auto-seed demo data if the database is empty or incomplete (DEMO_MODE only).
@@ -47,6 +54,15 @@ def _auto_seed_demo_data() -> None:
     The re-seed path executes a destructive rebuild_schema(); the DEMO_MODE gate
     must stay the first statement so a non-demo deployment can never reach it
     (Run 7 C-1). Guarded by backend/tests/test_demo_seed_gate.py.
+
+    On MariaDB/MySQL the 4 gunicorn workers race this seeder: without a
+    cross-process lock the losers hit IntegrityErrors (swallowed) and a
+    mid-seed SIGTERM after batch-1 commit can leave truncated demo data that
+    smart-detection then reports OK. So the ENTIRE check+seed runs while holding
+    a server-wide named lock (GET_LOCK) — exactly one worker seeds and the
+    losers re-check (inside the lock) after it finishes and skip. SQLite is
+    single-process here, so it takes the byte-identical no-lock path (which
+    keeps this test's sqlite stubs valid).
     """
     from backend.config import settings
 
@@ -54,6 +70,44 @@ def _auto_seed_demo_data() -> None:
         logger.info("DEMO_MODE disabled — skipping demo data auto-seed")
         return
 
+    from backend.database import engine
+
+    if engine.dialect.name == "mysql":  # covers MariaDB via pymysql
+        _seed_under_named_lock(engine)
+    else:
+        _check_and_seed_demo_data()
+
+
+def _seed_under_named_lock(engine: Any) -> None:
+    """Run the demo check+seed while holding the MariaDB GET_LOCK named lock.
+
+    The lock is connection-scoped, so a single dedicated raw connection is held
+    open for the whole seed and released in the finally. SchemaRebuildError (a
+    fatal half-rebuild) still propagates past the finally unchanged.
+    """
+    conn = engine.raw_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT GET_LOCK(%s, %s)", (_DEMO_SEED_LOCK, _DEMO_SEED_LOCK_TIMEOUT))
+        cursor.fetchall()
+        cursor.close()
+        _check_and_seed_demo_data()
+    finally:
+        try:
+            release = conn.cursor()
+            release.execute("SELECT RELEASE_LOCK(%s)", (_DEMO_SEED_LOCK,))
+            release.fetchall()
+            release.close()
+        finally:
+            conn.close()
+
+
+def _check_and_seed_demo_data() -> None:
+    """The smart-detect + (re)seed body; runs under the named lock on MariaDB.
+
+    Kept separate from _auto_seed_demo_data so the DEMO_MODE gate stays that
+    function's first statement and the lock wraps the whole check+seed.
+    """
     try:
         import os
         from backend.database import SessionLocal

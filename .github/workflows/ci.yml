@@ -363,7 +363,14 @@ jobs:
 
       - name: Wait for backend healthy (demo seed on first boot)
         run: |
-          for i in $(seq 1 90); do
+          for i in $(seq 1 120); do
+            # Fail fast if the container exited (crash) instead of waiting out
+            # the full budget on a dead stack.
+            state=$(docker inspect --format='{{.State.Status}}' kpi-backend 2>/dev/null || echo missing)
+            if [ "$state" = "exited" ]; then
+              echo "backend exited"; docker compose -f docker-compose.prod.yml logs backend | tail -100
+              exit 1
+            fi
             status=$(docker inspect --format='{{.State.Health.Status}}' kpi-backend 2>/dev/null || echo starting)
             [ "$status" = "healthy" ] && exit 0
             sleep 5
