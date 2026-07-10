@@ -342,7 +342,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: [backend-tests, frontend-lint-and-tests]
     env:
-      KPI_DATA_ROOT: ${{ runner.temp }}/kpi
+      # KPI_DATA_ROOT is exported per-run below: the `runner` context is NOT
+      # available in job-level env (steps only) — using it here makes the whole
+      # workflow file invalid (startup_failure, zero jobs created).
       SECRET_KEY: ci-compose-smoke-secret-32-chars-min  # pragma: allowlist secret
       DB_PASSWORD: ci-smoke-db-pw  # pragma: allowlist secret
       DB_ROOT_PASSWORD: ci-smoke-root-pw  # pragma: allowlist secret
@@ -351,6 +353,9 @@ jobs:
                           # also the only CI exercise of the full demo seed on InnoDB
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Export KPI_DATA_ROOT
+        run: echo "KPI_DATA_ROOT=$RUNNER_TEMP/kpi" >> "$GITHUB_ENV"
 
       - name: Preflight + prepare data root
         # preflight.sh: fail fast if the datadir path is case-insensitive.
@@ -398,9 +403,9 @@ jobs:
       # Runs after the demo teardown because the container_names collide.
       - name: Prod-config boot-only (DEMO_MODE=false)
         env:
-          KPI_DATA_ROOT: ${{ runner.temp }}/kpi-prod
           DEMO_MODE: "false"
         run: |
+          KPI_DATA_ROOT="$RUNNER_TEMP/kpi-prod"; export KPI_DATA_ROOT
           bash deploy/preflight.sh "$KPI_DATA_ROOT"
           bash deploy/init-data-root.sh "$KPI_DATA_ROOT"
           uid=$(docker compose -f docker-compose.prod.yml run --rm --no-deps \
@@ -431,6 +436,4 @@ jobs:
 
       - name: Tear down prod-config stack
         if: always()
-        env:
-          KPI_DATA_ROOT: ${{ runner.temp }}/kpi-prod
-        run: docker compose -f docker-compose.prod.yml down -v
+        run: KPI_DATA_ROOT="$RUNNER_TEMP/kpi-prod" docker compose -f docker-compose.prod.yml down -v
