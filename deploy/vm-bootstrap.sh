@@ -28,12 +28,12 @@ SCAFFOLD_ONLY=""
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    --root) ROOT="$2"; shift 2 ;;
-    --app-dir) APP_DIR="$2"; shift 2 ;;
-    --ip) HOST_IP="$2"; shift 2 ;;
+    --root) ROOT="${2:?missing value for $1}"; shift 2 ;;
+    --app-dir) APP_DIR="${2:?missing value for $1}"; shift 2 ;;
+    --ip) HOST_IP="${2:?missing value for $1}"; shift 2 ;;
     --print-config) PRINT_CONFIG=1; shift ;;
-    --scaffold-env-only) SCAFFOLD_ONLY="$2"; shift 2 ;;
-    -h|--help) sed -n '2,22p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    --scaffold-env-only) SCAFFOLD_ONLY="${2:?missing value for $1}"; shift 2 ;;
+    -h|--help) sed -n '2,18p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "unknown argument: $1 (see --help)" >&2; exit 2 ;;
   esac
 done
@@ -110,12 +110,12 @@ echo "-- phase 1: sanity"
 . /etc/os-release 2>/dev/null || true
 echo "   OS: ${PRETTY_NAME:-unknown}"
 if command -v docker >/dev/null 2>&1; then
-  docker --version | sed 's/^/   /'
+  docker --version | sed 's/^/   /' || true
 else
   echo "   docker: MISSING (phase 2 will install)"
 fi
 if docker compose version >/dev/null 2>&1; then
-  docker compose version | sed 's/^/   /'
+  docker compose version | sed 's/^/   /' || true
 else
   echo "   docker compose plugin: MISSING (phase 2 will install)"
 fi
@@ -142,7 +142,7 @@ if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; 
 else
   # Official Docker CE apt repo (docs.docker.com/engine/install/ubuntu). If the
   # release codename has no channel yet (brand-new Ubuntu), fall back to the
-  # latest LTS channel.
+  # latest LTS channel. This is a read-only network probe to detect channel availability.
   codename="${VERSION_CODENAME:-noble}"
   if ! curl -fsIo /dev/null "https://download.docker.com/linux/ubuntu/dists/${codename}/Release"; then
     echo "   NOTE: no Docker apt channel for '${codename}' — falling back to 'noble'."
@@ -175,7 +175,7 @@ fi
 # --- phase 4: ufw ----------------------------------------------------------------
 echo "-- phase 4: ufw (deny incoming; allows preserve the co-tenants)"
 echo "   current listeners (for the record):"
-if command -v ss >/dev/null 2>&1; then ss -tlnp 2>/dev/null | sed 's/^/   /'; fi
+if command -v ss >/dev/null 2>&1; then ss -tlnp 2>/dev/null | sed 's/^/   /' || true; fi
 run_priv ufw status verbose
 run_priv ufw default deny incoming
 run_priv ufw default allow outgoing
@@ -183,7 +183,7 @@ for port in 22 443 80 7070 5443 3389; do
   run_priv ufw allow "${port}/tcp"
 done
 if confirm "sudo ufw --force enable  (verifies the 22/tcp allow first — anti-lockout)"; then
-  if ! sudo ufw show added | grep -q "allow 22/tcp"; then
+  if ! sudo ufw show added | grep -qE '(^| )allow 22/tcp$'; then
     echo "ERROR: no 22/tcp allow rule staged — refusing to enable ufw (lockout guard)." >&2
     exit 1
   fi
@@ -206,7 +206,7 @@ if [ -d "$APP_DIR/.git" ]; then
     git -C "$APP_DIR" pull --ff-only
   fi
 else
-  if confirm "sudo git clone $REPO_URL $APP_DIR, then chown to $USER"; then
+  if confirm "sudo git clone $REPO_URL $APP_DIR && sudo chown -R $USER:$USER $APP_DIR"; then
     sudo git clone "$REPO_URL" "$APP_DIR"
     sudo chown -R "$USER":"$USER" "$APP_DIR"
   fi

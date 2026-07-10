@@ -23,7 +23,11 @@ cat > "$STUB/python3" <<'EOF'
 #!/usr/bin/env bash
 echo "STUBSECRET1234567890abcdefghijkl"  # pragma: allowlist secret
 EOF
-chmod +x "$STUB/sudo" "$STUB/python3"
+cat > "$STUB/curl" <<'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+chmod +x "$STUB/sudo" "$STUB/python3" "$STUB/curl"
 export PATH="$STUB:$PATH"
 export SUDO_LOG="$TMP/sudo.log"; : > "$SUDO_LOG"
 
@@ -47,6 +51,10 @@ echo "$out" | grep -qx 'IP=10.0.0.5'; assert "--ip override" $?
 # --- unknown argument exits nonzero -------------------------------------------
 bash "$BOOTSTRAP" --bogus >/dev/null 2>&1
 [ "$?" -ne 0 ]; assert "unknown argument exits nonzero" $?
+
+# --- missing argument value exits nonzero ------------------------------------
+bash "$BOOTSTRAP" --root >/dev/null 2>&1
+[ "$?" -ne 0 ]; assert "missing --root value exits nonzero" $?
 
 # --- scaffold-env: all keys populated, mode 600 --------------------------------
 ENVDIR="$TMP/app"; mkdir -p "$ENVDIR"
