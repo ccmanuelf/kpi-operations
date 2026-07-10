@@ -10,6 +10,7 @@ from typing import List, Optional
 from datetime import date, datetime, timedelta, timezone
 
 from backend.database import get_db
+from backend.db.sql_functions import date_diff_days
 from backend.orm.hold_entry import HoldEntry
 from backend.schemas.hold import WIPHoldCreate, WIPHoldUpdate, WIPHoldResponse, WIPAgingResponse
 from backend.services.hold_service import (
@@ -439,7 +440,7 @@ def get_top_aging_items(
             HoldEntry.work_order_id,
             WorkOrder.style_model,
             HoldEntry.hold_date,
-            func.julianday("now") - func.julianday(HoldEntry.hold_date),
+            date_diff_days(func.now(), HoldEntry.hold_date),
         )
         .outerjoin(WorkOrder, HoldEntry.work_order_id == WorkOrder.work_order_id)
         .filter(HoldEntry.hold_status == HoldStatus.ON_HOLD)
@@ -451,7 +452,7 @@ def get_top_aging_items(
     elif current_user.role != "admin" and current_user.client_id_assigned:
         query = query.filter(HoldEntry.client_id == current_user.client_id_assigned)
 
-    results = query.order_by((func.julianday("now") - func.julianday(HoldEntry.hold_date)).desc()).limit(limit).all()
+    results = query.order_by(date_diff_days(func.now(), HoldEntry.hold_date).desc()).limit(limit).all()
 
     return [
         {
@@ -491,7 +492,7 @@ def get_wip_aging_trend(
 
     while current_date <= end_date:
         # Query holds that were active on this date
-        query = db.query(func.avg(func.julianday(current_date) - func.julianday(HoldEntry.hold_date))).filter(
+        query = db.query(func.avg(date_diff_days(current_date, HoldEntry.hold_date))).filter(
             HoldEntry.hold_date <= current_date,
             (HoldEntry.resume_date.is_(None)) | (HoldEntry.resume_date > current_date),
         )
