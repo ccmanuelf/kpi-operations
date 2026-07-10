@@ -49,5 +49,31 @@ assert "--single-transaction passed to mariadb-dump" $?
 # tmp-then-rename: a successful dump must not leave its .tmp behind.
 [ -z "$(ls "$TMP/backups"/*.tmp 2>/dev/null)" ]; assert "no .tmp leftover on success" $?
 
+# --- Failure phase: a failing mariadb-dump must abort explicitly -------------
+# Guards against the errexit-suspension trap (calling `dump_once || ...` puts
+# the function body in a set -e-suspended context): a failed dump must return
+# nonzero, publish NO new .sql.gz, and leave NO orphan .tmp — never fall
+# through to the mv and publish a truncated dump under the good name.
+FAILDIR="$TMP/backups-fail"
+mkdir -p "$FAILDIR"
+
+cat > "$TMP/bin/mariadb-dump" <<'EOF'
+#!/usr/bin/env bash
+echo "-- truncated partial output before the failure"
+exit 1
+EOF
+chmod +x "$TMP/bin/mariadb-dump"
+
+PATH="$TMP/bin:$PATH" DB_ROOT_PASSWORD=stub BACKUP_DIR="$FAILDIR" RETENTION_DAYS=14 \
+  bash "$SCRIPT" --once 2>/dev/null
+fail_exit=$?
+[ "$fail_exit" -ne 0 ]; assert "--once exits nonzero when mariadb-dump fails" $?
+
+[ -z "$(ls "$FAILDIR"/kpi_platform-*.sql.gz 2>/dev/null)" ]
+assert "no .sql.gz published on dump failure" $?
+
+[ -z "$(ls "$FAILDIR"/*.tmp 2>/dev/null)" ]
+assert "no orphan .tmp left on dump failure" $?
+
 rm -rf "$TMP"
 exit $fail

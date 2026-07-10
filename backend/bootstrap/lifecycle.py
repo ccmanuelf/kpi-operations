@@ -89,8 +89,12 @@ def _seed_under_named_lock(engine: Any) -> None:
     try:
         cursor = conn.cursor()
         cursor.execute("SELECT GET_LOCK(%s, %s)", (_DEMO_SEED_LOCK, _DEMO_SEED_LOCK_TIMEOUT))
-        cursor.fetchall()
+        rows = cursor.fetchall()
         cursor.close()
+        # GET_LOCK returns 1 on success, 0 on timeout, NULL on error. Degraded
+        # (unlocked) operation must be diagnosable in the logs.
+        if not rows or rows[0][0] != 1:
+            logger.warning("seed lock not acquired — proceeding unlocked")
         _check_and_seed_demo_data()
     finally:
         try:

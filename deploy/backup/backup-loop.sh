@@ -21,8 +21,16 @@ dump_once() {
     # compat names (only mariadb-* binaries exist in /usr/bin).
     # Dump to a .tmp and rename on success: a failed dump must never leave a
     # truncated *.sql.gz that a later restore could silently pick up.
-    mariadb-dump --single-transaction --routines --events \
-        -h "$DB_HOST" -u root -p"$DB_ROOT_PASSWORD" "$DB_NAME" | gzip > "$file.tmp"
+    # Explicit if/return, NOT set -e: when the loop calls `dump_once || ...`,
+    # errexit is suspended inside the function body (bash semantics), so a
+    # failed pipeline would otherwise fall through to the mv and publish a
+    # truncated dump under the good name.
+    if ! mariadb-dump --single-transaction --routines --events \
+            -h "$DB_HOST" -u root -p"$DB_ROOT_PASSWORD" "$DB_NAME" | gzip > "$file.tmp"; then
+        rm -f "$file.tmp"
+        echo "[backup] dump FAILED for ${DB_NAME}" >&2
+        return 1
+    fi
     mv "$file.tmp" "$file"
     echo "[backup] pruning dumps older than ${RETENTION_DAYS} days"
     find "$BACKUP_DIR" -name "${DB_NAME}-*.sql.gz" -mtime +"$RETENTION_DAYS" -delete
