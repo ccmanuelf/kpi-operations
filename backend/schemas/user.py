@@ -2,11 +2,12 @@
 User authentication models (Pydantic)
 """
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
 from typing import Optional
 from datetime import datetime
 
 from backend.auth.password_policy import validate_password_strength
+from backend.auth.role_rules import validate_role_client_assignment
 
 
 class UserRegister(BaseModel):
@@ -72,6 +73,11 @@ class UserCreate(BaseModel):
         if not is_valid:
             raise ValueError(message)
         return v
+
+    @model_validator(mode="after")
+    def _validate_role_client(self) -> "UserCreate":
+        validate_role_client_assignment(self.role, self.client_id_assigned)
+        return self
 
 
 class UserLogin(BaseModel):

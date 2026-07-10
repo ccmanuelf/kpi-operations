@@ -322,6 +322,7 @@ class TestUserCreateModelValidation:
             password="ValidP@ss123",
             full_name="Test User",
             role="operator",
+            client_id_assigned="CLIENT-A",
         )
 
         assert user.password == "ValidP@ss123"
@@ -333,7 +334,12 @@ class TestUserCreateModelValidation:
 
         with pytest.raises(ValidationError) as exc_info:
             UserCreate(
-                username="testuser", email="test@example.com", password="weak", full_name="Test User", role="operator"
+                username="testuser",
+                email="test@example.com",
+                password="weak",
+                full_name="Test User",
+                role="operator",
+                client_id_assigned="CLIENT-A",
             )
 
         # Check error is for password field
