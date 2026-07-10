@@ -497,6 +497,12 @@ sudo certbot --nginx -d kpi.yourdomain.com -d api.kpi.yourdomain.com
 
 ## Docker Deployment
 
+> **Deploying to the production VM (LAN, MariaDB + Caddy)?** Follow the
+> step-by-step runbook: [deployment/vm-deploy-runbook.md](deployment/vm-deploy-runbook.md).
+> It wraps this section with host bootstrap (`deploy/vm-bootstrap.sh`),
+> first-admin creation (`backend/scripts/create_admin.py`), client CA trust,
+> and verification with exit criteria per phase.
+
 This is the real, checked-in production stack for the VM: `docker-compose.prod.yml`
 (MariaDB 11.4 + gunicorn backend + static frontend + Caddy internal-CA TLS +
 nightly-backup sidecar). It is proven end-to-end by `deploy/smoke/compose-smoke.sh`
