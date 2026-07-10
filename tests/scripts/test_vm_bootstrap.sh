@@ -1,0 +1,123 @@
+#!/usr/bin/env bash
+# Unit tests for deploy/vm-bootstrap.sh non-privileged logic. Hermetic:
+# sudo/python3 are stubbed onto PATH (sudo records argv, python3 emits a
+# deterministic "secret") — no privileged action, no network, no Docker.
+set -u
+SCRIPT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
+BOOTSTRAP="$SCRIPT_DIR/deploy/vm-bootstrap.sh"
+fail=0
+assert() { # assert <desc> <cond-exit>
+  if [ "$2" -eq 0 ]; then echo "PASS: $1"; else echo "FAIL: $1"; fail=1; fi
+}
+
+TMP="$(mktemp -d)"
+
+# --- stub bin: sudo logs its argv; python3 emits a deterministic secret ------
+STUB="$TMP/bin"; mkdir -p "$STUB"
+cat > "$STUB/sudo" <<'EOF'
+#!/usr/bin/env bash
+echo "sudo $*" >> "${SUDO_LOG:?}"
+exit 0
+EOF
+cat > "$STUB/python3" <<'EOF'
+#!/usr/bin/env bash
+echo "STUBSECRET1234567890abcdefghijkl"  # pragma: allowlist secret
+EOF
+cat > "$STUB/curl" <<'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+chmod +x "$STUB/sudo" "$STUB/python3" "$STUB/curl"
+export PATH="$STUB:$PATH"
+export SUDO_LOG="$TMP/sudo.log"; : > "$SUDO_LOG"
+
+# --- bash -n: script parses ---------------------------------------------------
+bash -n "$BOOTSTRAP"
+assert "bash -n parses vm-bootstrap.sh" $?
+
+# --- --print-config: defaults -------------------------------------------------
+out=$(bash "$BOOTSTRAP" --print-config)
+echo "$out" | grep -qx 'ROOT=/opt/kpi-operations'; assert "default ROOT" $?
+echo "$out" | grep -qx 'APP_DIR=/opt/kpi-operations/app'; assert "default APP_DIR" $?
+echo "$out" | grep -qx 'IP=192.168.2.234'; assert "default IP" $?
+
+# --- --print-config: --app-dir follows --root unless given --------------------
+out=$(bash "$BOOTSTRAP" --root /srv/kpi --print-config)
+echo "$out" | grep -qx 'APP_DIR=/srv/kpi/app'; assert "APP_DIR follows --root" $?
+out=$(bash "$BOOTSTRAP" --root /srv/kpi --app-dir /x --ip 10.0.0.5 --print-config)
+echo "$out" | grep -qx 'APP_DIR=/x'; assert "explicit --app-dir wins" $?
+echo "$out" | grep -qx 'IP=10.0.0.5'; assert "--ip override" $?
+
+# --- unknown argument exits nonzero -------------------------------------------
+bash "$BOOTSTRAP" --bogus >/dev/null 2>&1
+[ "$?" -ne 0 ]; assert "unknown argument exits nonzero" $?
+
+# --- missing argument value exits nonzero ------------------------------------
+bash "$BOOTSTRAP" --root >/dev/null 2>&1
+[ "$?" -ne 0 ]; assert "missing --root value exits nonzero" $?
+
+# --- scaffold-env: all keys populated, mode 600 --------------------------------
+ENVDIR="$TMP/app"; mkdir -p "$ENVDIR"
+cp "$SCRIPT_DIR/.env.prod.example" "$ENVDIR/"
+bash "$BOOTSTRAP" --scaffold-env-only "$ENVDIR" >/dev/null
+assert "scaffold-env exits 0" $?
+grep -q '^SECRET_KEY=STUBSECRET' "$ENVDIR/.env"; assert "SECRET_KEY populated" $?
+grep -q '^DB_PASSWORD=STUBSECRET' "$ENVDIR/.env"; assert "DB_PASSWORD populated" $?
+grep -q '^DB_ROOT_PASSWORD=STUBSECRET' "$ENVDIR/.env"; assert "DB_ROOT_PASSWORD populated" $?
+grep -qx 'CORS_ORIGINS=https://192.168.2.234' "$ENVDIR/.env"; assert "CORS_ORIGINS set" $?
+grep -qx 'TZ=America/Monterrey' "$ENVDIR/.env"; assert "TZ set" $?
+grep -qx 'KPI_DATA_ROOT=/opt/kpi-operations' "$ENVDIR/.env"; assert "KPI_DATA_ROOT defaults to /opt/kpi-operations" $?
+perms=$(stat -c %a "$ENVDIR/.env" 2>/dev/null || stat -f %Lp "$ENVDIR/.env") # GNU -c first; BSD (macOS) falls back to -f %Lp
+[ "$perms" = "600" ]; assert ".env is mode 600" $?
+
+# --- scaffold-env: KPI_DATA_ROOT follows a non-default --root ------------------
+ENVDIR3="$TMP/app3"; mkdir -p "$ENVDIR3"
+cp "$SCRIPT_DIR/.env.prod.example" "$ENVDIR3/"
+bash "$BOOTSTRAP" --root /srv/kpi --scaffold-env-only "$ENVDIR3" >/dev/null
+grep -qx 'KPI_DATA_ROOT=/srv/kpi' "$ENVDIR3/.env"; assert "KPI_DATA_ROOT follows --root" $?
+
+# --- scaffold-env: secrets are never echoed to stdout/stderr -------------------
+rm -f "$ENVDIR/.env"
+outerr=$(bash "$BOOTSTRAP" --scaffold-env-only "$ENVDIR" 2>&1)
+echo "$outerr" | grep -q 'STUBSECRET'
+[ "$?" -ne 0 ]; assert "generated secrets never echoed" $?
+
+# --- scaffold-env: idempotent re-run keeps the existing .env -------------------
+echo "SENTINEL=1" >> "$ENVDIR/.env"
+bash "$BOOTSTRAP" --scaffold-env-only "$ENVDIR" >/dev/null
+grep -qx 'SENTINEL=1' "$ENVDIR/.env"; assert "re-run keeps existing .env" $?
+
+# --- scaffold-env: missing example file exits nonzero --------------------------
+EMPTY="$TMP/empty"; mkdir -p "$EMPTY"
+bash "$BOOTSTRAP" --scaffold-env-only "$EMPTY" >/dev/null 2>&1
+[ "$?" -ne 0 ]; assert "scaffold without example exits nonzero" $?
+
+# --- scaffold-env: forced internal failure (generator emits nothing) is caught,
+# even though scaffold_env is called from a conditional context that suspends
+# errexit for its whole body (deploy/vm-bootstrap.sh:232, backup-loop.sh:24-27
+# precedent) ---------------------------------------------------------------------
+STUB_FAIL="$TMP/bin-fail"; mkdir -p "$STUB_FAIL"
+cat > "$STUB_FAIL/python3" <<'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+chmod +x "$STUB_FAIL/python3"
+FAILDIR="$TMP/appfail"; mkdir -p "$FAILDIR"
+cp "$SCRIPT_DIR/.env.prod.example" "$FAILDIR/"
+out=$(PATH="$STUB_FAIL:$PATH" bash "$BOOTSTRAP" --scaffold-env-only "$FAILDIR" 2>&1)
+rc=$?
+[ "$rc" -ne 0 ]; assert "scaffold-env fails when generator emits nothing" $?
+[ ! -f "$FAILDIR/.env" ]; assert "no partial .env left after internal failure" $?
+echo "$out" | grep -q "wrote "
+[ "$?" -ne 0 ]; assert "no false 'wrote' success message on failure" $?
+
+# --- confirm gate: declining every y/N prompt invokes zero sudo commands -------
+# Full run with all confirms declined. On a case-insensitive dev FS the script
+# exits at the phase-1 preflight (also sudo-free); on ext4 CI it declines each
+# gate until the phase-5 mandatory data-root preflight aborts it (exit 1,
+# absorbed by `|| true`). Either way the sudo stub log must stay empty.
+yes n | bash "$BOOTSTRAP" --root "$TMP/root" >/dev/null 2>&1 || true
+[ ! -s "$SUDO_LOG" ]; assert "declined confirms invoke no sudo" $?
+
+rm -rf "$TMP"
+exit $fail
