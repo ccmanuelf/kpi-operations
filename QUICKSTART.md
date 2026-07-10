@@ -78,14 +78,11 @@ source .venv/bin/activate
 # Install dependencies
 pip install -r requirements.txt
 
-# Create .env file
+# Create .env file. DATABASE_URL is the single source of DB connection config —
+# there are no separate DB_HOST/DB_PORT/DB_NAME/DB_USER/DB_PASSWORD app settings
+# (the backend only reads DATABASE_URL).
 cat > .env << 'EOF'
 DATABASE_URL=mysql+pymysql://kpi_user:kpi_password_123@localhost:3306/kpi_platform
-DB_HOST=localhost
-DB_PORT=3306
-DB_NAME=kpi_platform
-DB_USER=kpi_user
-DB_PASSWORD=kpi_password_123
 SECRET_KEY=dev-secret-key-change-in-production-min-32-chars-long
 DEBUG=True
 CORS_ORIGINS=http://localhost:3000

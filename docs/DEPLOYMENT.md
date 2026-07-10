@@ -36,12 +36,18 @@ supported alternative for hosts without Docker.
 
 ### System Requirements
 
-| Component | Minimum | Recommended |
-|-----------|---------|-------------|
-| **CPU** | 2 cores | 4+ cores |
-| **RAM** | 4 GB | 8+ GB |
-| **Storage** | 20 GB | 50+ GB SSD |
-| **OS** | Ubuntu 20.04+ / RHEL 8+ | Ubuntu 22.04 LTS |
+| Component | Minimum (bare-metal) | Minimum (Docker stack) | Recommended |
+|-----------|----------------------|------------------------|-------------|
+| **CPU** | 2 cores | 4 cores | 4+ cores |
+| **RAM** | 4 GB | 8 GB | 8+ GB |
+| **Storage** | 20 GB | 20 GB | 50+ GB SSD |
+| **OS** | Ubuntu 20.04+ / RHEL 8+ | Ubuntu 22.04 LTS (ext4) | Ubuntu 22.04 LTS |
+
+> The **Docker stack** (`docker-compose.prod.yml`) minimum is higher because the
+> compose CPU/memory limits alone reserve **2.5 CPU / 2.25 GB** (backend 2.0 CPU /
+> 2 GB + frontend 0.5 CPU / 256 MB) *before* MariaDB's own buffers, Caddy, the
+> backup sidecar, and the OS. The datadir bind mount also requires a
+> case-sensitive filesystem (see the Docker Deployment section).
 
 ### Software Requirements
 
@@ -494,30 +500,35 @@ sudo certbot --nginx -d kpi.yourdomain.com -d api.kpi.yourdomain.com
 This is the real, checked-in production stack for the VM: `docker-compose.prod.yml`
 (MariaDB 11.4 + gunicorn backend + static frontend + Caddy internal-CA TLS +
 nightly-backup sidecar). It is proven end-to-end by `deploy/smoke/compose-smoke.sh`
-(6 proofs) via the `compose-stack-smoke` CI job on every PR, and the same script
-verifies it locally.
+(readiness + 6 proofs + an uploads-writability proof) via the
+`compose-stack-smoke` CI job on every PR, and the same script verifies it locally.
 
 ### Prerequisites
 
 - Docker Engine + Compose v2 on the VM.
-- Persistent state directories under `${KPI_DATA_ROOT:-/opt/kpi-operations}`:
-  `mariadb-data`, `backups`, `uploads`, `reports`, `logs`, `caddy/data`,
-  `caddy/config`. PR-4's bootstrap creates these with correct ownership before
-  the first `up`.
-- **Bind-mount ownership for the backend's dynamic UID (PR-4 bootstrap
-  requirement).** The backend image runs as a non-root user (`kpiuser`) whose
-  UID is assigned dynamically at image-build time, so it will not match the
-  host directory owner. Before the first boot, discover the UID and chown the
-  three host-writable mounts:
+- Persistent state directories under `${KPI_DATA_ROOT:-/opt/kpi-operations}`
+  (`mariadb-data`, `backups`, `uploads`, `reports`, `logs`, `caddy/data`,
+  `caddy/config`) — created by `deploy/init-data-root.sh` (the single-source
+  manifest), after `deploy/preflight.sh` verifies the path is case-sensitive.
+  See the Run section for the exact commands.
+- **Bind-mount ownership for the backend's dynamic UID — required after EVERY
+  image (re)build.** The backend image runs as a non-root user (`kpiuser`) whose
+  UID is assigned dynamically **at image-build time**, so it is not stable: a
+  rebuild can change it, and it will not match the host directory owner.
+  After each build, discover the UID and chown the three host-writable mounts
+  (the shared script does exactly this):
 
   ```bash
-  uid=$(docker compose -f docker-compose.prod.yml run --rm --entrypoint "id -u" backend)
-  sudo chown -R "$uid" "${KPI_DATA_ROOT:-/opt/kpi-operations}"/{uploads,reports,logs}
+  uid=$(docker compose -f docker-compose.prod.yml run --rm --no-deps --entrypoint "id -u" backend)
+  sudo bash deploy/init-data-root.sh "${KPI_DATA_ROOT:-/opt/kpi-operations}" --chown "$uid"
   ```
 
   Without this, CSV uploads and report generation fail with permission errors
   (the container can't write to the mounts) while everything else — login,
   reads, the database, backups — works, so the failure is easy to misdiagnose.
+  The smoke script's writability proof (`touch /app/uploads/.smoke-write`)
+  catches a missing/incorrect chown in the running topology. **This is a PR-4
+  runbook preflight item.**
 
 > **Hard requirement — Linux case-sensitive filesystem only.** The MariaDB
 > datadir bind mount (`${KPI_DATA_ROOT}/mariadb-data`) requires a
@@ -537,21 +548,45 @@ cp .env.prod.example .env
 # see the comments in .env.prod.example.
 ```
 
+> **Password charset.** `DB_PASSWORD`/`DB_ROOT_PASSWORD` must avoid URL-reserved
+> characters (`@ : / % # ?`) and `$`: `DB_PASSWORD` is interpolated into
+> `DATABASE_URL` (a URL) and `$` triggers compose variable interpolation.
+> Generate a safe 32-char alphanumeric secret:
+>
+> ```bash
+> python3 -c "import secrets,string; print(''.join(secrets.choice(string.ascii_letters+string.digits) for _ in range(32)))"
+> ```
+
 ### Run
 
 ```bash
-docker compose -f docker-compose.prod.yml up -d --build
+# 1. Verify the datadir path is case-sensitive, then create the data-root layout.
+bash deploy/preflight.sh "${KPI_DATA_ROOT:-/opt/kpi-operations}"
+bash deploy/init-data-root.sh "${KPI_DATA_ROOT:-/opt/kpi-operations}"
+
+# 2. Build, then chown the writable mounts to the backend image's dynamic uid
+#    (see Prerequisites), then start.
+docker compose -f docker-compose.prod.yml build
+uid=$(docker compose -f docker-compose.prod.yml run --rm --no-deps --entrypoint "id -u" backend)
+sudo bash deploy/init-data-root.sh "${KPI_DATA_ROOT:-/opt/kpi-operations}" --chown "$uid"
+docker compose -f docker-compose.prod.yml up -d
+
+# 3. Prove the topology end-to-end.
 bash deploy/smoke/compose-smoke.sh
 ```
 
-The smoke script proves: (1) health through Caddy TLS, (2) login, (3) write +
-readback, (4) data survives a backend restart, (5) backup + restore into a
-scratch database, (6) single migration owner (entrypoint, not the app
-lifespan). With `DEMO_MODE=false` (the production default), proofs 2–3 need an
-admin user to already exist — PR-4's `create_admin.py` provisions the first
-admin on a fresh VM; run it before the login/write proofs will pass. CI runs
-the identical script with `DEMO_MODE=true`, so all 6 proofs pass unattended on
-every PR — that CI run is the release evidence for this stack.
+The smoke script proves: (0) stack readiness through Caddy — it owns the
+boot/seed wait, (1) health through Caddy TLS, (1w) the uploads mount is writable
+by the backend uid, (2) login, (3) write + JSON readback, (4) data survives a
+backend restart, (5) backup + restore into a scratch database (via
+`deploy/backup/restore-verify.sh`), (6) single migration owner (entrypoint, not
+the app lifespan). With `DEMO_MODE=false` (the production default), proofs 2–3
+need an admin user to already exist — PR-4's `create_admin.py` provisions the
+first admin on a fresh VM; run it before the login/write proofs will pass. CI
+runs the identical script with `DEMO_MODE=true`, so all proofs pass unattended
+on every PR — that CI run (plus a separate `DEMO_MODE=false` boot-only phase
+asserting an empty prod DB serves health and returns 401 on login) is the
+release evidence for this stack.
 
 > **The smoke has side effects.** It writes `SMOKE-####` hold-status rows to the
 > `ACME-MFG` client and leaves a `smoke_restore` scratch database behind
@@ -587,21 +622,19 @@ Manual run:
 docker compose -f docker-compose.prod.yml exec backup bash /backup-loop.sh --once
 ```
 
-Restore procedure (mirrors `compose-smoke.sh` step 5 — verify into a scratch
-database before touching the real one):
+**Verify a dump into a scratch database first** (the same check `compose-smoke.sh`
+proof 5 runs) — this finds the latest dump, restores it into a scratch DB, and
+asserts it has tables:
 
 ```bash
-# Find the latest dump
+bash deploy/backup/restore-verify.sh              # scratch DB: smoke_restore
+```
+
+Once verified, restore into the real database (manual fallback):
+
+```bash
 dump=$(docker compose -f docker-compose.prod.yml exec -T backup sh -c \
   'ls -t /backups/kpi_platform-*.sql.gz | head -1' | tr -d '\r')
-
-# Restore into a scratch database first to verify the dump is good
-docker compose -f docker-compose.prod.yml exec -T db sh -c \
-  'mariadb -u root -p"$MARIADB_ROOT_PASSWORD" -e "DROP DATABASE IF EXISTS restore_check; CREATE DATABASE restore_check"'
-docker compose -f docker-compose.prod.yml exec -T backup sh -c \
-  "zcat < $dump | mariadb -h db -u root -p\"\$DB_ROOT_PASSWORD\" restore_check"
-
-# Once verified: stop the backend, restore into the real database, restart
 docker compose -f docker-compose.prod.yml stop backend
 docker compose -f docker-compose.prod.yml exec -T backup sh -c \
   "zcat < $dump | mariadb -h db -u root -p\"\$DB_ROOT_PASSWORD\" kpi_platform"
