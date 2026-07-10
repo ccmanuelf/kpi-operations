@@ -67,7 +67,7 @@ grep -q '^DB_ROOT_PASSWORD=STUBSECRET' "$ENVDIR/.env"; assert "DB_ROOT_PASSWORD 
 grep -qx 'CORS_ORIGINS=https://192.168.2.234' "$ENVDIR/.env"; assert "CORS_ORIGINS set" $?
 grep -qx 'TZ=America/Monterrey' "$ENVDIR/.env"; assert "TZ set" $?
 grep -qx 'KPI_DATA_ROOT=/opt/kpi-operations' "$ENVDIR/.env"; assert "KPI_DATA_ROOT defaults to /opt/kpi-operations" $?
-perms=$(stat -f %Lp "$ENVDIR/.env" 2>/dev/null || stat -c %a "$ENVDIR/.env")
+perms=$(stat -c %a "$ENVDIR/.env" 2>/dev/null || stat -f %Lp "$ENVDIR/.env") # GNU -c first; BSD (macOS) falls back to -f %Lp
 [ "$perms" = "600" ]; assert ".env is mode 600" $?
 
 # --- scaffold-env: KPI_DATA_ROOT follows a non-default --root ------------------
