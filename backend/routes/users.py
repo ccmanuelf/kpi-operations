@@ -63,7 +63,7 @@ def create_user(
         password_hash=get_password_hash(user_data.password),
         full_name=user_data.full_name,
         role=user_data.role,
-        client_id_assigned=user_data.client_id_assigned,
+        client_id_assigned=(user_data.client_id_assigned or "").strip() or None,
         is_active=True,
         created_at=datetime.now(tz=timezone.utc),
         updated_at=datetime.now(tz=timezone.utc),
@@ -99,6 +99,8 @@ def update_user(
     for field, value in update_data.items():
         if field == "password" and value:
             setattr(user, "password_hash", get_password_hash(value))
+        elif field == "client_id_assigned":
+            setattr(user, "client_id_assigned", (value or "").strip() or None)
         elif hasattr(user, field):
             setattr(user, field, value)
 

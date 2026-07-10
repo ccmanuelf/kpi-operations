@@ -58,6 +58,15 @@ class TestCreateRoleClientInvariant:
         )
         assert r.status_code == 201
 
+    def test_admin_empty_string_client_stored_as_null(self, test_client, admin_auth_headers):
+        r = test_client.post(
+            "/api/users",
+            json=_payload(username="adm3", email="a3@e.com", role="admin", client_id_assigned=""),
+            headers=admin_auth_headers,
+        )
+        assert r.status_code == 201
+        assert r.json()["client_id_assigned"] is None
+
     def test_operator_with_client_ok(self, test_client, admin_auth_headers):
         r = test_client.post(
             "/api/users", json=_payload(username="opt2", email="o2@e.com", role="operator"), headers=admin_auth_headers
@@ -122,6 +131,14 @@ class TestUpdateRoleClientInvariant:
         uid = self._create_operator(test_client, admin_auth_headers, "upd_usr6")
         r = test_client.put(f"/api/users/{uid}", json={"role": None}, headers=admin_auth_headers)
         assert r.status_code == 422
+
+    def test_update_to_admin_empty_client_stored_as_null(self, test_client, admin_auth_headers):
+        uid = self._create_operator(test_client, admin_auth_headers, "upd_usr7")
+        r = test_client.put(
+            f"/api/users/{uid}", json={"role": "admin", "client_id_assigned": ""}, headers=admin_auth_headers
+        )
+        assert r.status_code == 200
+        assert r.json()["client_id_assigned"] is None
 
 
 class TestValidateRoleClientAssignmentHelper:
