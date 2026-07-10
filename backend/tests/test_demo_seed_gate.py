@@ -288,3 +288,91 @@ def test_sqlite_dialect_never_acquires_named_lock(monkeypatch):
 
     assert fake_engine.raw_connection_calls == 0
     assert sequence == ["client_query"]
+
+
+# --- Shared cross-worker lock helper: metric-dep step + fail-closed skip ------
+#
+# _run_exclusive_across_workers is reused for BOTH the demo seed and the
+# metric→assumption dependency seed. These fakes capture the exact lock name
+# passed to GET_LOCK/RELEASE_LOCK and let GET_LOCK's result be pinned so the
+# fail-closed (skip-when-not-acquired) contract can be asserted.
+
+
+class _LockNameCursor:
+    def __init__(self, calls, lock_result):
+        self._calls = calls
+        self._lock_result = lock_result
+
+    def execute(self, sql, params=None):
+        if "GET_LOCK" in sql:
+            self._calls.append(("GET_LOCK", params[0]))
+        elif "RELEASE_LOCK" in sql:
+            self._calls.append(("RELEASE_LOCK", params[0]))
+
+    def fetchall(self):
+        return [(self._lock_result,)]
+
+    def close(self):
+        pass
+
+
+class _LockNameRawConn:
+    def __init__(self, calls, lock_result):
+        self._calls = calls
+        self._lock_result = lock_result
+
+    def cursor(self):
+        return _LockNameCursor(self._calls, self._lock_result)
+
+    def close(self):
+        pass
+
+
+class _LockNameEngine:
+    def __init__(self, calls, lock_result=1):
+        self.dialect = _FakeDialect("mysql")
+        self._calls = calls
+        self._lock_result = lock_result
+
+    def raw_connection(self):
+        return _LockNameRawConn(self._calls, self._lock_result)
+
+
+def test_metric_dep_seed_uses_named_lock_with_distinct_name(monkeypatch):
+    """seed_metric_dependencies_step runs under the SAME GET_LOCK mechanics as
+    the demo seed, with its own lock name 'kpi_metric_dep_seed', so the 4
+    gunicorn workers serialize it too (no benign-IntegrityError spam)."""
+    import backend.database
+
+    calls = []
+    monkeypatch.setattr(backend.database, "engine", _LockNameEngine(calls))
+    ran = []
+    monkeypatch.setattr(lifecycle, "_seed_metric_dependencies", lambda: ran.append(1))
+
+    lifecycle.seed_metric_dependencies_step()
+
+    assert ran == [1]
+    assert calls == [
+        ("GET_LOCK", "kpi_metric_dep_seed"),
+        ("RELEASE_LOCK", "kpi_metric_dep_seed"),
+    ]
+
+
+def test_lock_not_acquired_skips_fn_and_warns(monkeypatch, caplog):
+    """Fail-closed: GET_LOCK returning 0 (timeout) must SKIP fn (never run it
+    unlocked, which would recreate the race) and log a warning."""
+    import logging
+
+    import backend.database
+
+    calls = []
+    monkeypatch.setattr(backend.database, "engine", _LockNameEngine(calls, lock_result=0))
+    ran = []
+
+    with caplog.at_level(logging.WARNING):
+        lifecycle._run_exclusive_across_workers("kpi_demo_seed", 330, lambda: ran.append(1))
+
+    assert ran == []
+    assert "not acquired" in caplog.text
+    # The lock is still released/closed even on the skip path.
+    assert calls == [("GET_LOCK", "kpi_demo_seed"), ("RELEASE_LOCK", "kpi_demo_seed")]

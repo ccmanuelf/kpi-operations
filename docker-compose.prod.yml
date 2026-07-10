@@ -40,7 +40,14 @@ services:
     # gunicorn override lives HERE (not in the Dockerfile) so Render's plain
     # uvicorn CMD is untouched. The entrypoint still runs first:
     # DB wait -> fatal `alembic upgrade head` -> exec this command.
-    command: ["gunicorn", "backend.main:app", "-w", "4", "-k", "uvicorn.workers.UvicornWorker", "-b", "0.0.0.0:8000"]
+    # --timeout 600: UvicornWorker only sends its first heartbeat to the arbiter
+    # AFTER lifespan startup completes (uvicorn runs lifespan.startup() before
+    # main_loop, and the arbiter heartbeat fires only inside main_loop's
+    # on_tick). The serialized first-boot demo seed can exceed the 30s default on
+    # slow hardware, so the arbiter would SIGABRT the worker mid-seed — which
+    # auto-releases the GET_LOCK and leaves a truncated seed. 600s covers a cold
+    # migrate+seed. --graceful-timeout 30 keeps normal-request drain snappy.
+    command: ["gunicorn", "backend.main:app", "-w", "4", "-k", "uvicorn.workers.UvicornWorker", "-b", "0.0.0.0:8000", "--timeout", "600", "--graceful-timeout", "30"]
     environment:
       - DATABASE_URL=mysql+pymysql://kpi_user:${DB_PASSWORD}@db:3306/kpi_platform
       - SECRET_KEY=${SECRET_KEY:?SECRET_KEY must be set in production}
@@ -64,8 +71,13 @@ services:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      # Readiness incl. DB ping (unauthenticated SELECT 1). The image's own
-      # HEALTHCHECK (/health/live) remains the liveness probe.
+      # Readiness incl. DB ping (unauthenticated SELECT 1). A compose healthcheck
+      # REPLACES the image's own HEALTHCHECK — a container has exactly one probe —
+      # so /health/database is this container's sole health signal in the stack
+      # (the image's /health/live no longer runs here). Note: compose takes NO
+      # action on an unhealthy container (no auto-restart), so a transient DB
+      # outage flips the backend unhealthy but does not restart it; it recovers
+      # on its own once the next probe passes.
       test: ["CMD", "curl", "-f", "http://localhost:8000/health/database"]
       interval: 30s
       timeout: 10s
