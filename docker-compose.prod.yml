@@ -150,6 +150,9 @@ services:
       - DB_NAME=kpi_platform
       - RETENTION_DAYS=${BACKUP_RETENTION_DAYS:-14}
       - BACKUP_HOUR=${BACKUP_HOUR:-02}
+      # Container clock is UTC by default; set TZ (e.g. America/Monterrey) so
+      # BACKUP_HOUR fires at local wall-clock time.
+      - TZ=${TZ:-UTC}
     volumes:
       - ./deploy/backup/backup-loop.sh:/backup-loop.sh:ro
       - ${KPI_DATA_ROOT:-/opt/kpi-operations}/backups:/backups

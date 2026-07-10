@@ -571,10 +571,15 @@ trust are PR-4 runbook items, not covered here.
 
 The `backup` sidecar (`deploy/backup/backup-loop.sh`) dumps nightly at
 `BACKUP_HOUR` (default `02`, i.e. 02:00) to `${KPI_DATA_ROOT}/backups`,
-retaining `BACKUP_RETENTION_DAYS` days (default 14). It uses **`mariadb-dump`**,
-not `mysqldump` — the `mariadb:11` image only ships the `mariadb-*` binary
-names — and writes to a `.tmp` file before renaming on success, so a dump that
-fails partway can never be mistaken for a good one.
+retaining `BACKUP_RETENTION_DAYS` days (default 14). `BACKUP_HOUR` is
+interpreted in the sidecar's timezone, which defaults to UTC — set `TZ`
+(e.g. `TZ=America/Monterrey` in `.env`) to schedule at local wall-clock time.
+It uses **`mariadb-dump`**, not `mysqldump` — the `mariadb:11` image only ships
+the `mariadb-*` binary names — and writes to a `.tmp` file before renaming on
+success, so a dump that fails partway can never be mistaken for a good one; the
+prune step also sweeps stale `.tmp` files older than a day. In loop mode a
+failed dump is logged and retried the next cycle rather than crashing the
+sidecar (the `--once` manual/CI run keeps its fail-fast non-zero exit).
 
 Manual run:
 

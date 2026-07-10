@@ -26,6 +26,9 @@ dump_once() {
     mv "$file.tmp" "$file"
     echo "[backup] pruning dumps older than ${RETENTION_DAYS} days"
     find "$BACKUP_DIR" -name "${DB_NAME}-*.sql.gz" -mtime +"$RETENTION_DAYS" -delete
+    # Sweep stale .tmp files (>1 day) left by a dump that died mid-write, so
+    # they never accumulate.
+    find "$BACKUP_DIR" -name "${DB_NAME}-*.sql.gz.tmp" -mtime +1 -delete
     echo "[backup] done: $(ls -lh "$file" | awk '{print $5}')"
 }
 
@@ -37,8 +40,12 @@ fi
 echo "[backup] nightly loop armed (hour=${BACKUP_HOUR}, retention=${RETENTION_DAYS}d)"
 while true; do
     now_h=$(date +%H)
-    if [ "$now_h" = "$BACKUP_HOUR" ]; then
-        dump_once
+    # 10# forces base-10 so a zero-padded hour ("08"/"09") isn't parsed as octal
+    # and "2" matches "02".
+    if [ "$((10#$now_h))" -eq "$((10#$BACKUP_HOUR))" ]; then
+        # A single dump failure must NOT kill the sidecar — log and retry next
+        # cycle (--once keeps its fail-fast exit; only the loop is resilient).
+        dump_once || echo "[backup] dump failed (will retry next cycle)"
         sleep 3600  # skip past the backup hour
     fi
     sleep 300
