@@ -94,8 +94,9 @@ bash "$BOOTSTRAP" --scaffold-env-only "$EMPTY" >/dev/null 2>&1
 
 # --- confirm gate: declining every y/N prompt invokes zero sudo commands -------
 # Full run with all confirms declined. On a case-insensitive dev FS the script
-# exits at the phase-1 preflight (also sudo-free); on ext4 CI it walks all
-# phases declining each gate. Either way the sudo stub log must stay empty.
+# exits at the phase-1 preflight (also sudo-free); on ext4 CI it declines each
+# gate until the phase-5 mandatory data-root preflight aborts it (exit 1,
+# absorbed by `|| true`). Either way the sudo stub log must stay empty.
 yes n | bash "$BOOTSTRAP" --root "$TMP/root" >/dev/null 2>&1 || true
 [ ! -s "$SUDO_LOG" ]; assert "declined confirms invoke no sudo" $?
 

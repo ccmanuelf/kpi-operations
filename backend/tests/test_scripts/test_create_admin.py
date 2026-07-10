@@ -119,3 +119,8 @@ class TestGuardsAndCli:
         monkeypatch.setenv("DATABASE_URL", "sqlite:////nonexistent-kpi-dir/sub/x.db")
         monkeypatch.setenv("ADMIN_PASSWORD", STRONG_PW)
         assert main(["--username", "opsadmin"]) == 1
+
+    def test_main_invalid_database_url_fails(self, monkeypatch):
+        monkeypatch.setenv("DATABASE_URL", "not-a-valid-url")
+        monkeypatch.setenv("ADMIN_PASSWORD", STRONG_PW)
+        assert main(["--username", "opsadmin"]) == 1

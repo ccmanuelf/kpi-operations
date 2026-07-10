@@ -27,7 +27,7 @@ import re  # noqa: E402
 from typing import TYPE_CHECKING, Optional  # noqa: E402
 
 from sqlalchemy import create_engine, inspect  # noqa: E402
-from sqlalchemy.exc import IntegrityError, OperationalError  # noqa: E402
+from sqlalchemy.exc import ArgumentError, IntegrityError, NoSuchModuleError, OperationalError  # noqa: E402
 from sqlalchemy.orm import Session  # noqa: E402
 
 if TYPE_CHECKING:
@@ -81,6 +81,8 @@ def create_admin(session: Session, username: str, password: str, email: Optional
             "create further users from the admin UI, not this script."
         )
 
+    # id + default-email conventions intentionally mirror the demo seeder
+    # (backend/scripts/init_demo_database.py) — change both together.
     user_id = f"USER-{username.upper()}"
     collision = session.get(User, user_id) or session.query(User).filter(User.username == username).first()
     if collision is not None:
@@ -131,7 +133,18 @@ def main(argv: Optional[list] = None) -> int:
             return 1
 
     database_url = os.getenv("DATABASE_URL", "sqlite:///database/kpi_platform.db")
-    engine = create_engine(database_url)
+    try:
+        engine = create_engine(database_url)
+    except (ArgumentError, NoSuchModuleError):
+        # Deliberately do NOT echo the exception or URL: a malformed
+        # DATABASE_URL can still contain the real password.
+        print(
+            "ERROR: invalid DATABASE_URL (unparseable URL or unknown dialect); "
+            "check the value in the environment/.env.",
+            file=sys.stderr,
+        )
+        return 1
+
     try:
         ensure_migrated(engine)
         with Session(engine) as session:

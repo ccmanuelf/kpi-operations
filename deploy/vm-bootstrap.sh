@@ -10,7 +10,8 @@
 #   phase 6  app checkout + .env scaffold (secrets generated, never echoed)
 #
 # EVERY privileged command is printed and individually confirmed (y/N);
-# declining a gate SKIPS that action and continues.
+# declining a gate SKIPS that action and continues — EXCEPT the phase-5
+# data-root preflight, where a decline ABORTS (mandatory safety gate).
 #
 # Usage:
 #   vm-bootstrap.sh [--root DIR] [--app-dir DIR] [--ip ADDR]
@@ -135,6 +136,10 @@ fi
 # the real ROOT is probed again with sudo in phase 5). Fatal here by design:
 # a case-insensitive datadir corrupts MariaDB (errno 1033 — PR-3 lesson).
 pf_tmp="$(mktemp -d "$base/kpi-preflight.XXXXXX" 2>/dev/null || mktemp -d)"
+case "$pf_tmp" in
+  "$base"/*) echo "   probing filesystem case-sensitivity at $pf_tmp" ;;
+  *) echo "   NOTE: $base not writable — probing $pf_tmp instead (same-filesystem assumption; the REAL root is verified in phase 5)" ;;
+esac
 bash "$SCRIPT_DIR/preflight.sh" "$pf_tmp"
 rm -rf "$pf_tmp"
 echo "   preflight (case-sensitivity): OK"
@@ -152,8 +157,8 @@ else
     echo "   NOTE: no Docker apt channel for '${codename}' — falling back to 'noble'."
     codename=noble
   fi
-  run_priv install -m 0755 -d /etc/apt/keyrings
-  if confirm "download Docker GPG key -> /etc/apt/keyrings/docker.asc (sudo tee)"; then
+  if confirm "download Docker GPG key -> /etc/apt/keyrings/docker.asc (creates the keyrings dir; sudo install + curl | sudo tee)"; then
+    sudo install -m 0755 -d /etc/apt/keyrings
     curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo tee /etc/apt/keyrings/docker.asc >/dev/null
   fi
   if confirm "add Docker apt repository for '${codename}' (sudo tee sources.list.d/docker.list)"; then
@@ -201,7 +206,12 @@ fi
 
 # --- phase 5: data root -----------------------------------------------------------
 echo "-- phase 5: data root"
-run_priv bash "$SCRIPT_DIR/preflight.sh" "$ROOT"
+if ! confirm "sudo bash $SCRIPT_DIR/preflight.sh $ROOT  (case-sensitivity probe of the REAL data root)"; then
+  echo "ERROR: the data-root preflight is mandatory — a case-insensitive datadir corrupts MariaDB (errno 1033)." >&2
+  echo "       Re-run when ready to confirm it; nothing below phase 5 was executed." >&2
+  exit 1
+fi
+sudo bash "$SCRIPT_DIR/preflight.sh" "$ROOT"
 run_priv bash "$SCRIPT_DIR/init-data-root.sh" "$ROOT"
 echo "   NOTE: ownership (--chown) runs during deploy, after the image build"
 echo "         (the backend uid is only known then)."
@@ -219,6 +229,8 @@ else
     sudo chown -R "$USER":"$USER" "$APP_DIR"
   fi
 fi
-scaffold_env "$APP_DIR"
+if ! scaffold_env "$APP_DIR"; then
+  echo "   NOTE: .env not scaffolded (see error above) — re-run this script after the app checkout exists."
+fi
 
 echo "== bootstrap complete. Next: runbook Phase 2 (build, chown, up -d)."
