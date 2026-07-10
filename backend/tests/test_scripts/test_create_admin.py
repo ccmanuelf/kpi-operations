@@ -71,6 +71,21 @@ class TestCreateAdminCore:
         with pytest.raises(CreateAdminError, match="already exists"):
             create_admin(db_session, "ops1", STRONG_PW)
 
+    def test_email_collision_raises_guard_error(self, db_session):
+        db_session.add(
+            User(
+                user_id="USER-OTHER",
+                username="other",
+                email="ops1@kpi-operations.com",
+                password_hash=None,
+                role="operator",
+                is_active=True,
+            )
+        )
+        db_session.commit()
+        with pytest.raises(CreateAdminError, match="email"):
+            create_admin(db_session, "ops1", STRONG_PW)
+
 
 class TestGuardsAndCli:
     def test_unmigrated_db_guard(self):
@@ -98,4 +113,9 @@ class TestGuardsAndCli:
         monkeypatch.setenv("DATABASE_URL", url)
         monkeypatch.delenv("ADMIN_PASSWORD", raising=False)
         monkeypatch.setattr("sys.stdin", io.StringIO(""))  # isatty() -> False
+        assert main(["--username", "opsadmin"]) == 1
+
+    def test_main_unreachable_db_fails(self, monkeypatch):
+        monkeypatch.setenv("DATABASE_URL", "sqlite:////nonexistent-kpi-dir/sub/x.db")
+        monkeypatch.setenv("ADMIN_PASSWORD", STRONG_PW)
         assert main(["--username", "opsadmin"]) == 1

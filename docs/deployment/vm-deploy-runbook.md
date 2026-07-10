@@ -166,6 +166,9 @@ From a trusted client (note: NO `-k` — trust must be real):
 curl https://192.168.2.234/health/live
 ```
 
+(macOS: use `/usr/bin/curl` — a Homebrew curl earlier on PATH does not read
+the System keychain, so the trust check would falsely fail.)
+
 In the UI: log in as the new admin and perform one real write (e.g. create a
 production entry), confirm it appears in the grid after a reload.
 

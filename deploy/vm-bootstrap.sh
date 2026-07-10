@@ -93,6 +93,10 @@ scaffold_env() { # scaffold_env <dir with .env.prod.example> — writes <dir>/.e
         -e "s|^CORS_ORIGINS=.*|CORS_ORIGINS=https://${HOST_IP}|" \
         "$dir/.env.prod.example" > "$env_file"
     printf 'TZ=America/Monterrey\n' >> "$env_file"
+    # docker-compose.prod.yml falls back to /opt/kpi-operations if unset;
+    # writing it unconditionally keeps a non-default --root coherent with
+    # the data root prepared in phases 1/5.
+    printf 'KPI_DATA_ROOT=%s\n' "$ROOT" >> "$env_file"
   )
   chmod 600 "$env_file"
   echo "   wrote $env_file (mode 600; secrets generated, intentionally not shown)."
@@ -183,6 +187,10 @@ for port in 22 443 80 7070 5443 3389; do
   run_priv ufw allow "${port}/tcp"
 done
 if confirm "sudo ufw --force enable  (verifies the 22/tcp allow first — anti-lockout)"; then
+  # NOTE: this only recognizes a plain "allow 22/tcp" rule. A pre-existing
+  # "allow OpenSSH" profile or a "limit 22/tcp" rule is NOT matched — the
+  # guard then fails SAFE (refuses to enable). If that happens, add a plain
+  # "allow 22/tcp" rule and re-run.
   if ! sudo ufw show added | grep -qE '(^| )allow 22/tcp$'; then
     echo "ERROR: no 22/tcp allow rule staged — refusing to enable ufw (lockout guard)." >&2
     exit 1

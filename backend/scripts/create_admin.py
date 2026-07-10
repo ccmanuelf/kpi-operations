@@ -27,6 +27,7 @@ import re  # noqa: E402
 from typing import TYPE_CHECKING, Optional  # noqa: E402
 
 from sqlalchemy import create_engine, inspect  # noqa: E402
+from sqlalchemy.exc import IntegrityError, OperationalError  # noqa: E402
 from sqlalchemy.orm import Session  # noqa: E402
 
 if TYPE_CHECKING:
@@ -97,7 +98,11 @@ def create_admin(session: Session, username: str, password: str, email: Optional
             is_active=True,
         )
     )
-    session.commit()
+    try:
+        session.commit()
+    except IntegrityError as exc:
+        session.rollback()
+        raise CreateAdminError(f"uniqueness violation (likely the email is already in use): {exc.orig}") from exc
     return user_id
 
 
@@ -133,6 +138,9 @@ def main(argv: Optional[list] = None) -> int:
             user_id = create_admin(session, args.username, password, args.email)
     except CreateAdminError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
+    except OperationalError as exc:
+        print(f"ERROR: database unreachable: {exc.orig}", file=sys.stderr)
         return 1
     finally:
         engine.dispose()

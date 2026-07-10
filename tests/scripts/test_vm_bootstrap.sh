@@ -66,8 +66,15 @@ grep -q '^DB_PASSWORD=STUBSECRET' "$ENVDIR/.env"; assert "DB_PASSWORD populated"
 grep -q '^DB_ROOT_PASSWORD=STUBSECRET' "$ENVDIR/.env"; assert "DB_ROOT_PASSWORD populated" $?
 grep -qx 'CORS_ORIGINS=https://192.168.2.234' "$ENVDIR/.env"; assert "CORS_ORIGINS set" $?
 grep -qx 'TZ=America/Monterrey' "$ENVDIR/.env"; assert "TZ set" $?
+grep -qx 'KPI_DATA_ROOT=/opt/kpi-operations' "$ENVDIR/.env"; assert "KPI_DATA_ROOT defaults to /opt/kpi-operations" $?
 perms=$(stat -f %Lp "$ENVDIR/.env" 2>/dev/null || stat -c %a "$ENVDIR/.env")
 [ "$perms" = "600" ]; assert ".env is mode 600" $?
+
+# --- scaffold-env: KPI_DATA_ROOT follows a non-default --root ------------------
+ENVDIR3="$TMP/app3"; mkdir -p "$ENVDIR3"
+cp "$SCRIPT_DIR/.env.prod.example" "$ENVDIR3/"
+bash "$BOOTSTRAP" --root /srv/kpi --scaffold-env-only "$ENVDIR3" >/dev/null
+grep -qx 'KPI_DATA_ROOT=/srv/kpi' "$ENVDIR3/.env"; assert "KPI_DATA_ROOT follows --root" $?
 
 # --- scaffold-env: secrets are never echoed to stdout/stderr -------------------
 rm -f "$ENVDIR/.env"
