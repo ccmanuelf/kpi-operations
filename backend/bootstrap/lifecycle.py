@@ -37,6 +37,64 @@ except ImportError:
     pass
 
 
+# Server-wide advisory locks used to serialize once-only startup work across the
+# 4 gunicorn workers on MariaDB/MySQL (SQLite is single-process — no lock).
+_DEMO_SEED_LOCK = "kpi_demo_seed"
+_METRIC_DEP_SEED_LOCK = "kpi_metric_dep_seed"
+# Lock wait budget (seconds), coherent with the compose backend healthcheck's
+# unhealthy ceiling: start_period 300s + 3 retries x 30s interval ≈ 390s. Lock
+# waiters give up at 330s (< that ceiling) and SKIP rather than run unlocked —
+# the work completes on the lock winner or on a later boot (both callers
+# self-detect and re-run), so a skipped waiter is safe and never races.
+_SEED_LOCK_TIMEOUT = 330
+
+
+def _run_exclusive_across_workers(lock_name: str, timeout: int, fn: Callable[[], None]) -> None:
+    """Run ``fn`` exactly once across gunicorn workers, fail-closed.
+
+    On MariaDB/MySQL the 4 gunicorn workers would otherwise race once-only
+    startup work. Hold a server-wide named lock (GET_LOCK, connection-scoped) for
+    the whole of ``fn`` so exactly one worker runs it; the losers acquire the
+    lock afterwards and re-run ``fn`` (which must be idempotent / self-skipping)
+    inside the lock. If the lock is NOT acquired within ``timeout`` (GET_LOCK
+    returns 0 on timeout, NULL on error), ``fn`` is SKIPPED and a warning logged
+    — it is never run unlocked, which would recreate the very race this guards.
+    Skipping is safe: the work completes on the winner or on a later boot.
+
+    On SQLite (single process here) ``fn`` runs directly with no lock —
+    byte-identical to the historical path, keeping the sqlite test stubs valid.
+
+    Any exception ``fn`` raises (e.g. SchemaRebuildError) propagates unchanged
+    past the lock release in the finally.
+    """
+    from backend.database import engine
+
+    if engine.dialect.name != "mysql":  # sqlite etc. — single process, no lock
+        fn()
+        return
+
+    conn = engine.raw_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT GET_LOCK(%s, %s)", (lock_name, timeout))
+        rows = cursor.fetchall()
+        cursor.close()
+        # GET_LOCK: 1 acquired, 0 timeout, NULL error. Fail CLOSED — without the
+        # lock we must NOT run fn (that recreates the cross-worker race).
+        if not rows or rows[0][0] != 1:
+            logger.warning("exclusive lock %r not acquired — skipping (fail-closed)", lock_name)
+            return
+        fn()
+    finally:
+        try:
+            release = conn.cursor()
+            release.execute("SELECT RELEASE_LOCK(%s)", (lock_name,))
+            release.fetchall()
+            release.close()
+        finally:
+            conn.close()
+
+
 def _auto_seed_demo_data() -> None:
     """
     Auto-seed demo data if the database is empty or incomplete (DEMO_MODE only).
@@ -47,6 +105,15 @@ def _auto_seed_demo_data() -> None:
     The re-seed path executes a destructive rebuild_schema(); the DEMO_MODE gate
     must stay the first statement so a non-demo deployment can never reach it
     (Run 7 C-1). Guarded by backend/tests/test_demo_seed_gate.py.
+
+    On MariaDB/MySQL the 4 gunicorn workers race this seeder: without a
+    cross-process lock the losers hit IntegrityErrors (swallowed) and a
+    mid-seed SIGTERM after batch-1 commit can leave truncated demo data that
+    smart-detection then reports OK. So the ENTIRE check+seed runs under the
+    shared cross-worker lock helper — exactly one worker seeds and the losers
+    re-check (inside the lock) after it finishes and skip. SQLite is
+    single-process here, so it takes the byte-identical no-lock path (which
+    keeps this test's sqlite stubs valid).
     """
     from backend.config import settings
 
@@ -54,6 +121,15 @@ def _auto_seed_demo_data() -> None:
         logger.info("DEMO_MODE disabled — skipping demo data auto-seed")
         return
 
+    _run_exclusive_across_workers(_DEMO_SEED_LOCK, _SEED_LOCK_TIMEOUT, _check_and_seed_demo_data)
+
+
+def _check_and_seed_demo_data() -> None:
+    """The smart-detect + (re)seed body; runs under the named lock on MariaDB.
+
+    Kept separate from _auto_seed_demo_data so the DEMO_MODE gate stays that
+    function's first statement and the lock wraps the whole check+seed.
+    """
     try:
         import os
         from backend.database import SessionLocal
@@ -181,8 +257,8 @@ def stop_schedulers() -> None:
     run_best_effort("report scheduler stop", lambda: report_scheduler.stop() if report_scheduler else None)
 
 
-def seed_metric_dependencies_step() -> None:
-    """Idempotently seed the metric→assumption dependency map."""
+def _seed_metric_dependencies() -> None:
+    """Idempotent body of the metric→assumption dependency seed."""
     from backend.database import SessionLocal
     from backend.services.calculations.assumption_catalog import seed_metric_dependencies
 
@@ -193,6 +269,16 @@ def seed_metric_dependencies_step() -> None:
             logger.info("Seeded %d metric->assumption dependency rows", inserted)
     finally:
         dep_db.close()
+
+
+def seed_metric_dependencies_step() -> None:
+    """Seed the metric→assumption dependency map, serialized across workers.
+
+    Uses the same GET_LOCK mechanics as the demo seed (its own lock name) so the
+    4 gunicorn workers don't all race it on every cold boot — the pre-lock
+    version had every loser collide and spam benign IntegrityError warnings.
+    """
+    _run_exclusive_across_workers(_METRIC_DEP_SEED_LOCK, _SEED_LOCK_TIMEOUT, _seed_metric_dependencies)
 
 
 def dispose_engine() -> None:

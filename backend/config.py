@@ -60,11 +60,6 @@ class Settings(BaseSettings):
     DATABASE_URL: str = (
         f"sqlite:///{os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}/database/kpi_platform.db"
     )
-    DB_HOST: str = "localhost"
-    DB_PORT: int = 3306
-    DB_NAME: str = "kpi_platform"
-    DB_USER: str = "kpi_user"
-    DB_PASSWORD: str = ""
 
     # JWT
     SECRET_KEY: str = "insecure-dev-only-change-in-production"
@@ -205,14 +200,6 @@ def validate_production_config(raise_on_critical: bool = False) -> ConfigValidat
     if is_production and settings.DEBUG:
         result.errors.append("CRITICAL: DEBUG mode is enabled in production! " "Set DEBUG=False for security.")
         result.is_valid = False
-
-    # Check database password security
-    if settings.DB_PASSWORD in DEFAULT_INSECURE_VALUES:
-        if is_production:
-            result.errors.append("CRITICAL: Default database password detected in production!")
-            result.is_valid = False
-        else:
-            result.warnings.append("WARNING: Using default database password. Change before production.")
 
     # Check CORS origins for production
     if is_production:

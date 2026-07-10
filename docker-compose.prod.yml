@@ -1,56 +1,99 @@
-# Production Docker Compose for KPI Operations Platform
-# Usage: docker compose -f docker-compose.prod.yml up -d
+# Production Docker Compose — the KPI Operations VM stack (192.168.2.234).
+# Usage (on the VM):  docker compose -f docker-compose.prod.yml up -d --build
+# Host paths parameterize via KPI_DATA_ROOT (default /opt/kpi-operations) so the
+# CI smoke job (compose-stack-smoke) can run this exact file in a temp dir.
+# Secrets come from .env (see .env.prod.example); never commit a real .env.
 
 services:
+  db:
+    image: mariadb@sha256:a794d9eb009e20de605858a11f32f63b4075cbd197c650436f0e3b457e4caed7  # mariadb:11.4, digest-pinned
+    container_name: kpi-db
+    # Pin server charset/collation so the auto-created database inherits them
+    # (PR-2 carry-forward: collation must not depend on image defaults).
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    environment:
+      - MARIADB_DATABASE=kpi_platform
+      - MARIADB_USER=kpi_user
+      - MARIADB_PASSWORD=${DB_PASSWORD:?DB_PASSWORD must be set (see .env.prod.example)}
+      - MARIADB_ROOT_PASSWORD=${DB_ROOT_PASSWORD:?DB_ROOT_PASSWORD must be set (see .env.prod.example)}
+    volumes:
+      # Bind mount (not a named volume): native-grade durability + direct host
+      # access for VMware snapshots and offline copies.
+      - ${KPI_DATA_ROOT:-/opt/kpi-operations}/mariadb-data:/var/lib/mysql
+    # NO ports: 3306 is reachable only on kpi-network, never from the host/LAN.
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 18          # first boot initializes the datadir — allow ~3 min
+      start_period: 30s
+    networks:
+      - kpi-network
+
   backend:
     build:
       context: .
       dockerfile: Dockerfile
       target: production
     container_name: kpi-backend
-    ports:
-      - "8000:8000"
+    # gunicorn override lives HERE (not in the Dockerfile) so Render's plain
+    # uvicorn CMD is untouched. The entrypoint still runs first:
+    # DB wait -> fatal `alembic upgrade head` -> exec this command.
+    # --timeout 600: UvicornWorker only sends its first heartbeat to the arbiter
+    # AFTER lifespan startup completes (uvicorn runs lifespan.startup() before
+    # main_loop, and the arbiter heartbeat fires only inside main_loop's
+    # on_tick). The serialized first-boot demo seed can exceed the 30s default on
+    # slow hardware, so the arbiter would SIGABRT the worker mid-seed — which
+    # auto-releases the GET_LOCK and leaves a truncated seed. 600s covers a cold
+    # migrate+seed. --graceful-timeout 30 keeps normal-request drain snappy.
+    command: ["gunicorn", "backend.main:app", "-w", "4", "-k", "uvicorn.workers.UvicornWorker", "-b", "0.0.0.0:8000", "--timeout", "600", "--graceful-timeout", "30"]
     environment:
-      # Database configuration (use external DB in production)
-      - DATABASE_URL=${DATABASE_URL:-sqlite:///./database/kpi_platform.db}
-      # Authentication (MUST change in production)
+      - DATABASE_URL=mysql+pymysql://kpi_user:${DB_PASSWORD}@db:3306/kpi_platform
       - SECRET_KEY=${SECRET_KEY:?SECRET_KEY must be set in production}
       - ALGORITHM=${ALGORITHM:-HS256}
       - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES:-30}
-      # CORS (configure for your domain)
-      - CORS_ORIGINS=${CORS_ORIGINS:-https://your-domain.com}
-      # Logging
+      - CORS_ORIGINS=${CORS_ORIGINS:?CORS_ORIGINS must be set (comma list, e.g. https://192.168.2.234)}
+      - ENVIRONMENT=production
       - DEBUG=false
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
-      # Production settings
-      - DEMO_MODE=false
-      - RUN_MIGRATIONS=${RUN_MIGRATIONS:-true}
-      # The entrypoint (RUN_MIGRATIONS) owns migrations here — runs once before
-      # workers start — so disable the redundant in-process startup migration.
+      - DEMO_MODE=${DEMO_MODE:-false}
+      - RUN_MIGRATIONS=true
+      # The entrypoint owns migrations (once, before the 4 workers start) —
+      # the in-process startup migration stays off in every container deploy.
       - RUN_MIGRATIONS_ON_STARTUP=false
     volumes:
-      - database-data:/app/database
-      - uploads-data:/app/uploads
-      - reports-data:/app/reports
-      - logs-data:/app/logs
-    restart: always
+      - ${KPI_DATA_ROOT:-/opt/kpi-operations}/uploads:/app/uploads
+      - ${KPI_DATA_ROOT:-/opt/kpi-operations}/reports:/app/reports
+      - ${KPI_DATA_ROOT:-/opt/kpi-operations}/logs:/app/logs
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
     healthcheck:
-      # /health/live is unauthenticated; /health/ready requires a bearer token
-      # (routes/health.py:252) so it always 401s here -> container stuck
-      # `unhealthy` -> dependent frontend never starts (Run 8 H-3). Match the
-      # Dockerfile/dev-compose/Render probe.
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health/live"]
+      # Readiness incl. DB ping (unauthenticated SELECT 1). A compose healthcheck
+      # REPLACES the image's own HEALTHCHECK — a container has exactly one probe —
+      # so /health/database is this container's sole health signal in the stack
+      # (the image's /health/live no longer runs here). Note: compose takes NO
+      # action on an unhealthy container (no auto-restart), so a transient DB
+      # outage flips the backend unhealthy but does not restart it; it recovers
+      # on its own once the next probe passes.
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/database"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 30s
+      # First boot = fatal migrate + serialized demo seed (one worker seeds
+      # while the others wait on the named lock); allow it to finish before
+      # unhealthy counts. Probes that succeed earlier still flip healthy
+      # immediately — start_period only suppresses failures, not successes.
+      start_period: 300s
     networks:
       - kpi-network
     deploy:
       resources:
         limits:
-          cpus: '1.0'
-          memory: 1G
+          cpus: '2.0'
+          memory: 2G
         reservations:
           memory: 512M
 
@@ -62,18 +105,20 @@ services:
       args:
         - VITE_API_URL=${VITE_API_URL:-/api}
     container_name: kpi-frontend
-    ports:
-      - "80:80"
-      # Port 443 requires TLS certificates — add when SSL is configured
+    # No host ports — Caddy fronts it. BACKEND_URL empty selects the
+    # entrypoint's static-only branch (no /api proxy, no wake injection);
+    # Caddy routes /api directly to the backend.
     environment:
-      - BACKEND_URL=http://backend:8000
+      - BACKEND_URL=
       - CSP_CONNECT_EXTRA=${CSP_CONNECT_EXTRA:-}
     depends_on:
       backend:
         condition: service_healthy
-    restart: always
+    restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:80"]
+      # 127.0.0.1, not localhost: busybox wget resolves localhost -> ::1 first
+      # and the image's nginx listens on IPv4 only ("listen 80") -> refused.
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:80"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -88,15 +133,47 @@ services:
         reservations:
           memory: 128M
 
-volumes:
-  database-data:
-    driver: local
-  uploads-data:
-    driver: local
-  reports-data:
-    driver: local
-  logs-data:
-    driver: local
+  caddy:
+    image: caddy@sha256:af5fdcd76f2db5e4e974ee92f96ee8c0fc3edb55bd4ba5032547cbf3f65e486d  # caddy:2, digest-pinned
+    container_name: kpi-caddy
+    ports:
+      - "443:443"
+      - "80:80"
+    volumes:
+      - ./deploy/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ${KPI_DATA_ROOT:-/opt/kpi-operations}/caddy/data:/data
+      - ${KPI_DATA_ROOT:-/opt/kpi-operations}/caddy/config:/config
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - kpi-network
+
+  backup:
+    image: mariadb@sha256:a794d9eb009e20de605858a11f32f63b4075cbd197c650436f0e3b457e4caed7  # same digest as db — client tools included
+    container_name: kpi-backup
+    entrypoint: ["bash", "/backup-loop.sh"]
+    environment:
+      - DB_ROOT_PASSWORD=${DB_ROOT_PASSWORD}
+      - DB_HOST=db
+      - DB_NAME=kpi_platform
+      - RETENTION_DAYS=${BACKUP_RETENTION_DAYS:-14}
+      - BACKUP_HOUR=${BACKUP_HOUR:-02}
+      # Container clock is UTC by default; set TZ (e.g. America/Monterrey) so
+      # BACKUP_HOUR fires at local wall-clock time.
+      - TZ=${TZ:-UTC}
+    volumes:
+      - ./deploy/backup/backup-loop.sh:/backup-loop.sh:ro
+      - ${KPI_DATA_ROOT:-/opt/kpi-operations}/backups:/backups
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - kpi-network
 
 networks:
   kpi-network:
