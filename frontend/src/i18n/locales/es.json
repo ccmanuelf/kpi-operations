@@ -1452,7 +1452,7 @@
       "active": "Activo",
       "inactive": "Inactivo",
       "confirmDeleteUser": "¿Está seguro que desea eliminar este usuario?",
-      "assignedClient": "Cliente Asignado (opcional)",
+      "assignedClient": "Cliente Asignado",
       "confirmDeleteTitle": "Confirmar Eliminación",
       "confirmDeleteText": "¿Está seguro que desea eliminar al usuario {username}? Esta acción no se puede deshacer.",
       "saveUser": "Actualizar",
