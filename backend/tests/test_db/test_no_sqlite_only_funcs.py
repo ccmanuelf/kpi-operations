@@ -32,6 +32,9 @@ def test_application_code_has_no_sqlite_only_julianday():
             continue
         if rel in _ALLOWLIST:
             continue
-        if "julianday" in py.read_text(encoding="utf-8"):
+        # Case-insensitive: SQLAlchemy's func preserves attribute case, so
+        # func.JULIANDAY(...) emits literal JULIANDAY(...) — accepted by SQLite
+        # (SQL functions are case-insensitive) but still absent on MariaDB.
+        if "julianday" in py.read_text(encoding="utf-8").lower():
             offenders.append(rel)
     assert offenders == []
