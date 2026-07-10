@@ -242,3 +242,79 @@ def test_no_create_all_outside_alembic():
             if create_all_re.search(line) or create_table_re.search(line):
                 offenders.append(f"{py.relative_to(backend_root)}:{lineno}")
     assert sorted(offenders) == []
+
+
+# ---------------------------------------------------------------------------
+# holds.py MariaDB portability: date_diff_days must EXECUTE on real MariaDB.
+# Before the fix, holds.py used func.julianday(), which 500s on MariaDB with
+# (1305, 'FUNCTION kpi_platform.julianday does not exist'). SQLite cannot
+# reproduce that, so these run only in the mariadb-portability CI job.
+# ---------------------------------------------------------------------------
+
+from datetime import datetime  # noqa: E402
+
+from sqlalchemy import func, literal  # noqa: E402
+
+from backend.db.sql_functions import date_diff_days  # noqa: E402
+
+
+@requires_mariadb
+def test_date_diff_days_executes_on_mariadb(mariadb_schema):
+    """date_diff_days must run on MariaDB and return the fractional day delta."""
+    start = datetime(2026, 6, 1, 0, 0, 0)
+    end = datetime(2026, 6, 11, 0, 0, 0)  # exactly 10 days later
+    session = SessionLocal()
+    try:
+        value = session.execute(select(date_diff_days(literal(end), literal(start)))).scalar()
+    finally:
+        session.close()
+    assert value is not None
+    assert abs(float(value) - 10.0) < 0.001
+
+
+@requires_mariadb
+def test_wip_aging_top_query_shape_executes_on_mariadb(mariadb_schema):
+    """The get_top_aging_items query shape (SELECT + ORDER BY date_diff_days)
+    must execute on MariaDB without OperationalError, even against an empty
+    HOLD_ENTRY table (proves the function resolves; 1305 is raised at parse/exec
+    time regardless of row count)."""
+    from backend.orm.hold_entry import HoldEntry, HoldStatus
+    from backend.orm.work_order import WorkOrder
+
+    session = SessionLocal()
+    try:
+        rows = (
+            session.query(
+                HoldEntry.work_order_id,
+                WorkOrder.style_model,
+                HoldEntry.hold_date,
+                date_diff_days(func.now(), HoldEntry.hold_date),
+            )
+            .outerjoin(WorkOrder, HoldEntry.work_order_id == WorkOrder.work_order_id)
+            .filter(HoldEntry.hold_status == HoldStatus.ON_HOLD)
+            .order_by(date_diff_days(func.now(), HoldEntry.hold_date).desc())
+            .limit(10)
+            .all()
+        )
+    finally:
+        session.close()
+    assert rows == []
+
+
+@requires_mariadb
+def test_wip_aging_trend_avg_executes_on_mariadb(mariadb_schema):
+    """The get_wip_aging_trend AVG(date_diff_days(...)) shape must execute on
+    MariaDB. Empty table → AVG is NULL → scalar() is None, no OperationalError."""
+    from backend.orm.hold_entry import HoldEntry
+
+    current_date = datetime(2026, 6, 11).date()
+    session = SessionLocal()
+    try:
+        result = (
+            session.query(func.avg(date_diff_days(current_date, HoldEntry.hold_date)))
+            .filter(HoldEntry.hold_date <= current_date)
+            .scalar()
+        )
+    finally:
+        session.close()
+    assert result is None
