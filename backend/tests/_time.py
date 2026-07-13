@@ -21,7 +21,10 @@ class _FrozenDate(date):
 
     @classmethod
     def today(cls) -> "_FrozenDate":
-        return FROZEN_TODAY  # type: ignore[return-value]
+        # Return a real _FrozenDate (not the plain FROZEN_TODAY) so the override's
+        # return type is honest — no type: ignore needed. Value-equal to
+        # FROZEN_TODAY, so all `== TODAY` assertions still hold.
+        return cls(FROZEN_TODAY.year, FROZEN_TODAY.month, FROZEN_TODAY.day)
 
 
 def freeze_today(monkeypatch: "pytest.MonkeyPatch", *module_names: str) -> date:
