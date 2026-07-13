@@ -13,7 +13,7 @@ Services tested:
 """
 
 import pytest
-from datetime import date, timedelta
+from datetime import timedelta
 from decimal import Decimal
 from sqlalchemy.orm import sessionmaker
 
@@ -67,14 +67,26 @@ from backend.services.capacity.capacity_service import CapacityPlanningService
 
 from backend.exceptions.domain_exceptions import BOMExplosionError, SchedulingError
 from backend.tests.conftest import clone_template_engine
+from backend.tests._time import FROZEN_TODAY, freeze_today
 
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
 CLIENT_ID = "CAP-TEST"
-TODAY = date.today()
+TODAY = FROZEN_TODAY
 PERIOD_START = TODAY
 PERIOD_END = TODAY + timedelta(days=29)
+
+
+@pytest.fixture(autouse=True)
+def _freeze_clock(monkeypatch):
+    """Pin the current-date lookup in the capacity services whose call-time date
+    feeds asserted values (run_date, committed_at), for midnight-boundary determinism."""
+    freeze_today(
+        monkeypatch,
+        "backend.services.capacity.mrp_service",
+        "backend.services.capacity.scheduling_service",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -465,7 +477,7 @@ class TestMRPService:
         result = svc.run_component_check(CLIENT_ID, order_ids=[order_a.id])
 
         assert isinstance(result, MRPRunResult)
-        assert result.run_date == date.today()
+        assert result.run_date == TODAY
         # Should have checked the 3 components from BOM
         assert result.total_components_checked == 3
 
@@ -854,7 +866,7 @@ class TestSchedulingService:
         committed = svc.commit_schedule(CLIENT_ID, schedule.id, committed_by="USER-1")
 
         assert committed.status == ScheduleStatus.COMMITTED
-        assert committed.committed_at == date.today()
+        assert committed.committed_at == TODAY
         assert committed.committed_by == "USER-1"
 
     def test_commit_schedule_not_found(self, cap_db):

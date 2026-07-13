@@ -5,7 +5,6 @@ Follows the pattern from test_shift_routes.py.
 """
 
 import pytest
-from datetime import date
 from sqlalchemy.orm import sessionmaker
 from fastapi.testclient import TestClient
 from fastapi import FastAPI
@@ -17,13 +16,21 @@ from backend.orm.production_line import ProductionLine
 from backend.routes.employee_line_assignments import router as ela_router
 from backend.tests.fixtures.factories import TestDataFactory
 from backend.tests.conftest import clone_template_engine
+from backend.tests._time import FROZEN_TODAY, freeze_today
 
 # =============================================================================
 # Test App Factory and Fixtures
 # =============================================================================
 CLIENT_ID = "ELA-RT-C1"
 CLIENT_ID_B = "ELA-RT-C2"
-TODAY = date.today().isoformat()
+TODAY = FROZEN_TODAY.isoformat()
+
+
+@pytest.fixture(autouse=True)
+def _freeze_clock(monkeypatch):
+    """Pin the current-date lookup in the CRUD the routes delegate to, so end_date
+    defaults are deterministic across the UTC-midnight boundary."""
+    freeze_today(monkeypatch, "backend.crud.employee_line_assignment")
 
 
 def _create_test_app(db_session, role="supervisor"):
@@ -540,7 +547,7 @@ class TestDeleteEndpoint:
         )
         assert response.status_code == 200
         data = response.json()
-        assert data["end_date"] == date.today().isoformat()
+        assert data["end_date"] == TODAY
         assert data["assignment_id"] == created["assignment_id"]
 
     def test_delete_nonexistent_returns_404(self, supervisor_client):
