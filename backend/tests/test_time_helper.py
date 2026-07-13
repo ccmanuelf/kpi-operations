@@ -13,8 +13,8 @@ def test_frozen_today_is_the_fixed_date():
 def test_freeze_today_pins_a_module_date_today(monkeypatch):
     import backend.crud.employee_line_assignment as mod
 
-    # Real today (whatever it is) must differ from the frozen date most days;
-    # after freezing, the module's date.today() returns exactly FROZEN_TODAY.
+    # After freezing, the module's date.today() returns exactly FROZEN_TODAY
+    # regardless of the wall clock — that pinning is what this test verifies.
     returned = freeze_today(monkeypatch, "backend.crud.employee_line_assignment")
     assert returned == FROZEN_TODAY
     assert mod.date.today() == FROZEN_TODAY

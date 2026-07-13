@@ -5,6 +5,10 @@ production code that computes `date.today()` at call time; across UTC midnight
 those disagree and the test flakes. `freeze_today` patches the `date` symbol in
 named production modules to a subclass whose `today()` returns a fixed date, so
 both sides see the same day. Test-only; `monkeypatch` reverts after each test.
+
+Rule for callers: freeze EVERY production module whose `date.today()`/`now()`
+feeds a value the test asserts on. Adding an assertion on a date produced by a
+not-yet-frozen module means adding that module to the `freeze_today(...)` call.
 """
 
 import importlib
