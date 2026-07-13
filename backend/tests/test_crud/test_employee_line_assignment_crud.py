@@ -4,7 +4,7 @@ Uses real database sessions -- no mocks for DB layer.
 """
 
 import pytest
-from datetime import date, timedelta
+from datetime import timedelta
 from decimal import Decimal
 
 from backend.tests.fixtures.factories import TestDataFactory
@@ -23,15 +23,23 @@ from backend.schemas.employee_line_assignment import (
     EmployeeLineAssignmentCreate,
     EmployeeLineAssignmentUpdate,
 )
+from backend.tests._time import FROZEN_TODAY, freeze_today
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 CLIENT_ID = "ELA-TEST-C1"
 CLIENT_ID_B = "ELA-TEST-C2"
-TODAY = date.today()
+TODAY = FROZEN_TODAY
 YESTERDAY = TODAY - timedelta(days=1)
 TOMORROW = TODAY + timedelta(days=1)
+
+
+@pytest.fixture(autouse=True)
+def _freeze_clock(monkeypatch):
+    """Pin the current-date lookup in the CRUD under test so end_date/effective-date
+    defaults are deterministic across the UTC-midnight boundary."""
+    freeze_today(monkeypatch, "backend.crud.employee_line_assignment")
 
 
 def _seed_client(db, client_id=CLIENT_ID):
