@@ -155,17 +155,33 @@
               variant="outlined"
               density="comfortable"
               class="mb-3"
+              @update:model-value="onRoleChange"
             />
             <v-select
+              v-if="clientFieldMode(userFormData.role) === 'single'"
               v-model="userFormData.client_id_assigned"
               :items="clients"
               item-title="client_name"
               item-value="client_id"
               :label="t('admin.users.assignedClient')"
               prepend-icon="mdi-domain"
+              :rules="[rules.required]"
               variant="outlined"
               density="comfortable"
-              clearable
+            />
+            <v-select
+              v-else-if="clientFieldMode(userFormData.role) === 'multi'"
+              v-model="clientMulti"
+              :items="clients"
+              item-title="client_name"
+              item-value="client_id"
+              :label="t('admin.users.assignedClients')"
+              prepend-icon="mdi-domain"
+              multiple
+              chips
+              :rules="[rules.clientsRequired]"
+              variant="outlined"
+              density="comfortable"
             />
           </v-form>
         </v-card-text>
@@ -210,6 +226,7 @@ import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
 import api from '@/services/api'
+import { clientFieldMode, buildUserUpdatePayload } from '@/composables/useUserRoleForm'
 
 const loading = ref(false)
 const saving = ref(false)
@@ -252,8 +269,11 @@ const headers = computed(() => [
 
 const roleOptions = computed(() => [
   { title: t('admin.users.roleAdmin'), value: 'admin' },
-  { title: t('admin.users.roleSupervisor'), value: 'poweruser' },
-  { title: t('admin.users.roleOperator'), value: 'operator' }
+  { title: t('admin.users.rolePoweruser'), value: 'poweruser' },
+  { title: t('admin.users.roleLeader'), value: 'leader' },
+  { title: t('admin.users.roleSupervisor'), value: 'supervisor' },
+  { title: t('admin.users.roleOperator'), value: 'operator' },
+  { title: t('admin.users.roleViewer'), value: 'viewer' }
 ])
 
 const statusOptions = computed(() => [
@@ -263,8 +283,25 @@ const statusOptions = computed(() => [
 
 const rules = {
   required: v => !!v || t('admin.users.fieldRequired'),
+  clientsRequired: v => (Array.isArray(v) && v.length > 0) || t('admin.users.fieldRequired'),
   email: v => /.+@.+\..+/.test(v) || t('admin.users.invalidEmail'),
   password: v => (v && v.length >= 8) || t('admin.users.passwordMinLength')
+}
+
+const clientMulti = computed({
+  get: () => {
+    const v = userFormData.value.client_id_assigned
+    return v ? v.split(',').map(s => s.trim()).filter(Boolean) : []
+  },
+  set: (arr) => {
+    userFormData.value.client_id_assigned = arr && arr.length ? arr.join(',') : null
+  }
+})
+
+// User-initiated role change (NOT programmatic edit-load) always resets the client
+// selection, so a stale scope can never survive a role switch.
+const onRoleChange = () => {
+  userFormData.value.client_id_assigned = null
 }
 
 const filteredUsers = computed(() => {
@@ -285,14 +322,27 @@ const showSnackbar = (message, color = 'success') => {
 }
 
 const getRoleColor = (role) => {
-  const colors = { admin: 'error', poweruser: 'warning', operator: 'info' }
-  // 'secondary' is a real theme tonal palette (dark text on a light container =
-  // AA); the previous 'grey' fallback produced low-contrast chip text.
+  const colors = {
+    admin: 'error',
+    poweruser: 'warning',
+    leader: 'primary',
+    supervisor: 'info',
+    operator: 'success',
+    viewer: 'secondary'
+  }
+  // 'secondary' is a real theme tonal palette (dark text on a light container = AA).
   return colors[role] || 'secondary'
 }
 
 const formatRole = (role) => {
-  const labels = { admin: t('admin.users.roleAdmin'), poweruser: t('admin.users.roleSupervisor'), operator: t('admin.users.roleOperator') }
+  const labels = {
+    admin: t('admin.users.roleAdmin'),
+    poweruser: t('admin.users.rolePoweruser'),
+    leader: t('admin.users.roleLeader'),
+    supervisor: t('admin.users.roleSupervisor'),
+    operator: t('admin.users.roleOperator'),
+    viewer: t('admin.users.roleViewer')
+  }
   return labels[role] || role
 }
 
@@ -346,7 +396,7 @@ const editUser = (user) => {
     full_name: user.full_name,
     password: '',
     role: user.role,
-    client_id_assigned: user.client_id_assigned
+    client_id_assigned: clientFieldMode(user.role) === 'hidden' ? null : user.client_id_assigned
   }
   userDialog.value = true
 }
@@ -355,7 +405,7 @@ const saveUser = async () => {
   saving.value = true
   try {
     if (editingUser.value) {
-      await api.updateUser(editingUser.value.user_id, userFormData.value)
+      await api.updateUser(editingUser.value.user_id, buildUserUpdatePayload(userFormData.value))
       showSnackbar(t('admin.users.userUpdated'))
     } else {
       await api.createUser(userFormData.value)

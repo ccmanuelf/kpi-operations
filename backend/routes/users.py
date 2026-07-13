@@ -12,6 +12,7 @@ import uuid
 from backend.database import get_db
 from backend.schemas.user import UserCreate, UserUpdate, UserResponse
 from backend.auth.jwt import get_password_hash, get_current_user
+from backend.auth.role_rules import validate_role_client_assignment
 from backend.orm.user import User
 from backend.utils.logging_utils import get_module_logger
 
@@ -62,7 +63,7 @@ def create_user(
         password_hash=get_password_hash(user_data.password),
         full_name=user_data.full_name,
         role=user_data.role,
-        client_id_assigned=user_data.client_id_assigned,
+        client_id_assigned=(user_data.client_id_assigned or "").strip() or None,
         is_active=True,
         created_at=datetime.now(tz=timezone.utc),
         updated_at=datetime.now(tz=timezone.utc),
@@ -86,9 +87,20 @@ def update_user(
         raise HTTPException(status_code=404, detail="User not found")
 
     update_data = user_data.model_dump(exclude_unset=True)
+
+    if "role" in update_data or "client_id_assigned" in update_data:
+        effective_role = str(update_data.get("role", user.role))
+        effective_client = update_data.get("client_id_assigned", user.client_id_assigned)
+        try:
+            validate_role_client_assignment(effective_role, effective_client)
+        except ValueError as exc:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+
     for field, value in update_data.items():
         if field == "password" and value:
             setattr(user, "password_hash", get_password_hash(value))
+        elif field == "client_id_assigned":
+            setattr(user, "client_id_assigned", (value or "").strip() or None)
         elif hasattr(user, field):
             setattr(user, field, value)
 
