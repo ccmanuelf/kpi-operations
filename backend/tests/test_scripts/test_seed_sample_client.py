@@ -86,6 +86,7 @@ def test_reset_table_order_children_before_parents():
         ("ProductionLine", "Shift"),
         ("ProductionLine", "Equipment"),
         ("Shift", "BreakTime"),
+        ("WorkOrder", "Alert"),  # Alert.work_order_id → WORK_ORDER (nullable, RESTRICT)
     ]
     for parent, child in edges:
         assert parent in order and child in order, f"{parent}/{child} missing from RESET_TABLE_ORDER"

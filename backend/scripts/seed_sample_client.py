@@ -170,6 +170,7 @@ def _reset_table_order() -> list[tuple[type, str]]:
         (WorkflowTransitionLog, "client_id"),
         (HoldEntry, "client_id"),
         (Job, "client_id_fk"),
+        (Alert, "client_id"),  # child of WorkOrder (work_order_id, nullable FK)
         (WorkOrder, "client_id"),
         (CapacityKPICommitment, "client_id"),  # child of CapacitySchedule
         (CapacityScheduleDetail, "client_id"),  # child of CapacitySchedule, CapacityOrder, CapacityProductionLine
@@ -194,7 +195,6 @@ def _reset_table_order() -> list[tuple[type, str]]:
         (ProductionLine, "client_id"),  # child of CapacityProductionLine
         (CapacityProductionLine, "client_id"),
         (SimulationScenario, "client_id"),
-        (Alert, "client_id"),
         (AlertConfig, "client_id"),
         (KPIThreshold, "client_id"),
         (ClientConfig, "client_id"),
