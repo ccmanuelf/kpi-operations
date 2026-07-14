@@ -18,6 +18,7 @@
 - **Idempotent.** Every section helper is skip-if-exists; a second run without `--reset` adds zero rows. `--reset` deletes only the target client's rows (children-first) and leaves the `CLIENT` row and all other clients intact.
 - **ClientType stores the human value string** (`"Piece Rate"`, not `PIECE_RATE`) — always pass the `ClientType` enum member to the ORM, which serializes via `values_callable`.
 - **Naming traps:** `JOB.client_id_fk` and `DEFECT_DETAIL.client_id_fk` (not `client_id`); `Employee.client_id_assigned` (Text, comma-list — DEMO employees are single-client); two line concepts (`PRODUCTION_LINE` operational vs `capacity_production_lines`).
+- **Deterministic client-scoped PKs — never use `TestDataFactory`'s auto-generated string PKs in this prod script.** Several `TestDataFactory` methods mint their string primary key from a process-local `_next_id("PE"|"QE"|"DD"|"DT"|"ATT"|"HOLD"|"JOB"|...)` counter that restarts every process, causing PK collisions across separate `--client` invocations or against an already-populated prod DB (this is exactly the Task-2 defect-catalog bug). So for every entity whose PK is an app-generated string — `Job` (`job_id`), `HoldEntry` (`hold_entry_id`), `ProductionEntry` (`production_entry_id`), `QualityEntry` (`quality_entry_id`), `DefectDetail` (`defect_detail_id`), `DowntimeEntry` (`downtime_entry_id`), `AttendanceEntry` (`attendance_entry_id`) — either pass an explicit deterministic id `f"<PREFIX>-{client_id}-{seq:04d}"` (when the factory exposes the id param, e.g. `create_job(job_id=...)`) or construct the ORM object directly (when it does not). `TestDataFactory` is fine ONLY for DB-autoincrement PKs (`Shift`, `Product`, `Employee`, `WorkflowTransitionLog`, assignments) or where an explicit unique code is already passed. A cross-process regression test (`TestDataFactory.reset_counters()` between clients) must assert no PK collision for the daily-data entities.
 - Backend verify: `pytest tests/` from `backend/` (coverage gate ≥75%). Files under 500 lines. Conventional commits. One expected status code per assertion (no permissive `in [...]`).
 
 ## File Structure
@@ -884,7 +885,8 @@ def seed_work_orders(session: Session, spec: ClientSpec, entered_by: str) -> lis
                 session, work_order_id=wo_id, from_status=(frm.value if frm else None),
                 to_status=to.value, transitioned_by=entered_by, client_id=cid)
         if status in (WorkOrderStatus.IN_PROGRESS, WorkOrderStatus.COMPLETED):
-            TestDataFactory.create_job(session, work_order_id=wo_id, client_id=cid)
+            # explicit deterministic job_id (do NOT let the factory mint a _next_id PK)
+            TestDataFactory.create_job(session, work_order_id=wo_id, client_id=cid, job_id=f"JOB-{cid}-{i:03d}")
         wos.append(wo)
     session.flush()
     return wos
@@ -910,18 +912,23 @@ def _transition_chain(status):
 
 
 def seed_holds(session: Session, client_id: str, work_orders: list, entered_by: str) -> None:
+    # Construct HoldEntry directly: TestDataFactory.create_hold_entry mints
+    # hold_entry_id via _next_id("HOLD") (process-local counter → cross-process
+    # PK collision). Use a deterministic client-scoped PK instead.
+    from datetime import datetime, timezone
     from backend.orm import HoldEntry
-    from backend.db.factories import TestDataFactory
 
     if session.query(HoldEntry).filter_by(client_id=client_id).first() is not None:
         return
     chain = ["PENDING_HOLD_APPROVAL", "ON_HOLD", "PENDING_RESUME_APPROVAL", "RESUMED",
              "RELEASED", "CANCELLED", "SCRAPPED"]
-    for i, hold_status in enumerate(chain):
+    for i, hold_status in enumerate(chain, start=1):
         wo = work_orders[i % len(work_orders)]
-        TestDataFactory.create_hold_entry(
-            session, work_order_id=wo.work_order_id, client_id=client_id, created_by=entered_by,
-            hold_reason="QUALITY_ISSUE", hold_status=hold_status)
+        session.add(HoldEntry(
+            hold_entry_id=f"HOLD-{client_id}-{i:03d}", work_order_id=wo.work_order_id,
+            client_id=client_id, hold_initiated_by=entered_by, hold_reason="QUALITY_ISSUE",
+            hold_reason_category="QUALITY", hold_status=hold_status,
+            hold_date=datetime(2026, 6, 15, tzinfo=timezone.utc)))
     session.flush()
 ```
 
@@ -936,7 +943,7 @@ Wire into `seed_client` (resolve the user once):
 - [ ] **Step 4: Run to verify it passes**
 
 Run: `cd backend && python -m pytest tests/test_scripts/test_seed_sample_client.py -q`
-Expected: PASS. Confirm `create_hold_entry` accepts `hold_status` as a plain string (it does — `HoldStatus` is a constants holder, not an enum) and that `create_workflow_transition` accepts `from_status=None`.
+Expected: PASS. Read `backend/orm/hold_entry.py` to confirm the `HoldEntry` constructor fields used (`hold_entry_id`, `work_order_id`, `client_id`, `hold_initiated_by`, `hold_reason`, `hold_reason_category`, `hold_status`, `hold_date`) and that `hold_status` is a plain string column. Confirm `create_workflow_transition` accepts `from_status=None`. Read `backend/orm/work_order.py` for the exact `WorkOrderStatus` members before building `states`/`_transition_chain`.
 
 - [ ] **Step 5: Commit**
 
@@ -986,6 +993,30 @@ def test_daily_data_scales_with_days_and_is_credible(db_session):
     for qe in db_session.query(QualityEntry).filter_by(client_id=cid).all():
         assert qe.units_passed + qe.units_defective == qe.units_inspected
         assert 0 <= qe.units_defective <= qe.units_inspected
+
+
+def test_daily_data_pks_client_scoped_no_cross_process_collision(db_session):
+    # Reproduces the process-local-counter PK-collision class deterministically:
+    # seed one client, reset the factory counters (= a fresh process), seed another;
+    # deterministic client-scoped PKs must not collide.
+    from backend.db.factories import TestDataFactory
+    from backend.orm import ProductionEntry, AttendanceEntry, QualityEntry
+
+    _seed_admin(db_session)
+    seed.seed_client(db_session, seed.CLIENT_SPECS["DEMO-PIECE"], days=8)
+    db_session.commit()
+    TestDataFactory.reset_counters()
+    seed.seed_client(db_session, seed.CLIENT_SPECS["DEMO-HOURLY"], days=8)  # must NOT IntegrityError
+    db_session.commit()
+
+    for model, pk in ((ProductionEntry, "production_entry_id"), (AttendanceEntry, "attendance_entry_id"),
+                      (QualityEntry, "quality_entry_id")):
+        rows = db_session.query(model).all()
+        ids = [getattr(r, pk) for r in rows]
+        assert len(ids) == len(set(ids)), f"{pk} collides across clients"
+        for r in rows:
+            owner = getattr(r, "client_id", None) or getattr(r, "client_id_fk", None)
+            assert owner in getattr(r, pk), f"{pk} must be client-scoped"
 ```
 
 - [ ] **Step 2: Run to verify it fails**
@@ -995,14 +1026,14 @@ Expected: FAIL — `seed_daily_data` undefined.
 
 - [ ] **Step 3: Implement `seed_daily_data`**
 
-Mirror the credible-value formula from `backend/scripts/init_demo_database.py:1340-1400` (read it). Deterministic per (client, date). One production entry per working day (skip weekends) per the first product/shift/line; a quality entry per working day tied to a random seeded work order; occasional downtime; attendance per employee per working day.
+Mirror the credible-value formula from `backend/scripts/init_demo_database.py:1340-1400` (read it). Deterministic per (client, date). One production entry per working day (skip weekends) per the first product/shift/line; a quality entry + defect detail per working day tied to a rotating seeded work order; occasional downtime; attendance per employee per working day. **Construct every entity DIRECTLY with a deterministic client-scoped PK** — do NOT use `TestDataFactory.create_production_entry/create_quality_entry/create_defect_detail/create_downtime_entry/create_attendance_entry` (they mint `_next_id` counter PKs that collide across processes — see Global Constraints). Read `backend/db/factories.py` for the correct non-PK field names/defaults each entity needs, and the ORM files for required columns (`AttendanceEntry.scheduled_hours` is required; `ProductionEntry.production_date`/`shift_date` are datetimes).
 
 ```python
 def seed_daily_data(session: Session, spec: ClientSpec, days: int, entered_by: str) -> None:
     from datetime import date, datetime, timedelta
     from decimal import Decimal
-    from backend.orm import ProductionEntry, WorkOrder
-    from backend.db.factories import TestDataFactory
+    from backend.orm import (ProductionEntry, QualityEntry, DefectDetail, DowntimeEntry,
+                             AttendanceEntry, AbsenceType, WorkOrder)
 
     cid = spec.client_id
     if session.query(ProductionEntry).filter_by(client_id=cid).first() is not None:
@@ -1015,11 +1046,14 @@ def seed_daily_data(session: Session, spec: ClientSpec, days: int, entered_by: s
     product, shift, line = products[0], shifts[0], lines[0]
     end = date(2026, 6, 15)  # fixed anchor for determinism
     ideal_ct = float(product.ideal_cycle_time or Decimal("0.12"))
+    seq = 0
 
     for d in range(days):
         day = end - timedelta(days=days - 1 - d)
         if day.weekday() >= 5:
             continue
+        seq += 1
+        day_dt = datetime.combine(day, datetime.min.time())
         rng = rng_for(cid, "daily", day.isoformat())
         units = rng.randint(600, 1600)
         target_perf = rng.uniform(0.82, 0.96)
@@ -1028,35 +1062,41 @@ def seed_daily_data(session: Session, spec: ClientSpec, days: int, entered_by: s
         setup_h = round(run_time * 0.02, 2)
         defects = max(1, int(units * rng.uniform(0.003, 0.012)))
         scrap = defects // 3
-        wo = work_orders[d % len(work_orders)] if work_orders else None
-        TestDataFactory.create_production_entry(
-            session, client_id=cid, product_id=product.product_id, shift_id=shift.shift_id,
-            entered_by=entered_by, production_date=day, units_produced=units,
+        wo = work_orders[seq % len(work_orders)] if work_orders else None
+        session.add(ProductionEntry(
+            production_entry_id=f"PE-{cid}-{seq:04d}", client_id=cid, product_id=product.product_id,
+            shift_id=shift.shift_id, line_id=line.line_id, entered_by=entered_by,
+            production_date=day_dt, shift_date=day_dt, units_produced=units,
             run_time_hours=Decimal(str(run_time)), setup_time_hours=Decimal(str(setup_h)),
             downtime_hours=Decimal(str(downtime_h)), defect_count=defects, scrap_count=scrap,
             rework_count=defects - scrap, employees_assigned=len(employees),
-            work_order_id=(wo.work_order_id if wo else None),
-        )
+            work_order_id=(wo.work_order_id if wo else None)))
         if wo is not None:
-            qe = TestDataFactory.create_quality_entry(
-                session, work_order_id=wo.work_order_id, client_id=cid, inspector_id=entered_by,
-                inspection_date=day, units_inspected=units, units_defective=defects + scrap)
-            TestDataFactory.create_defect_detail(session, quality_entry_id=qe.quality_entry_id,
-                                                 defect_count=defects, client_id_fk=cid)
-        if d % 5 == 0:
-            TestDataFactory.create_downtime_entry(
-                session, client_id=cid, reported_by=entered_by,
+            qe_id = f"QE-{cid}-{seq:04d}"
+            units_def = defects + scrap
+            session.add(QualityEntry(
+                quality_entry_id=qe_id, work_order_id=wo.work_order_id, client_id=cid,
+                inspector_id=entered_by, inspection_date=day_dt, shift_date=day_dt,
+                units_inspected=units, units_passed=units - units_def, units_defective=units_def,
+                total_defects_count=units_def, units_scrapped=scrap, units_reworked=defects - scrap))
+            session.add(DefectDetail(
+                defect_detail_id=f"DD-{cid}-{seq:04d}", quality_entry_id=qe_id, client_id_fk=cid,
+                defect_type="Stitching", defect_count=defects, severity="MINOR"))
+        if seq % 5 == 1:
+            session.add(DowntimeEntry(
+                downtime_entry_id=f"DT-{cid}-{seq:04d}", client_id=cid, reported_by=entered_by,
                 downtime_reason=rng.choice(["EQUIPMENT_FAILURE", "MATERIAL_SHORTAGE", "CHANGEOVER"]),
-                shift_date=datetime.combine(day, datetime.min.time()),
-                duration_minutes=int(downtime_h * 60))
-        for emp in employees:
+                shift_date=day_dt, downtime_duration_minutes=int(downtime_h * 60)))
+        for j, emp in enumerate(employees, start=1):
             arng = rng_for(cid, "att", day.isoformat(), emp.employee_id)
             absent = arng.random() < 0.05
-            TestDataFactory.create_attendance_entry(
-                session, employee_id=emp.employee_id, client_id=cid, shift_id=shift.shift_id,
-                shift_date=day, is_absent=1 if absent else 0,
-                actual_hours=Decimal("0") if absent else Decimal("8.0"),
-                absence_hours=Decimal("8.0") if absent else Decimal("0"))
+            session.add(AttendanceEntry(
+                attendance_entry_id=f"ATT-{cid}-{seq:04d}-{j:02d}", employee_id=emp.employee_id,
+                client_id=cid, shift_id=shift.shift_id, shift_date=day_dt,
+                scheduled_hours=Decimal("8.0"), actual_hours=Decimal("0") if absent else Decimal("8.0"),
+                absence_hours=Decimal("8.0") if absent else Decimal("0"),
+                absence_type=AbsenceType.UNSCHEDULED_ABSENCE if absent else None,
+                is_absent=1 if absent else 0))
     session.flush()
 ```
 
