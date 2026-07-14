@@ -35,6 +35,9 @@ from backend.scripts._seed_sections import (  # noqa: E402,F401 — rng_for re-e
     seed_products,
     seed_lines,
     seed_employees,
+    seed_break_times,
+    seed_equipment,
+    seed_alerts,
     seed_capacity_graph,
     seed_work_orders,
     seed_holds,
@@ -130,7 +133,11 @@ def _reset_table_order() -> list[tuple[type, str]]:
     from backend.orm.employee import Employee
     from backend.orm.employee_line_assignment import EmployeeLineAssignment
     from backend.orm.employee_client_assignment import EmployeeClientAssignment
+    from backend.orm.floating_pool import FloatingPool
     from backend.orm.production_line import ProductionLine
+    from backend.orm.equipment import Equipment
+    from backend.orm.break_time import BreakTime
+    from backend.orm.alert import Alert
     from backend.orm.client_config import ClientConfig
     from backend.orm.kpi_threshold import KPIThreshold
     from backend.orm.alert import AlertConfig
@@ -178,12 +185,16 @@ def _reset_table_order() -> list[tuple[type, str]]:
         (CapacityCalendar, "client_id"),
         (EmployeeLineAssignment, "client_id"),  # child of ProductionLine, Employee
         (EmployeeClientAssignment, "client_id"),  # child of Employee
+        (FloatingPool, "client_id"),  # child of Employee
         (Employee, "client_id_assigned"),
+        (BreakTime, "client_id"),  # child of Shift
         (Shift, "client_id"),  # child of ProductionLine (line_id, nullable)
         (Product, "client_id"),
+        (Equipment, "client_id"),  # child of ProductionLine
         (ProductionLine, "client_id"),  # child of CapacityProductionLine
         (CapacityProductionLine, "client_id"),
         (SimulationScenario, "client_id"),
+        (Alert, "client_id"),
         (AlertConfig, "client_id"),
         (KPIThreshold, "client_id"),
         (ClientConfig, "client_id"),
@@ -213,6 +224,9 @@ def seed_client(session: Session, spec: ClientSpec, days: int, anchor: date) -> 
     seed_products(session, spec.client_id)
     seed_lines(session, spec.client_id)
     seed_employees(session, spec)
+    seed_break_times(session, spec.client_id)
+    seed_equipment(session, spec.client_id)
+    seed_alerts(session, spec.client_id)
     seed_capacity_graph(session, spec.client_id, days, anchor)
     entered_by = resolve_entered_by(session, spec.client_id)
     work_orders = seed_work_orders(session, spec, entered_by, anchor)

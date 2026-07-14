@@ -81,8 +81,11 @@ def test_reset_table_order_children_before_parents():
         ("CapacityBOMHeader", "CapacityBOMDetail"),
         ("Employee", "EmployeeLineAssignment"),
         ("Employee", "EmployeeClientAssignment"),
+        ("Employee", "FloatingPool"),
         ("ProductionLine", "EmployeeLineAssignment"),
         ("ProductionLine", "Shift"),
+        ("ProductionLine", "Equipment"),
+        ("Shift", "BreakTime"),
     ]
     for parent, child in edges:
         assert parent in order and child in order, f"{parent}/{child} missing from RESET_TABLE_ORDER"
@@ -155,6 +158,14 @@ def test_master_data_seeded_and_idempotent(db_session):
     assert db_session.query(Employee).filter_by(client_id_assigned=cid).count() == spec.num_employees
     assert db_session.query(EmployeeClientAssignment).filter_by(client_id=cid).count() == spec.num_employees
     assert db_session.query(EmployeeLineAssignment).filter_by(client_id=cid).count() >= spec.num_employees
+
+    # Employees are a mix of DEDICATED (regular) and FLOATING (floating-pool) assignments.
+    floating_employees = db_session.query(Employee).filter_by(client_id_assigned=cid, is_floating_pool=1).count()
+    assert floating_employees == 2
+    assignment_types = {
+        a.assignment_type for a in db_session.query(EmployeeClientAssignment).filter_by(client_id=cid).all()
+    }
+    assert assignment_types == {"DEDICATED", "FLOATING"}
 
 
 def test_employee_codes_unique_across_demo_clients(db_session):
@@ -490,6 +501,35 @@ def test_production_entry_stored_kpis_populated(db_session):
         assert pe.efficiency_percentage is not None and 0 < float(pe.efficiency_percentage) <= 100
         assert pe.performance_percentage is not None and 0 < float(pe.performance_percentage) <= 100
         assert pe.quality_rate is not None and 0 < float(pe.quality_rate) <= 100
+
+
+def test_empty_screens_populated(db_session):
+    from backend.orm.alert import Alert
+    from backend.orm.equipment import Equipment
+    from backend.orm.break_time import BreakTime
+    from backend.orm.employee import Employee
+
+    _seed_admin(db_session)
+    seed.seed_client(db_session, seed.CLIENT_SPECS["DEMO-PIECE"], days=8, anchor=FIXED_ANCHOR)
+    db_session.commit()
+    cid = "DEMO-PIECE"
+    assert db_session.query(Alert).filter_by(client_id=cid).count() >= 1
+    assert db_session.query(Equipment).filter_by(client_id=cid).count() >= 1
+    assert db_session.query(BreakTime).filter_by(client_id=cid).count() >= 1
+    fp = db_session.query(Employee).filter_by(client_id_assigned=cid, is_floating_pool=1).count()
+    assert fp >= 1  # at least one floating-pool employee
+
+
+def test_floating_and_dedicated_assignments_both_present(db_session):
+    from backend.orm.employee_client_assignment import EmployeeClientAssignment
+
+    _seed_admin(db_session)
+    seed.seed_client(db_session, seed.CLIENT_SPECS["DEMO-PIECE"], days=8, anchor=FIXED_ANCHOR)
+    db_session.commit()
+    types = {
+        a.assignment_type for a in db_session.query(EmployeeClientAssignment).filter_by(client_id="DEMO-PIECE").all()
+    }
+    assert "DEDICATED" in types and "FLOATING" in types
 
 
 def test_resolve_entered_by_exact_client_membership(db_session):
