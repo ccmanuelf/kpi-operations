@@ -244,7 +244,6 @@ def seed_catalogs(session: Session, client_id: str) -> None:
     """Idempotent per-client hold-status/hold-reason/defect-type catalogs."""
     from backend.orm.hold_status_catalog import HoldStatusCatalog
     from backend.orm.hold_reason_catalog import HoldReasonCatalog
-    from backend.db.factories import TestDataFactory
 
     if session.query(HoldStatusCatalog).filter_by(client_id=client_id).first() is None:
         for code, name, order in _HOLD_STATUSES:
@@ -274,13 +273,15 @@ def seed_catalogs(session: Session, client_id: str) -> None:
 
     if session.query(DefectTypeCatalog).filter_by(client_id=client_id).first() is None:
         for code, name, category, severity in _DEFECT_TYPES:
-            TestDataFactory.create_defect_type_catalog(
-                session,
-                client_id=client_id,
-                defect_code=code,
-                defect_name=name,
-                category=category,
-                severity_default=severity,
+            session.add(
+                DefectTypeCatalog(
+                    defect_type_id=f"DEFECT-{client_id}-{code}",
+                    client_id=client_id,
+                    defect_code=code,
+                    defect_name=name,
+                    category=category,
+                    severity_default=severity,
+                )
             )
     session.flush()
 

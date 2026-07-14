@@ -109,3 +109,21 @@ def test_catalogs_and_config_seeded_and_idempotent(db_session):
     assert db_session.query(ClientConfig).filter_by(client_id=cid).count() == 1
     assert db_session.query(KPIThreshold).filter_by(client_id=cid).count() >= 6
     assert db_session.query(AlertConfig).filter_by(client_id=cid).count() >= 3
+
+
+def test_defect_catalog_pk_is_client_scoped_no_collision(db_session):
+    from backend.db.factories import TestDataFactory
+    from backend.orm.defect_type_catalog import DefectTypeCatalog
+
+    for cid in ("DEMO-PIECE", "DEMO-HOURLY"):
+        seed.seed_client_row(db_session, seed.CLIENT_SPECS[cid])
+    seed.seed_catalogs(db_session, "DEMO-PIECE")
+    db_session.commit()
+    TestDataFactory.reset_counters()  # simulate a fresh process (counter restarts at 1)
+    seed.seed_catalogs(db_session, "DEMO-HOURLY")  # must NOT raise IntegrityError
+    db_session.commit()
+
+    ids = [r.defect_type_id for r in db_session.query(DefectTypeCatalog).all()]
+    assert len(ids) == len(set(ids)), "defect_type_id PKs collide across clients"
+    for r in db_session.query(DefectTypeCatalog).all():
+        assert r.client_id in r.defect_type_id, "defect_type_id must be client-scoped"
