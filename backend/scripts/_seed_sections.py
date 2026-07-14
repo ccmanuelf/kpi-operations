@@ -827,8 +827,7 @@ def seed_daily_data(session: Session, spec: ClientSpec, days: int, entered_by: s
             defects = max(1, int(units * wrng.uniform(0.003, 0.012)))
             scrap = defects // 3
             rework = defects - scrap
-            efficiency = min(100.0, max(0.01, round(target_perf * 100, 2)))
-            performance = min(100.0, max(0.01, round(target_perf * 100, 2)))
+            efficiency = performance = min(100.0, max(0.01, round(target_perf * 100, 2)))
             quality_pct = min(100.0, max(0.01, round(100 - (defects + scrap) / units * 100, 2)))
             employees_present = max(0, len(employees) - (1 if wrng.random() < 0.15 else 0))
 
@@ -901,6 +900,11 @@ def seed_daily_data(session: Session, spec: ClientSpec, days: int, entered_by: s
                         downtime_duration_minutes=int(downtime_h * 60),
                     )
                 )
+        # Invariant: the last entry is pinned to (target_total - running), so the
+        # per-WO produced total must land EXACTLY on target. Assert it so a future
+        # change to planned_quantity range / target fractions / num_entries that
+        # broke the reservation budget (target_total < num_entries-1) fails loudly.
+        assert running == target_total, f"true-up miss for {wo.work_order_id}: {running} != {target_total}"
         wo.actual_quantity = running
 
     # --- Attendance: one per employee per working day, independent of the
