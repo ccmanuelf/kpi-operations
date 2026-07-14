@@ -285,6 +285,77 @@ def test_daily_data_scales_with_days_and_is_credible(db_session):
         assert 0 <= qe.units_defective <= qe.units_inspected
 
 
+def test_simulation_scenario_seeded(db_session):
+    from backend.orm.simulation_scenario import SimulationScenario
+
+    _seed_admin(db_session)
+    spec = seed.CLIENT_SPECS["DEMO-PIECE"]
+    seed.seed_client(db_session, spec, days=5)
+    db_session.commit()
+    scenarios = db_session.query(SimulationScenario).filter_by(client_id="DEMO-PIECE").all()
+    assert len(scenarios) == 1
+    assert scenarios[0].config_json is not None
+    assert scenarios[0].is_active is True
+
+
+def test_full_seed_is_idempotent(db_session):
+    from backend.orm import ProductionEntry
+
+    _seed_admin(db_session)
+    spec = seed.CLIENT_SPECS["DEMO-PIECE"]
+    seed.seed_client(db_session, spec, days=10)
+    db_session.commit()
+    before = db_session.query(ProductionEntry).filter_by(client_id="DEMO-PIECE").count()
+    seed.seed_client(db_session, spec, days=10)  # second full run
+    db_session.commit()
+    after = db_session.query(ProductionEntry).filter_by(client_id="DEMO-PIECE").count()
+    assert after == before  # zero new rows
+
+
+def test_reset_removes_only_target_client(db_session):
+    from backend.orm import ProductionEntry, Client
+
+    _seed_admin(db_session)
+    piece = seed.CLIENT_SPECS["DEMO-PIECE"]
+    hourly = seed.CLIENT_SPECS["DEMO-HOURLY"]
+    seed.seed_client(db_session, piece, days=6)
+    seed.seed_client(db_session, hourly, days=6)
+    db_session.commit()
+
+    seed.reset_client_data(db_session, "DEMO-PIECE")
+    db_session.commit()
+    assert db_session.query(ProductionEntry).filter_by(client_id="DEMO-PIECE").count() == 0
+    assert db_session.query(ProductionEntry).filter_by(client_id="DEMO-HOURLY").count() > 0
+    assert db_session.get(Client, "DEMO-PIECE") is not None  # CLIENT row kept
+
+
+def test_cli_smoke_seeds_and_reports(tmp_path, monkeypatch, capsys):
+    from backend.db.migrate import upgrade_to_head
+    from backend.db.factories import TestDataFactory
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import Session as SASession
+    from backend.orm import ProductionEntry
+
+    db_file = tmp_path / "cli.db"
+    url = f"sqlite:///{db_file}"
+    upgrade_to_head(url)
+    eng = create_engine(url)
+    with SASession(eng) as s:  # need an admin for entered_by
+        TestDataFactory.create_user(s, username="cli_admin", role="admin")
+        s.commit()
+    eng.dispose()
+
+    monkeypatch.setenv("DATABASE_URL", url)
+    rc = seed.main(["--client", "DEMO-PIECE", "--days", "8"])
+    assert rc == 0
+    assert "Seeded DEMO-PIECE" in capsys.readouterr().out
+
+    eng = create_engine(url)
+    with SASession(eng) as s:
+        assert s.query(ProductionEntry).filter_by(client_id="DEMO-PIECE").count() > 0
+    eng.dispose()
+
+
 def test_daily_data_pks_client_scoped_no_cross_process_collision(db_session):
     # Reproduces the process-local-counter PK-collision class deterministically:
     # seed one client, reset the factory counters (= a fresh process), seed another;
