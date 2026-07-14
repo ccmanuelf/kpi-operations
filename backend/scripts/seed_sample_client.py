@@ -463,6 +463,8 @@ def seed_capacity_graph(session: Session, client_id: str, days: int) -> None:
         CapacityScheduleDetail,
         ScheduleStatus,
         CapacityKPICommitment,
+        CapacityScenario,
+        CapacityAnalysis,
     )
 
     if session.query(CapacityCalendar).filter_by(client_id=client_id).first() is not None:
@@ -677,6 +679,47 @@ def seed_capacity_graph(session: Session, client_id: str, days: int) -> None:
         commitment.calculate_variance()
         session.add(commitment)
 
+    # --- Scenario: one what-if scenario referencing the seeded schedule ---
+    scenario = CapacityScenario(
+        client_id=client_id,
+        scenario_name=f"{client_id} Overtime Scenario",
+        scenario_type="OVERTIME",
+        base_schedule_id=schedule.id,
+        parameters_json={"overtime_hours_per_day": 2, "applies_to_lines": [line.line_code for line in cap_lines]},
+        results_json={"capacity_increase_percent": 12.5, "cost_impact": 4200.0},
+        is_active=True,
+        notes="Seeded demo what-if scenario",
+    )
+    session.add(scenario)
+
+    # --- Analysis: one 12-step capacity analysis per capacity line ---
+    working_days = sum(1 for i in range(days) if (today + timedelta(days=i)).weekday() < 5)
+    for line in cap_lines:
+        arng = rng_for(client_id, "capacity", "analysis", line.line_code)
+        analysis = CapacityAnalysis(
+            client_id=client_id,
+            analysis_date=today,
+            line_id=line.id,
+            line_code=line.line_code,
+            department=line.department,
+            working_days=working_days,
+            shifts_per_day=1,
+            hours_per_shift=Decimal("8.0"),
+            operators_available=line.max_operators,
+            efficiency_factor=line.efficiency_factor,
+            absenteeism_factor=line.absenteeism_factor,
+            demand_hours=Decimal("0"),
+            demand_units=arng.randint(1000, 5000),
+        )
+        # First pass computes capacity_hours; then set demand to a credible
+        # fraction of capacity so utilization reflects a busy-but-not-idle line.
+        analysis.calculate_metrics()
+        cap_h = float(analysis.capacity_hours or 0)
+        target_util = arng.uniform(0.65, 0.95)
+        analysis.demand_hours = Decimal(str(round(cap_h * target_util, 2)))
+        analysis.calculate_metrics()
+        session.add(analysis)
+
     session.flush()
 
 
@@ -769,7 +812,7 @@ def seed_holds(session: Session, client_id: str, work_orders: list, entered_by: 
     # hold_entry_id via _next_id("HOLD") (process-local counter → cross-process
     # PK collision). Use a deterministic client-scoped PK instead.
     from datetime import datetime, timezone
-    from backend.orm import HoldEntry
+    from backend.orm import HoldEntry, WorkOrderStatus
 
     if session.query(HoldEntry).filter_by(client_id=client_id).first() is not None:
         return
@@ -782,8 +825,13 @@ def seed_holds(session: Session, client_id: str, work_orders: list, entered_by: 
         "CANCELLED",
         "SCRAPPED",
     ]
+    # The currently-open hold statuses must reference the WO that is actually
+    # ON_HOLD (credibility: a hold row can't be "open" against a WO that has
+    # already moved on). Resolved statuses may reference other WOs as before.
+    open_statuses = {"PENDING_HOLD_APPROVAL", "ON_HOLD", "PENDING_RESUME_APPROVAL"}
+    on_hold_wo = next(w for w in work_orders if w.status == WorkOrderStatus.ON_HOLD)
     for i, hold_status in enumerate(chain, start=1):
-        wo = work_orders[i % len(work_orders)]
+        wo = on_hold_wo if hold_status in open_statuses else work_orders[i % len(work_orders)]
         session.add(
             HoldEntry(
                 hold_entry_id=f"HOLD-{client_id}-{i:03d}",

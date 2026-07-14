@@ -184,6 +184,8 @@ def test_capacity_graph_seeded_and_idempotent(db_session):
         CapacitySchedule,
         CapacityScheduleDetail,
         CapacityKPICommitment,
+        CapacityScenario,
+        CapacityAnalysis,
     )
     from backend.orm.capacity.orders import OrderStatus
 
@@ -208,11 +210,19 @@ def test_capacity_graph_seeded_and_idempotent(db_session):
     assert db_session.query(CapacityScheduleDetail).filter_by(client_id=cid).count() >= 1
     assert db_session.query(CapacityKPICommitment).filter_by(client_id=cid).count() >= 1
 
+    scenarios = db_session.query(CapacityScenario).filter_by(client_id=cid).all()
+    assert len(scenarios) == 1
+    assert cid in scenarios[0].scenario_name
+
+    analyses = db_session.query(CapacityAnalysis).filter_by(client_id=cid).all()
+    assert len(analyses) >= 1
+
 
 def _seed_admin(db_session):
     from backend.db.factories import TestDataFactory
+    from backend.orm import User
 
-    if db_session.query(__import__("backend.orm", fromlist=["User"]).User).filter_by(role="admin").first() is None:
+    if db_session.query(User).filter_by(role="admin").first() is None:
         TestDataFactory.create_user(db_session, username="seed_admin", role="admin")
         db_session.flush()
 
