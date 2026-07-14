@@ -366,6 +366,21 @@ def seed_equipment(session: Session, client_id: str) -> None:
     session.flush()
 
 
+_WIDGET_DEFAULTS = [
+    ("admin", "kpi_summary", "KPI Summary", 1, True, '{"refreshInterval": 300}'),
+    ("admin", "production_chart", "Production Chart", 2, True, '{"chartType": "bar"}'),
+    ("admin", "quality_metrics", "Quality Metrics", 3, True, "{}"),
+    ("admin", "alerts_panel", "Alerts Panel", 4, True, "{}"),
+    ("admin", "efficiency_gauge", "Efficiency Gauge", 5, True, "{}"),
+    ("supervisor", "production_chart", "Production Chart", 1, True, '{"chartType": "line"}'),
+    ("supervisor", "quality_metrics", "Quality Metrics", 2, True, "{}"),
+    ("supervisor", "attendance_summary", "Attendance Summary", 3, True, "{}"),
+    ("supervisor", "alerts_panel", "Alerts Panel", 4, True, "{}"),
+    ("operator", "my_production", "My Production", 1, True, "{}"),
+    ("operator", "shift_summary", "Shift Summary", 2, True, "{}"),
+    ("operator", "quality_entry", "Quality Entry", 3, True, "{}"),
+]
+
 _ALERT_DEFS = [
     ("efficiency", "warning", "Efficiency Below Target", "Efficiency has dropped below the warning threshold."),
     ("otd", "warning", "OTD at Risk", "On-time delivery is trending below target for open work orders."),
@@ -1075,6 +1090,31 @@ def seed_daily_data(session: Session, spec: ClientSpec, days: int, entered_by: s
                 )
             )
     session.flush()
+
+
+def seed_global_defaults(session: Session) -> None:
+    """Idempotent GLOBAL (no client_id) seeds: dashboard widget defaults by
+    role, and the canonical metric→assumption calculation dependencies. Call
+    once from main(), before the per-client loop."""
+    from backend.orm.user_preferences import DashboardWidgetDefaults
+
+    if session.query(DashboardWidgetDefaults).first() is None:
+        for role, widget_key, widget_name, w_order, visible, w_config in _WIDGET_DEFAULTS:
+            session.add(
+                DashboardWidgetDefaults(
+                    role=role,
+                    widget_key=widget_key,
+                    widget_name=widget_name,
+                    widget_order=w_order,
+                    is_visible=visible,
+                    default_config=w_config,
+                )
+            )
+        session.flush()
+
+    from backend.services.calculations.assumption_catalog import seed_metric_dependencies
+
+    seed_metric_dependencies(session)
 
 
 def seed_simulation(session: Session, client_id: str) -> None:

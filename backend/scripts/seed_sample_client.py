@@ -43,6 +43,7 @@ from backend.scripts._seed_sections import (  # noqa: E402,F401 — rng_for re-e
     seed_holds,
     seed_daily_data,
     seed_simulation,
+    seed_global_defaults,
 )
 
 if TYPE_CHECKING:
@@ -282,6 +283,8 @@ def main(argv: Optional[list] = None) -> int:
     try:
         ensure_migrated(engine)
         with Session(engine) as session:
+            seed_global_defaults(session)
+            session.commit()
             for client_id in targets:
                 spec = CLIENT_SPECS[client_id]
                 if args.reset:
