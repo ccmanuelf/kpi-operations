@@ -17,7 +17,7 @@
   --ag-data-color: var(--cds-text-primary, #161616);
 
   /* Header - Carbon Data Table Header */
-  --ag-header-height: 48px;
+  --ag-header-height: 40px;
   --ag-header-background-color: var(--cds-layer-01, #f4f4f4);
   --ag-header-foreground-color: var(--cds-text-primary, #161616);
   --ag-header-cell-hover-background-color: var(--cds-gray-20, #e0e0e0);
@@ -93,11 +93,13 @@
 
 .ag-theme-material .ag-header-cell-label {
   justify-content: flex-start;
+  align-items: center;
 }
 
 .ag-theme-material .ag-header-cell-text {
   overflow: hidden;
   text-overflow: ellipsis;
+  line-height: normal;
 }
 
 .ag-theme-material .ag-header-icon {
