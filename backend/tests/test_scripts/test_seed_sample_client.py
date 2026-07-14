@@ -85,3 +85,27 @@ def test_reset_table_order_children_before_parents():
         assert parent in order and child in order, f"{parent}/{child} missing from RESET_TABLE_ORDER"
         assert order.index(child) < order.index(parent), f"{child} must be deleted before {parent}"
     assert "CLIENT" not in order and "Client" not in order  # CLIENT row is never deleted
+
+
+def test_catalogs_and_config_seeded_and_idempotent(db_session):
+    from backend.orm.hold_status_catalog import HoldStatusCatalog
+    from backend.orm.hold_reason_catalog import HoldReasonCatalog
+    from backend.orm.defect_type_catalog import DefectTypeCatalog
+    from backend.orm.client_config import ClientConfig
+    from backend.orm.kpi_threshold import KPIThreshold
+    from backend.orm.alert import AlertConfig
+
+    spec = seed.CLIENT_SPECS["DEMO-PIECE"]
+    seed.seed_client_row(db_session, spec)
+    for _ in range(2):  # idempotent
+        seed.seed_catalogs(db_session, "DEMO-PIECE")
+        seed.seed_config_layer(db_session, "DEMO-PIECE")
+    db_session.commit()
+
+    cid = "DEMO-PIECE"
+    assert db_session.query(HoldStatusCatalog).filter_by(client_id=cid).count() == 7
+    assert db_session.query(HoldReasonCatalog).filter_by(client_id=cid).count() >= 6
+    assert db_session.query(DefectTypeCatalog).filter_by(client_id=cid).count() >= 5
+    assert db_session.query(ClientConfig).filter_by(client_id=cid).count() == 1
+    assert db_session.query(KPIThreshold).filter_by(client_id=cid).count() >= 6
+    assert db_session.query(AlertConfig).filter_by(client_id=cid).count() >= 3

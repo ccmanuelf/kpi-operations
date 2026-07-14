@@ -201,11 +201,134 @@ def reset_client_data(session: Session, client_id: str) -> None:
     session.flush()
 
 
+_HOLD_STATUSES = [
+    ("PENDING_HOLD_APPROVAL", "Pending Hold Approval", 1),
+    ("ON_HOLD", "On Hold", 2),
+    ("PENDING_RESUME_APPROVAL", "Pending Resume Approval", 3),
+    ("RESUMED", "Resumed", 4),
+    ("RELEASED", "Released", 5),
+    ("CANCELLED", "Cancelled", 6),
+    ("SCRAPPED", "Scrapped", 7),
+]
+_HOLD_REASONS = [
+    ("QUALITY_ISSUE", "Quality Issue", 1),
+    ("MATERIAL_SHORTAGE", "Material Shortage", 2),
+    ("MATERIAL_INSPECTION", "Material Inspection", 3),
+    ("ENGINEERING_REVIEW", "Engineering Review", 4),
+    ("CUSTOMER_REQUEST", "Customer Request", 5),
+    ("CAPACITY_CONSTRAINT", "Capacity Constraint", 6),
+]
+_DEFECT_TYPES = [
+    ("STITCH", "Stitching", "SEWING", "MAJOR"),
+    ("FABRIC", "Fabric Defect", "MATERIAL", "MAJOR"),
+    ("MEASURE", "Measurement", "DIMENSIONAL", "MINOR"),
+    ("COLOR", "Color Shade", "VISUAL", "MINOR"),
+    ("STAIN", "Stain", "VISUAL", "MINOR"),
+]
+_KPI_THRESHOLDS = [
+    ("efficiency", 85.0, 75.0, 60.0, "%", "Y"),
+    ("performance", 95.0, 85.0, 70.0, "%", "Y"),
+    ("quality_rate", 99.0, 97.0, 95.0, "%", "Y"),
+    ("oee", 85.0, 75.0, 60.0, "%", "Y"),
+    ("availability", 90.0, 80.0, 70.0, "%", "Y"),
+    ("otd", 95.0, 90.0, 80.0, "%", "Y"),
+]
+_ALERT_CONFIGS = [
+    ("efficiency", 75.0, 60.0),
+    ("otd", 90.0, 80.0),
+    ("quality", 97.0, 95.0),
+]
+
+
+def seed_catalogs(session: Session, client_id: str) -> None:
+    """Idempotent per-client hold-status/hold-reason/defect-type catalogs."""
+    from backend.orm.hold_status_catalog import HoldStatusCatalog
+    from backend.orm.hold_reason_catalog import HoldReasonCatalog
+    from backend.db.factories import TestDataFactory
+
+    if session.query(HoldStatusCatalog).filter_by(client_id=client_id).first() is None:
+        for code, name, order in _HOLD_STATUSES:
+            session.add(
+                HoldStatusCatalog(
+                    client_id=client_id,
+                    status_code=code,
+                    display_name=name,
+                    is_default=True,
+                    is_active=True,
+                    sort_order=order,
+                )
+            )
+    if session.query(HoldReasonCatalog).filter_by(client_id=client_id).first() is None:
+        for code, name, order in _HOLD_REASONS:
+            session.add(
+                HoldReasonCatalog(
+                    client_id=client_id,
+                    reason_code=code,
+                    display_name=name,
+                    is_default=True,
+                    is_active=True,
+                    sort_order=order,
+                )
+            )
+    from backend.orm.defect_type_catalog import DefectTypeCatalog
+
+    if session.query(DefectTypeCatalog).filter_by(client_id=client_id).first() is None:
+        for code, name, category, severity in _DEFECT_TYPES:
+            TestDataFactory.create_defect_type_catalog(
+                session,
+                client_id=client_id,
+                defect_code=code,
+                defect_name=name,
+                category=category,
+                severity_default=severity,
+            )
+    session.flush()
+
+
+def seed_config_layer(session: Session, client_id: str) -> None:
+    """Idempotent per-client ClientConfig, KPIThreshold set, and AlertConfig set."""
+    from backend.orm.client_config import ClientConfig
+    from backend.orm.kpi_threshold import KPIThreshold
+    from backend.orm.alert import AlertConfig
+
+    if session.query(ClientConfig).filter_by(client_id=client_id).first() is None:
+        session.add(ClientConfig(client_id=client_id))  # all targets have credible defaults
+    if session.query(KPIThreshold).filter_by(client_id=client_id).first() is None:
+        for kpi_key, target, warning, critical, unit, higher in _KPI_THRESHOLDS:
+            session.add(
+                KPIThreshold(
+                    threshold_id=f"KPI-TH-{client_id}-{kpi_key.upper()}",
+                    client_id=client_id,
+                    kpi_key=kpi_key,
+                    target_value=target,
+                    warning_threshold=warning,
+                    critical_threshold=critical,
+                    unit=unit,
+                    higher_is_better=higher,
+                )
+            )
+    if session.query(AlertConfig).filter_by(client_id=client_id).first() is None:
+        for alert_type, warning, critical in _ALERT_CONFIGS:
+            session.add(
+                AlertConfig(
+                    config_id=f"ALERT-CFG-{client_id}-{alert_type.upper()}",
+                    client_id=client_id,
+                    alert_type=alert_type,
+                    enabled=True,
+                    warning_threshold=warning,
+                    critical_threshold=critical,
+                )
+            )
+    session.flush()
+
+
 def seed_client(session: Session, spec: ClientSpec, days: int) -> None:
     """Orchestrator — seed one client in FK order. Later tasks append their
     section calls here (catalogs/config → master data → capacity → work orders
     → holds → daily data → simulation)."""
     seed_client_row(session, spec)
+    seed_catalogs(session, spec.client_id)
+    seed_config_layer(session, spec.client_id)
 
 
 def main(argv: Optional[list] = None) -> int:
