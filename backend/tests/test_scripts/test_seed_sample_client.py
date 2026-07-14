@@ -262,6 +262,8 @@ def test_work_orders_cover_all_statuses_with_transitions_and_holds(db_session):
         WorkOrderStatus.CLOSED,
         WorkOrderStatus.CANCELLED,
         WorkOrderStatus.ON_HOLD,
+        WorkOrderStatus.DEMOTED,
+        WorkOrderStatus.REJECTED,
     }
     assert required.issubset(present), f"missing statuses: {required - present}"
     assert db_session.query(WorkflowTransitionLog).filter_by(client_id=cid).count() >= len(wos)
@@ -305,7 +307,13 @@ def test_daily_data_scales_with_days_and_is_credible(db_session):
     # count now scales with the number of WOs that have a nonzero target
     # (2-4 entries each) rather than with `days` directly.
     wos = db_session.query(WorkOrder).filter_by(client_id=cid).all()
-    zero_target_statuses = (WorkOrderStatus.RECEIVED, WorkOrderStatus.RELEASED, WorkOrderStatus.CANCELLED)
+    zero_target_statuses = (
+        WorkOrderStatus.RECEIVED,
+        WorkOrderStatus.RELEASED,
+        WorkOrderStatus.CANCELLED,
+        WorkOrderStatus.DEMOTED,
+        WorkOrderStatus.REJECTED,
+    )
     nonzero_target_wos = [wo for wo in wos if wo.status not in zero_target_statuses]
     zero_target_wos = [wo for wo in wos if wo.status in zero_target_statuses]
     assert nonzero_target_wos, "expected at least one WO with a nonzero production target"
@@ -531,6 +539,53 @@ def test_floating_and_dedicated_assignments_both_present(db_session):
         a.assignment_type for a in db_session.query(EmployeeClientAssignment).filter_by(client_id="DEMO-PIECE").all()
     }
     assert "DEDICATED" in types and "FLOATING" in types
+
+
+def test_demoted_and_rejected_workorders_present(db_session):
+    from backend.orm import WorkOrder, WorkOrderStatus
+
+    _seed_admin(db_session)
+    seed.seed_client(db_session, seed.CLIENT_SPECS["DEMO-PIECE"], days=8, anchor=FIXED_ANCHOR)
+    db_session.commit()
+    statuses = {wo.status for wo in db_session.query(WorkOrder).filter_by(client_id="DEMO-PIECE").all()}
+    assert WorkOrderStatus.DEMOTED in statuses
+    assert WorkOrderStatus.REJECTED in statuses
+    rejected = next(
+        wo
+        for wo in db_session.query(WorkOrder).filter_by(client_id="DEMO-PIECE").all()
+        if wo.status == WorkOrderStatus.REJECTED
+    )
+    assert rejected.rejection_reason is not None
+
+
+def test_workflow_config_present_for_demo_clients(db_session):
+    from backend.orm.client_config import ClientConfig
+
+    _seed_admin(db_session)
+    for cid in ("DEMO-PIECE", "DEMO-HYBRID"):
+        seed.seed_client(db_session, seed.CLIENT_SPECS[cid], days=5, anchor=FIXED_ANCHOR)
+    db_session.commit()
+    for cid in ("DEMO-PIECE", "DEMO-HYBRID"):
+        cfg = db_session.query(ClientConfig).filter_by(client_id=cid).first()
+        assert cfg is not None and cfg.workflow_statuses and cfg.workflow_transitions
+    # One client exercises a customized (non-default) workflow_statuses.
+    hybrid = db_session.query(ClientConfig).filter_by(client_id="DEMO-HYBRID").first()
+    piece = db_session.query(ClientConfig).filter_by(client_id="DEMO-PIECE").first()
+    assert hybrid.workflow_statuses != piece.workflow_statuses
+
+
+def test_absence_type_variety(db_session):
+    from backend.orm import AttendanceEntry
+
+    _seed_admin(db_session)
+    seed.seed_client(db_session, seed.CLIENT_SPECS["DEMO-PIECE"], days=60, anchor=FIXED_ANCHOR)
+    db_session.commit()
+    types = {
+        a.absence_type
+        for a in db_session.query(AttendanceEntry).filter_by(client_id="DEMO-PIECE").all()
+        if a.is_absent == 1 and a.absence_type is not None
+    }
+    assert len(types) >= 2
 
 
 def test_resolve_entered_by_exact_client_membership(db_session):

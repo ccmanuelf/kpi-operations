@@ -131,7 +131,18 @@ def seed_config_layer(session: Session, client_id: str) -> None:
     from backend.orm.alert import AlertConfig
 
     if session.query(ClientConfig).filter_by(client_id=client_id).first() is None:
-        session.add(ClientConfig(client_id=client_id))  # all targets have credible defaults
+        if client_id == "DEMO-HYBRID":
+            # Customized workflow: closes at completion (no separate SHIPPED
+            # gate) — exercises the non-default workflow_statuses path.
+            session.add(
+                ClientConfig(
+                    client_id=client_id,
+                    workflow_statuses='["RECEIVED", "RELEASED", "IN_PROGRESS", "COMPLETED", "CLOSED"]',
+                    workflow_closure_trigger="at_completion",
+                )
+            )
+        else:
+            session.add(ClientConfig(client_id=client_id))  # all targets have credible defaults
     if session.query(KPIThreshold).filter_by(client_id=client_id).first() is None:
         for kpi_key, target, warning, critical, unit, higher in _KPI_THRESHOLDS:
             session.add(
@@ -706,6 +717,8 @@ def seed_work_orders(session: Session, spec: ClientSpec, entered_by: str, anchor
         WorkOrderStatus.CLOSED,
         WorkOrderStatus.CANCELLED,
         WorkOrderStatus.ON_HOLD,
+        WorkOrderStatus.DEMOTED,
+        WorkOrderStatus.REJECTED,
     ]
     # Statuses in the linear RELEASED..CLOSED range get bridged to a
     # CapacityOrder (origin=CAPACITY_PLAN); RECEIVED (not yet released),
@@ -752,6 +765,10 @@ def seed_work_orders(session: Session, spec: ClientSpec, entered_by: str, anchor
             wo.closure_date = (wo.shipped_date or now) + timedelta(days=rng.randint(1, 5))
         if status == WorkOrderStatus.ON_HOLD:
             wo.previous_status = WorkOrderStatus.IN_PROGRESS.value
+        if status == WorkOrderStatus.REJECTED:
+            wo.rejection_reason = "QC inspection: stitching defect rate exceeded acceptance threshold"
+            wo.rejected_by = entered_by
+            wo.rejected_date = wo.received_date + timedelta(days=rng.randint(5, 15))
 
         # --- Bridge to Capacity Planning (mainline WOs only) ---
         if status in mainline_bridge_statuses and cap_orders:
@@ -800,6 +817,10 @@ def _transition_chain(status: "WorkOrderStatus") -> list:
         upto = [S.RECEIVED, S.RELEASED, S.CANCELLED]
     elif status == S.ON_HOLD:
         upto = [S.RECEIVED, S.RELEASED, S.IN_PROGRESS, S.ON_HOLD]
+    elif status == S.DEMOTED:
+        upto = [S.RECEIVED, S.RELEASED, S.DEMOTED]
+    elif status == S.REJECTED:
+        upto = [S.RECEIVED, S.RELEASED, S.IN_PROGRESS, S.REJECTED]
     else:
         upto = [status]
     prev: Optional["WorkOrderStatus"] = None
@@ -1007,7 +1028,15 @@ def seed_daily_data(session: Session, spec: ClientSpec, days: int, entered_by: s
                         client_id=cid,
                         work_order_id=wo.work_order_id,
                         reported_by=entered_by,
-                        downtime_reason=wrng.choice(["EQUIPMENT_FAILURE", "MATERIAL_SHORTAGE", "CHANGEOVER"]),
+                        downtime_reason=wrng.choice(
+                            [
+                                "EQUIPMENT_FAILURE",
+                                "MATERIAL_SHORTAGE",
+                                "CHANGEOVER",
+                                "PLANNED_MAINTENANCE",
+                                "QUALITY_HOLD",
+                            ]
+                        ),
                         shift_date=day_dt,
                         downtime_duration_minutes=int(downtime_h * 60),
                     )
@@ -1026,6 +1055,11 @@ def seed_daily_data(session: Session, spec: ClientSpec, days: int, entered_by: s
         for j, emp in enumerate(employees, start=1):
             arng = rng_for(cid, "att", day.isoformat(), emp.employee_id)
             absent = arng.random() < 0.05
+            absence_type = (
+                arng.choice([AbsenceType.UNSCHEDULED_ABSENCE, AbsenceType.VACATION, AbsenceType.MEDICAL_LEAVE])
+                if absent
+                else None
+            )
             session.add(
                 AttendanceEntry(
                     attendance_entry_id=f"ATT-{cid}-{day_seq:04d}-{j:02d}",
@@ -1036,7 +1070,7 @@ def seed_daily_data(session: Session, spec: ClientSpec, days: int, entered_by: s
                     scheduled_hours=Decimal("8.0"),
                     actual_hours=Decimal("0") if absent else Decimal("8.0"),
                     absence_hours=Decimal("8.0") if absent else Decimal("0"),
-                    absence_type=AbsenceType.UNSCHEDULED_ABSENCE if absent else None,
+                    absence_type=absence_type,
                     is_absent=1 if absent else 0,
                 )
             )
