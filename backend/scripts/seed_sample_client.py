@@ -30,6 +30,7 @@ from backend.orm.client import Client, ClientType  # noqa: E402
 
 if TYPE_CHECKING:
     from sqlalchemy import Engine  # noqa: E402
+    from backend.orm import WorkOrderStatus  # noqa: E402
 
 
 class SeedError(RuntimeError):
@@ -669,6 +670,125 @@ def seed_capacity_graph(session: Session, client_id: str, days: int) -> None:
     session.flush()
 
 
+def seed_work_orders(session: Session, spec: ClientSpec, entered_by: str) -> list:
+    """Idempotent per-client work orders spanning every WorkOrderStatus, each
+    with a credible WorkflowTransitionLog chain, plus a few Jobs."""
+    from datetime import datetime, timedelta, timezone
+    from backend.orm import WorkOrder, WorkOrderStatus
+    from backend.db.factories import TestDataFactory
+
+    cid = spec.client_id
+    existing = session.query(WorkOrder).filter_by(client_id=cid).all()
+    if existing:
+        return existing
+
+    states = [
+        WorkOrderStatus.RECEIVED,
+        WorkOrderStatus.RELEASED,
+        WorkOrderStatus.IN_PROGRESS,
+        WorkOrderStatus.COMPLETED,
+        WorkOrderStatus.SHIPPED,
+        WorkOrderStatus.CLOSED,
+        WorkOrderStatus.CANCELLED,
+        WorkOrderStatus.ON_HOLD,
+    ]
+    rng = rng_for(cid, "work_orders")
+    now = datetime(2026, 6, 15, tzinfo=timezone.utc)  # fixed anchor for determinism
+    wos = []
+    for i, status in enumerate(states, start=1):
+        wo_id = f"WO-{cid}-{i:03d}"  # full client_id — work_order_id PK is GLOBALLY unique
+        planned_ship = now - timedelta(days=rng.randint(5, 40))
+        # delivered on time for terminal states so OTD computes both hit/miss
+        delivered = (
+            planned_ship + timedelta(days=rng.randint(-3, 6))
+            if status in (WorkOrderStatus.SHIPPED, WorkOrderStatus.CLOSED)
+            else None
+        )
+        wo = TestDataFactory.create_work_order(
+            session,
+            client_id=cid,
+            work_order_id=wo_id,
+            status=status,
+            planned_quantity=rng.randint(500, 3000),
+            planned_ship_date=planned_ship,
+            priority=rng.choice(["HIGH", "MEDIUM", "LOW"]),
+        )
+        # create_work_order doesn't read actual_delivery_date via **kwargs; set directly.
+        wo.actual_delivery_date = delivered
+        # transition chain to the terminal status
+        chain = _transition_chain(status)  # e.g. [None->RECEIVED, RECEIVED->RELEASED, ...]
+        for frm, to in chain:
+            TestDataFactory.create_workflow_transition(
+                session,
+                work_order_id=wo_id,
+                from_status=(frm.value if frm else None),  # type: ignore[arg-type]
+                to_status=to.value,
+                transitioned_by=entered_by,
+                client_id=cid,
+            )
+        if status in (WorkOrderStatus.IN_PROGRESS, WorkOrderStatus.COMPLETED):
+            # explicit deterministic job_id (do NOT let the factory mint a _next_id PK)
+            TestDataFactory.create_job(session, work_order_id=wo_id, client_id=cid, job_id=f"JOB-{cid}-{i:03d}")
+        wos.append(wo)
+    session.flush()
+    return wos
+
+
+def _transition_chain(status: "WorkOrderStatus") -> list:
+    from backend.orm import WorkOrderStatus as S
+
+    linear = [S.RECEIVED, S.RELEASED, S.IN_PROGRESS, S.COMPLETED, S.SHIPPED, S.CLOSED]
+    if status in linear:
+        upto = linear[: linear.index(status) + 1]
+    elif status == S.CANCELLED:
+        upto = [S.RECEIVED, S.RELEASED, S.CANCELLED]
+    elif status == S.ON_HOLD:
+        upto = [S.RECEIVED, S.RELEASED, S.IN_PROGRESS, S.ON_HOLD]
+    else:
+        upto = [status]
+    prev: Optional["WorkOrderStatus"] = None
+    chain: list = []
+    for s in upto:
+        chain.append((prev, s))
+        prev = s
+    return chain
+
+
+def seed_holds(session: Session, client_id: str, work_orders: list, entered_by: str) -> None:
+    # Construct HoldEntry directly: TestDataFactory.create_hold_entry mints
+    # hold_entry_id via _next_id("HOLD") (process-local counter → cross-process
+    # PK collision). Use a deterministic client-scoped PK instead.
+    from datetime import datetime, timezone
+    from backend.orm import HoldEntry
+
+    if session.query(HoldEntry).filter_by(client_id=client_id).first() is not None:
+        return
+    chain = [
+        "PENDING_HOLD_APPROVAL",
+        "ON_HOLD",
+        "PENDING_RESUME_APPROVAL",
+        "RESUMED",
+        "RELEASED",
+        "CANCELLED",
+        "SCRAPPED",
+    ]
+    for i, hold_status in enumerate(chain, start=1):
+        wo = work_orders[i % len(work_orders)]
+        session.add(
+            HoldEntry(
+                hold_entry_id=f"HOLD-{client_id}-{i:03d}",
+                work_order_id=wo.work_order_id,
+                client_id=client_id,
+                hold_initiated_by=entered_by,
+                hold_reason="QUALITY_ISSUE",
+                hold_reason_category="QUALITY",
+                hold_status=hold_status,
+                hold_date=datetime(2026, 6, 15, tzinfo=timezone.utc),
+            )
+        )
+    session.flush()
+
+
 def seed_client(session: Session, spec: ClientSpec, days: int) -> None:
     """Orchestrator — seed one client in FK order. Later tasks append their
     section calls here (catalogs/config → master data → capacity → work orders
@@ -681,6 +801,9 @@ def seed_client(session: Session, spec: ClientSpec, days: int) -> None:
     seed_lines(session, spec.client_id)
     seed_employees(session, spec)
     seed_capacity_graph(session, spec.client_id, days)
+    entered_by = resolve_entered_by(session, spec.client_id)
+    work_orders = seed_work_orders(session, spec, entered_by)
+    seed_holds(session, spec.client_id, work_orders, entered_by)
 
 
 def main(argv: Optional[list] = None) -> int:

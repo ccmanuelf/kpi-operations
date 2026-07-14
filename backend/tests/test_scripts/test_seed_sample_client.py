@@ -207,3 +207,50 @@ def test_capacity_graph_seeded_and_idempotent(db_session):
     assert db_session.query(CapacitySchedule).filter_by(client_id=cid).count() >= 1
     assert db_session.query(CapacityScheduleDetail).filter_by(client_id=cid).count() >= 1
     assert db_session.query(CapacityKPICommitment).filter_by(client_id=cid).count() >= 1
+
+
+def _seed_admin(db_session):
+    from backend.db.factories import TestDataFactory
+
+    if db_session.query(__import__("backend.orm", fromlist=["User"]).User).filter_by(role="admin").first() is None:
+        TestDataFactory.create_user(db_session, username="seed_admin", role="admin")
+        db_session.flush()
+
+
+def test_work_orders_cover_all_statuses_with_transitions_and_holds(db_session):
+    from backend.orm import WorkOrder, WorkOrderStatus, WorkflowTransitionLog, HoldEntry, Job
+
+    _seed_admin(db_session)
+    spec = seed.CLIENT_SPECS["DEMO-PIECE"]
+    seed.seed_client(db_session, spec, days=10)  # full orchestrator so entered_by resolves
+    db_session.commit()
+
+    cid = "DEMO-PIECE"
+    wos = db_session.query(WorkOrder).filter_by(client_id=cid).all()
+    present = {wo.status for wo in wos}
+    required = {
+        WorkOrderStatus.RECEIVED,
+        WorkOrderStatus.RELEASED,
+        WorkOrderStatus.IN_PROGRESS,
+        WorkOrderStatus.COMPLETED,
+        WorkOrderStatus.SHIPPED,
+        WorkOrderStatus.CLOSED,
+        WorkOrderStatus.CANCELLED,
+        WorkOrderStatus.ON_HOLD,
+    }
+    assert required.issubset(present), f"missing statuses: {required - present}"
+    assert db_session.query(WorkflowTransitionLog).filter_by(client_id=cid).count() >= len(wos)
+    assert db_session.query(Job).filter_by(client_id_fk=cid).count() >= 1
+
+    holds = db_session.query(HoldEntry).filter_by(client_id=cid).all()
+    hold_statuses = {h.hold_status for h in holds}
+    for expected in (
+        "PENDING_HOLD_APPROVAL",
+        "ON_HOLD",
+        "PENDING_RESUME_APPROVAL",
+        "RESUMED",
+        "RELEASED",
+        "CANCELLED",
+        "SCRAPPED",
+    ):
+        assert expected in hold_statuses, f"missing hold status {expected}"
