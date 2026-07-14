@@ -24,7 +24,7 @@ python-multipart==0.0.31  # GHSA-v9pg-7xvm-68hf + GHSA-5rvq-cxj2-64vf + GHSA-6jv
 
 # CORS & Security
 python-dotenv==1.2.2   # CVE-2026-28684 fix
-slowapi==0.1.9
+slowapi==0.1.10
 
 # Date Utilities
 python-dateutil==2.9.0.post0
