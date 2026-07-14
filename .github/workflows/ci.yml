@@ -28,10 +28,13 @@ jobs:
           cache-dependency-path: backend/requirements-dev.lock
 
       - name: Install dependencies
-        # pip itself is upgraded first so the pip-audit gate below audits a
-        # current pip (old runner pips carry their own PYSEC advisories).
+        # pip AND setuptools are upgraded first so the pip-audit gate below
+        # audits current build tools (old runner pip/setuptools carry their own
+        # PYSEC advisories — e.g. setuptools 79.0.1 → PYSEC-2026-3447, fixed in
+        # 83.0.0). These are unpinned build tools left out of the hash-pinned
+        # lock by pip-tools, not runtime deps, so upgrading them here is safe.
         run: |
-          python -m pip install --upgrade pip
+          python -m pip install --upgrade pip setuptools
           pip install --require-hashes --only-binary=:all: -r requirements-dev.lock
 
       - name: Install MiniZinc CLI
