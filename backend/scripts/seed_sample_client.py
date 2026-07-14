@@ -323,6 +323,120 @@ def seed_config_layer(session: Session, client_id: str) -> None:
     session.flush()
 
 
+def _prefix(client_id: str) -> str:
+    return "".join(part[0] for part in client_id.split("-"))[:3].upper()  # DEMO-PIECE -> "DP"
+
+
+def seed_shifts(session: Session, client_id: str) -> list:
+    """Idempotent per-client Day/Night shifts."""
+    from backend.orm import Shift
+    from backend.db.factories import TestDataFactory
+
+    existing = session.query(Shift).filter_by(client_id=client_id).all()
+    if existing:
+        return existing
+    day = TestDataFactory.create_shift(
+        session, client_id=client_id, shift_name="Day", start_time="06:00:00", end_time="14:00:00"
+    )
+    night = TestDataFactory.create_shift(
+        session, client_id=client_id, shift_name="Night", start_time="14:00:00", end_time="22:00:00"
+    )
+    return [day, night]
+
+
+def seed_products(session: Session, client_id: str) -> list:
+    """Idempotent per-client product catalog (3 garment products)."""
+    from backend.orm import Product
+    from decimal import Decimal
+    from backend.db.factories import TestDataFactory
+
+    existing = session.query(Product).filter_by(client_id=client_id).all()
+    if existing:
+        return existing
+    p = _prefix(client_id)
+    specs = [
+        (f"{p}-P1", "Polo Shirt", Decimal("0.12")),
+        (f"{p}-P2", "T-Shirt", Decimal("0.08")),
+        (f"{p}-P3", "Jacket", Decimal("0.30")),
+    ]
+    return [
+        TestDataFactory.create_product(
+            session, client_id=client_id, product_code=code, product_name=name, ideal_cycle_time=ct
+        )
+        for code, name, ct in specs
+    ]
+
+
+def seed_lines(session: Session, client_id: str) -> tuple[list, list]:
+    """Idempotent per-client operational lines bridged to capacity lines."""
+    from backend.orm.production_line import ProductionLine
+    from backend.orm.capacity import CapacityProductionLine
+
+    existing = session.query(ProductionLine).filter_by(client_id=client_id).all()
+    if existing:
+        cap = session.query(CapacityProductionLine).filter_by(client_id=client_id).all()
+        return existing, cap
+    p = _prefix(client_id)
+    lines, cap_lines = [], []
+    for i in (1, 2):
+        cap = CapacityProductionLine(
+            client_id=client_id, line_code=f"{p}-CL{i}", line_name=f"Capacity Line {i}", is_active=True
+        )
+        session.add(cap)
+        session.flush()  # get cap.id
+        line = ProductionLine(
+            client_id=client_id,
+            line_code=f"{p}-L{i}",
+            line_name=f"Line {i}",
+            line_type="DEDICATED",
+            is_active=True,
+            capacity_line_id=cap.id,
+        )
+        session.add(line)
+        lines.append(line)
+        cap_lines.append(cap)
+    session.flush()
+    return lines, cap_lines
+
+
+def seed_employees(session: Session, spec: ClientSpec) -> list:
+    """Idempotent per-client employees, single-client-assigned, with client +
+    line assignments."""
+    from backend.orm.employee import Employee
+    from backend.orm.employee_client_assignment import assign_employee_to_client
+    from backend.orm.employee_line_assignment import EmployeeLineAssignment
+    from datetime import date
+    from decimal import Decimal
+    from backend.db.factories import TestDataFactory
+
+    cid = spec.client_id
+    existing = session.query(Employee).filter_by(client_id_assigned=cid).all()
+    if existing:
+        return existing
+    lines, _ = seed_lines(session, cid)
+    p = _prefix(cid)
+    employees = []
+    for n in range(1, spec.num_employees + 1):
+        emp = TestDataFactory.create_employee(
+            session, client_id=cid, employee_code=f"{p}-EMP-{n:03d}", employee_name=f"{spec.client_name} Operator {n}"
+        )
+        assign_employee_to_client(session, employee_id=emp.employee_id, client_id=cid, assigned_by="SEED_SCRIPT")
+        line = lines[(n - 1) % len(lines)]
+        session.add(
+            EmployeeLineAssignment(
+                employee_id=emp.employee_id,
+                line_id=line.line_id,
+                client_id=cid,
+                allocation_percentage=Decimal("100.00"),
+                is_primary=True,
+                effective_date=date(2026, 1, 1),
+            )
+        )
+        employees.append(emp)
+    session.flush()
+    return employees
+
+
 def seed_client(session: Session, spec: ClientSpec, days: int) -> None:
     """Orchestrator — seed one client in FK order. Later tasks append their
     section calls here (catalogs/config → master data → capacity → work orders
@@ -330,6 +444,10 @@ def seed_client(session: Session, spec: ClientSpec, days: int) -> None:
     seed_client_row(session, spec)
     seed_catalogs(session, spec.client_id)
     seed_config_layer(session, spec.client_id)
+    seed_shifts(session, spec.client_id)
+    seed_products(session, spec.client_id)
+    seed_lines(session, spec.client_id)
+    seed_employees(session, spec)
 
 
 def main(argv: Optional[list] = None) -> int:

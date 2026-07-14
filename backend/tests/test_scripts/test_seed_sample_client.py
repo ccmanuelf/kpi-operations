@@ -127,3 +127,28 @@ def test_defect_catalog_pk_is_client_scoped_no_collision(db_session):
     assert len(ids) == len(set(ids)), "defect_type_id PKs collide across clients"
     for r in db_session.query(DefectTypeCatalog).all():
         assert r.client_id in r.defect_type_id, "defect_type_id must be client-scoped"
+
+
+def test_master_data_seeded_and_idempotent(db_session):
+    from backend.orm import Shift, Product
+    from backend.orm.employee import Employee
+    from backend.orm.production_line import ProductionLine
+    from backend.orm.employee_client_assignment import EmployeeClientAssignment
+    from backend.orm.employee_line_assignment import EmployeeLineAssignment
+
+    spec = seed.CLIENT_SPECS["DEMO-PIECE"]
+    seed.seed_client_row(db_session, spec)
+    for _ in range(2):
+        seed.seed_shifts(db_session, spec.client_id)
+        seed.seed_products(db_session, spec.client_id)
+        seed.seed_lines(db_session, spec.client_id)
+        seed.seed_employees(db_session, spec)
+    db_session.commit()
+
+    cid = "DEMO-PIECE"
+    assert db_session.query(Shift).filter_by(client_id=cid).count() == 2
+    assert db_session.query(Product).filter_by(client_id=cid).count() == 3
+    assert db_session.query(ProductionLine).filter_by(client_id=cid).count() == 2
+    assert db_session.query(Employee).filter_by(client_id_assigned=cid).count() == spec.num_employees
+    assert db_session.query(EmployeeClientAssignment).filter_by(client_id=cid).count() == spec.num_employees
+    assert db_session.query(EmployeeLineAssignment).filter_by(client_id=cid).count() >= spec.num_employees
