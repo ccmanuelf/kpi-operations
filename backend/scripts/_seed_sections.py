@@ -553,11 +553,31 @@ def seed_capacity_graph(session: Session, client_id: str, days: int, anchor: dat
     session.flush()
 
 
+def _production_target_fraction(status: "WorkOrderStatus") -> float:
+    """Status-derived fraction of planned_quantity a WO should have produced
+    (the plan-vs-actual true-up target). Terminal/shipped statuses are "done";
+    in-flight statuses are partially complete; not-yet-started/cancelled WOs
+    are zero. Shared by seed_work_orders (CapacityOrder alignment) and
+    seed_daily_data (production distribution) so both land on the same number."""
+    from backend.orm import WorkOrderStatus as S
+
+    return {
+        S.SHIPPED: 1.0,
+        S.CLOSED: 1.0,
+        S.COMPLETED: 1.0,
+        S.IN_PROGRESS: 0.5,
+        S.ON_HOLD: 0.3,
+    }.get(status, 0.0)
+
+
 def seed_work_orders(session: Session, spec: ClientSpec, entered_by: str, anchor: date) -> list:
     """Idempotent per-client work orders spanning every WorkOrderStatus, each
-    with a credible WorkflowTransitionLog chain, plus a few Jobs."""
+    with a credible WorkflowTransitionLog chain, status-coherent milestone
+    dates, and (for mainline RELEASED..CLOSED statuses) a bridge to a seeded
+    CapacityOrder — plus a few Jobs."""
     from datetime import datetime, timedelta, timezone
     from backend.orm import WorkOrder, WorkOrderStatus
+    from backend.orm.capacity import CapacityOrder, OrderStatus
     from backend.db.factories import TestDataFactory
 
     cid = spec.client_id
@@ -575,6 +595,18 @@ def seed_work_orders(session: Session, spec: ClientSpec, entered_by: str, anchor
         WorkOrderStatus.CANCELLED,
         WorkOrderStatus.ON_HOLD,
     ]
+    # Statuses in the linear RELEASED..CLOSED range get bridged to a
+    # CapacityOrder (origin=CAPACITY_PLAN); RECEIVED (not yet released),
+    # CANCELLED, and ON_HOLD (branches off the linear chain) stay AD_HOC.
+    mainline_bridge_statuses = (
+        WorkOrderStatus.RELEASED,
+        WorkOrderStatus.IN_PROGRESS,
+        WorkOrderStatus.COMPLETED,
+        WorkOrderStatus.SHIPPED,
+        WorkOrderStatus.CLOSED,
+    )
+    cap_orders = session.query(CapacityOrder).filter_by(client_id=cid).order_by(CapacityOrder.id).all()
+    bridge_idx = 0
     rng = rng_for(cid, "work_orders")
     now = datetime.combine(anchor, datetime.min.time(), tzinfo=timezone.utc)
     wos = []
@@ -598,6 +630,35 @@ def seed_work_orders(session: Session, spec: ClientSpec, entered_by: str, anchor
         )
         # create_work_order doesn't read actual_delivery_date via **kwargs; set directly.
         wo.actual_delivery_date = delivered
+
+        # --- Milestones (status-coherent, anchor-relative, deterministic) ---
+        wo.received_date = now - timedelta(days=rng.randint(30, 70))
+        if status in (WorkOrderStatus.SHIPPED, WorkOrderStatus.CLOSED):
+            wo.dispatch_date = wo.received_date + timedelta(days=rng.randint(2, 10))
+            wo.shipped_date = delivered
+        if status == WorkOrderStatus.CLOSED:
+            wo.closure_date = (wo.shipped_date or now) + timedelta(days=rng.randint(1, 5))
+        if status == WorkOrderStatus.ON_HOLD:
+            wo.previous_status = WorkOrderStatus.IN_PROGRESS.value
+
+        # --- Bridge to Capacity Planning (mainline WOs only) ---
+        if status in mainline_bridge_statuses and cap_orders:
+            cap = cap_orders[bridge_idx % len(cap_orders)]
+            bridge_idx += 1
+            wo.origin = "CAPACITY_PLAN"
+            wo.capacity_order_id = cap.id
+            wo.planned_start_date = now - timedelta(days=rng.randint(20, 60))
+            # Re-align the bridged CapacityOrder to this WO's plan/status so the
+            # two sides of the bridge stay coherent (single source of truth).
+            target_qty = int(wo.planned_quantity * _production_target_fraction(status))
+            cap.order_quantity = wo.planned_quantity
+            cap.completed_quantity = target_qty
+            cap.status = (
+                OrderStatus.COMPLETED
+                if status in (WorkOrderStatus.SHIPPED, WorkOrderStatus.CLOSED, WorkOrderStatus.COMPLETED)
+                else OrderStatus.IN_PROGRESS if status == WorkOrderStatus.IN_PROGRESS else OrderStatus.CONFIRMED
+            )
+
         # transition chain to the terminal status
         chain = _transition_chain(status)  # e.g. [None->RECEIVED, RECEIVED->RELEASED, ...]
         for frm, to in chain:
@@ -682,13 +743,17 @@ def seed_holds(session: Session, client_id: str, work_orders: list, entered_by: 
 
 
 def seed_daily_data(session: Session, spec: ClientSpec, days: int, entered_by: str, anchor: date) -> None:
-    """Idempotent 90-day credible daily Operations data: one ProductionEntry
-    per working day (skip weekends) on the first product/shift/line, a
-    QualityEntry + DefectDetail tied to a rotating seeded work order,
-    occasional DowntimeEntry, and AttendanceEntry per employee per working
-    day. Construct every entity DIRECTLY with a deterministic client-scoped
-    PK (see seed_holds docstring) — TestDataFactory.create_production_entry
-    et al. mint _next_id counter PKs that collide across processes."""
+    """Idempotent credible daily Operations data on the first product/shift/
+    line. Production is distributed PER WORK ORDER so cumulative units true-up
+    to a status-derived target of planned_quantity (see
+    _production_target_fraction): the LAST entry per WO is pinned so the sum
+    exactly equals the target, and wo.actual_quantity is set to that total.
+    Each production entry carries a QualityEntry + DefectDetail and
+    (occasionally) a DowntimeEntry tied to the same WO. AttendanceEntry is
+    per employee per working day, independent of the WO split. Construct
+    every entity DIRECTLY with a deterministic client-scoped PK (see
+    seed_holds docstring) — TestDataFactory.create_production_entry et al.
+    mint _next_id counter PKs that collide across processes."""
     from datetime import datetime, timedelta
     from decimal import Decimal
     from backend.orm import (
@@ -726,39 +791,76 @@ def seed_daily_data(session: Session, spec: ClientSpec, days: int, entered_by: s
         working_days.append(day)
     working_days.reverse()
 
-    for seq, day in enumerate(working_days, start=1):
-        day_dt = datetime.combine(day, datetime.min.time())
-        rng = rng_for(cid, "daily", day.isoformat())
-        units = rng.randint(600, 1600)
-        target_perf = rng.uniform(0.82, 0.96)
-        run_time = round(ideal_ct * units / target_perf, 2)
-        downtime_h = round(run_time * rng.uniform(0.05, 0.08), 2)
-        setup_h = round(run_time * 0.02, 2)
-        defects = max(1, int(units * rng.uniform(0.003, 0.012)))
-        scrap = defects // 3
-        wo = work_orders[seq % len(work_orders)] if work_orders else None
-        session.add(
-            ProductionEntry(
-                production_entry_id=f"PE-{cid}-{seq:04d}",
-                client_id=cid,
-                product_id=product.product_id,
-                shift_id=shift.shift_id,
-                line_id=line.line_id,
-                entered_by=entered_by,
-                production_date=day_dt,
-                shift_date=day_dt,
-                units_produced=units,
-                run_time_hours=Decimal(str(run_time)),
-                setup_time_hours=Decimal(str(setup_h)),
-                downtime_hours=Decimal(str(downtime_h)),
-                defect_count=defects,
-                scrap_count=scrap,
-                rework_count=defects - scrap,
-                employees_assigned=len(employees),
-                work_order_id=(wo.work_order_id if wo else None),
+    # --- Production/Quality/Defect/Downtime: distributed per-WO to a
+    # status-derived target, so cumulative units are plan-vs-actual coherent. ---
+    seq = 0
+    for wo in work_orders:
+        target_total = int((wo.planned_quantity or 0) * _production_target_fraction(wo.status))
+        if target_total <= 0:
+            wo.actual_quantity = 0
+            continue
+        wrng = rng_for(cid, "daily", "wo", wo.work_order_id)
+        num_entries = max(1, min(len(working_days), 4 if target_total >= 200 else 2))
+        step = max(1, (len(working_days) - 1) // max(1, num_entries - 1)) if num_entries > 1 else 1
+        base_per_entry = target_total // num_entries
+        running = 0
+        for k in range(num_entries):
+            is_last = k == num_entries - 1
+            day_idx = (len(working_days) - 1) if is_last else min(k * step, len(working_days) - 1)
+            day = working_days[day_idx]
+            day_dt = datetime.combine(day, datetime.min.time())
+
+            if is_last:
+                units = max(1, target_total - running)
+            else:
+                noise = wrng.uniform(0.9, 1.1)
+                units = max(1, min(int(base_per_entry * noise), target_total - running - (num_entries - k - 1)))
+            running += units
+            seq += 1
+
+            target_perf = wrng.uniform(0.82, 0.96)
+            run_time = round(ideal_ct * units / target_perf, 2)
+            downtime_h = round(run_time * wrng.uniform(0.05, 0.08), 2)
+            setup_h = round(run_time * 0.02, 2)
+            maint_h = round(run_time * 0.01, 2)
+            actual_ct = round(run_time / units, 4)
+            defects = max(1, int(units * wrng.uniform(0.003, 0.012)))
+            scrap = defects // 3
+            rework = defects - scrap
+            efficiency = min(100.0, max(0.01, round(target_perf * 100, 2)))
+            performance = min(100.0, max(0.01, round(target_perf * 100, 2)))
+            quality_pct = min(100.0, max(0.01, round(100 - (defects + scrap) / units * 100, 2)))
+            employees_present = max(0, len(employees) - (1 if wrng.random() < 0.15 else 0))
+
+            session.add(
+                ProductionEntry(
+                    production_entry_id=f"PE-{cid}-{seq:04d}",
+                    client_id=cid,
+                    product_id=product.product_id,
+                    shift_id=shift.shift_id,
+                    line_id=line.line_id,
+                    entered_by=entered_by,
+                    production_date=day_dt,
+                    shift_date=day_dt,
+                    units_produced=units,
+                    run_time_hours=Decimal(str(run_time)),
+                    setup_time_hours=Decimal(str(setup_h)),
+                    downtime_hours=Decimal(str(downtime_h)),
+                    maintenance_hours=Decimal(str(maint_h)),
+                    defect_count=defects,
+                    scrap_count=scrap,
+                    rework_count=rework,
+                    employees_assigned=len(employees),
+                    employees_present=employees_present,
+                    ideal_cycle_time=Decimal(str(ideal_ct)),
+                    actual_cycle_time=Decimal(str(actual_ct)),
+                    efficiency_percentage=Decimal(str(efficiency)),
+                    performance_percentage=Decimal(str(performance)),
+                    quality_rate=Decimal(str(quality_pct)),
+                    work_order_id=wo.work_order_id,
+                )
             )
-        )
-        if wo is not None:
+
             qe_id = f"QE-{cid}-{seq:04d}"
             units_def = defects + scrap
             session.add(
@@ -787,23 +889,30 @@ def seed_daily_data(session: Session, spec: ClientSpec, days: int, entered_by: s
                     severity="MINOR",
                 )
             )
-        if seq % 5 == 1:
-            session.add(
-                DowntimeEntry(
-                    downtime_entry_id=f"DT-{cid}-{seq:04d}",
-                    client_id=cid,
-                    reported_by=entered_by,
-                    downtime_reason=rng.choice(["EQUIPMENT_FAILURE", "MATERIAL_SHORTAGE", "CHANGEOVER"]),
-                    shift_date=day_dt,
-                    downtime_duration_minutes=int(downtime_h * 60),
+            if seq % 5 == 1:
+                session.add(
+                    DowntimeEntry(
+                        downtime_entry_id=f"DT-{cid}-{seq:04d}",
+                        client_id=cid,
+                        work_order_id=wo.work_order_id,
+                        reported_by=entered_by,
+                        downtime_reason=wrng.choice(["EQUIPMENT_FAILURE", "MATERIAL_SHORTAGE", "CHANGEOVER"]),
+                        shift_date=day_dt,
+                        downtime_duration_minutes=int(downtime_h * 60),
+                    )
                 )
-            )
+        wo.actual_quantity = running
+
+    # --- Attendance: one per employee per working day, independent of the
+    # per-WO production split. ---
+    for day_seq, day in enumerate(working_days, start=1):
+        day_dt = datetime.combine(day, datetime.min.time())
         for j, emp in enumerate(employees, start=1):
             arng = rng_for(cid, "att", day.isoformat(), emp.employee_id)
             absent = arng.random() < 0.05
             session.add(
                 AttendanceEntry(
-                    attendance_entry_id=f"ATT-{cid}-{seq:04d}-{j:02d}",
+                    attendance_entry_id=f"ATT-{cid}-{day_seq:04d}-{j:02d}",
                     employee_id=emp.employee_id,
                     client_id=cid,
                     shift_id=shift.shift_id,

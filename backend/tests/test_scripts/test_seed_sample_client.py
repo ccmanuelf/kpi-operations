@@ -271,7 +271,15 @@ def test_work_orders_cover_all_statuses_with_transitions_and_holds(db_session):
 
 def test_daily_data_scales_with_days_and_is_credible(db_session):
     from decimal import Decimal  # noqa: F401
-    from backend.orm import ProductionEntry, QualityEntry, DowntimeEntry, AttendanceEntry, DefectDetail
+    from backend.orm import (
+        ProductionEntry,
+        QualityEntry,
+        DowntimeEntry,
+        AttendanceEntry,
+        DefectDetail,
+        WorkOrder,
+        WorkOrderStatus,
+    )
 
     _seed_admin(db_session)
     spec = seed.CLIENT_SPECS["DEMO-PIECE"]
@@ -280,14 +288,28 @@ def test_daily_data_scales_with_days_and_is_credible(db_session):
 
     cid = "DEMO-PIECE"
     prod = db_session.query(ProductionEntry).filter_by(client_id=cid).all()
-    assert len(prod) >= 20  # at least one per working span day
+    # Production entries are distributed PER WORK ORDER (true-up to a
+    # status-derived target of planned_quantity), not one-per-day, so the
+    # count now scales with the number of WOs that have a nonzero target
+    # (2-4 entries each) rather than with `days` directly.
+    wos = db_session.query(WorkOrder).filter_by(client_id=cid).all()
+    zero_target_statuses = (WorkOrderStatus.RECEIVED, WorkOrderStatus.RELEASED, WorkOrderStatus.CANCELLED)
+    nonzero_target_wos = [wo for wo in wos if wo.status not in zero_target_statuses]
+    zero_target_wos = [wo for wo in wos if wo.status in zero_target_statuses]
+    assert nonzero_target_wos, "expected at least one WO with a nonzero production target"
+    assert len(prod) >= len(nonzero_target_wos) * 2  # >=2 entries per targeted WO (the true-up minimum)
+    produced_wo_ids = {pe.work_order_id for pe in prod}
+    for wo in nonzero_target_wos:
+        assert wo.work_order_id in produced_wo_ids, f"{wo.work_order_id} ({wo.status}) has a target but no production"
+    for wo in zero_target_wos:
+        assert wo.work_order_id not in produced_wo_ids, f"{wo.work_order_id} ({wo.status}) should have zero production"
     for pe in prod:
         assert pe.units_produced > 0
         assert pe.run_time_hours > 0
         assert pe.employees_assigned > 0
         assert pe.defect_count >= 0 and pe.scrap_count >= 0
         assert pe.defect_count <= pe.units_produced
-    assert db_session.query(QualityEntry).filter_by(client_id=cid).count() >= 20
+    assert db_session.query(QualityEntry).filter_by(client_id=cid).count() == len(prod)
     assert db_session.query(DefectDetail).filter_by(client_id_fk=cid).count() >= 1
     assert db_session.query(DowntimeEntry).filter_by(client_id=cid).count() >= 1
     assert db_session.query(AttendanceEntry).filter_by(client_id=cid).count() >= 20
@@ -418,6 +440,56 @@ def test_seed_values_deterministic_for_fixed_anchor(db_session):
         for r in db_session.query(ProductionEntry).filter_by(client_id="DEMO-PIECE").all()
     }
     assert first == second and len(first) > 0
+
+
+def test_production_sums_to_workorder_target(db_session):
+    from backend.orm import ProductionEntry, WorkOrder, WorkOrderStatus
+
+    _seed_admin(db_session)
+    spec = seed.CLIENT_SPECS["DEMO-PIECE"]
+    seed.seed_client(db_session, spec, days=40, anchor=FIXED_ANCHOR)
+    db_session.commit()
+    cid = "DEMO-PIECE"
+    # For each SHIPPED/CLOSED/COMPLETED WO, produced units must equal actual_quantity
+    # and land at ~100% of planned_quantity; RECEIVED/RELEASED WOs have zero production.
+    for wo in db_session.query(WorkOrder).filter_by(client_id=cid).all():
+        produced = sum(
+            pe.units_produced
+            for pe in db_session.query(ProductionEntry).filter_by(client_id=cid, work_order_id=wo.work_order_id).all()
+        )
+        if wo.status in (WorkOrderStatus.SHIPPED, WorkOrderStatus.CLOSED, WorkOrderStatus.COMPLETED):
+            assert produced == wo.actual_quantity and produced > 0
+        elif wo.status in (WorkOrderStatus.RECEIVED, WorkOrderStatus.RELEASED):
+            assert produced == 0
+
+
+def test_planned_workorders_bridge_capacity_orders(db_session):
+    from backend.orm import WorkOrder
+
+    _seed_admin(db_session)
+    seed.seed_client(db_session, seed.CLIENT_SPECS["DEMO-PIECE"], days=20, anchor=FIXED_ANCHOR)
+    db_session.commit()
+    planned = [
+        wo for wo in db_session.query(WorkOrder).filter_by(client_id="DEMO-PIECE").all() if wo.origin == "CAPACITY_PLAN"
+    ]
+    assert planned, "expected some CAPACITY_PLAN work orders"
+    for wo in planned:
+        assert wo.capacity_order_id is not None
+        assert wo.planned_start_date is not None
+
+
+def test_production_entry_stored_kpis_populated(db_session):
+    from backend.orm import ProductionEntry
+
+    _seed_admin(db_session)
+    seed.seed_client(db_session, seed.CLIENT_SPECS["DEMO-PIECE"], days=15, anchor=FIXED_ANCHOR)
+    db_session.commit()
+    for pe in db_session.query(ProductionEntry).filter_by(client_id="DEMO-PIECE").all():
+        assert pe.maintenance_hours is not None
+        assert pe.employees_present is not None
+        assert pe.efficiency_percentage is not None and 0 < float(pe.efficiency_percentage) <= 100
+        assert pe.performance_percentage is not None and 0 < float(pe.performance_percentage) <= 100
+        assert pe.quality_rate is not None and 0 < float(pe.quality_rate) <= 100
 
 
 def test_resolve_entered_by_exact_client_membership(db_session):
