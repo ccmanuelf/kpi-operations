@@ -1,3 +1,4 @@
+from datetime import date
 from pathlib import Path
 
 import pytest
@@ -8,6 +9,8 @@ from backend.scripts import seed_sample_client as seed
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 SCRIPT_SRC = (REPO_ROOT / "backend/scripts/seed_sample_client.py").read_text(encoding="utf-8")
+
+FIXED_ANCHOR = date(2026, 6, 15)
 
 
 def test_allowlist_is_exactly_the_demo_clients():
@@ -193,7 +196,7 @@ def test_capacity_graph_seeded_and_idempotent(db_session):
     seed.seed_client_row(db_session, spec)
     seed.seed_lines(db_session, spec.client_id)
     for _ in range(2):
-        seed.seed_capacity_graph(db_session, spec.client_id, days=30)
+        seed.seed_capacity_graph(db_session, spec.client_id, days=30, anchor=FIXED_ANCHOR)
     db_session.commit()
 
     cid = "DEMO-PIECE"
@@ -232,7 +235,7 @@ def test_work_orders_cover_all_statuses_with_transitions_and_holds(db_session):
 
     _seed_admin(db_session)
     spec = seed.CLIENT_SPECS["DEMO-PIECE"]
-    seed.seed_client(db_session, spec, days=10)  # full orchestrator so entered_by resolves
+    seed.seed_client(db_session, spec, days=10, anchor=FIXED_ANCHOR)  # full orchestrator so entered_by resolves
     db_session.commit()
 
     cid = "DEMO-PIECE"
@@ -272,7 +275,7 @@ def test_daily_data_scales_with_days_and_is_credible(db_session):
 
     _seed_admin(db_session)
     spec = seed.CLIENT_SPECS["DEMO-PIECE"]
-    seed.seed_client(db_session, spec, days=20)
+    seed.seed_client(db_session, spec, days=20, anchor=FIXED_ANCHOR)
     db_session.commit()
 
     cid = "DEMO-PIECE"
@@ -300,7 +303,7 @@ def test_simulation_scenario_seeded(db_session):
 
     _seed_admin(db_session)
     spec = seed.CLIENT_SPECS["DEMO-PIECE"]
-    seed.seed_client(db_session, spec, days=5)
+    seed.seed_client(db_session, spec, days=5, anchor=FIXED_ANCHOR)
     db_session.commit()
     scenarios = db_session.query(SimulationScenario).filter_by(client_id="DEMO-PIECE").all()
     assert len(scenarios) == 1
@@ -313,10 +316,10 @@ def test_full_seed_is_idempotent(db_session):
 
     _seed_admin(db_session)
     spec = seed.CLIENT_SPECS["DEMO-PIECE"]
-    seed.seed_client(db_session, spec, days=10)
+    seed.seed_client(db_session, spec, days=10, anchor=FIXED_ANCHOR)
     db_session.commit()
     before = db_session.query(ProductionEntry).filter_by(client_id="DEMO-PIECE").count()
-    seed.seed_client(db_session, spec, days=10)  # second full run
+    seed.seed_client(db_session, spec, days=10, anchor=FIXED_ANCHOR)  # second full run
     db_session.commit()
     after = db_session.query(ProductionEntry).filter_by(client_id="DEMO-PIECE").count()
     assert after == before  # zero new rows
@@ -328,8 +331,8 @@ def test_reset_removes_only_target_client(db_session):
     _seed_admin(db_session)
     piece = seed.CLIENT_SPECS["DEMO-PIECE"]
     hourly = seed.CLIENT_SPECS["DEMO-HOURLY"]
-    seed.seed_client(db_session, piece, days=6)
-    seed.seed_client(db_session, hourly, days=6)
+    seed.seed_client(db_session, piece, days=6, anchor=FIXED_ANCHOR)
+    seed.seed_client(db_session, hourly, days=6, anchor=FIXED_ANCHOR)
     db_session.commit()
 
     seed.reset_client_data(db_session, "DEMO-PIECE")
@@ -374,10 +377,12 @@ def test_daily_data_pks_client_scoped_no_cross_process_collision(db_session):
     from backend.orm import ProductionEntry, AttendanceEntry, QualityEntry
 
     _seed_admin(db_session)
-    seed.seed_client(db_session, seed.CLIENT_SPECS["DEMO-PIECE"], days=8)
+    seed.seed_client(db_session, seed.CLIENT_SPECS["DEMO-PIECE"], days=8, anchor=FIXED_ANCHOR)
     db_session.commit()
     TestDataFactory.reset_counters()
-    seed.seed_client(db_session, seed.CLIENT_SPECS["DEMO-HOURLY"], days=8)  # must NOT IntegrityError
+    seed.seed_client(
+        db_session, seed.CLIENT_SPECS["DEMO-HOURLY"], days=8, anchor=FIXED_ANCHOR
+    )  # must NOT IntegrityError
     db_session.commit()
 
     for model, pk in (
@@ -393,13 +398,26 @@ def test_daily_data_pks_client_scoped_no_cross_process_collision(db_session):
             assert owner in getattr(r, pk), f"{pk} must be client-scoped"
 
 
-def test_seeder_uses_no_wall_clock():
-    # All seeded dates derive from ANCHOR_DATE; no date.today()/datetime.now()/utcnow()
-    # anywhere, so the dataset is byte-identical regardless of when the seeder runs.
-    import re
+def test_seed_values_deterministic_for_fixed_anchor(db_session):
+    from backend.orm import ProductionEntry
 
-    for forbidden in (r"date\.today\(", r"datetime\.now\(", r"utcnow\("):
-        assert not re.search(forbidden, SCRIPT_SRC), f"wall-clock call {forbidden!r} breaks seed determinism"
+    _seed_admin(db_session)
+    seed.seed_client(db_session, seed.CLIENT_SPECS["DEMO-PIECE"], days=10, anchor=FIXED_ANCHOR)
+    db_session.commit()
+    first = {
+        r.production_entry_id: (r.units_produced, str(r.run_time_hours), r.defect_count, r.scrap_count)
+        for r in db_session.query(ProductionEntry).filter_by(client_id="DEMO-PIECE").all()
+    }
+    # Reset just this client and re-seed with the SAME anchor → identical values.
+    seed.reset_client_data(db_session, "DEMO-PIECE")
+    db_session.commit()
+    seed.seed_client(db_session, seed.CLIENT_SPECS["DEMO-PIECE"], days=10, anchor=FIXED_ANCHOR)
+    db_session.commit()
+    second = {
+        r.production_entry_id: (r.units_produced, str(r.run_time_hours), r.defect_count, r.scrap_count)
+        for r in db_session.query(ProductionEntry).filter_by(client_id="DEMO-PIECE").all()
+    }
+    assert first == second and len(first) > 0
 
 
 def test_resolve_entered_by_exact_client_membership(db_session):

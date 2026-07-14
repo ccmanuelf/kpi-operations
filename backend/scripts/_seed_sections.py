@@ -22,13 +22,6 @@ if TYPE_CHECKING:
     from backend.orm import WorkOrderStatus
 
 
-# Fixed seed anchor: Operations history (work orders, holds, daily data) ends
-# here; capacity planning (calendar, orders, schedule) starts here. Every
-# seeded date derives from this single constant so the dataset is
-# deterministic (no wall-clock calls) and temporally coherent across sections.
-ANCHOR_DATE = date(2026, 6, 15)
-
-
 @dataclass(frozen=True)
 class ClientSpec:
     client_id: str
@@ -278,7 +271,7 @@ def seed_employees(session: Session, spec: ClientSpec) -> list:
     return employees
 
 
-def seed_capacity_graph(session: Session, client_id: str, days: int) -> None:
+def seed_capacity_graph(session: Session, client_id: str, days: int, anchor: date) -> None:
     """Idempotent per-client capacity planning-scheduling graph: calendar,
     orders (spanning statuses/priorities), production standards, BOM
     header+detail, stock snapshots, component checks, a schedule + details,
@@ -308,10 +301,10 @@ def seed_capacity_graph(session: Session, client_id: str, days: int) -> None:
         return
 
     rng = rng_for(client_id, "capacity")
-    # Planning horizon spans FORWARD from the fixed anchor (ANCHOR_DATE + i days),
-    # i.e. it begins where the Operations history (seed_work_orders/holds/daily_data,
-    # all anchored on the same ANCHOR_DATE) ends. No wall clock.
-    today = ANCHOR_DATE
+    # Planning horizon spans FORWARD from the anchor (anchor + i days), i.e. it
+    # begins where the Operations history (seed_work_orders/holds/daily_data,
+    # all anchored on the same `anchor`) ends.
+    today = anchor
     _, cap_lines = seed_lines(session, client_id)
     styles = [f"{client_id}-P1", f"{client_id}-P2", f"{client_id}-P3"]
 
@@ -560,7 +553,7 @@ def seed_capacity_graph(session: Session, client_id: str, days: int) -> None:
     session.flush()
 
 
-def seed_work_orders(session: Session, spec: ClientSpec, entered_by: str) -> list:
+def seed_work_orders(session: Session, spec: ClientSpec, entered_by: str, anchor: date) -> list:
     """Idempotent per-client work orders spanning every WorkOrderStatus, each
     with a credible WorkflowTransitionLog chain, plus a few Jobs."""
     from datetime import datetime, timedelta, timezone
@@ -583,7 +576,7 @@ def seed_work_orders(session: Session, spec: ClientSpec, entered_by: str) -> lis
         WorkOrderStatus.ON_HOLD,
     ]
     rng = rng_for(cid, "work_orders")
-    now = datetime.combine(ANCHOR_DATE, datetime.min.time(), tzinfo=timezone.utc)  # fixed anchor for determinism
+    now = datetime.combine(anchor, datetime.min.time(), tzinfo=timezone.utc)
     wos = []
     for i, status in enumerate(states, start=1):
         wo_id = f"WO-{cid}-{i:03d}"  # full client_id — work_order_id PK is GLOBALLY unique
@@ -644,7 +637,7 @@ def _transition_chain(status: "WorkOrderStatus") -> list:
     return chain
 
 
-def seed_holds(session: Session, client_id: str, work_orders: list, entered_by: str) -> None:
+def seed_holds(session: Session, client_id: str, work_orders: list, entered_by: str, anchor: date) -> None:
     # Construct HoldEntry directly: TestDataFactory.create_hold_entry mints
     # hold_entry_id via _next_id("HOLD") (process-local counter → cross-process
     # PK collision). Use a deterministic client-scoped PK instead.
@@ -682,13 +675,13 @@ def seed_holds(session: Session, client_id: str, work_orders: list, entered_by: 
                 hold_reason="QUALITY_ISSUE",
                 hold_reason_category="QUALITY",
                 hold_status=hold_status,
-                hold_date=datetime.combine(ANCHOR_DATE, datetime.min.time(), tzinfo=timezone.utc),
+                hold_date=datetime.combine(anchor, datetime.min.time(), tzinfo=timezone.utc),
             )
         )
     session.flush()
 
 
-def seed_daily_data(session: Session, spec: ClientSpec, days: int, entered_by: str) -> None:
+def seed_daily_data(session: Session, spec: ClientSpec, days: int, entered_by: str, anchor: date) -> None:
     """Idempotent 90-day credible daily Operations data: one ProductionEntry
     per working day (skip weekends) on the first product/shift/line, a
     QualityEntry + DefectDetail tied to a rotating seeded work order,
@@ -717,7 +710,7 @@ def seed_daily_data(session: Session, spec: ClientSpec, days: int, entered_by: s
     employees = seed_employees(session, spec)
     work_orders = session.query(WorkOrder).filter_by(client_id=cid).order_by(WorkOrder.work_order_id).all()
     product, shift, line = products[0], shifts[0], lines[0]
-    end = ANCHOR_DATE  # fixed anchor for determinism
+    end = anchor
     ideal_ct = float(product.ideal_cycle_time or Decimal("0.12"))
 
     # Walk backward from the anchor collecting exactly `days` WORKING days

@@ -17,6 +17,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 import argparse  # noqa: E402
+from datetime import date  # noqa: E402
 from typing import TYPE_CHECKING, Optional  # noqa: E402
 
 from sqlalchemy import create_engine, inspect  # noqa: E402
@@ -202,7 +203,7 @@ def reset_client_data(session: Session, client_id: str) -> None:
     session.flush()
 
 
-def seed_client(session: Session, spec: ClientSpec, days: int) -> None:
+def seed_client(session: Session, spec: ClientSpec, days: int, anchor: date) -> None:
     """Orchestrator — seed one client in FK order: catalogs/config → master
     data → capacity → work orders → holds → daily data → simulation."""
     seed_client_row(session, spec)
@@ -212,11 +213,11 @@ def seed_client(session: Session, spec: ClientSpec, days: int) -> None:
     seed_products(session, spec.client_id)
     seed_lines(session, spec.client_id)
     seed_employees(session, spec)
-    seed_capacity_graph(session, spec.client_id, days)
+    seed_capacity_graph(session, spec.client_id, days, anchor)
     entered_by = resolve_entered_by(session, spec.client_id)
-    work_orders = seed_work_orders(session, spec, entered_by)
-    seed_holds(session, spec.client_id, work_orders, entered_by)
-    seed_daily_data(session, spec, days, entered_by)
+    work_orders = seed_work_orders(session, spec, entered_by, anchor)
+    seed_holds(session, spec.client_id, work_orders, entered_by, anchor)
+    seed_daily_data(session, spec, days, entered_by, anchor)
     seed_simulation(session, spec.client_id)
 
 
@@ -233,12 +234,26 @@ def main(argv: Optional[list] = None) -> int:
         help="working days of daily Operations data (default 90; weekends skipped)",
     )
     parser.add_argument("--reset", action="store_true", help="delete this client's existing rows before seeding")
+    parser.add_argument(
+        "--anchor",
+        default=None,
+        help=(
+            "YYYY-MM-DD anchor for seeded dates (Operations history ends here, "
+            "capacity planning starts here); default = today"
+        ),
+    )
     args = parser.parse_args(argv)
 
     if args.client is not None and args.client not in ALLOWLIST:
         print(f"ERROR: {args.client!r} is not on the demo allowlist {sorted(ALLOWLIST)}; refusing.", file=sys.stderr)
         return 1
     targets = [args.client] if args.client else list(DEFAULT_CLIENTS)
+
+    try:
+        anchor = date.fromisoformat(args.anchor) if args.anchor else date.today()
+    except ValueError:
+        print(f"ERROR: --anchor {args.anchor!r} is not a valid YYYY-MM-DD date.", file=sys.stderr)
+        return 1
 
     database_url = os.getenv("DATABASE_URL", "sqlite:///database/kpi_platform.db")
     try:
@@ -257,7 +272,7 @@ def main(argv: Optional[list] = None) -> int:
                 spec = CLIENT_SPECS[client_id]
                 if args.reset:
                     reset_client_data(session, client_id)
-                seed_client(session, spec, args.days)
+                seed_client(session, spec, args.days, anchor)
                 session.commit()
                 print(f"Seeded {client_id} ({args.days} days).")
     except SeedError as exc:
