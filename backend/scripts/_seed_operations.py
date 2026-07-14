@@ -355,6 +355,11 @@ def seed_daily_data(session: Session, spec: ClientSpec, days: int, entered_by: s
                     units_reworked=defects - scrap,
                 )
             )
+            # DefectDetail.quality_entry_id is a raw FK (no ORM relationship), so the
+            # unit-of-work won't order the QualityEntry insert before the DefectDetail
+            # insert; flush the parent now so the child FK resolves on MariaDB (SQLite
+            # with FKs off silently tolerates the wrong order — see the FK-enforcement test).
+            session.flush()
             session.add(
                 DefectDetail(
                     defect_detail_id=f"DD-{cid}-{seq:04d}",
