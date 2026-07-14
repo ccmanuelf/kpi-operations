@@ -411,6 +411,40 @@ def test_cli_smoke_seeds_and_reports(tmp_path, monkeypatch, capsys):
     eng.dispose()
 
 
+def test_cli_smoke_with_anchor_seeds_and_reports(tmp_path, monkeypatch, capsys):
+    from backend.db.migrate import upgrade_to_head
+    from backend.db.factories import TestDataFactory
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import Session as SASession
+    from backend.orm import ProductionEntry
+
+    db_file = tmp_path / "cli_anchor.db"
+    url = f"sqlite:///{db_file}"
+    upgrade_to_head(url)
+    eng = create_engine(url)
+    with SASession(eng) as s:  # need an admin for entered_by
+        TestDataFactory.create_user(s, username="cli_admin", role="admin")
+        s.commit()
+    eng.dispose()
+
+    monkeypatch.setenv("DATABASE_URL", url)
+    rc = seed.main(["--client", "DEMO-PIECE", "--days", "8", "--anchor", "2026-06-15"])
+    assert rc == 0
+    assert "Seeded DEMO-PIECE" in capsys.readouterr().out
+
+    eng = create_engine(url)
+    with SASession(eng) as s:
+        assert s.query(ProductionEntry).filter_by(client_id="DEMO-PIECE").count() > 0
+    eng.dispose()
+
+
+def test_cli_rejects_invalid_anchor(capsys):
+    # --anchor is parsed before any DB connection is attempted, so this needs no DB.
+    rc = seed.main(["--client", "DEMO-PIECE", "--anchor", "not-a-date"])
+    assert rc == 1
+    assert "not-a-date" in capsys.readouterr().err
+
+
 def test_daily_data_pks_client_scoped_no_cross_process_collision(db_session):
     # Reproduces the process-local-counter PK-collision class deterministically:
     # seed one client, reset the factory counters (= a fresh process), seed another;

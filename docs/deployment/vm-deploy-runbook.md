@@ -205,6 +205,13 @@ armed. Living captures complete.
   America/Monterrey).
 - **Never set `DEMO_MODE=true` or `FORCE_RESEED` on this host** — those are
   demo/CI paths that seed or reset data.
+- **Seeding demo/sample clients:** unlike the `DEMO_MODE` path above, `docker
+  compose -f docker-compose.prod.yml exec backend python -m
+  backend.scripts.seed_sample_client --days 90` is a separate, prod-safe,
+  INSERT-only seeder gated by a fixed client allowlist (`DEMO-PIECE`,
+  `DEMO-HOURLY`, `DEMO-HYBRID`, `SAMPLE_REF`) — it never drops or creates
+  schema. It seeds with **today's date by default** (recent, visible data);
+  pass `--anchor YYYY-MM-DD` for reproducible/backdated seeding.
 - **Firewall changes:** `sudo ufw allow <port>/tcp` (confirmed, recorded in
   Living captures). Current allows: 22, 443, 80, 7070 (bridge), 5443 (bridge),
   3389 (RDP).
