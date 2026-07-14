@@ -546,6 +546,10 @@ def test_planned_workorders_bridge_capacity_orders(db_session):
     for wo in planned:
         assert wo.capacity_order_id is not None
         assert wo.planned_start_date is not None
+    # Strict 1:1 map: no two bridged WOs share a CapacityOrder (else the bridge's
+    # cap.completed_quantity alignment would be silently last-writer-wins overwritten).
+    bridged_order_ids = [wo.capacity_order_id for wo in planned]
+    assert len(bridged_order_ids) == len(set(bridged_order_ids)), "bridged WOs must map to distinct CapacityOrders"
 
 
 def test_production_entry_stored_kpis_populated(db_session):

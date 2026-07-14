@@ -786,8 +786,12 @@ def seed_work_orders(session: Session, spec: ClientSpec, entered_by: str, anchor
             wo.rejected_date = wo.received_date + timedelta(days=rng.randint(5, 15))
 
         # --- Bridge to Capacity Planning (mainline WOs only) ---
-        if status in mainline_bridge_statuses and cap_orders:
-            cap = cap_orders[bridge_idx % len(cap_orders)]
+        # Strict 1:1 map WO→CapacityOrder (no modulo wraparound): each bridged WO
+        # takes its own order, so aligning cap.completed_quantity below can never
+        # be overwritten by a second WO sharing the same order. If bridged WOs ever
+        # outnumber cap orders, the extras simply stay unbridged (safe degradation).
+        if status in mainline_bridge_statuses and bridge_idx < len(cap_orders):
+            cap = cap_orders[bridge_idx]
             bridge_idx += 1
             wo.origin = "CAPACITY_PLAN"
             wo.capacity_order_id = cap.id
