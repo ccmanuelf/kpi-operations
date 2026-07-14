@@ -720,7 +720,7 @@ git commit -m "feat(seed): master data — shifts, products, operational+capacit
 **Interfaces:**
 - Produces: `seed_capacity_graph(session, client_id, days) -> None` (idempotent). Wired into `seed_client` after master data.
 
-**Interfaces consumed:** `rng_for`, `_prefix`, `seed_lines` (uses the capacity lines it created).
+**Interfaces consumed:** `rng_for`, `seed_lines` (uses the capacity lines it created). Build any capacity codes from the full `client_id` (e.g. `f"{client_id}-ORD-{n}"`) — do NOT use a short prefix (globally-unique columns must not collide across clients).
 
 - [ ] **Step 1: Write the failing test**
 
@@ -864,11 +864,10 @@ def seed_work_orders(session: Session, spec: ClientSpec, entered_by: str) -> lis
               WorkOrderStatus.COMPLETED, WorkOrderStatus.SHIPPED, WorkOrderStatus.CLOSED,
               WorkOrderStatus.CANCELLED, WorkOrderStatus.ON_HOLD]
     rng = rng_for(cid, "work_orders")
-    p = _prefix(cid)
     now = datetime(2026, 6, 15, tzinfo=timezone.utc)  # fixed anchor for determinism
     wos = []
     for i, status in enumerate(states, start=1):
-        wo_id = f"WO-{p}-{i:03d}"
+        wo_id = f"WO-{cid}-{i:03d}"  # full client_id — work_order_id PK is GLOBALLY unique
         planned_ship = now - timedelta(days=rng.randint(5, 40))
         # delivered on time for terminal states so OTD computes both hit/miss
         delivered = planned_ship + timedelta(days=rng.randint(-3, 6)) if status in (
