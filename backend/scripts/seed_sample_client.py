@@ -26,11 +26,9 @@ from sqlalchemy.orm import Session  # noqa: E402
 
 from backend.orm.client import Client, ClientType  # noqa: E402
 
-from backend.scripts._seed_sections import (  # noqa: E402,F401 — rng_for re-exported for `seed.rng_for`
-    rng_for,
-    ClientSpec,
-    seed_catalogs,
-    seed_config_layer,
+from backend.scripts._seed_common import rng_for, ClientSpec  # noqa: E402,F401 — rng_for re-exported for `seed.rng_for`
+from backend.scripts._seed_reference import seed_catalogs, seed_config_layer, seed_global_defaults  # noqa: E402
+from backend.scripts._seed_master import (  # noqa: E402
     seed_shifts,
     seed_products,
     seed_lines,
@@ -38,13 +36,10 @@ from backend.scripts._seed_sections import (  # noqa: E402,F401 — rng_for re-e
     seed_break_times,
     seed_equipment,
     seed_alerts,
-    seed_capacity_graph,
-    seed_work_orders,
-    seed_holds,
-    seed_daily_data,
-    seed_simulation,
-    seed_global_defaults,
 )
+from backend.scripts._seed_capacity import seed_capacity_graph  # noqa: E402
+from backend.scripts._seed_operations import seed_work_orders, seed_holds, seed_daily_data  # noqa: E402
+from backend.scripts._seed_simulation import seed_simulation  # noqa: E402
 
 if TYPE_CHECKING:
     from sqlalchemy import Engine  # noqa: E402

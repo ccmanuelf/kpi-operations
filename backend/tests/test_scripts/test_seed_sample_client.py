@@ -665,12 +665,11 @@ def test_resolve_entered_by_exact_client_membership(db_session):
 
 def test_global_defaults_seeded_once(db_session):
     # DashboardWidgetDefaults + metric dependencies are global (no client scope).
-    from backend.scripts import _seed_sections
     from backend.orm.user_preferences import DashboardWidgetDefaults
     from backend.orm.calculation_assumption import MetricAssumptionDependency
 
-    _seed_sections.seed_global_defaults(db_session)
-    _seed_sections.seed_global_defaults(db_session)  # idempotent — no duplicate rows / no error
+    seed.seed_global_defaults(db_session)
+    seed.seed_global_defaults(db_session)  # idempotent — no duplicate rows / no error
     db_session.commit()
     assert db_session.query(DashboardWidgetDefaults).count() >= 1
     assert db_session.query(MetricAssumptionDependency).count() >= 1
