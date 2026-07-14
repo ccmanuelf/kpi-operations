@@ -87,6 +87,22 @@ def test_reset_table_order_children_before_parents():
         ("ProductionLine", "Equipment"),
         ("Shift", "BreakTime"),
         ("WorkOrder", "Alert"),  # Alert.work_order_id → WORK_ORDER (nullable, RESTRICT)
+        # Completeness (final review): encode EVERY real FK among reset tables so a
+        # future reordering can't silently reintroduce a MariaDB --reset FK-violation.
+        ("CapacityOrder", "WorkOrder"),  # WorkOrder.capacity_order_id (the bridge)
+        ("WorkOrder", "DowntimeEntry"),
+        ("ProductionLine", "DowntimeEntry"),
+        ("Employee", "AttendanceEntry"),
+        ("Shift", "AttendanceEntry"),
+        ("ProductionLine", "AttendanceEntry"),
+        ("Product", "ProductionEntry"),
+        ("Shift", "ProductionEntry"),
+        ("ProductionLine", "ProductionEntry"),
+        ("Employee", "Job"),
+        ("Job", "QualityEntry"),
+        ("Job", "HoldEntry"),
+        ("Job", "ProductionEntry"),
+        ("CapacitySchedule", "CapacityKPICommitment"),
     ]
     for parent, child in edges:
         assert parent in order and child in order, f"{parent}/{child} missing from RESET_TABLE_ORDER"
