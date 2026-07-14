@@ -54,3 +54,34 @@ def test_seed_client_row_idempotent(db_session):
     assert len(rows) == 1
     assert rows[0].client_type == ClientType.PIECE_RATE
     assert rows[0].client_name == spec.client_name
+
+
+def test_reset_table_order_children_before_parents():
+    # (parent_class_name, child_class_name) FK edges within RESET_TABLE_ORDER;
+    # each child must be deleted BEFORE its parent (children-first) or MariaDB --reset FK-violates.
+    order = [cls.__name__ for cls, _ in seed.RESET_TABLE_ORDER]
+    edges = [
+        ("QualityEntry", "DefectDetail"),
+        ("WorkOrder", "Job"),
+        ("WorkOrder", "HoldEntry"),
+        ("WorkOrder", "WorkflowTransitionLog"),
+        ("WorkOrder", "QualityEntry"),
+        ("WorkOrder", "ProductionEntry"),
+        ("CapacitySchedule", "CapacityKPICommitment"),
+        ("CapacitySchedule", "CapacityScheduleDetail"),
+        ("CapacitySchedule", "CapacityScenario"),
+        ("CapacityOrder", "CapacityComponentCheck"),
+        ("CapacityOrder", "CapacityScheduleDetail"),
+        ("CapacityProductionLine", "CapacityScheduleDetail"),
+        ("CapacityProductionLine", "CapacityAnalysis"),
+        ("CapacityProductionLine", "ProductionLine"),
+        ("CapacityBOMHeader", "CapacityBOMDetail"),
+        ("Employee", "EmployeeLineAssignment"),
+        ("Employee", "EmployeeClientAssignment"),
+        ("ProductionLine", "EmployeeLineAssignment"),
+        ("ProductionLine", "Shift"),
+    ]
+    for parent, child in edges:
+        assert parent in order and child in order, f"{parent}/{child} missing from RESET_TABLE_ORDER"
+        assert order.index(child) < order.index(parent), f"{child} must be deleted before {parent}"
+    assert "CLIENT" not in order and "Client" not in order  # CLIENT row is never deleted

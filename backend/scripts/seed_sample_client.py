@@ -162,25 +162,25 @@ def _reset_table_order() -> list[tuple[type, str]]:
         (HoldEntry, "client_id"),
         (Job, "client_id_fk"),
         (WorkOrder, "client_id"),
-        (CapacityKPICommitment, "client_id"),
-        (CapacityScheduleDetail, "client_id"),
+        (CapacityKPICommitment, "client_id"),  # child of CapacitySchedule
+        (CapacityScheduleDetail, "client_id"),  # child of CapacitySchedule, CapacityOrder, CapacityProductionLine
+        (CapacityScenario, "client_id"),  # child of CapacitySchedule
         (CapacitySchedule, "client_id"),
-        (CapacityComponentCheck, "client_id"),
-        (CapacityAnalysis, "client_id"),
+        (CapacityComponentCheck, "client_id"),  # child of CapacityOrder
+        (CapacityAnalysis, "client_id"),  # child of CapacityProductionLine
         (CapacityStockSnapshot, "client_id"),
-        (CapacityBOMDetail, "client_id"),
+        (CapacityBOMDetail, "client_id"),  # child of CapacityBOMHeader
         (CapacityBOMHeader, "client_id"),
         (CapacityProductionStandard, "client_id"),
         (CapacityOrder, "client_id"),
-        (CapacityScenario, "client_id"),
         (CapacityCalendar, "client_id"),
-        (CapacityProductionLine, "client_id"),
-        (EmployeeLineAssignment, "client_id"),
-        (EmployeeClientAssignment, "client_id"),
+        (EmployeeLineAssignment, "client_id"),  # child of ProductionLine, Employee
+        (EmployeeClientAssignment, "client_id"),  # child of Employee
         (Employee, "client_id_assigned"),
-        (Shift, "client_id"),
+        (Shift, "client_id"),  # child of ProductionLine (line_id, nullable)
         (Product, "client_id"),
-        (ProductionLine, "client_id"),
+        (ProductionLine, "client_id"),  # child of CapacityProductionLine
+        (CapacityProductionLine, "client_id"),
         (SimulationScenario, "client_id"),
         (AlertConfig, "client_id"),
         (KPIThreshold, "client_id"),
