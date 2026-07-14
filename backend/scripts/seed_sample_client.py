@@ -88,13 +88,18 @@ def resolve_entered_by(session: Session, client_id: str) -> str:
     client-scoped operator, else any admin. No users are created."""
     from backend.orm.user import User
 
-    scoped = (
+    # client_id_assigned is a comma-separated list; .contains() is only a coarse,
+    # index-friendly prefilter — refine with EXACT element membership so a
+    # superstring client id (e.g. "DEMO-PIECE-2") can't mis-match "DEMO-PIECE".
+    candidates = (
         session.query(User)
         .filter(User.client_id_assigned.isnot(None), User.client_id_assigned.contains(client_id))
-        .first()
+        .all()
     )
-    if scoped is not None:
-        return scoped.user_id
+    for user in candidates:
+        assigned = [c.strip() for c in (user.client_id_assigned or "").split(",")]
+        if client_id in assigned:
+            return user.user_id
     admin = session.query(User).filter(User.role == "admin").first()
     if admin is not None:
         return admin.user_id
@@ -816,6 +821,8 @@ def seed_holds(session: Session, client_id: str, work_orders: list, entered_by: 
 
     if session.query(HoldEntry).filter_by(client_id=client_id).first() is not None:
         return
+    if not work_orders:  # nothing to attach holds to
+        return
     chain = [
         "PENDING_HOLD_APPROVAL",
         "ON_HOLD",
@@ -829,7 +836,9 @@ def seed_holds(session: Session, client_id: str, work_orders: list, entered_by: 
     # ON_HOLD (credibility: a hold row can't be "open" against a WO that has
     # already moved on). Resolved statuses may reference other WOs as before.
     open_statuses = {"PENDING_HOLD_APPROVAL", "ON_HOLD", "PENDING_RESUME_APPROVAL"}
-    on_hold_wo = next(w for w in work_orders if w.status == WorkOrderStatus.ON_HOLD)
+    # Prefer the WO actually in ON_HOLD status for open holds; fall back to the
+    # first WO if (defensively) none is ON_HOLD, so this never StopIteration-crashes.
+    on_hold_wo = next((w for w in work_orders if w.status == WorkOrderStatus.ON_HOLD), work_orders[0])
     for i, hold_status in enumerate(chain, start=1):
         wo = on_hold_wo if hold_status in open_statuses else work_orders[i % len(work_orders)]
         session.add(

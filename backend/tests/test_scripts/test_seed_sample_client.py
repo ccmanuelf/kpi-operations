@@ -400,3 +400,24 @@ def test_seeder_uses_no_wall_clock():
 
     for forbidden in (r"date\.today\(", r"datetime\.now\(", r"utcnow\("):
         assert not re.search(forbidden, SCRIPT_SRC), f"wall-clock call {forbidden!r} breaks seed determinism"
+
+
+def test_resolve_entered_by_exact_client_membership(db_session):
+    # .contains() is a coarse prefilter; resolution must match the client_id as an
+    # EXACT comma-list element, so a superstring-assigned user is NOT mis-selected.
+    from backend.db.factories import TestDataFactory
+    from backend.orm import Client
+    from backend.orm.client import ClientType
+
+    db_session.add(Client(client_id="DEMO-PIECE", client_name="P", client_type=ClientType.PIECE_RATE, is_active=1))
+    db_session.add(Client(client_id="DEMO-PIECE-2", client_name="P2", client_type=ClientType.PIECE_RATE, is_active=1))
+    db_session.flush()
+    TestDataFactory.create_user(db_session, username="superstring_op", role="operator", client_id="DEMO-PIECE-2")
+    admin = TestDataFactory.create_user(db_session, username="fallback_admin", role="admin")
+    db_session.flush()
+    # No exact DEMO-PIECE user exists → must fall back to admin, NOT the DEMO-PIECE-2 operator.
+    assert seed.resolve_entered_by(db_session, "DEMO-PIECE") == admin.user_id
+
+    exact = TestDataFactory.create_user(db_session, username="exact_op", role="operator", client_id="DEMO-PIECE")
+    db_session.flush()
+    assert seed.resolve_entered_by(db_session, "DEMO-PIECE") == exact.user_id
