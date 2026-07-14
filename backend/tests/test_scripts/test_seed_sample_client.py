@@ -152,3 +152,22 @@ def test_master_data_seeded_and_idempotent(db_session):
     assert db_session.query(Employee).filter_by(client_id_assigned=cid).count() == spec.num_employees
     assert db_session.query(EmployeeClientAssignment).filter_by(client_id=cid).count() == spec.num_employees
     assert db_session.query(EmployeeLineAssignment).filter_by(client_id=cid).count() >= spec.num_employees
+
+
+def test_employee_codes_unique_across_demo_clients(db_session):
+    from backend.orm.employee import Employee
+
+    # DEMO-HOURLY and DEMO-HYBRID both used to map to prefix "DH" -> employee_code collision.
+    for cid in ("DEMO-HOURLY", "DEMO-HYBRID"):
+        spec = seed.CLIENT_SPECS[cid]
+        seed.seed_client_row(db_session, spec)
+        seed.seed_shifts(db_session, cid)
+        seed.seed_products(db_session, cid)
+        seed.seed_lines(db_session, cid)
+        seed.seed_employees(db_session, spec)  # 2nd client must NOT IntegrityError
+    db_session.commit()
+
+    codes = [e.employee_code for e in db_session.query(Employee).all()]
+    assert len(codes) == len(set(codes)), "employee_code collides across clients"
+    for e in db_session.query(Employee).all():
+        assert e.client_id_assigned in e.employee_code, "employee_code must be client-scoped"

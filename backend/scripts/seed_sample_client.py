@@ -323,10 +323,6 @@ def seed_config_layer(session: Session, client_id: str) -> None:
     session.flush()
 
 
-def _prefix(client_id: str) -> str:
-    return "".join(part[0] for part in client_id.split("-"))[:3].upper()  # DEMO-PIECE -> "DP"
-
-
 def seed_shifts(session: Session, client_id: str) -> list:
     """Idempotent per-client Day/Night shifts."""
     from backend.orm import Shift
@@ -353,11 +349,10 @@ def seed_products(session: Session, client_id: str) -> list:
     existing = session.query(Product).filter_by(client_id=client_id).all()
     if existing:
         return existing
-    p = _prefix(client_id)
     specs = [
-        (f"{p}-P1", "Polo Shirt", Decimal("0.12")),
-        (f"{p}-P2", "T-Shirt", Decimal("0.08")),
-        (f"{p}-P3", "Jacket", Decimal("0.30")),
+        (f"{client_id}-P1", "Polo Shirt", Decimal("0.12")),
+        (f"{client_id}-P2", "T-Shirt", Decimal("0.08")),
+        (f"{client_id}-P3", "Jacket", Decimal("0.30")),
     ]
     return [
         TestDataFactory.create_product(
@@ -376,17 +371,16 @@ def seed_lines(session: Session, client_id: str) -> tuple[list, list]:
     if existing:
         cap = session.query(CapacityProductionLine).filter_by(client_id=client_id).all()
         return existing, cap
-    p = _prefix(client_id)
     lines, cap_lines = [], []
     for i in (1, 2):
         cap = CapacityProductionLine(
-            client_id=client_id, line_code=f"{p}-CL{i}", line_name=f"Capacity Line {i}", is_active=True
+            client_id=client_id, line_code=f"{client_id}-CL{i}", line_name=f"Capacity Line {i}", is_active=True
         )
         session.add(cap)
         session.flush()  # get cap.id
         line = ProductionLine(
             client_id=client_id,
-            line_code=f"{p}-L{i}",
+            line_code=f"{client_id}-L{i}",
             line_name=f"Line {i}",
             line_type="DEDICATED",
             is_active=True,
@@ -414,11 +408,13 @@ def seed_employees(session: Session, spec: ClientSpec) -> list:
     if existing:
         return existing
     lines, _ = seed_lines(session, cid)
-    p = _prefix(cid)
     employees = []
     for n in range(1, spec.num_employees + 1):
         emp = TestDataFactory.create_employee(
-            session, client_id=cid, employee_code=f"{p}-EMP-{n:03d}", employee_name=f"{spec.client_name} Operator {n}"
+            session,
+            client_id=cid,
+            employee_code=f"{cid}-EMP-{n:03d}",
+            employee_name=f"{spec.client_name} Operator {n}",
         )
         assign_employee_to_client(session, employee_id=emp.employee_id, client_id=cid, assigned_by="SEED_SCRIPT")
         line = lines[(n - 1) % len(lines)]
