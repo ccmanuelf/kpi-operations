@@ -171,3 +171,39 @@ def test_employee_codes_unique_across_demo_clients(db_session):
     assert len(codes) == len(set(codes)), "employee_code collides across clients"
     for e in db_session.query(Employee).all():
         assert e.client_id_assigned in e.employee_code, "employee_code must be client-scoped"
+
+
+def test_capacity_graph_seeded_and_idempotent(db_session):
+    from backend.orm.capacity import (
+        CapacityCalendar,
+        CapacityOrder,
+        CapacityProductionStandard,
+        CapacityBOMHeader,
+        CapacityStockSnapshot,
+        CapacityComponentCheck,
+        CapacitySchedule,
+        CapacityScheduleDetail,
+        CapacityKPICommitment,
+    )
+    from backend.orm.capacity.orders import OrderStatus
+
+    spec = seed.CLIENT_SPECS["DEMO-PIECE"]
+    seed.seed_client_row(db_session, spec)
+    seed.seed_lines(db_session, spec.client_id)
+    for _ in range(2):
+        seed.seed_capacity_graph(db_session, spec.client_id, days=30)
+    db_session.commit()
+
+    cid = "DEMO-PIECE"
+    assert db_session.query(CapacityCalendar).filter_by(client_id=cid).count() >= 30
+    orders = db_session.query(CapacityOrder).filter_by(client_id=cid).all()
+    assert len(orders) >= 5
+    statuses = {o.status for o in orders}
+    assert OrderStatus.COMPLETED in statuses and OrderStatus.CANCELLED in statuses
+    assert db_session.query(CapacityProductionStandard).filter_by(client_id=cid).count() >= 1
+    assert db_session.query(CapacityBOMHeader).filter_by(client_id=cid).count() >= 1
+    assert db_session.query(CapacityStockSnapshot).filter_by(client_id=cid).count() >= 1
+    assert db_session.query(CapacityComponentCheck).filter_by(client_id=cid).count() >= 1
+    assert db_session.query(CapacitySchedule).filter_by(client_id=cid).count() >= 1
+    assert db_session.query(CapacityScheduleDetail).filter_by(client_id=cid).count() >= 1
+    assert db_session.query(CapacityKPICommitment).filter_by(client_id=cid).count() >= 1
