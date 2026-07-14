@@ -20,6 +20,7 @@ import argparse  # noqa: E402
 import hashlib  # noqa: E402
 import random  # noqa: E402
 from dataclasses import dataclass  # noqa: E402
+from datetime import date  # noqa: E402
 from typing import TYPE_CHECKING, Optional  # noqa: E402
 
 from sqlalchemy import create_engine, inspect  # noqa: E402
@@ -39,6 +40,12 @@ class SeedError(RuntimeError):
 
 ALLOWLIST = frozenset({"DEMO-PIECE", "DEMO-HOURLY", "DEMO-HYBRID", "SAMPLE_REF"})
 DEFAULT_CLIENTS = ("DEMO-PIECE", "DEMO-HOURLY", "DEMO-HYBRID")
+
+# Fixed seed anchor: Operations history (work orders, holds, daily data) ends
+# here; capacity planning (calendar, orders, schedule) starts here. Every
+# seeded date derives from this single constant so the dataset is
+# deterministic (no wall-clock calls) and temporally coherent across sections.
+ANCHOR_DATE = date(2026, 6, 15)
 
 
 @dataclass(frozen=True)
@@ -439,7 +446,7 @@ def seed_capacity_graph(session: Session, client_id: str, days: int) -> None:
     orders (spanning statuses/priorities), production standards, BOM
     header+detail, stock snapshots, component checks, a schedule + details,
     and KPI commitments. Uses the capacity lines created by seed_lines."""
-    from datetime import date, timedelta
+    from datetime import timedelta
     from decimal import Decimal
     from backend.orm.capacity import (
         CapacityCalendar,
@@ -462,7 +469,10 @@ def seed_capacity_graph(session: Session, client_id: str, days: int) -> None:
         return
 
     rng = rng_for(client_id, "capacity")
-    today = date.today()
+    # Planning horizon spans FORWARD from the fixed anchor (ANCHOR_DATE + i days),
+    # i.e. it begins where the Operations history (seed_work_orders/holds/daily_data,
+    # all anchored on the same ANCHOR_DATE) ends. No wall clock.
+    today = ANCHOR_DATE
     _, cap_lines = seed_lines(session, client_id)
     styles = [f"{client_id}-P1", f"{client_id}-P2", f"{client_id}-P3"]
 
@@ -693,7 +703,7 @@ def seed_work_orders(session: Session, spec: ClientSpec, entered_by: str) -> lis
         WorkOrderStatus.ON_HOLD,
     ]
     rng = rng_for(cid, "work_orders")
-    now = datetime(2026, 6, 15, tzinfo=timezone.utc)  # fixed anchor for determinism
+    now = datetime.combine(ANCHOR_DATE, datetime.min.time(), tzinfo=timezone.utc)  # fixed anchor for determinism
     wos = []
     for i, status in enumerate(states, start=1):
         wo_id = f"WO-{cid}-{i:03d}"  # full client_id — work_order_id PK is GLOBALLY unique
@@ -783,7 +793,7 @@ def seed_holds(session: Session, client_id: str, work_orders: list, entered_by: 
                 hold_reason="QUALITY_ISSUE",
                 hold_reason_category="QUALITY",
                 hold_status=hold_status,
-                hold_date=datetime(2026, 6, 15, tzinfo=timezone.utc),
+                hold_date=datetime.combine(ANCHOR_DATE, datetime.min.time(), tzinfo=timezone.utc),
             )
         )
     session.flush()
@@ -797,7 +807,7 @@ def seed_daily_data(session: Session, spec: ClientSpec, days: int, entered_by: s
     day. Construct every entity DIRECTLY with a deterministic client-scoped
     PK (see seed_holds docstring) — TestDataFactory.create_production_entry
     et al. mint _next_id counter PKs that collide across processes."""
-    from datetime import date, datetime, timedelta
+    from datetime import datetime, timedelta
     from decimal import Decimal
     from backend.orm import (
         ProductionEntry,
@@ -816,9 +826,9 @@ def seed_daily_data(session: Session, spec: ClientSpec, days: int, entered_by: s
     shifts = seed_shifts(session, cid)
     lines, _ = seed_lines(session, cid)
     employees = seed_employees(session, spec)
-    work_orders = session.query(WorkOrder).filter_by(client_id=cid).all()
+    work_orders = session.query(WorkOrder).filter_by(client_id=cid).order_by(WorkOrder.work_order_id).all()
     product, shift, line = products[0], shifts[0], lines[0]
-    end = date(2026, 6, 15)  # fixed anchor for determinism
+    end = ANCHOR_DATE  # fixed anchor for determinism
     ideal_ct = float(product.ideal_cycle_time or Decimal("0.12"))
 
     # Walk backward from the anchor collecting exactly `days` WORKING days
@@ -950,7 +960,12 @@ def main(argv: Optional[list] = None) -> int:
         description="Seed DEMO clients with a full credible dataset (INSERT-only, allowlist-guarded).",
     )
     parser.add_argument("--client", default=None, help=f"one of {sorted(ALLOWLIST)}; default = the 3 DEMO-* clients")
-    parser.add_argument("--days", type=int, default=90, help="days of daily Operations data (default 90)")
+    parser.add_argument(
+        "--days",
+        type=int,
+        default=90,
+        help="working days of daily Operations data (default 90; weekends skipped)",
+    )
     parser.add_argument("--reset", action="store_true", help="delete this client's existing rows before seeding")
     args = parser.parse_args(argv)
 

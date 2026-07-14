@@ -310,3 +310,12 @@ def test_daily_data_pks_client_scoped_no_cross_process_collision(db_session):
         for r in rows:
             owner = getattr(r, "client_id", None) or getattr(r, "client_id_fk", None)
             assert owner in getattr(r, pk), f"{pk} must be client-scoped"
+
+
+def test_seeder_uses_no_wall_clock():
+    # All seeded dates derive from ANCHOR_DATE; no date.today()/datetime.now()/utcnow()
+    # anywhere, so the dataset is byte-identical regardless of when the seeder runs.
+    import re
+
+    for forbidden in (r"date\.today\(", r"datetime\.now\(", r"utcnow\("):
+        assert not re.search(forbidden, SCRIPT_SRC), f"wall-clock call {forbidden!r} breaks seed determinism"
