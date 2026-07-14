@@ -789,6 +789,143 @@ def seed_holds(session: Session, client_id: str, work_orders: list, entered_by: 
     session.flush()
 
 
+def seed_daily_data(session: Session, spec: ClientSpec, days: int, entered_by: str) -> None:
+    """Idempotent 90-day credible daily Operations data: one ProductionEntry
+    per working day (skip weekends) on the first product/shift/line, a
+    QualityEntry + DefectDetail tied to a rotating seeded work order,
+    occasional DowntimeEntry, and AttendanceEntry per employee per working
+    day. Construct every entity DIRECTLY with a deterministic client-scoped
+    PK (see seed_holds docstring) — TestDataFactory.create_production_entry
+    et al. mint _next_id counter PKs that collide across processes."""
+    from datetime import date, datetime, timedelta
+    from decimal import Decimal
+    from backend.orm import (
+        ProductionEntry,
+        QualityEntry,
+        DefectDetail,
+        DowntimeEntry,
+        AttendanceEntry,
+        AbsenceType,
+        WorkOrder,
+    )
+
+    cid = spec.client_id
+    if session.query(ProductionEntry).filter_by(client_id=cid).first() is not None:
+        return
+    products = seed_products(session, cid)
+    shifts = seed_shifts(session, cid)
+    lines, _ = seed_lines(session, cid)
+    employees = seed_employees(session, spec)
+    work_orders = session.query(WorkOrder).filter_by(client_id=cid).all()
+    product, shift, line = products[0], shifts[0], lines[0]
+    end = date(2026, 6, 15)  # fixed anchor for determinism
+    ideal_ct = float(product.ideal_cycle_time or Decimal("0.12"))
+
+    # Walk backward from the anchor collecting exactly `days` WORKING days
+    # (weekends skipped without counting) so `days` maps to working-day
+    # entries, not calendar days diluted by weekend skips.
+    working_days: list = []
+    offset = 0
+    while len(working_days) < days:
+        day = end - timedelta(days=offset)
+        offset += 1
+        if day.weekday() >= 5:
+            continue
+        working_days.append(day)
+    working_days.reverse()
+
+    for seq, day in enumerate(working_days, start=1):
+        day_dt = datetime.combine(day, datetime.min.time())
+        rng = rng_for(cid, "daily", day.isoformat())
+        units = rng.randint(600, 1600)
+        target_perf = rng.uniform(0.82, 0.96)
+        run_time = round(ideal_ct * units / target_perf, 2)
+        downtime_h = round(run_time * rng.uniform(0.05, 0.08), 2)
+        setup_h = round(run_time * 0.02, 2)
+        defects = max(1, int(units * rng.uniform(0.003, 0.012)))
+        scrap = defects // 3
+        wo = work_orders[seq % len(work_orders)] if work_orders else None
+        session.add(
+            ProductionEntry(
+                production_entry_id=f"PE-{cid}-{seq:04d}",
+                client_id=cid,
+                product_id=product.product_id,
+                shift_id=shift.shift_id,
+                line_id=line.line_id,
+                entered_by=entered_by,
+                production_date=day_dt,
+                shift_date=day_dt,
+                units_produced=units,
+                run_time_hours=Decimal(str(run_time)),
+                setup_time_hours=Decimal(str(setup_h)),
+                downtime_hours=Decimal(str(downtime_h)),
+                defect_count=defects,
+                scrap_count=scrap,
+                rework_count=defects - scrap,
+                employees_assigned=len(employees),
+                work_order_id=(wo.work_order_id if wo else None),
+            )
+        )
+        if wo is not None:
+            qe_id = f"QE-{cid}-{seq:04d}"
+            units_def = defects + scrap
+            session.add(
+                QualityEntry(
+                    quality_entry_id=qe_id,
+                    work_order_id=wo.work_order_id,
+                    client_id=cid,
+                    inspector_id=entered_by,
+                    inspection_date=day_dt,
+                    shift_date=day_dt,
+                    units_inspected=units,
+                    units_passed=units - units_def,
+                    units_defective=units_def,
+                    total_defects_count=units_def,
+                    units_scrapped=scrap,
+                    units_reworked=defects - scrap,
+                )
+            )
+            session.add(
+                DefectDetail(
+                    defect_detail_id=f"DD-{cid}-{seq:04d}",
+                    quality_entry_id=qe_id,
+                    client_id_fk=cid,
+                    defect_type="Stitching",
+                    defect_count=defects,
+                    severity="MINOR",
+                )
+            )
+        if seq % 5 == 1:
+            session.add(
+                DowntimeEntry(
+                    downtime_entry_id=f"DT-{cid}-{seq:04d}",
+                    client_id=cid,
+                    reported_by=entered_by,
+                    downtime_reason=rng.choice(["EQUIPMENT_FAILURE", "MATERIAL_SHORTAGE", "CHANGEOVER"]),
+                    shift_date=day_dt,
+                    downtime_duration_minutes=int(downtime_h * 60),
+                )
+            )
+        for j, emp in enumerate(employees, start=1):
+            arng = rng_for(cid, "att", day.isoformat(), emp.employee_id)
+            absent = arng.random() < 0.05
+            session.add(
+                AttendanceEntry(
+                    attendance_entry_id=f"ATT-{cid}-{seq:04d}-{j:02d}",
+                    employee_id=emp.employee_id,
+                    client_id=cid,
+                    shift_id=shift.shift_id,
+                    shift_date=day_dt,
+                    scheduled_hours=Decimal("8.0"),
+                    actual_hours=Decimal("0") if absent else Decimal("8.0"),
+                    absence_hours=Decimal("8.0") if absent else Decimal("0"),
+                    absence_type=AbsenceType.UNSCHEDULED_ABSENCE if absent else None,
+                    is_absent=1 if absent else 0,
+                )
+            )
+    session.flush()
+
+
 def seed_client(session: Session, spec: ClientSpec, days: int) -> None:
     """Orchestrator — seed one client in FK order. Later tasks append their
     section calls here (catalogs/config → master data → capacity → work orders
@@ -804,6 +941,7 @@ def seed_client(session: Session, spec: ClientSpec, days: int) -> None:
     entered_by = resolve_entered_by(session, spec.client_id)
     work_orders = seed_work_orders(session, spec, entered_by)
     seed_holds(session, spec.client_id, work_orders, entered_by)
+    seed_daily_data(session, spec, days, entered_by)
 
 
 def main(argv: Optional[list] = None) -> int:

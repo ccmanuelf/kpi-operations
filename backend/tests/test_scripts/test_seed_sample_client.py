@@ -254,3 +254,59 @@ def test_work_orders_cover_all_statuses_with_transitions_and_holds(db_session):
         "SCRAPPED",
     ):
         assert expected in hold_statuses, f"missing hold status {expected}"
+
+
+def test_daily_data_scales_with_days_and_is_credible(db_session):
+    from decimal import Decimal  # noqa: F401
+    from backend.orm import ProductionEntry, QualityEntry, DowntimeEntry, AttendanceEntry, DefectDetail
+
+    _seed_admin(db_session)
+    spec = seed.CLIENT_SPECS["DEMO-PIECE"]
+    seed.seed_client(db_session, spec, days=20)
+    db_session.commit()
+
+    cid = "DEMO-PIECE"
+    prod = db_session.query(ProductionEntry).filter_by(client_id=cid).all()
+    assert len(prod) >= 20  # at least one per working span day
+    for pe in prod:
+        assert pe.units_produced > 0
+        assert pe.run_time_hours > 0
+        assert pe.employees_assigned > 0
+        assert pe.defect_count >= 0 and pe.scrap_count >= 0
+        assert pe.defect_count <= pe.units_produced
+    assert db_session.query(QualityEntry).filter_by(client_id=cid).count() >= 20
+    assert db_session.query(DefectDetail).filter_by(client_id_fk=cid).count() >= 1
+    assert db_session.query(DowntimeEntry).filter_by(client_id=cid).count() >= 1
+    assert db_session.query(AttendanceEntry).filter_by(client_id=cid).count() >= 20
+
+    # quality math is internally consistent (credibility)
+    for qe in db_session.query(QualityEntry).filter_by(client_id=cid).all():
+        assert qe.units_passed + qe.units_defective == qe.units_inspected
+        assert 0 <= qe.units_defective <= qe.units_inspected
+
+
+def test_daily_data_pks_client_scoped_no_cross_process_collision(db_session):
+    # Reproduces the process-local-counter PK-collision class deterministically:
+    # seed one client, reset the factory counters (= a fresh process), seed another;
+    # deterministic client-scoped PKs must not collide.
+    from backend.db.factories import TestDataFactory
+    from backend.orm import ProductionEntry, AttendanceEntry, QualityEntry
+
+    _seed_admin(db_session)
+    seed.seed_client(db_session, seed.CLIENT_SPECS["DEMO-PIECE"], days=8)
+    db_session.commit()
+    TestDataFactory.reset_counters()
+    seed.seed_client(db_session, seed.CLIENT_SPECS["DEMO-HOURLY"], days=8)  # must NOT IntegrityError
+    db_session.commit()
+
+    for model, pk in (
+        (ProductionEntry, "production_entry_id"),
+        (AttendanceEntry, "attendance_entry_id"),
+        (QualityEntry, "quality_entry_id"),
+    ):
+        rows = db_session.query(model).all()
+        ids = [getattr(r, pk) for r in rows]
+        assert len(ids) == len(set(ids)), f"{pk} collides across clients"
+        for r in rows:
+            owner = getattr(r, "client_id", None) or getattr(r, "client_id_fk", None)
+            assert owner in getattr(r, pk), f"{pk} must be client-scoped"
