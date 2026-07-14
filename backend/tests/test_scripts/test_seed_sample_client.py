@@ -673,3 +673,39 @@ def test_global_defaults_seeded_once(db_session):
     db_session.commit()
     assert db_session.query(DashboardWidgetDefaults).count() >= 1
     assert db_session.query(MetricAssumptionDependency).count() >= 1
+
+
+def test_seed_client_under_foreign_key_enforcement(tmp_path):
+    # SQLite does not enforce FKs unless PRAGMA foreign_keys=ON; the default test
+    # fixture runs with them OFF, which hides intra-flush FK-ordering bugs that DO
+    # fail on MariaDB (FKs always enforced). This test enables FK enforcement so a
+    # full seed_client run exercises every insert order the way prod MariaDB does —
+    # e.g. DefectDetail (raw FK, no relationship) must not insert before its
+    # QualityEntry parent. Reproduces the live VM failure in-suite.
+    from sqlalchemy import create_engine, event
+    from sqlalchemy.orm import Session as SASession
+    from backend.db.migrate import upgrade_to_head
+    from backend.db.factories import TestDataFactory
+    from backend.orm import ProductionEntry, DefectDetail
+
+    url = f"sqlite:///{tmp_path / 'fk.db'}"
+    upgrade_to_head(url)
+    eng = create_engine(url)
+
+    @event.listens_for(eng, "connect")
+    def _fk_on(dbapi_conn, _rec):
+        cur = dbapi_conn.cursor()
+        cur.execute("PRAGMA foreign_keys=ON")
+        cur.close()
+
+    try:
+        with SASession(eng) as s:
+            TestDataFactory.create_user(s, username="fk_admin", role="admin")
+            s.commit()
+            # Must NOT raise IntegrityError under enforced FKs (the live VM failure).
+            seed.seed_client(s, seed.CLIENT_SPECS["DEMO-PIECE"], days=15, anchor=FIXED_ANCHOR)
+            s.commit()
+            assert s.query(ProductionEntry).filter_by(client_id="DEMO-PIECE").count() > 0
+            assert s.query(DefectDetail).filter_by(client_id_fk="DEMO-PIECE").count() > 0
+    finally:
+        eng.dispose()
