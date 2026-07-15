@@ -114,6 +114,7 @@ watch(
     if (!props.causeDriven) return
     const oocDates = pts.filter((p) => p.ooc).map((p) => p.date)
     if (oocDates.length === 0) {
+      causeSeq++ // invalidate any in-flight cause fetch
       causes.value = {}
       return
     }
@@ -232,7 +233,7 @@ const tooltipLabel = (ctx: TooltipItem<'line'>): string | string[] => {
   if (point?.ooc) {
     for (const reason of point.reasons) lines.push(t(reason.key, reason.args))
   }
-  const cause = point && causes.value[point.date]
+  const cause = point?.ooc ? causes.value[point.date] : undefined
   if (cause?.factor) {
     const factorLabel =
       cause.kind === 'component' ? t(`kpi.${cause.factor}`) : cause.factor

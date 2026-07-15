@@ -22,6 +22,7 @@ vi.mock('@/services/api/kpi', async (importOriginal) => {
 
 const i18n = createI18n({ legacy: false, locale: 'en', messages: { en: {
   kpi: { thisWeek: 'This Week', lastWeek: 'Last Week', lastMonth: 'Last Month', last90Days: 'Last 90 Days',
+         performance: 'Performance', availability: 'Availability', quality: 'Quality',
          outOfControl: 'Out of control', target: 'Target', criticalLine: 'Critical', controlLimit: 'Control limit',
          ooc: { belowCritical: '{value} below {critical}', aboveCritical: '{value} above {critical}',
                 beyondUcl: '{value} > {limit}', beyondLcl: '{value} < {limit}' },
@@ -171,5 +172,61 @@ describe('KpiTrendChart', () => {
     })
     await flushPromises()
     expect(fetchKpiCauses).not.toHaveBeenCalled()
+  })
+
+  it('does not inject a stale cause line on a non-OOC point after the OOC set clears', async () => {
+    // An in-flight cause fetch for an OOC date must not repopulate causes once
+    // the point set has changed to one with no out-of-control points, and the
+    // tooltip must never show a cause line on a non-OOC point.
+    let resolveCause: (_v: unknown) => void = () => {}
+    const causePromise = new Promise((r) => {
+      resolveCause = r
+    })
+    ;(fetchKpiCauses as any).mockReturnValueOnce(causePromise)
+    const fetchTrend = vi
+      .fn()
+      .mockResolvedValueOnce([{ date: '2026-06-11', value: 40 }]) // OOC (below critical 60) — triggers cause fetch
+      .mockResolvedValueOnce([{ date: '2026-06-11', value: 90 }]) // after client change: same date, now in control
+    const w = mount(KpiTrendChart, {
+      props: { metricKey: 'availability', title: 'Availability', threshold: { critical: 60, higher_is_better: true },
+               clientId: 'C', unit: '%', fetchTrend, alertKey: null, causeDriven: true },
+      global: { plugins: [i18n, createVuetify()] },
+    })
+    await flushPromises()
+    expect(fetchKpiCauses).toHaveBeenCalledWith('availability', ['2026-06-11'], 'C')
+
+    // Client change -> new trend with zero OOC points; the empty-OOC branch must
+    // bump causeSeq so the still-pending fetch is invalidated.
+    await w.setProps({ clientId: 'D' })
+    await flushPromises()
+
+    // The stale in-flight cause fetch now resolves — the guard must discard it.
+    resolveCause({ '2026-06-11': { date: '2026-06-11', kind: 'downtime', factor: 'Changeover', value: 60, unit: 'min', share: 0.5 } })
+    await flushPromises()
+
+    // The 2026-06-11 point is now in control (value 90) — no cause line.
+    const label = (w.vm as any).tooltipLabel({ datasetIndex: 0, dataIndex: 0, dataset: { label: 'Availability' }, formattedValue: '90' })
+    expect(label.some((l: string) => l.includes('Changeover'))).toBe(false)
+  })
+
+  it('localizes the component label for a component-kind cause', async () => {
+    ;(fetchKpiCauses as any).mockResolvedValue({
+      '2026-06-11': { date: '2026-06-11', kind: 'component', factor: 'performance', value: null, unit: '', share: 0.4 },
+    })
+    const fetchTrend = vi.fn().mockResolvedValue([
+      { date: '2026-06-10', value: 90 },
+      { date: '2026-06-11', value: 40 }, // OOC (below critical 60)
+      { date: '2026-06-12', value: 88 },
+    ])
+    const w = mount(KpiTrendChart, {
+      props: { metricKey: 'oee', title: 'OEE', threshold: { critical: 60, higher_is_better: true },
+               clientId: 'C', unit: '%', fetchTrend, alertKey: null, causeDriven: true },
+      global: { plugins: [i18n, createVuetify()] },
+    })
+    await flushPromises()
+    const label = (w.vm as any).tooltipLabel({ datasetIndex: 0, dataIndex: 1, dataset: { label: 'OEE' }, formattedValue: '40' })
+    // Injects the LOCALIZED label t('kpi.performance') = 'Performance', not the raw token 'performance'.
+    expect(label.some((l: string) => l.includes('Performance'))).toBe(true)
+    expect(label.some((l: string) => l.includes('performance'))).toBe(false)
   })
 })
