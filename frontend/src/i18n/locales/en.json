@@ -359,7 +359,6 @@
     },
     "ariaOpenQrScanner": "Open QR code scanner for quick data entry",
     "ariaRefreshDashboard": "Refresh dashboard data",
-    "ariaSelectTrendPeriod": "Select trend period",
     "ariaCloseNotification": "Close notification",
     "ariaCloseQrScanner": "Close QR scanner",
     "targetPercent": "Target: {value}%",
