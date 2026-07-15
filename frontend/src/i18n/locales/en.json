@@ -556,6 +556,14 @@
       "aboveCritical": "{value} — above critical ({critical})",
       "beyondUcl": "{value} — beyond +3σ (UCL {limit})",
       "beyondLcl": "{value} — beyond −3σ (LCL {limit})"
+    },
+    "cause": {
+      "downtime": "Top downtime: {factor} ({value} {unit}, {share}%)",
+      "defect": "Top defect: {factor} ({value}, {share}%)",
+      "absence": "Top absence: {factor} ({value})",
+      "lateOrders": "{value} order(s) due today ran late",
+      "hold": "Oldest hold: {factor} ({value} days)",
+      "component": "Driven by {factor}"
     }
   },
   "inferenceIndicator": {

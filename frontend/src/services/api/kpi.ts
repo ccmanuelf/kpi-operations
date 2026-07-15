@@ -621,3 +621,36 @@ export const fetchActiveAlertsForKpi = (kpiKey: string, clientId?: string | null
     .get('/alerts/', { params: { kpi_key: kpiKey, client_id: clientId ?? undefined, status: 'active', limit: 5 } })
     .then((r) => r.data ?? [])
     .catch(() => [])
+
+export interface KpiCause {
+  date: string
+  kind: string | null
+  factor: string | null
+  value: number | null
+  unit: string
+  share: number | null
+}
+
+export const fetchKpiCause = (
+  metricKey: string,
+  date: string,
+  clientId?: string | null,
+): Promise<KpiCause | null> =>
+  api
+    .get(`/kpi/${metricKey}/cause`, { params: { date, client_id: clientId ?? undefined } })
+    .then((r) => {
+      const d = r.data as KpiCause | undefined
+      return d && d.factor != null ? d : null
+    })
+    .catch(() => null)
+
+export const fetchKpiCauses = (
+  metricKey: string,
+  dates: string[],
+  clientId?: string | null,
+): Promise<Record<string, KpiCause>> =>
+  Promise.all(dates.map((d) => fetchKpiCause(metricKey, d, clientId))).then((results) => {
+    const map: Record<string, KpiCause> = {}
+    for (const c of results) if (c) map[c.date] = c
+    return map
+  })

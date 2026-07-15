@@ -49,7 +49,7 @@ import {
 import { computeKpiRange, useKpiChartRange, type KpiRangeKey } from '@/composables/useKpiChartRange'
 import { useChartTheme } from '@/composables/useChartTheme'
 import { computeOutOfControl, type OocPoint, type OocThreshold } from '@/utils/outOfControl'
-import { fetchActiveAlertsForKpi } from '@/services/api/kpi'
+import { fetchActiveAlertsForKpi, fetchKpiCauses, type KpiCause } from '@/services/api/kpi'
 import { unwrapTrend } from './kpiChartConfig'
 
 ChartJS.register(LineElement, PointElement, LinearScale, CategoryScale, Tooltip, Legend, LineController)
@@ -62,12 +62,14 @@ interface Props {
   unit?: string
   fetchTrend: (_params: Record<string, unknown>) => Promise<unknown>
   alertKey?: string | null
+  causeDriven?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   clientId: null,
   unit: '',
   alertKey: null,
+  causeDriven: false,
 })
 
 const { t } = useI18n()
@@ -97,6 +99,33 @@ watch(
     const result = computeOutOfControl(raw, threshold)
     points.value = result.points
     oocMeta.value = { ucl: result.ucl, lcl: result.lcl, target: result.target, critical: result.critical }
+  },
+  { immediate: true },
+)
+
+const causes = ref<Record<string, KpiCause>>({})
+let causeSeq = 0
+
+// After OOC points are (re)computed, fetch causes for the sparse OOC dates.
+// Guarded so a stale response cannot overwrite a newer one; best-effort.
+watch(
+  points,
+  async (pts) => {
+    if (!props.causeDriven) return
+    const oocDates = pts.filter((p) => p.ooc).map((p) => p.date)
+    if (oocDates.length === 0) {
+      causeSeq++ // invalidate any in-flight cause fetch
+      causes.value = {}
+      return
+    }
+    const seq = ++causeSeq
+    try {
+      const map = await fetchKpiCauses(props.metricKey, oocDates, props.clientId ?? null)
+      if (seq !== causeSeq) return
+      causes.value = map
+    } catch {
+      // best-effort — SP1 tooltip remains
+    }
   },
   { immediate: true },
 )
@@ -153,8 +182,6 @@ const onRangeChange = (key: KpiRangeKey) => {
 onMounted(load)
 watch(() => props.clientId, load)
 
-defineExpose({ onRangeChange })
-
 const buildFlatDataset = (value: number, label: string, color: string, length: number) => ({
   label,
   data: Array(length).fill(value),
@@ -206,11 +233,26 @@ const tooltipLabel = (ctx: TooltipItem<'line'>): string | string[] => {
   if (point?.ooc) {
     for (const reason of point.reasons) lines.push(t(reason.key, reason.args))
   }
+  const cause = point?.ooc ? causes.value[point.date] : undefined
+  if (cause?.factor) {
+    const factorLabel =
+      cause.kind === 'component' ? t(`kpi.${cause.factor}`) : cause.factor
+    lines.push(
+      t(`kpi.cause.${cause.kind}`, {
+        factor: factorLabel,
+        value: cause.value ?? '',
+        unit: cause.unit,
+        share: cause.share != null ? Math.round(cause.share * 100) : '',
+      }),
+    )
+  }
   if (alertMessage.value && ctx.dataIndex === points.value.length - 1) {
     lines.push(alertMessage.value)
   }
   return lines
 }
+
+defineExpose({ onRangeChange, tooltipLabel })
 
 const chartOptions = computed<ChartOptions<'line'>>(() => ({
   responsive: true,
