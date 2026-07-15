@@ -545,6 +545,9 @@
       "trend": "Trend"
     },
     "fpyLabel": "FPY:",
+    "thisWeek": "This Week",
+    "lastWeek": "Last Week",
+    "lastMonth": "Last Month",
     "last90Days": "Last 90 Days",
     "outOfControl": "Out of control",
     "criticalLine": "Critical",
