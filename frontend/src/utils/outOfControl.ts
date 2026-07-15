@@ -64,11 +64,21 @@ export function computeOutOfControl(
     // (it appears in its own variance term), which can mask the very point it should flag.
     // The moving range only exposes an outlier to its two adjacent differences, so it stays
     // sensitive even with a single spike in the window.
+    // Moving ranges are computed between temporally-adjacent points of the ORIGINAL series
+    // (not the finite-filtered one): a pair spanning a missing/non-finite point contributes
+    // no moving range, so the two points flanking a gap are never spliced together as if
+    // adjacent.
     let mrSum = 0
-    for (let i = 1; i < vals.length; i++) {
-      mrSum += Math.abs(vals[i] - vals[i - 1])
+    let mrCount = 0
+    for (let i = 1; i < points.length; i++) {
+      const prev = points[i - 1].value
+      const curr = points[i].value
+      if (isNum(prev) && isNum(curr)) {
+        mrSum += Math.abs(curr - prev)
+        mrCount++
+      }
     }
-    const mrBar = mrSum / (vals.length - 1)
+    const mrBar = mrCount > 0 ? mrSum / mrCount : 0
     const sd = mrBar / 1.128 // d2 constant for moving range of size 2
     if (sd > 0) {
       ucl = mean + 3 * sd
