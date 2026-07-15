@@ -185,36 +185,23 @@
       </v-col>
     </v-row>
 
-    <!-- Trend Charts -->
+    <!-- Diagnostic Trend Charts -->
     <v-row class="mt-4">
       <v-col cols="12">
-        <v-card role="region" aria-labelledby="trends-title">
-          <v-card-title class="d-flex justify-space-between align-center">
-            <span id="trends-title">{{ t('kpi.performanceTrend') }}</span>
-            <v-btn-toggle v-model="trendPeriod" mandatory density="compact"
-              @update:model-value="refreshData" :aria-label="t('kpi.ariaSelectTrendPeriod')">
-              <v-btn value="7" size="small">7 {{ t('common.days') }}</v-btn>
-              <v-btn value="30" size="small">30 {{ t('common.days') }}</v-btn>
-              <v-btn value="90" size="small">90 {{ t('common.days') }}</v-btn>
-            </v-btn-toggle>
-          </v-card-title>
-          <v-card-text>
-            <v-row>
-              <v-col cols="12" md="6">
-                <Line v-if="efficiencyChartData.labels.length" :data="efficiencyChartData" :options="chartOptions" />
-              </v-col>
-              <v-col cols="12" md="6">
-                <Line v-if="qualityChartData.labels.length" :data="qualityChartData" :options="chartOptions" />
-              </v-col>
-              <v-col cols="12" md="6">
-                <Line v-if="availabilityChartData.labels.length" :data="availabilityChartData" :options="chartOptions" />
-              </v-col>
-              <v-col cols="12" md="6">
-                <Line v-if="oeeChartData.labels.length" :data="oeeChartData" :options="chartOptions" />
-              </v-col>
-            </v-row>
-          </v-card-text>
-        </v-card>
+        <h2 id="trends-title" class="text-h5 mb-2">{{ t('kpi.performanceTrend') }}</h2>
+        <v-row class="kpi-charts-grid" role="region" aria-labelledby="trends-title">
+          <v-col v-for="cfg in KPI_CHART_CONFIG" :key="cfg.metricKey" cols="12" md="6">
+            <KpiTrendChart
+              :metric-key="cfg.metricKey"
+              :title="t(cfg.titleKey)"
+              :threshold="thresholdFor(cfg.thresholdKey)"
+              :client-id="selectedClient"
+              :unit="cfg.unit"
+              :fetch-trend="cfg.fetchTrend"
+              :alert-key="cfg.alertKey"
+            />
+          </v-col>
+        </v-row>
       </v-col>
     </v-row>
 
@@ -334,18 +321,6 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Line } from 'vue-chartjs'
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler
-} from 'chart.js'
 import { useKPIStore } from '@/stores/kpi'
 
 // Components
@@ -357,6 +332,8 @@ import InferenceIndicator from '@/components/kpi/InferenceIndicator.vue'
 import LineSelector from '@/components/common/LineSelector.vue'
 import DualViewToggle from '@/components/dual_view/DualViewToggle.vue'
 import MetricInspector from '@/components/dual_view/MetricInspector.vue'
+import KpiTrendChart from '@/components/kpi/KpiTrendChart.vue'
+import { KPI_CHART_CONFIG } from '@/components/kpi/kpiChartConfig'
 
 // Dual-view inspector composable + capability check
 import {
@@ -368,14 +345,8 @@ import {
 import { useKPIDashboardData } from '@/composables/useKPIDashboardData'
 import { useKPIReports } from '@/composables/useKPIReports'
 import { useKPIFilters } from '@/composables/useKPIFilters'
-import { useKPIChartData } from '@/composables/useKPIChartData'
 import { useKPIDashboardHelpers } from '@/composables/useKPIDashboardHelpers'
 import { useKPIDashboardActions } from '@/composables/useKPIDashboardActions'
-
-ChartJS.register(
-  CategoryScale, LinearScale, PointElement, LineElement,
-  Title, Tooltip, Legend, Filler
-)
 
 const { t } = useI18n()
 const kpiStore = useKPIStore()
@@ -390,8 +361,9 @@ const {
 
 // Data & filter composable
 const {
-  loading, selectedClient, selectedLineId, dateRange, trendPeriod, clients,
-  filtersStore, refreshData, handleFilterChange, onLineFilterChange, initialize
+  loading, selectedClient, selectedLineId, dateRange, clients,
+  filtersStore, refreshData, handleFilterChange, onLineFilterChange, initialize,
+  thresholdFor
 } = useKPIDashboardData(showSnackbar)
 
 // Report composable
@@ -408,12 +380,6 @@ const {
   savingFilter, filterTypeOptions, showFilterManager,
   applyQuickSavedFilter, saveCurrentFilter
 } = useKPIFilters(showSnackbar, handleFilterChange, () => selectedClient.value, () => dateRange.value)
-
-// Chart data composable
-const {
-  chartOptions, efficiencyChartData, qualityChartData,
-  availabilityChartData, oeeChartData
-} = useKPIChartData()
 
 // KPI display helpers & summary table
 const {
