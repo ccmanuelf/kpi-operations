@@ -958,6 +958,10 @@
     ],
     [
       "GET",
+      "/api/quality/kpi/ppm/trend"
+    ],
+    [
+      "GET",
       "/api/quality/kpi/quality-score"
     ],
     [
