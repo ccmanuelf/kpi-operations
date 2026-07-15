@@ -544,7 +544,17 @@
       "status": "Estado",
       "trend": "Tendencia"
     },
-    "fpyLabel": "FPY:"
+    "fpyLabel": "FPY:",
+    "last90Days": "Últimos 90 días",
+    "outOfControl": "Fuera de control",
+    "criticalLine": "Crítico",
+    "controlLimit": "Límite de control",
+    "ooc": {
+      "belowCritical": "{value} — por debajo del crítico ({critical})",
+      "aboveCritical": "{value} — por encima del crítico ({critical})",
+      "beyondUcl": "{value} — más allá de +3σ (UCL {limit})",
+      "beyondLcl": "{value} — más allá de −3σ (LCL {limit})"
+    }
   },
   "inferenceIndicator": {
     "dataSourcesTitle": "Fuentes de Datos Utilizadas",

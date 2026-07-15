@@ -609,3 +609,15 @@ export const getOEETrend = (params?: Params) =>
 
 export const getAbsenteeismTrend = (params?: Params) =>
   api.get('/attendance/kpi/absenteeism/trend', { params }).catch(trendCatch('absenteeism'))
+
+export const getPpmTrend = (params?: Params) =>
+  api.get('/quality/kpi/ppm/trend', { params }).catch(trendCatch('PPM'))
+
+export const getThroughputTrend = (params?: Params) =>
+  api.get('/kpi/throughput-time/trend', { params }).catch(trendCatch('throughput'))
+
+export const fetchActiveAlertsForKpi = (kpiKey: string, clientId?: string | null) =>
+  api
+    .get('/alerts/', { params: { kpi_key: kpiKey, client_id: clientId ?? undefined, status: 'active', limit: 5 } })
+    .then((r) => r.data ?? [])
+    .catch(() => [])

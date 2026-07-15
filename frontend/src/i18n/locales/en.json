@@ -544,7 +544,17 @@
       "status": "Status",
       "trend": "Trend"
     },
-    "fpyLabel": "FPY:"
+    "fpyLabel": "FPY:",
+    "last90Days": "Last 90 Days",
+    "outOfControl": "Out of control",
+    "criticalLine": "Critical",
+    "controlLimit": "Control limit",
+    "ooc": {
+      "belowCritical": "{value} — below critical ({critical})",
+      "aboveCritical": "{value} — above critical ({critical})",
+      "beyondUcl": "{value} — beyond +3σ (UCL {limit})",
+      "beyondLcl": "{value} — beyond −3σ (LCL {limit})"
+    }
   },
   "inferenceIndicator": {
     "dataSourcesTitle": "Data Sources Used",
