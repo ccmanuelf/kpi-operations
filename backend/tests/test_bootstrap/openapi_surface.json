@@ -790,6 +790,10 @@
     ],
     [
       "GET",
+      "/api/kpi/throughput-time/trend"
+    ],
+    [
+      "GET",
       "/api/kpi/wip-aging"
     ],
     [
