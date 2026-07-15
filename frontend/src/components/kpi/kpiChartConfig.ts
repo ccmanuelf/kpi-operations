@@ -27,6 +27,7 @@ export interface KpiChartConfigItem {
   thresholdKey: string // KPIThreshold.kpi_key
   alertKey: string | null // Alert.kpi_key for latest-point enrichment (null if none)
   unit: string
+  causeDriven: boolean // whether this metric has a data-driven cause tooltip
   fetchTrend: (_params: Record<string, unknown>) => Promise<unknown>
 }
 
@@ -39,16 +40,16 @@ export const unwrapTrend = (res: unknown): KpiTrendPoint[] => {
 }
 
 export const KPI_CHART_CONFIG: KpiChartConfigItem[] = [
-  { metricKey: 'efficiency', titleKey: 'kpi.efficiency', thresholdKey: 'efficiency', alertKey: 'efficiency', unit: '%', fetchTrend: getEfficiencyTrend },
-  { metricKey: 'performance', titleKey: 'kpi.performance', thresholdKey: 'performance', alertKey: null, unit: '%', fetchTrend: getPerformanceTrend },
-  { metricKey: 'quality', titleKey: 'kpi.quality', thresholdKey: 'quality_rate', alertKey: 'quality', unit: '%', fetchTrend: getQualityTrend },
-  { metricKey: 'availability', titleKey: 'kpi.availability', thresholdKey: 'availability', alertKey: null, unit: '%', fetchTrend: getAvailabilityTrend },
-  { metricKey: 'oee', titleKey: 'kpi.oee', thresholdKey: 'oee', alertKey: null, unit: '%', fetchTrend: getOEETrend },
-  { metricKey: 'wipAging', titleKey: 'kpi.wipAging', thresholdKey: 'wip_aging', alertKey: 'hold_approval', unit: 'd', fetchTrend: getWIPAgingTrend },
+  { metricKey: 'efficiency', titleKey: 'kpi.efficiency', thresholdKey: 'efficiency', alertKey: 'efficiency', unit: '%', causeDriven: false, fetchTrend: getEfficiencyTrend },
+  { metricKey: 'performance', titleKey: 'kpi.performance', thresholdKey: 'performance', alertKey: null, unit: '%', causeDriven: false, fetchTrend: getPerformanceTrend },
+  { metricKey: 'quality', titleKey: 'kpi.quality', thresholdKey: 'quality_rate', alertKey: 'quality', unit: '%', causeDriven: true, fetchTrend: getQualityTrend },
+  { metricKey: 'availability', titleKey: 'kpi.availability', thresholdKey: 'availability', alertKey: null, unit: '%', causeDriven: true, fetchTrend: getAvailabilityTrend },
+  { metricKey: 'oee', titleKey: 'kpi.oee', thresholdKey: 'oee', alertKey: null, unit: '%', causeDriven: true, fetchTrend: getOEETrend },
+  { metricKey: 'wipAging', titleKey: 'kpi.wipAging', thresholdKey: 'wip_aging', alertKey: 'hold_approval', unit: 'd', causeDriven: true, fetchTrend: getWIPAgingTrend },
   // NOTE: brief's sample used titleKey 'kpi.onTimeDelivery', which does not exist in the
   // locale files — 'kpi.otd' is the key the OTD dashboard card actually uses.
-  { metricKey: 'otd', titleKey: 'kpi.otd', thresholdKey: 'otd', alertKey: 'otd', unit: '%', fetchTrend: getOnTimeDeliveryTrend },
-  { metricKey: 'absenteeism', titleKey: 'kpi.absenteeism', thresholdKey: 'absenteeism', alertKey: null, unit: '%', fetchTrend: getAbsenteeismTrend },
-  { metricKey: 'ppm', titleKey: 'kpi.ppm', thresholdKey: 'ppm', alertKey: null, unit: 'ppm', fetchTrend: getPpmTrend },
-  { metricKey: 'throughput', titleKey: 'kpi.throughputTime', thresholdKey: 'throughput', alertKey: null, unit: 'h', fetchTrend: getThroughputTrend },
+  { metricKey: 'otd', titleKey: 'kpi.otd', thresholdKey: 'otd', alertKey: 'otd', unit: '%', causeDriven: true, fetchTrend: getOnTimeDeliveryTrend },
+  { metricKey: 'absenteeism', titleKey: 'kpi.absenteeism', thresholdKey: 'absenteeism', alertKey: null, unit: '%', causeDriven: true, fetchTrend: getAbsenteeismTrend },
+  { metricKey: 'ppm', titleKey: 'kpi.ppm', thresholdKey: 'ppm', alertKey: null, unit: 'ppm', causeDriven: true, fetchTrend: getPpmTrend },
+  { metricKey: 'throughput', titleKey: 'kpi.throughputTime', thresholdKey: 'throughput', alertKey: null, unit: 'h', causeDriven: false, fetchTrend: getThroughputTrend },
 ]
