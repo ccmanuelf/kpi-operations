@@ -199,6 +199,7 @@
               :unit="cfg.unit"
               :fetch-trend="cfg.fetchTrend"
               :alert-key="cfg.alertKey"
+              :cause-driven="cfg.causeDriven"
             />
           </v-col>
         </v-row>

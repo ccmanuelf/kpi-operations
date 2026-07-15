@@ -3,15 +3,31 @@ import { mount, flushPromises } from '@vue/test-utils'
 import { createI18n } from 'vue-i18n'
 import { createVuetify } from 'vuetify'
 import KpiTrendChart from '../KpiTrendChart.vue'
+import { fetchKpiCauses } from '@/services/api/kpi'
 
 // stub the Line chart so we can assert the data it receives without a canvas
 vi.mock('vue-chartjs', () => ({ Line: { name: 'Line', props: ['data', 'options'], template: '<div class="line-stub" />' } }))
+
+// Preserve the module's other exports (kpiChartConfig.ts imports 10 trend
+// fetchers from here at module scope) — only fetchActiveAlertsForKpi and
+// fetchKpiCauses need mocking for these tests.
+vi.mock('@/services/api/kpi', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/services/api/kpi')>()
+  return {
+    ...actual,
+    fetchActiveAlertsForKpi: vi.fn().mockResolvedValue([]),
+    fetchKpiCauses: vi.fn().mockResolvedValue({}),
+  }
+})
 
 const i18n = createI18n({ legacy: false, locale: 'en', messages: { en: {
   kpi: { thisWeek: 'This Week', lastWeek: 'Last Week', lastMonth: 'Last Month', last90Days: 'Last 90 Days',
          outOfControl: 'Out of control', target: 'Target', criticalLine: 'Critical', controlLimit: 'Control limit',
          ooc: { belowCritical: '{value} below {critical}', aboveCritical: '{value} above {critical}',
-                beyondUcl: '{value} > {limit}', beyondLcl: '{value} < {limit}' } } } } })
+                beyondUcl: '{value} > {limit}', beyondLcl: '{value} < {limit}' },
+         cause: { downtime: 'Top downtime: {factor} ({value} {unit}, {share}%)', defect: 'Top defect: {factor}',
+                  absence: 'Top absence: {factor}', lateOrders: '{value} late', hold: 'Oldest hold: {factor}',
+                  component: 'Driven by {factor}' } } } } })
 
 const mountChart = (fetchTrend: any, threshold: any = { critical: 60, higher_is_better: true }) =>
   mount(KpiTrendChart, {
@@ -120,5 +136,40 @@ describe('KpiTrendChart', () => {
     // The chart must reflect the latest (second) response value 55, not the stale 99.
     expect(lineData).toContain('55')
     expect(lineData).not.toContain('99')
+  })
+
+  it('fetches causes for OOC dates on a causeDriven metric and injects the cause line', async () => {
+    ;(fetchKpiCauses as any).mockResolvedValue({
+      '2026-06-11': { date: '2026-06-11', kind: 'downtime', factor: 'Changeover', value: 60, unit: 'min', share: 0.5 },
+    })
+    const fetchTrend = vi.fn().mockResolvedValue([
+      { date: '2026-06-10', value: 90 },
+      { date: '2026-06-11', value: 40 }, // OOC (below critical 60)
+      { date: '2026-06-12', value: 88 },
+    ])
+    const w = mount(KpiTrendChart, {
+      props: { metricKey: 'availability', title: 'Availability', threshold: { critical: 60, higher_is_better: true },
+               clientId: 'C', unit: '%', fetchTrend, alertKey: null, causeDriven: true },
+      global: { plugins: [i18n, createVuetify()] },
+    })
+    await flushPromises()
+    expect(fetchKpiCauses).toHaveBeenCalledWith('availability', ['2026-06-11'], 'C')
+    // tooltip for the OOC point includes the cause line
+    const label = (w.vm as any).tooltipLabel({ datasetIndex: 0, dataIndex: 1, dataset: { label: 'Availability' }, formattedValue: '40' })
+    expect(label.some((l: string) => l.includes('Changeover'))).toBe(true)
+  })
+
+  it('does not fetch causes for a fallback (non-causeDriven) metric', async () => {
+    const fetchTrend = vi.fn().mockResolvedValue([
+      { date: '2026-06-10', value: 90 },
+      { date: '2026-06-11', value: 40 },
+    ])
+    mount(KpiTrendChart, {
+      props: { metricKey: 'efficiency', title: 'Efficiency', threshold: { critical: 60, higher_is_better: true },
+               clientId: 'C', unit: '%', fetchTrend, alertKey: null, causeDriven: false },
+      global: { plugins: [i18n, createVuetify()] },
+    })
+    await flushPromises()
+    expect(fetchKpiCauses).not.toHaveBeenCalled()
   })
 })
