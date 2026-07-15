@@ -1,4 +1,5 @@
 from datetime import date, datetime, timedelta
+from decimal import Decimal
 
 from sqlalchemy import event, create_engine
 from sqlalchemy.orm import Session as SASession
@@ -9,6 +10,7 @@ from backend.orm.defect_detail import DefectDetail
 from backend.orm.attendance_entry import AttendanceEntry, AbsenceType
 from backend.orm.work_order import WorkOrder, WorkOrderStatus
 from backend.orm.hold_entry import HoldEntry, HoldStatus
+from backend.orm.production_entry import ProductionEntry
 from backend.services.kpi_cause_service import (
     CauseResult,
     top_downtime_reason,
@@ -16,6 +18,7 @@ from backend.services.kpi_cause_service import (
     top_absence_type,
     late_work_orders,
     oldest_active_hold,
+    oee_dominant_loss,
 )
 
 DAY = date(2026, 6, 10)
@@ -314,3 +317,96 @@ def test_oldest_active_hold_reports_reason_and_age_days(db_session):
 
 def test_oldest_active_hold_none_when_no_active_holds(db_session):
     assert oldest_active_hold(db_session, "C1", DAY) is None
+
+
+def _pe(pid, perf):
+    return ProductionEntry(
+        production_entry_id=pid,
+        client_id="C1",
+        product_id=1,
+        shift_id=1,
+        production_date=_dt(8),
+        shift_date=_dt(8),
+        units_produced=100,
+        run_time_hours=Decimal("8.0"),
+        employees_assigned=5,
+        performance_percentage=Decimal(str(perf)),
+        entered_by="u1",
+    )
+
+
+def test_oee_dominant_loss_availability(db_session):
+    # 1 entry -> scheduled 8h; 240 min downtime -> 4h -> availability 50 (loss 50, dominant)
+    db_session.add(_pe("PE1", 95))
+    db_session.add(
+        QualityEntry(
+            quality_entry_id="QE1",
+            client_id="C1",
+            work_order_id="WO1",
+            shift_date=_dt(8),
+            units_inspected=100,
+            units_passed=100,
+            units_defective=0,
+            total_defects_count=0,
+        )
+    )
+    db_session.add(
+        DowntimeEntry(
+            downtime_entry_id="DT1",
+            client_id="C1",
+            shift_date=_dt(9),
+            downtime_reason="Breakdown",
+            downtime_duration_minutes=240,
+        )
+    )
+    db_session.commit()
+    res = oee_dominant_loss(db_session, "C1", DAY)
+    assert res.kind == "downtime" and res.factor == "Breakdown"
+
+
+def test_oee_dominant_loss_quality(db_session):
+    db_session.add(_pe("PE1", 98))  # perf loss 2, no downtime -> avail loss 0
+    db_session.add(
+        QualityEntry(
+            quality_entry_id="QE1",
+            client_id="C1",
+            work_order_id="WO1",
+            shift_date=_dt(8),
+            units_inspected=100,
+            units_passed=70,
+            units_defective=30,
+            total_defects_count=30,
+        )
+    )  # quality 70, loss 30
+    db_session.flush()
+    db_session.add(
+        DefectDetail(
+            defect_detail_id="DD1", quality_entry_id="QE1", client_id_fk="C1", defect_type="Burr", defect_count=30
+        )
+    )
+    db_session.commit()
+    res = oee_dominant_loss(db_session, "C1", DAY)
+    assert res.kind == "defect" and res.factor == "Burr"
+
+
+def test_oee_dominant_loss_performance_component(db_session):
+    db_session.add(_pe("PE1", 60))  # perf loss 40 dominant; no downtime, quality 100
+    db_session.add(
+        QualityEntry(
+            quality_entry_id="QE1",
+            client_id="C1",
+            work_order_id="WO1",
+            shift_date=_dt(8),
+            units_inspected=100,
+            units_passed=100,
+            units_defective=0,
+            total_defects_count=0,
+        )
+    )
+    db_session.commit()
+    res = oee_dominant_loss(db_session, "C1", DAY)
+    assert res == CauseResult(kind="component", factor="performance", value=None, unit="", share=None)
+
+
+def test_oee_dominant_loss_none_without_production(db_session):
+    assert oee_dominant_loss(db_session, "C1", DAY) is None

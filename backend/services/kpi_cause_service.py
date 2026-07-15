@@ -22,6 +22,7 @@ from backend.orm.defect_detail import DefectDetail
 from backend.orm.attendance_entry import AttendanceEntry
 from backend.orm.work_order import WorkOrder
 from backend.orm.hold_entry import HoldEntry, HoldStatus
+from backend.orm.production_entry import ProductionEntry
 
 
 @dataclass
@@ -167,3 +168,59 @@ def oldest_active_hold(session: Session, client_id: str | None, day: date) -> Ca
         unit="days",
         share=None,
     )
+
+
+def oee_dominant_loss(session: Session, client_id: str | None, day: date) -> CauseResult | None:
+    """Decompose the day's OEE (mirroring /oee/trend math) and return the dominant loss's driver."""
+    start, end = _day_bounds(day)
+
+    perf_q = session.query(
+        func.avg(ProductionEntry.performance_percentage).label("perf"),
+        func.count(ProductionEntry.production_entry_id).label("entries"),
+    ).filter(ProductionEntry.shift_date >= start, ProductionEntry.shift_date <= end)
+    if client_id:
+        perf_q = perf_q.filter(ProductionEntry.client_id == client_id)
+    pr = perf_q.one()
+    entries = int(pr.entries or 0)
+    if entries == 0:
+        return None
+    performance = float(pr.perf) if pr.perf is not None else 95.0
+
+    qual_q = session.query(
+        func.sum(QualityEntry.units_passed).label("passed"),
+        func.sum(QualityEntry.units_inspected).label("inspected"),
+    ).filter(QualityEntry.shift_date >= start, QualityEntry.shift_date <= end)
+    if client_id:
+        qual_q = qual_q.filter(QualityEntry.client_id == client_id)
+    qr = qual_q.one()
+    quality = (float(qr.passed) / float(qr.inspected) * 100) if qr.inspected and qr.inspected > 0 else 97.0
+
+    dt_q = session.query(func.sum(DowntimeEntry.downtime_duration_minutes).label("mins")).filter(
+        DowntimeEntry.shift_date >= start, DowntimeEntry.shift_date <= end
+    )
+    if client_id:
+        dt_q = dt_q.filter(DowntimeEntry.client_id == client_id)
+    downtime_mins = dt_q.scalar()
+    downtime = float(downtime_mins) / 60 if downtime_mins else 0.0
+
+    scheduled = entries * 8
+    availability = ((scheduled - downtime) / scheduled * 100) if scheduled > 0 else 90.0
+
+    losses = {
+        "availability": 100 - min(availability, 100),
+        "performance": 100 - min(performance, 100),
+        "quality": 100 - min(quality, 100),
+    }
+    name, loss = max(losses.items(), key=lambda kv: kv[1])
+    if loss <= 0:
+        return None
+
+    if name == "availability":
+        return top_downtime_reason(session, client_id, day) or CauseResult(
+            kind="component", factor="availability", value=None, unit="", share=None
+        )
+    if name == "quality":
+        return top_defect_type(session, client_id, day) or CauseResult(
+            kind="component", factor="quality", value=None, unit="", share=None
+        )
+    return CauseResult(kind="component", factor="performance", value=None, unit="", share=None)
