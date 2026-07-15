@@ -25,6 +25,7 @@ from .otd import otd_router
 from .trends import trends_router
 from .dashboard import dashboard_router
 from .thresholds import thresholds_router
+from backend.routes.kpi.cause import cause_router  # noqa: E402
 
 # Bare router (no prefix) — each sub-router already carries the full /api/kpi prefix.
 # This avoids double-prefixing while keeping the expected 'router' export name.
@@ -34,6 +35,7 @@ router.include_router(efficiency_router)
 router.include_router(otd_router)
 router.include_router(trends_router)
 router.include_router(dashboard_router)
+router.include_router(cause_router)
 
 # thresholds_router is exported separately — it uses /api/kpi-thresholds prefix
 # and is registered independently in backend/routes/__init__.py

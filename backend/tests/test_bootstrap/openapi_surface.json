@@ -806,6 +806,10 @@
     ],
     [
       "GET",
+      "/api/kpi/{metric}/cause"
+    ],
+    [
+      "GET",
       "/api/metrics/results"
     ],
     [
