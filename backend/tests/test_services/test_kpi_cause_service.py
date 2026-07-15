@@ -410,3 +410,22 @@ def test_oee_dominant_loss_performance_component(db_session):
 
 def test_oee_dominant_loss_none_without_production(db_session):
     assert oee_dominant_loss(db_session, "C1", DAY) is None
+
+
+def test_oee_dominant_loss_none_when_all_in_control(db_session):
+    # entries present but availability=performance=quality all 100 -> no loss -> None
+    db_session.add(_pe("PE1", 100))  # performance 100
+    db_session.add(
+        QualityEntry(
+            quality_entry_id="QE1",
+            client_id="C1",
+            work_order_id="WO1",
+            shift_date=_dt(8),
+            units_inspected=100,
+            units_passed=100,  # quality 100
+            units_defective=0,
+            total_defects_count=0,
+        )
+    )  # no downtime -> availability 100
+    db_session.commit()
+    assert oee_dominant_loss(db_session, "C1", DAY) is None

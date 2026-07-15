@@ -184,7 +184,7 @@ def oee_dominant_loss(session: Session, client_id: str | None, day: date) -> Cau
     entries = int(pr.entries or 0)
     if entries == 0:
         return None
-    performance = float(pr.perf) if pr.perf is not None else 95.0
+    performance = float(pr.perf) if pr.perf else 95.0
 
     qual_q = session.query(
         func.sum(QualityEntry.units_passed).label("passed"),
