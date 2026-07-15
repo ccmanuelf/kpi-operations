@@ -490,7 +490,9 @@ def get_throughput_time_trend(
     SECURITY: Requires authentication; non-admin users see only their assigned client.
     """
     from backend.orm.production_entry import ProductionEntry
+    from backend.utils.date_range import validate_date_range
 
+    validate_date_range(start_date, end_date)
     if end_date is None:
         end_date = date.today()
     if start_date is None:

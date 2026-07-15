@@ -123,6 +123,14 @@ def test_throughput_trend_returns_daily_series(client, db_session):
     assert abs(hit[0]["value"] - 8.0) < 0.01
 
 
+def test_throughput_trend_rejects_reversed_range(client, db_session):
+    r = client.get(
+        "/api/kpi/throughput-time/trend",
+        params={"start_date": "2026-06-16", "end_date": "2026-06-14"},
+    )
+    assert r.status_code == 400
+
+
 def test_throughput_trend_caps_at_24(client, db_session):
     admin = _admin(db_session)
     TestDataFactory.create_client(db_session, client_id="TP-CAP")

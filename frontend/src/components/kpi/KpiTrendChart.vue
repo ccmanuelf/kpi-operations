@@ -75,6 +75,7 @@ const { options } = useKpiChartRange()
 const { chartColors, scaleDefaults, legendDefaults } = useChartTheme()
 
 const rangeKey = ref<KpiRangeKey>('last90Days')
+const rawPoints = ref<{ date: string; value: number }[]>([])
 const points = ref<OocPoint[]>([])
 const oocMeta = ref<{ ucl: number | null; lcl: number | null; target: number | null; critical: number | null }>({
   ucl: null,
@@ -85,6 +86,20 @@ const oocMeta = ref<{ ucl: number | null; lcl: number | null; target: number | n
 const alertMessage = ref<string | null>(null)
 const loading = ref(false)
 const error = ref(false)
+
+// Recompute the OOC result (and hence chart datasets) whenever the fetched
+// series OR the threshold changes. The threshold typically arrives after
+// this component has already mounted and fetched (the parent loads it
+// asynchronously), so this must NOT depend solely on load()'s fetch path.
+watch(
+  [rawPoints, () => props.threshold],
+  ([raw, threshold]) => {
+    const result = computeOutOfControl(raw, threshold)
+    points.value = result.points
+    oocMeta.value = { ucl: result.ucl, lcl: result.lcl, target: result.target, critical: result.critical }
+  },
+  { immediate: true },
+)
 
 const load = async () => {
   loading.value = true
@@ -97,12 +112,9 @@ const load = async () => {
       end_date: end,
       client_id: props.clientId ?? undefined,
     })
-    const raw = unwrapTrend(res)
-    const result = computeOutOfControl(raw, props.threshold)
-    points.value = result.points
-    oocMeta.value = { ucl: result.ucl, lcl: result.lcl, target: result.target, critical: result.critical }
+    rawPoints.value = unwrapTrend(res)
 
-    if (props.alertKey && points.value.length > 0) {
+    if (props.alertKey && rawPoints.value.length > 0) {
       try {
         const alerts = await fetchActiveAlertsForKpi(props.alertKey, props.clientId ?? null)
         const latest = Array.isArray(alerts) ? alerts[0] : null
@@ -114,7 +126,7 @@ const load = async () => {
       }
     }
   } catch {
-    points.value = []
+    rawPoints.value = []
     error.value = true
   } finally {
     loading.value = false

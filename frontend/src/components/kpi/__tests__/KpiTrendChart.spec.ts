@@ -41,4 +41,61 @@ describe('KpiTrendChart', () => {
     // second call carries a different start/end than the first
     expect(fetchTrend.mock.calls[1][0].start_date).not.toBe(fetchTrend.mock.calls[0][0].start_date)
   })
+
+  it('recomputes OOC when the threshold arrives after cold-load, without a redundant fetch', async () => {
+    const fetchTrend = vi.fn().mockResolvedValue([
+      { date: '2026-06-10', value: 90 },
+      { date: '2026-06-11', value: 40 },
+    ])
+    // Mirrors the real dashboard: the parent mounts this chart with
+    // threshold=null and fills it in once its own async load resolves.
+    const w = mount(KpiTrendChart, {
+      props: {
+        metricKey: 'efficiency',
+        title: 'Efficiency',
+        threshold: null,
+        clientId: 'C',
+        unit: '%',
+        fetchTrend,
+        alertKey: null,
+      },
+      global: { plugins: [i18n, createVuetify()] },
+    })
+    await flushPromises()
+    expect(fetchTrend).toHaveBeenCalledTimes(1)
+
+    let lineData: any = w.findComponent({ name: 'Line' }).props('data')
+    // No threshold yet -> critical arm can't flag anything.
+    expect(lineData.datasets[0].pointRadius).toEqual([3, 3])
+
+    await w.setProps({ threshold: { critical: 60, higher_is_better: true } })
+    await flushPromises()
+
+    // Threshold-only change must NOT trigger another network fetch.
+    expect(fetchTrend).toHaveBeenCalledTimes(1)
+
+    lineData = w.findComponent({ name: 'Line' }).props('data')
+    expect(lineData.datasets[0].pointRadius).toEqual([3, 7])
+  })
+
+  it('styles the out-of-control point distinctly in the main dataset', async () => {
+    const fetchTrend = vi.fn().mockResolvedValue([
+      { date: '2026-06-10', value: 90 },
+      { date: '2026-06-11', value: 40 }, // below critical=60, higher-is-better -> OOC
+      { date: '2026-06-12', value: 88 },
+    ])
+    const w = mountChart(fetchTrend, { critical: 60, higher_is_better: true })
+    await flushPromises()
+
+    const lineData: any = w.findComponent({ name: 'Line' }).props('data')
+    const main = lineData.datasets[0]
+
+    // Enlarged radius and thicker border at the OOC index only.
+    expect(main.pointRadius).toEqual([3, 7, 3])
+    expect(main.pointBorderWidth).toEqual([1, 3, 1])
+    // Border color at the OOC index is distinct from the normal points.
+    expect(main.pointBorderColor[1]).not.toBe(main.pointBorderColor[0])
+    expect(main.pointBorderColor[1]).not.toBe(main.pointBorderColor[2])
+    expect(main.pointBorderColor[0]).toBe(main.pointBorderColor[2])
+  })
 })
