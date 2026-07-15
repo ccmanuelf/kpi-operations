@@ -101,7 +101,15 @@ watch(
   { immediate: true },
 )
 
+// Monotonic request id: a rapid range/client change can start a second load()
+// while the first is in flight; without this guard an earlier fetch resolving
+// AFTER a later one would overwrite rawPoints with stale data (chart shows the
+// wrong range). Each load() claims the next seq; a resolved fetch only applies
+// if it is still the latest request.
+let loadSeq = 0
+
 const load = async () => {
+  const seq = ++loadSeq
   loading.value = true
   error.value = false
   alertMessage.value = null
@@ -112,11 +120,13 @@ const load = async () => {
       end_date: end,
       client_id: props.clientId ?? undefined,
     })
+    if (seq !== loadSeq) return // superseded by a newer load() — discard this stale response
     rawPoints.value = unwrapTrend(res)
 
     if (props.alertKey && rawPoints.value.length > 0) {
       try {
         const alerts = await fetchActiveAlertsForKpi(props.alertKey, props.clientId ?? null)
+        if (seq !== loadSeq) return
         const latest = Array.isArray(alerts) ? alerts[0] : null
         if (latest) {
           alertMessage.value = latest.recommendation ? `${latest.message} — ${latest.recommendation}` : latest.message
@@ -126,10 +136,12 @@ const load = async () => {
       }
     }
   } catch {
-    rawPoints.value = []
-    error.value = true
+    if (seq === loadSeq) {
+      rawPoints.value = []
+      error.value = true
+    }
   } finally {
-    loading.value = false
+    if (seq === loadSeq) loading.value = false
   }
 }
 

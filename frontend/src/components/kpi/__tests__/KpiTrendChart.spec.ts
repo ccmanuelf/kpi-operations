@@ -98,4 +98,27 @@ describe('KpiTrendChart', () => {
     expect(main.pointBorderColor[1]).not.toBe(main.pointBorderColor[2])
     expect(main.pointBorderColor[0]).toBe(main.pointBorderColor[2])
   })
+
+  it('discards a stale out-of-order fetch response (latest range wins)', async () => {
+    let resolveFirst: (_v: unknown) => void = () => {}
+    const first = new Promise((r) => {
+      resolveFirst = r
+    })
+    const fetchTrend = vi
+      .fn()
+      .mockReturnValueOnce(first) // mount fetch — resolves LATE (stale)
+      .mockResolvedValueOnce([{ date: '2026-06-20', value: 55 }]) // range-change fetch — resolves first (latest)
+    const w = mountChart(fetchTrend)
+    // Trigger a second load (range change) while the mount fetch is still pending.
+    ;(w.vm as { onRangeChange: (_k: string) => void }).onRangeChange('lastWeek')
+    await flushPromises() // the latest (second) fetch resolves and applies
+    // Now the stale first fetch resolves — the guard must discard it.
+    resolveFirst([{ date: '2026-01-01', value: 99 }])
+    await flushPromises()
+
+    const lineData: string = JSON.stringify(w.findComponent({ name: 'Line' }).props('data'))
+    // The chart must reflect the latest (second) response value 55, not the stale 99.
+    expect(lineData).toContain('55')
+    expect(lineData).not.toContain('99')
+  })
 })
