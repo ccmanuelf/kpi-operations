@@ -122,6 +122,77 @@ def test_top_absence_type_groups_by_coalesced_type(db_session):
     assert res.kind == "absence" and res.factor == "MEDICAL_LEAVE" and res.value == 2.0
 
 
+def test_top_absence_type_does_not_crash_on_null_absence_type(db_session):
+    """A legitimate absent row can have absence_type=NULL (is_absent=1, no reason).
+
+    The driver must NOT crash decoding a coalesced literal through the Enum
+    result-processor, and must still return the correct dominant factor.
+    """
+    db_session.add_all(
+        [
+            AttendanceEntry(
+                attendance_entry_id="AE1",
+                client_id="C1",
+                employee_id=1,
+                shift_date=_dt(8),
+                scheduled_hours=8,
+                is_absent=1,
+                absence_type=None,
+            ),
+            AttendanceEntry(
+                attendance_entry_id="AE2",
+                client_id="C1",
+                employee_id=2,
+                shift_date=_dt(8),
+                scheduled_hours=8,
+                is_absent=1,
+                absence_type=AbsenceType.MEDICAL_LEAVE,
+            ),
+            AttendanceEntry(
+                attendance_entry_id="AE3",
+                client_id="C1",
+                employee_id=3,
+                shift_date=_dt(9),
+                scheduled_hours=8,
+                is_absent=1,
+                absence_type=AbsenceType.MEDICAL_LEAVE,
+            ),
+        ]
+    )
+    db_session.commit()
+    res = top_absence_type(db_session, "C1", DAY)
+    assert res.kind == "absence" and res.factor == "MEDICAL_LEAVE" and res.value == 2.0
+
+
+def test_top_absence_type_null_only_day_labels_unspecified(db_session):
+    """A day whose only absences have NULL absence_type yields factor 'Unspecified'."""
+    db_session.add_all(
+        [
+            AttendanceEntry(
+                attendance_entry_id="AE1",
+                client_id="C1",
+                employee_id=1,
+                shift_date=_dt(8),
+                scheduled_hours=8,
+                is_absent=1,
+                absence_type=None,
+            ),
+            AttendanceEntry(
+                attendance_entry_id="AE2",
+                client_id="C1",
+                employee_id=2,
+                shift_date=_dt(9),
+                scheduled_hours=8,
+                is_absent=1,
+                absence_type=None,
+            ),
+        ]
+    )
+    db_session.commit()
+    res = top_absence_type(db_session, "C1", DAY)
+    assert res.kind == "absence" and res.factor == "Unspecified" and res.value == 2.0
+
+
 def test_top_defect_type_under_fk_enforcement(tmp_path):
     """Portability guard: the DefectDetail↔QualityEntry join runs under FK enforcement (MariaDB-like)."""
     from backend.db.migrate import upgrade_to_head

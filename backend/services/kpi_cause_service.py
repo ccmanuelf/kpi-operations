@@ -88,24 +88,38 @@ def top_defect_type(session: Session, client_id: str | None, day: date) -> Cause
 
 def top_absence_type(session: Session, client_id: str | None, day: date) -> CauseResult | None:
     start, end = _day_bounds(day)
-    label = func.coalesce(AttendanceEntry.absence_type, "Unspecified").label("reason")
-    q = session.query(label, func.count().label("cnt")).filter(
+    # Group by the RAW enum column — never coalesce a string literal through an
+    # Enum-typed column, or SQLAlchemy decodes the literal through the enum's
+    # result-processor and raises LookupError when any absent row has a NULL
+    # absence_type (a legitimate case: is_absent=1 with no reason recorded).
+    q = session.query(
+        AttendanceEntry.absence_type.label("reason"),
+        func.count().label("cnt"),
+    ).filter(
         AttendanceEntry.shift_date >= start,
         AttendanceEntry.shift_date <= end,
         AttendanceEntry.is_absent == 1,
     )
     if client_id:
         q = q.filter(AttendanceEntry.client_id == client_id)
-    rows = q.group_by(label).order_by(func.count().desc()).all()
+    rows = q.group_by(AttendanceEntry.absence_type).order_by(func.count().desc()).all()
     if not rows:
         return None
     total = sum(int(r.cnt) for r in rows)
     top = rows[0]
     top_val = float(int(top.cnt))
-    reason = top.reason.value if hasattr(top.reason, "value") else top.reason
+    # Resolve the label in Python: NULL -> "Unspecified"; AbsenceType member ->
+    # its .value (e.g. "MEDICAL_LEAVE"); a raw string (some drivers) -> as-is.
+    raw = top.reason
+    if raw is None:
+        factor = "Unspecified"
+    elif hasattr(raw, "value"):
+        factor = raw.value
+    else:
+        factor = str(raw)
     return CauseResult(
         kind="absence",
-        factor=str(reason),
+        factor=factor,
         value=top_val,
         unit="count",
         share=(top_val / total if total > 0 else None),
