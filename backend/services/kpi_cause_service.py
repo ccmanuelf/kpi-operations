@@ -13,13 +13,15 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date, datetime
 
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from backend.orm.downtime_entry import DowntimeEntry
 from backend.orm.quality_entry import QualityEntry
 from backend.orm.defect_detail import DefectDetail
 from backend.orm.attendance_entry import AttendanceEntry
+from backend.orm.work_order import WorkOrder
+from backend.orm.hold_entry import HoldEntry, HoldStatus
 
 
 @dataclass
@@ -123,4 +125,45 @@ def top_absence_type(session: Session, client_id: str | None, day: date) -> Caus
         value=top_val,
         unit="count",
         share=(top_val / total if total > 0 else None),
+    )
+
+
+def late_work_orders(session: Session, client_id: str | None, day: date) -> CauseResult | None:
+    start, end = _day_bounds(day)
+    q = session.query(func.count(WorkOrder.work_order_id)).filter(
+        WorkOrder.required_date >= start,
+        WorkOrder.required_date <= end,
+        or_(
+            WorkOrder.actual_delivery_date.is_(None),
+            WorkOrder.actual_delivery_date > WorkOrder.required_date,
+        ),
+    )
+    if client_id:
+        q = q.filter(WorkOrder.client_id == client_id)
+    late = int(q.scalar() or 0)
+    if late == 0:
+        return None
+    return CauseResult(kind="lateOrders", factor=str(late), value=float(late), unit="count", share=None)
+
+
+def oldest_active_hold(session: Session, client_id: str | None, day: date) -> CauseResult | None:
+    _, end = _day_bounds(day)
+    q = session.query(HoldEntry).filter(
+        HoldEntry.hold_status == HoldStatus.ON_HOLD,
+        HoldEntry.hold_date.isnot(None),
+        HoldEntry.hold_date <= end,
+        or_(HoldEntry.resume_date.is_(None), HoldEntry.resume_date > end),
+    )
+    if client_id:
+        q = q.filter(HoldEntry.client_id == client_id)
+    hold = q.order_by(HoldEntry.hold_date.asc()).first()
+    if hold is None or hold.hold_date is None:
+        return None
+    age_days = (day - hold.hold_date.date()).days
+    return CauseResult(
+        kind="hold",
+        factor=str(hold.hold_reason or "Unspecified"),
+        value=float(age_days),
+        unit="days",
+        share=None,
     )

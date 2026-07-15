@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from sqlalchemy import event, create_engine
 from sqlalchemy.orm import Session as SASession
@@ -7,11 +7,15 @@ from backend.orm.downtime_entry import DowntimeEntry
 from backend.orm.quality_entry import QualityEntry
 from backend.orm.defect_detail import DefectDetail
 from backend.orm.attendance_entry import AttendanceEntry, AbsenceType
+from backend.orm.work_order import WorkOrder, WorkOrderStatus
+from backend.orm.hold_entry import HoldEntry, HoldStatus
 from backend.services.kpi_cause_service import (
     CauseResult,
     top_downtime_reason,
     top_defect_type,
     top_absence_type,
+    late_work_orders,
+    oldest_active_hold,
 )
 
 DAY = date(2026, 6, 10)
@@ -239,3 +243,74 @@ def test_top_defect_type_under_fk_enforcement(tmp_path):
             assert res.factor == "Burr"
     finally:
         eng.dispose()
+
+
+def _wo(wid, required, delivered):
+    return WorkOrder(
+        work_order_id=wid,
+        client_id="C1",
+        style_model="M1",
+        planned_quantity=10,
+        status=WorkOrderStatus.ACTIVE,
+        required_date=required,
+        actual_delivery_date=delivered,
+    )
+
+
+def test_late_work_orders_counts_late_and_undelivered_due_that_day(db_session):
+    db_session.add_all(
+        [
+            _wo("W1", _dt(0), _dt(0) + timedelta(days=2)),  # delivered late -> counts
+            _wo("W2", _dt(0), None),  # not delivered, due today -> counts
+            _wo("W3", _dt(0), _dt(0) - timedelta(hours=1)),  # delivered early -> excluded
+        ]
+    )
+    db_session.commit()
+    res = late_work_orders(db_session, "C1", DAY)
+    assert res.kind == "lateOrders" and res.value == 2.0 and res.factor == "2"
+
+
+def test_late_work_orders_none_when_all_on_time(db_session):
+    db_session.add(_wo("W9", _dt(0), _dt(0) - timedelta(hours=1)))
+    db_session.commit()
+    assert late_work_orders(db_session, "C1", DAY) is None
+
+
+def test_oldest_active_hold_reports_reason_and_age_days(db_session):
+    db_session.add_all(
+        [
+            HoldEntry(
+                hold_entry_id="H1",
+                client_id="C1",
+                work_order_id="W1",
+                hold_status=HoldStatus.ON_HOLD,
+                hold_date=datetime(2026, 6, 1, 8),
+                resume_date=None,
+            ),
+            HoldEntry(
+                hold_entry_id="H2",
+                client_id="C1",
+                work_order_id="W2",
+                hold_status=HoldStatus.ON_HOLD,
+                hold_date=datetime(2026, 6, 8, 8),
+                resume_date=None,
+            ),
+            # resumed before DAY -> not active on DAY
+            HoldEntry(
+                hold_entry_id="H3",
+                client_id="C1",
+                work_order_id="W3",
+                hold_status=HoldStatus.ON_HOLD,
+                hold_date=datetime(2026, 5, 1, 8),
+                resume_date=datetime(2026, 6, 5, 8),
+            ),
+        ]
+    )
+    db_session.commit()
+    res = oldest_active_hold(db_session, "C1", DAY)
+    assert res.kind == "hold" and res.unit == "days" and res.value == 9.0  # 2026-06-10 - 2026-06-01
+    assert res.factor  # hold_reason (may be None -> "Unspecified")
+
+
+def test_oldest_active_hold_none_when_no_active_holds(db_session):
+    assert oldest_active_hold(db_session, "C1", DAY) is None
