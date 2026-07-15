@@ -6,7 +6,7 @@ KPI calculation endpoints with client filtering and inference metadata.
 """
 
 from datetime import date, datetime, timezone
-from typing import Optional
+from typing import Any, Optional
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
@@ -102,6 +102,51 @@ def calculate_ppm_kpi(
         calculation_timestamp=datetime.now(tz=timezone.utc),
         inference=inference,
     )
+
+
+@ppm_dpmo_router.get("/kpi/ppm/trend")
+def get_ppm_trend(
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+    client_id: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Any:
+    """Daily PPM defect-rate series ((defects/inspected)*1e6 per day). Lower is better."""
+    from datetime import timedelta
+    from backend.orm.quality_entry import QualityEntry
+    from sqlalchemy import func
+    from backend.utils.date_range import validate_date_range
+
+    validate_date_range(start_date, end_date)
+    if end_date is None:
+        end_date = date.today()
+    if start_date is None:
+        start_date = end_date - timedelta(days=30)
+
+    effective_client_id = client_id
+    if not effective_client_id and current_user.role != "admin" and current_user.client_id_assigned:
+        effective_client_id = current_user.client_id_assigned
+
+    query = db.query(
+        func.date(QualityEntry.shift_date).label("date"),
+        func.sum(QualityEntry.units_inspected).label("inspected"),
+        func.sum(QualityEntry.units_defective).label("defects"),
+    ).filter(
+        QualityEntry.shift_date >= datetime.combine(start_date, datetime.min.time()),
+        QualityEntry.shift_date <= datetime.combine(end_date, datetime.max.time()),
+    )
+    if effective_client_id:
+        query = query.filter(QualityEntry.client_id == effective_client_id)
+    query = query.group_by(func.date(QualityEntry.shift_date)).order_by(func.date(QualityEntry.shift_date))
+
+    out = []
+    for row in query.all():
+        inspected = row.inspected or 0
+        defects = row.defects or 0
+        ppm = (defects / inspected * 1_000_000) if inspected > 0 else 0.0
+        out.append({"date": str(row.date), "value": round(float(ppm), 2)})
+    return out
 
 
 @ppm_dpmo_router.get("/kpi/dpmo", response_model=DPMOCalculationResponse)
