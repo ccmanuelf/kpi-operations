@@ -1,6 +1,6 @@
 /**
  * Composable for KPI Dashboard data fetching and filter state.
- * Loading state, clients list, date range, trend period, refresh.
+ * Loading state, clients list, date range, per-KPI thresholds, refresh.
  */
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -14,6 +14,24 @@ interface ClientOption {
   id: string | number | null
   name: string
   [key: string]: unknown
+}
+
+interface KPIThresholdRow {
+  threshold_id?: string
+  kpi_key?: string
+  target_value: number
+  warning_threshold: number | null
+  critical_threshold: number | null
+  unit?: string
+  higher_is_better: 'Y' | 'N'
+  is_global?: boolean
+}
+
+export interface KpiThreshold {
+  target: number
+  warning: number | null
+  critical: number | null
+  higher_is_better: boolean
 }
 
 type SnackbarFn = (_message: string, _color: string) => void
@@ -31,8 +49,8 @@ export function useKPIDashboardData(showSnackbar: SnackbarFn) {
     new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
     new Date(),
   ])
-  const trendPeriod = ref('30')
   const clients = ref<ClientOption[]>([{ id: null, name: 'All Clients' }])
+  const kpiThresholds = ref<Record<string, KPIThresholdRow>>({})
 
   const loadClients = async (): Promise<void> => {
     try {
@@ -48,6 +66,32 @@ export function useKPIDashboardData(showSnackbar: SnackbarFn) {
     }
   }
 
+  const loadThresholds = async (): Promise<void> => {
+    try {
+      const response = await api.getKPIThresholds(selectedClient.value)
+      kpiThresholds.value =
+        (response.data?.thresholds as Record<string, KPIThresholdRow>) || {}
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('Error loading KPI thresholds:', error)
+    }
+  }
+
+  // Per-KPI target/warning/critical/direction for the diagnostic trend
+  // charts' OOC engine. Returns null when the KPI has no threshold row
+  // (e.g. wip_aging, throughput) — the OOC engine correctly falls back
+  // to SPC-only control limits in that case.
+  const thresholdFor = (thresholdKey: string): KpiThreshold | null => {
+    const row = kpiThresholds.value[thresholdKey]
+    if (!row) return null
+    return {
+      target: row.target_value,
+      warning: row.warning_threshold ?? null,
+      critical: row.critical_threshold ?? null,
+      higher_is_better: row.higher_is_better === 'Y',
+    }
+  }
+
   const refreshData = async (): Promise<void> => {
     loading.value = true
     try {
@@ -56,7 +100,7 @@ export function useKPIDashboardData(showSnackbar: SnackbarFn) {
       // store using its `selectedClient` state. Preserved a no-op
       // params accumulator for callsite parity.
       void selectedLineId.value
-      await kpiStore.fetchAllKPIs()
+      await Promise.all([kpiStore.fetchAllKPIs(), loadThresholds()])
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('Error refreshing data:', error)
@@ -141,7 +185,6 @@ export function useKPIDashboardData(showSnackbar: SnackbarFn) {
     selectedClient,
     selectedLineId,
     dateRange,
-    trendPeriod,
     clients,
     kpiStore,
     dashboardStore,
@@ -153,5 +196,6 @@ export function useKPIDashboardData(showSnackbar: SnackbarFn) {
     handleFilterChange,
     onLineFilterChange,
     initialize,
+    thresholdFor,
   }
 }

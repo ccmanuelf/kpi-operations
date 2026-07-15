@@ -450,5 +450,46 @@ describe('KPI API', () => {
 
       expect(result.data).toEqual([])
     })
+
+    it('getPpmTrend hits /quality/kpi/ppm/trend with params', async () => {
+      api.get.mockResolvedValue({ data: [] })
+
+      await kpiApi.getPpmTrend({ start_date: '2026-06-01', end_date: '2026-06-30', client_id: 'C' })
+
+      expect(api.get).toHaveBeenCalledWith('/quality/kpi/ppm/trend', {
+        params: { start_date: '2026-06-01', end_date: '2026-06-30', client_id: 'C' },
+      })
+    })
+
+    it('getThroughputTrend hits /kpi/throughput-time/trend', async () => {
+      api.get.mockResolvedValue({ data: [] })
+
+      await kpiApi.getThroughputTrend({ start_date: '2026-06-01', end_date: '2026-06-30' })
+
+      expect(api.get).toHaveBeenCalledWith('/kpi/throughput-time/trend', {
+        params: { start_date: '2026-06-01', end_date: '2026-06-30' },
+      })
+    })
+  })
+
+  describe('fetchActiveAlertsForKpi', () => {
+    it('calls GET /alerts/ with kpi_key, client_id, status, limit and returns data', async () => {
+      api.get.mockResolvedValue({ data: [{ id: 1 }] })
+
+      const result = await kpiApi.fetchActiveAlertsForKpi('ppm', 'C1')
+
+      expect(api.get).toHaveBeenCalledWith('/alerts/', {
+        params: { kpi_key: 'ppm', client_id: 'C1', status: 'active', limit: 5 },
+      })
+      expect(result).toEqual([{ id: 1 }])
+    })
+
+    it('returns empty array on error', async () => {
+      api.get.mockRejectedValue(new Error('Network error'))
+
+      const result = await kpiApi.fetchActiveAlertsForKpi('ppm')
+
+      expect(result).toEqual([])
+    })
   })
 })

@@ -296,12 +296,12 @@ describe('KPIDashboard', () => {
     expect(buttons.length).toBeGreaterThan(0)
   })
 
-  it('renders the trend period selector', () => {
+  it('renders the ten diagnostic KpiTrendChart components', () => {
     const wrapper = shallowMount(KPIDashboard, {
       global: { stubs: globalStubs }
     })
 
-    expect(wrapper.text()).toContain('common.days')
+    expect(wrapper.findAll('kpi-trend-chart-stub').length).toBe(10)
   })
 
   it('renders reports section', () => {

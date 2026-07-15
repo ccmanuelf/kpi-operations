@@ -359,7 +359,6 @@
     },
     "ariaOpenQrScanner": "Abrir escáner de código QR para captura rápida de datos",
     "ariaRefreshDashboard": "Actualizar datos del tablero",
-    "ariaSelectTrendPeriod": "Seleccionar período de tendencia",
     "ariaCloseNotification": "Cerrar notificación",
     "ariaCloseQrScanner": "Cerrar escáner QR",
     "targetPercent": "Meta: {value}%",
@@ -544,7 +543,20 @@
       "status": "Estado",
       "trend": "Tendencia"
     },
-    "fpyLabel": "FPY:"
+    "fpyLabel": "FPY:",
+    "thisWeek": "Esta semana",
+    "lastWeek": "Semana pasada",
+    "lastMonth": "Mes pasado",
+    "last90Days": "Últimos 90 días",
+    "outOfControl": "Fuera de control",
+    "criticalLine": "Crítico",
+    "controlLimit": "Límite de control",
+    "ooc": {
+      "belowCritical": "{value} — por debajo del crítico ({critical})",
+      "aboveCritical": "{value} — por encima del crítico ({critical})",
+      "beyondUcl": "{value} — más allá de +3σ (UCL {limit})",
+      "beyondLcl": "{value} — más allá de −3σ (LCL {limit})"
+    }
   },
   "inferenceIndicator": {
     "dataSourcesTitle": "Fuentes de Datos Utilizadas",

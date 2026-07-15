@@ -470,3 +470,57 @@ def get_absenteeism_trend(
         }
         for r in results
     ]
+
+
+@trends_router.get("/throughput-time/trend")
+def get_throughput_time_trend(
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+    client_id: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Any:
+    """
+    Get daily throughput-time trend data.
+
+    Returns date/value pairs of average throughput hours per day for
+    charting: min(24, (sum(run_time_hours) / sum(units_produced)) * 100).
+    Lower is better. Defaults to the last 30 days.
+
+    SECURITY: Requires authentication; non-admin users see only their assigned client.
+    """
+    from backend.orm.production_entry import ProductionEntry
+    from backend.utils.date_range import validate_date_range
+
+    validate_date_range(start_date, end_date)
+    if end_date is None:
+        end_date = date.today()
+    if start_date is None:
+        start_date = end_date - timedelta(days=30)
+
+    effective_client_id = client_id
+    if not effective_client_id and current_user.role != "admin" and current_user.client_id_assigned:
+        effective_client_id = current_user.client_id_assigned
+
+    query = db.query(
+        func.date(ProductionEntry.shift_date).label("date"),
+        func.sum(ProductionEntry.run_time_hours).label("run_hours"),
+        func.sum(ProductionEntry.units_produced).label("units"),
+    ).filter(
+        ProductionEntry.shift_date >= datetime.combine(start_date, datetime.min.time()),
+        ProductionEntry.shift_date <= datetime.combine(end_date, datetime.max.time()),
+    )
+    if effective_client_id:
+        query = query.filter(ProductionEntry.client_id == effective_client_id)
+
+    results = (
+        query.group_by(func.date(ProductionEntry.shift_date)).order_by(func.date(ProductionEntry.shift_date)).all()
+    )
+
+    out = []
+    for r in results:
+        units = float(r.units or 0)
+        run_hours = float(r.run_hours or 0)
+        value = min(24.0, (run_hours / units) * 100) if units > 0 else 0.0
+        out.append({"date": str(r.date), "value": round(value, 2)})
+    return out
