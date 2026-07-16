@@ -90,6 +90,35 @@ def test_operator_cannot_read_other_clients_wip_aging(_bind, operator_user_clien
         app.dependency_overrides.pop(get_current_user, None)
 
 
+def test_operator_cannot_read_other_clients_thresholds(_bind, operator_user_client_a):
+    c = _as(operator_user_client_a)
+    try:
+        assert c.get("/api/kpi-thresholds", params={"client_id": "CLIENT-B"}).status_code == 403
+        assert c.get("/api/hold-catalogs/statuses", params={"client_id": "CLIENT-B"}).status_code == 403
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+
+
+def test_operator_can_read_own_thresholds_and_catalogs(_bind, operator_user_client_a):
+    c = _as(operator_user_client_a)
+    try:
+        assert c.get("/api/kpi-thresholds", params={"client_id": "CLIENT-A"}).status_code == 200
+        assert c.get("/api/hold-catalogs/statuses", params={"client_id": "CLIENT-A"}).status_code == 200
+        assert c.get("/api/hold-catalogs/reasons", params={"client_id": "CLIENT-A"}).status_code == 200
+        assert c.get("/api/break-times", params={"client_id": "CLIENT-A"}).status_code == 200
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+
+
+def test_admin_can_read_any_clients_thresholds(_bind, admin_user):
+    c = _as(admin_user)
+    try:
+        assert c.get("/api/kpi-thresholds", params={"client_id": "CLIENT-B"}).status_code == 200
+        assert c.get("/api/hold-catalogs/statuses", params={"client_id": "CLIENT-B"}).status_code == 200
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+
+
 def test_multi_client_leader_dashboard_quality_not_degraded(_bind, leader_user_multi_client):
     # A multi-client leader with no client_id must not trip the ClientConfig
     # gate into raising HTTPException(400) (which was swallowed and degraded
