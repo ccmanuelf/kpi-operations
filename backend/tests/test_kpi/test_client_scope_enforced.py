@@ -71,6 +71,15 @@ def test_operator_cannot_read_other_clients_dashboard(_bind, operator_user_clien
         app.dependency_overrides.pop(get_current_user, None)
 
 
+def test_operator_cannot_read_other_clients_defects(_bind, operator_user_client_a):
+    c = _as(operator_user_client_a)
+    try:
+        assert c.get("/api/quality/kpi/defects-by-type", params={"client_id": "CLIENT-B"}).status_code == 403
+        assert c.get("/api/quality/kpi/top-defects", params={"client_id": "CLIENT-B"}).status_code == 403
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+
+
 def test_multi_client_leader_dashboard_quality_not_degraded(_bind, leader_user_multi_client):
     # A multi-client leader with no client_id must not trip the ClientConfig
     # gate into raising HTTPException(400) (which was swallowed and degraded
