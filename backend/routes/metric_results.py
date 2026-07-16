@@ -15,7 +15,7 @@ from typing import Any, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from backend.auth.jwt import get_current_user
+from backend.auth.jwt import get_current_user, ClientScope, resolve_client_scope
 from backend.database import get_db
 from backend.middleware.client_auth import verify_client_access
 from backend.orm.calculation_assumption import CalculationAssumption
@@ -122,18 +122,16 @@ def list_results(
     limit: int = Query(50, ge=1, le=500),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    scope: ClientScope = Depends(resolve_client_scope),
 ) -> List[MetricResultBrief]:
     """List dual-view calculation results with optional filters."""
 
     query = db.query(MetricCalculationResult)
 
-    # Tenant-isolation: non-cross-tenant roles see only their assigned client.
-    if current_user.role not in {"admin", "poweruser"}:
-        if not current_user.client_id_assigned:
-            return []
-        query = query.filter(MetricCalculationResult.client_id == current_user.client_id_assigned)
-    elif client_id is not None:
-        query = query.filter(MetricCalculationResult.client_id == client_id)
+    # Client-scope authorization: admin/poweruser see all clients (or narrow
+    # via client_id); scoped users are confined to their authorized client(s)
+    # and 403 if they pass an unauthorized client_id.
+    query = query.filter(scope.filter(MetricCalculationResult.client_id))
 
     if metric_name is not None:
         query = query.filter(MetricCalculationResult.metric_name == metric_name)

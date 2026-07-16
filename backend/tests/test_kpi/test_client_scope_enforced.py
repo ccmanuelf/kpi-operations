@@ -119,6 +119,24 @@ def test_admin_can_read_any_clients_thresholds(_bind, admin_user):
         app.dependency_overrides.pop(get_current_user, None)
 
 
+def test_operator_my_shift_scoped_to_own_client(_bind, operator_user_client_a):
+    c = _as(operator_user_client_a)
+    try:
+        r = c.get("/api/my-shift/summary")
+        assert r.status_code == 200  # scoped to CLIENT-A only (no cross-tenant rows)
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+
+
+def test_operator_metric_results_scoped(_bind, operator_user_client_a):
+    c = _as(operator_user_client_a)
+    try:
+        # requesting another client's results is refused (dependency 403s the param)
+        assert c.get("/api/metrics/results", params={"client_id": "CLIENT-B"}).status_code == 403
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+
+
 def test_multi_client_leader_dashboard_quality_not_degraded(_bind, leader_user_multi_client):
     # A multi-client leader with no client_id must not trip the ClientConfig
     # gate into raising HTTPException(400) (which was swallowed and degraded

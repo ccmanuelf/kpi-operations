@@ -113,6 +113,7 @@ def get_otd_by_client(
     end_date: Optional[date] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    scope: ClientScope = Depends(resolve_client_scope),
 ) -> Any:
     """
     Get OTD metrics aggregated by client.
@@ -156,9 +157,9 @@ def get_otd_by_client(
         )
     )
 
-    # Non-admin users only see their assigned client
-    if current_user.role != "admin" and current_user.client_id_assigned:
-        query = query.filter(WorkOrder.client_id == current_user.client_id_assigned)
+    # Client-scope authorization: admin/poweruser see all clients; scoped users
+    # are confined to their authorized client set.
+    query = query.filter(scope.filter(WorkOrder.client_id))
 
     results = query.group_by(WorkOrder.client_id, Client.client_name).all()
 

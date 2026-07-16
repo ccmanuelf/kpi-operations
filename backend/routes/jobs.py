@@ -161,7 +161,10 @@ def get_job_yield(job_id: str, db: Session = Depends(get_db), current_user: User
 
 @work_order_jobs_router.get("/{work_order_id}/rty")
 def get_work_order_job_rty(
-    work_order_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+    work_order_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    scope: ClientScope = Depends(resolve_client_scope),
 ) -> Any:
     """
     Calculate RTY across all jobs within a work order.
@@ -174,12 +177,7 @@ def get_work_order_job_rty(
     - Bottleneck identification (lowest yield job)
     - Total scrap across all jobs
     """
-    # Determine client filter
-    client_id = None
-    if current_user.role != "admin" and current_user.client_id_assigned:
-        client_id = current_user.client_id_assigned
-
-    result = calculate_work_order_job_rty(db, work_order_id, client_id)
+    result = calculate_work_order_job_rty(db, work_order_id, scope.as_single())
 
     if "error" in result and result.get("job_count", 0) == 0:
         raise HTTPException(status_code=404, detail=result.get("error", "No jobs found"))

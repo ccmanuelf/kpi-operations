@@ -301,6 +301,7 @@ def get_pending_approvals(
     approval_type: Optional[str] = None,  # "hold" or "resume"
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_supervisor),
+    scope: ClientScope = Depends(resolve_client_scope),
 ) -> List[HoldEntry]:
     """
     Get all holds pending approval (supervisor only).
@@ -310,9 +311,8 @@ def get_pending_approvals(
 
     query = db.query(HoldEntry)
 
-    # Apply client filter for non-admin supervisors
-    if current_user.role != "admin" and current_user.client_id_assigned:
-        query = query.filter(HoldEntry.client_id == current_user.client_id_assigned)
+    # Client-scope authorization for supervisors
+    query = query.filter(scope.filter(HoldEntry.client_id))
 
     # Filter by approval type
     if approval_type == "hold":

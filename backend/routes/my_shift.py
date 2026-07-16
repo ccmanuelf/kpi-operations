@@ -15,7 +15,7 @@ from backend.orm.production_entry import ProductionEntry
 from backend.orm.downtime_entry import DowntimeEntry
 from backend.orm.quality_entry import QualityEntry
 from backend.orm.work_order import WorkOrder
-from backend.auth.jwt import get_current_user
+from backend.auth.jwt import get_current_user, ClientScope, resolve_client_scope
 from backend.orm.user import User
 from backend.utils.logging_utils import get_module_logger
 
@@ -92,6 +92,7 @@ def get_my_shift_summary(
     operator_id: Optional[str] = Query(None, description="Operator employee ID (currently advisory only)"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    scope: ClientScope = Depends(resolve_client_scope),
 ) -> Any:
     """
     Get personalized shift summary for an operator.
@@ -114,9 +115,8 @@ def get_my_shift_summary(
 
     # Production entries — scoped by shift_date and (optionally) shift_id.
     production_query = db.query(ProductionEntry).filter(func.date(ProductionEntry.shift_date) == target_date)
-    # Multi-tenant isolation: non-admin users see only their assigned client's data
-    if current_user.role != "admin" and current_user.client_id_assigned:
-        production_query = production_query.filter(ProductionEntry.client_id == current_user.client_id_assigned)
+    # Multi-tenant isolation: client-scope authorization
+    production_query = production_query.filter(scope.filter(ProductionEntry.client_id))
     if shift_id is not None:
         production_query = production_query.filter(ProductionEntry.shift_id == shift_id)
 
@@ -135,8 +135,7 @@ def get_my_shift_summary(
 
     # Downtime entries — scoped by shift_date.
     downtime_query = db.query(DowntimeEntry).filter(func.date(DowntimeEntry.shift_date) == target_date)
-    if current_user.role != "admin" and current_user.client_id_assigned:
-        downtime_query = downtime_query.filter(DowntimeEntry.client_id == current_user.client_id_assigned)
+    downtime_query = downtime_query.filter(scope.filter(DowntimeEntry.client_id))
 
     downtimes = downtime_query.all()
     downtime_incidents = len(downtimes)
@@ -144,8 +143,7 @@ def get_my_shift_summary(
 
     # Quality entries — scoped by shift_date.
     quality_query = db.query(QualityEntry).filter(func.date(QualityEntry.shift_date) == target_date)
-    if current_user.role != "admin" and current_user.client_id_assigned:
-        quality_query = quality_query.filter(QualityEntry.client_id == current_user.client_id_assigned)
+    quality_query = quality_query.filter(scope.filter(QualityEntry.client_id))
 
     qualities = quality_query.all()
     quality_checks = len(qualities)
@@ -301,6 +299,7 @@ def get_my_shift_stats(
     operator_id: Optional[str] = Query(None),  # advisory; see /summary docstring
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    scope: ClientScope = Depends(resolve_client_scope),
 ) -> Any:
     """
     Get just the statistics portion of shift summary.
@@ -312,8 +311,7 @@ def get_my_shift_stats(
         func.sum(ProductionEntry.units_produced).label("total_units"),
         func.count(ProductionEntry.production_entry_id).label("entry_count"),
     ).filter(func.date(ProductionEntry.shift_date) == target_date)
-    if current_user.role != "admin" and current_user.client_id_assigned:
-        production_query = production_query.filter(ProductionEntry.client_id == current_user.client_id_assigned)
+    production_query = production_query.filter(scope.filter(ProductionEntry.client_id))
     if shift_id is not None:
         production_query = production_query.filter(ProductionEntry.shift_id == shift_id)
 
@@ -323,8 +321,7 @@ def get_my_shift_stats(
         func.count(DowntimeEntry.downtime_entry_id).label("incidents"),
         func.sum(DowntimeEntry.downtime_duration_minutes).label("total_minutes"),
     ).filter(func.date(DowntimeEntry.shift_date) == target_date)
-    if current_user.role != "admin" and current_user.client_id_assigned:
-        downtime_query = downtime_query.filter(DowntimeEntry.client_id == current_user.client_id_assigned)
+    downtime_query = downtime_query.filter(scope.filter(DowntimeEntry.client_id))
 
     down_result = downtime_query.first()
 
@@ -332,8 +329,7 @@ def get_my_shift_stats(
         func.count(QualityEntry.quality_entry_id).label("checks"),
         func.sum(QualityEntry.units_defective).label("defects"),
     ).filter(func.date(QualityEntry.shift_date) == target_date)
-    if current_user.role != "admin" and current_user.client_id_assigned:
-        quality_query = quality_query.filter(QualityEntry.client_id == current_user.client_id_assigned)
+    quality_query = quality_query.filter(scope.filter(QualityEntry.client_id))
 
     qual_result = quality_query.first()
 
@@ -360,6 +356,7 @@ def get_my_recent_activity(
     limit: int = Query(10, ge=1, le=50),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    scope: ClientScope = Depends(resolve_client_scope),
 ) -> Any:
     """
     Get recent activity entries for the shift.
@@ -369,8 +366,7 @@ def get_my_recent_activity(
     activities: List[Dict[str, Any]] = []
 
     production_query = db.query(ProductionEntry).filter(func.date(ProductionEntry.shift_date) == target_date)
-    if current_user.role != "admin" and current_user.client_id_assigned:
-        production_query = production_query.filter(ProductionEntry.client_id == current_user.client_id_assigned)
+    production_query = production_query.filter(scope.filter(ProductionEntry.client_id))
     if shift_id is not None:
         production_query = production_query.filter(ProductionEntry.shift_id == shift_id)
 
@@ -388,8 +384,7 @@ def get_my_recent_activity(
         )
 
     downtime_query = db.query(DowntimeEntry).filter(func.date(DowntimeEntry.shift_date) == target_date)
-    if current_user.role != "admin" and current_user.client_id_assigned:
-        downtime_query = downtime_query.filter(DowntimeEntry.client_id == current_user.client_id_assigned)
+    downtime_query = downtime_query.filter(scope.filter(DowntimeEntry.client_id))
 
     for d in downtime_query.order_by(DowntimeEntry.created_at.desc()).limit(limit):
         ts = (d.created_at or d.shift_date).isoformat()
@@ -405,8 +400,7 @@ def get_my_recent_activity(
         )
 
     quality_query = db.query(QualityEntry).filter(func.date(QualityEntry.shift_date) == target_date)
-    if current_user.role != "admin" and current_user.client_id_assigned:
-        quality_query = quality_query.filter(QualityEntry.client_id == current_user.client_id_assigned)
+    quality_query = quality_query.filter(scope.filter(QualityEntry.client_id))
 
     for q in quality_query.order_by(QualityEntry.created_at.desc()).limit(limit):
         ts = (q.created_at or q.shift_date).isoformat()
