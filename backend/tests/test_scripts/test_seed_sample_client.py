@@ -299,6 +299,47 @@ def test_work_orders_cover_all_statuses_with_transitions_and_holds(db_session):
         assert expected in hold_statuses, f"missing hold status {expected}"
 
 
+def test_all_work_orders_have_required_date(db_session):
+    from backend.orm import WorkOrder
+
+    _seed_admin(db_session)
+    spec = seed.CLIENT_SPECS["DEMO-PIECE"]
+    seed.seed_client(db_session, spec, days=10, anchor=FIXED_ANCHOR)
+
+    wos = db_session.query(WorkOrder).filter_by(client_id="DEMO-PIECE").all()
+    assert len(wos) >= 10
+    for wo in wos:
+        assert wo.required_date is not None, f"{wo.work_order_id} missing required_date"
+
+
+def test_holds_are_backdated_with_chronic_active_and_resolved_resume(db_session):
+    from backend.orm import HoldEntry
+
+    _seed_admin(db_session)
+    spec = seed.CLIENT_SPECS["DEMO-PIECE"]
+    seed.seed_client(db_session, spec, days=10, anchor=FIXED_ANCHOR)
+
+    holds = db_session.query(HoldEntry).filter_by(client_id="DEMO-PIECE").all()
+    assert len(holds) == 7
+    open_statuses = {"PENDING_HOLD_APPROVAL", "ON_HOLD", "PENDING_RESUME_APPROVAL"}
+    resolved_statuses = {"RESUMED", "RELEASED", "CANCELLED", "SCRAPPED"}
+
+    for h in holds:
+        age = (FIXED_ANCHOR - h.hold_date.date()).days
+        assert 10 <= age <= 70, f"{h.hold_status} age {age} out of band"
+        if h.hold_status in open_statuses:
+            assert h.resume_date is None
+        if h.hold_status in resolved_statuses:
+            assert h.resume_date is not None
+            assert h.hold_date < h.resume_date
+            assert h.resume_date.date() <= FIXED_ANCHOR
+
+    on_hold = next(h for h in holds if h.hold_status == "ON_HOLD")
+    chronic_age = (FIXED_ANCHOR - on_hold.hold_date.date()).days
+    assert chronic_age >= 60, f"ON_HOLD hold should be chronic, got {chronic_age}d"
+    assert on_hold.resume_date is None
+
+
 def test_daily_data_scales_with_days_and_is_credible(db_session):
     from decimal import Decimal  # noqa: F401
     from backend.orm import (
@@ -322,7 +363,13 @@ def test_daily_data_scales_with_days_and_is_credible(db_session):
     # status-derived target of planned_quantity), not one-per-day, so the
     # count now scales with the number of WOs that have a nonzero target
     # (2-4 entries each) rather than with `days` directly.
-    wos = db_session.query(WorkOrder).filter_by(client_id=cid).all()
+    # The delivered-history batch (`-H` PK suffix) is excluded from daily-data
+    # generation by design (keeps OEE/throughput unchanged) — exclude it here too.
+    wos = [
+        wo
+        for wo in db_session.query(WorkOrder).filter_by(client_id=cid).all()
+        if not wo.work_order_id.split("-")[-1].startswith("H")
+    ]
     zero_target_statuses = (
         WorkOrderStatus.RECEIVED,
         WorkOrderStatus.RELEASED,
@@ -522,7 +569,11 @@ def test_production_sums_to_workorder_target(db_session):
     cid = "DEMO-PIECE"
     # For each SHIPPED/CLOSED/COMPLETED WO, produced units must equal actual_quantity
     # and land at ~100% of planned_quantity; RECEIVED/RELEASED WOs have zero production.
+    # The delivered-history batch (`-H` PK suffix) is excluded from daily-data
+    # generation by design (keeps OEE/throughput unchanged) — exclude it here too.
     for wo in db_session.query(WorkOrder).filter_by(client_id=cid).all():
+        if wo.work_order_id.split("-")[-1].startswith("H"):
+            continue
         produced = sum(
             pe.units_produced
             for pe in db_session.query(ProductionEntry).filter_by(client_id=cid, work_order_id=wo.work_order_id).all()
@@ -673,6 +724,51 @@ def test_global_defaults_seeded_once(db_session):
     db_session.commit()
     assert db_session.query(DashboardWidgetDefaults).count() >= 1
     assert db_session.query(MetricAssumptionDependency).count() >= 1
+
+
+def test_delivered_history_batch_drives_credible_and_ooc_otd(db_session):
+    from collections import defaultdict
+    from backend.orm import WorkOrder, ProductionEntry
+
+    _seed_admin(db_session)
+    spec = seed.CLIENT_SPECS["DEMO-PIECE"]
+    seed.seed_client(db_session, spec, days=10, anchor=FIXED_ANCHOR)
+
+    hist = (
+        db_session.query(WorkOrder)
+        .filter(WorkOrder.client_id == "DEMO-PIECE", WorkOrder.work_order_id.like("WO-DEMO-PIECE-H%"))
+        .all()
+    )
+    assert len(hist) == 15, f"expected 15 history WOs, got {len(hist)}"
+    for wo in hist:
+        assert wo.status.value == "SHIPPED"
+        assert wo.required_date is not None and wo.actual_delivery_date is not None
+
+    # Overall on-time rate is credible (~70%), not 0% and not 100%.
+    on_time = sum(1 for wo in hist if wo.actual_delivery_date <= wo.required_date)
+    rate = on_time / len(hist)
+    assert 0.5 <= rate <= 0.85, f"on-time rate {rate} not credible"
+
+    # Replicate the OTD trend's per-required_date-day aggregation over ALL client
+    # WOs; at least one day must dip below the 80% critical threshold (guaranteed OOC).
+    per_day = defaultdict(lambda: [0, 0])  # date -> [total, on_time]
+    for wo in db_session.query(WorkOrder).filter_by(client_id="DEMO-PIECE").all():
+        if wo.required_date is None:
+            continue
+        d = wo.required_date.date()
+        per_day[d][0] += 1
+        if wo.actual_delivery_date is not None and wo.actual_delivery_date <= wo.required_date:
+            per_day[d][1] += 1
+    otd_by_day = {d: (ot / tot * 100) for d, (tot, ot) in per_day.items() if tot > 0}
+    assert any(v < 80 for v in otd_by_day.values()), f"no OOC OTD day <80%: {otd_by_day}"
+
+    # The history batch must NOT generate production data (keeps OEE/throughput unchanged).
+    hist_prod = (
+        db_session.query(ProductionEntry)
+        .filter(ProductionEntry.client_id == "DEMO-PIECE", ProductionEntry.work_order_id.like("WO-DEMO-PIECE-H%"))
+        .count()
+    )
+    assert hist_prod == 0, f"history WOs should have no production entries, got {hist_prod}"
 
 
 def test_seed_client_under_foreign_key_enforcement(tmp_path):

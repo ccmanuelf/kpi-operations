@@ -96,6 +96,10 @@ def seed_work_orders(session: Session, spec: ClientSpec, entered_by: str, anchor
         # create_work_order doesn't read actual_delivery_date via **kwargs; set directly.
         wo.actual_delivery_date = delivered
 
+        # OTD reads required_date (not planned_ship_date). Anchor it to the plan
+        # so the 10 status WOs participate in the On-Time-Delivery metric.
+        wo.required_date = planned_ship
+
         # --- Milestones (status-coherent, anchor-relative, deterministic) ---
         wo.received_date = now - timedelta(days=rng.randint(30, 70))
         if status in (WorkOrderStatus.SHIPPED, WorkOrderStatus.CLOSED):
@@ -147,6 +151,35 @@ def seed_work_orders(session: Session, spec: ClientSpec, entered_by: str, anchor
             # explicit deterministic job_id (do NOT let the factory mint a _next_id PK)
             TestDataFactory.create_job(session, work_order_id=wo_id, client_id=cid, job_id=f"JOB-{cid}-{i:03d}")
         wos.append(wo)
+
+    # --- Delivered-history batch: credible + OOC-demoable OTD -----------------
+    # OTD groups delivered WOs by required_date over the trend window; the 10
+    # status WOs alone give too thin a denominator. Add lightweight SHIPPED WOs
+    # spread across the last ~90 days, ~67% on-time, with a handful of days that
+    # dip below the 80% critical threshold so the diagnostic OOC tooltip demos.
+    HISTORY_N = 15
+    hrng = rng_for(cid, "otd_history")
+    for n in range(1, HISTORY_N + 1):
+        days_ago = 2 + (n - 1) * 6  # distinct days: 2, 8, 14, ... 86 (within last 90d)
+        req = now - timedelta(days=days_ago)
+        late = n % 3 == 0  # every 3rd order late -> 5 late / 10 on-time = 67% on-time
+        delivered = req + timedelta(days=hrng.randint(2, 6)) if late else req - timedelta(days=hrng.randint(0, 2))
+        hwo = TestDataFactory.create_work_order(
+            session,
+            client_id=cid,
+            work_order_id=f"WO-{cid}-H{n:03d}",
+            status=WorkOrderStatus.SHIPPED,
+            planned_quantity=hrng.randint(500, 2000),
+            planned_ship_date=req,
+            priority="MEDIUM",
+        )
+        hwo.required_date = req
+        hwo.actual_delivery_date = delivered
+        hwo.received_date = req - timedelta(days=hrng.randint(20, 40))
+        hwo.dispatch_date = req - timedelta(days=hrng.randint(1, 5))
+        hwo.shipped_date = delivered
+        wos.append(hwo)
+
     session.flush()
     return wos
 
@@ -179,7 +212,7 @@ def seed_holds(session: Session, client_id: str, work_orders: list, entered_by: 
     # Construct HoldEntry directly: TestDataFactory.create_hold_entry mints
     # hold_entry_id via _next_id("HOLD") (process-local counter → cross-process
     # PK collision). Use a deterministic client-scoped PK instead.
-    from datetime import datetime, timezone
+    from datetime import datetime, timedelta, timezone
     from backend.orm import HoldEntry, WorkOrderStatus
 
     if session.query(HoldEntry).filter_by(client_id=client_id).first() is not None:
@@ -202,8 +235,22 @@ def seed_holds(session: Session, client_id: str, work_orders: list, entered_by: 
     # Prefer the WO actually in ON_HOLD status for open holds; fall back to the
     # first WO if (defensively) none is ON_HOLD, so this never StopIteration-crashes.
     on_hold_wo = next((w for w in work_orders if w.status == WorkOrderStatus.ON_HOLD), work_orders[0])
+    anchor_dt = datetime.combine(anchor, datetime.min.time(), tzinfo=timezone.utc)
+    resolved_statuses = {"RESUMED", "RELEASED", "CANCELLED", "SCRAPPED"}
     for i, hold_status in enumerate(chain, start=1):
         wo = on_hold_wo if hold_status in open_statuses else work_orders[i % len(work_orders)]
+        # Backdate deterministically so WIP-Aging shows real aging. The ON_HOLD
+        # hold is the chronic one (60-70d) so the active-hold aging is pronounced.
+        hrng = rng_for(client_id, "hold_age", i)
+        age_days = hrng.randint(60, 70) if hold_status == "ON_HOLD" else hrng.randint(10, 70)
+        hold_date = anchor_dt - timedelta(days=age_days)
+        # Resolved holds carry a resume_date strictly between hold_date and anchor
+        # (correct inactive semantics + the discontinuity that makes an SPC
+        # WIP-Aging OOC flag likely). Open-status holds stay active (resume_date NULL).
+        resume_date = None
+        if hold_status in resolved_statuses:
+            resume_offset = rng_for(client_id, "hold_resume", i).randint(1, max(2, age_days - 1))
+            resume_date = hold_date + timedelta(days=resume_offset)
         session.add(
             HoldEntry(
                 hold_entry_id=f"HOLD-{client_id}-{i:03d}",
@@ -213,7 +260,8 @@ def seed_holds(session: Session, client_id: str, work_orders: list, entered_by: 
                 hold_reason="QUALITY_ISSUE",
                 hold_reason_category="QUALITY",
                 hold_status=hold_status,
-                hold_date=datetime.combine(anchor, datetime.min.time(), tzinfo=timezone.utc),
+                hold_date=hold_date,
+                resume_date=resume_date,
             )
         )
     session.flush()
@@ -250,7 +298,11 @@ def seed_daily_data(session: Session, spec: ClientSpec, days: int, entered_by: s
     shifts = seed_shifts(session, cid)
     lines, _ = seed_lines(session, cid)
     employees = seed_employees(session, spec)
-    work_orders = session.query(WorkOrder).filter_by(client_id=cid).order_by(WorkOrder.work_order_id).all()
+    work_orders = [
+        wo
+        for wo in session.query(WorkOrder).filter_by(client_id=cid).order_by(WorkOrder.work_order_id).all()
+        if not wo.work_order_id.split("-")[-1].startswith("H")
+    ]
     product, shift, line = products[0], shifts[0], lines[0]
     end = anchor
     ideal_ct = float(product.ideal_cycle_time or Decimal("0.12"))
