@@ -23,7 +23,13 @@ from backend.services.downtime_service import (
     delete_event as delete_downtime_event,
 )
 from backend.calculations.availability import calculate_availability
-from backend.auth.jwt import get_current_active_supervisor, get_current_contributor, get_current_user
+from backend.auth.jwt import (
+    get_current_active_supervisor,
+    get_current_contributor,
+    get_current_user,
+    ClientScope,
+    resolve_client_scope,
+)
 from backend.orm.user import User
 
 logger = get_module_logger(__name__)
@@ -146,6 +152,7 @@ def calculate_availability_kpi(
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    scope: ClientScope = Depends(resolve_client_scope),
 ) -> Any:
     """Calculate availability KPI.
 
@@ -172,17 +179,12 @@ def calculate_availability_kpi(
     # Reject reversed range (Run-6 audit R6-D-001) before defaulting.
     validate_date_range(start_date, end_date)
 
-    # Effective client filter — admin pass-through, others scoped.
-    effective_client_id = client_id
-    if not effective_client_id and current_user.role != "admin" and current_user.client_id_assigned:
-        effective_client_id = current_user.client_id_assigned
-
     # If a specific work order + date were provided, delegate to the
     # per-work-order helper (which is what the original route name
     # implied).
     if work_order_id is not None and target_date is not None:
         availability, scheduled, downtime, events = calculate_availability(
-            db, work_order_id, target_date, effective_client_id
+            db, work_order_id, target_date, scope.as_single()
         )
     else:
         # Aggregate path. Default to last 7 days when no window provided.
@@ -198,8 +200,7 @@ def calculate_availability_kpi(
             sa_cast(DowntimeEntry.shift_date, SADate) >= start_date,
             sa_cast(DowntimeEntry.shift_date, SADate) <= end_date,
         )
-        if effective_client_id:
-            query = query.filter(DowntimeEntry.client_id == effective_client_id)
+        query = query.filter(scope.filter(DowntimeEntry.client_id))
         row = query.first()
 
         days = max(1, (end_date - start_date).days + 1)
