@@ -69,3 +69,18 @@ def test_operator_cannot_read_other_clients_dashboard(_bind, operator_user_clien
         assert c.get("/api/kpi/dashboard/aggregated", params={"client_id": "CLIENT-B"}).status_code == 403
     finally:
         app.dependency_overrides.pop(get_current_user, None)
+
+
+def test_multi_client_leader_dashboard_quality_not_degraded(_bind, leader_user_multi_client):
+    # A multi-client leader with no client_id must not trip the ClientConfig
+    # gate into raising HTTPException(400) (which was swallowed and degraded
+    # the quality section to a zeroed "Calculation error" payload).
+    c = _as(leader_user_multi_client)
+    try:
+        r = c.get("/api/kpi/dashboard/aggregated")
+        assert r.status_code == 200
+        quality = r.json()["quality"]
+        assert "error" not in quality
+        assert quality["opportunities_per_unit"] == 1
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)

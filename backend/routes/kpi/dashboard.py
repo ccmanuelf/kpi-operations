@@ -150,10 +150,11 @@ def get_aggregated_dashboard(
         # when a per-entry value isn't present. We resolve a fallback via
         # the most recent client config; absent that, use 1 (so DPMO ≡ PPM).
         opps_per_unit = 1
-        if scope.as_single():
+        if scope.client_ids is not None and len(scope.client_ids) == 1:
             from backend.orm.client_config import ClientConfig
 
-            cc = db.query(ClientConfig).filter(ClientConfig.client_id == scope.as_single()).first()
+            cid = scope.client_ids[0]
+            cc = db.query(ClientConfig).filter(ClientConfig.client_id == cid).first()
             opps_default = getattr(cc, "dpmo_opportunities_default", None) if cc else None
             if opps_default is not None:
                 opps_per_unit = max(1, int(opps_default))
