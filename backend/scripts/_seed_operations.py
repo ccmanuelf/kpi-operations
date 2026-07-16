@@ -151,6 +151,35 @@ def seed_work_orders(session: Session, spec: ClientSpec, entered_by: str, anchor
             # explicit deterministic job_id (do NOT let the factory mint a _next_id PK)
             TestDataFactory.create_job(session, work_order_id=wo_id, client_id=cid, job_id=f"JOB-{cid}-{i:03d}")
         wos.append(wo)
+
+    # --- Delivered-history batch: credible + OOC-demoable OTD -----------------
+    # OTD groups delivered WOs by required_date over the trend window; the 10
+    # status WOs alone give too thin a denominator. Add lightweight SHIPPED WOs
+    # spread across the last ~90 days, ~67% on-time, with a handful of days that
+    # dip below the 80% critical threshold so the diagnostic OOC tooltip demos.
+    HISTORY_N = 15
+    hrng = rng_for(cid, "otd_history")
+    for n in range(1, HISTORY_N + 1):
+        days_ago = 2 + (n - 1) * 6  # distinct days: 2, 8, 14, ... 86 (within last 90d)
+        req = now - timedelta(days=days_ago)
+        late = n % 3 == 0  # every 3rd order late -> 5 late / 10 on-time = 67% on-time
+        delivered = req + timedelta(days=hrng.randint(2, 6)) if late else req - timedelta(days=hrng.randint(0, 2))
+        hwo = TestDataFactory.create_work_order(
+            session,
+            client_id=cid,
+            work_order_id=f"WO-{cid}-H{n:03d}",
+            status=WorkOrderStatus.SHIPPED,
+            planned_quantity=hrng.randint(500, 2000),
+            planned_ship_date=req,
+            priority="MEDIUM",
+        )
+        hwo.required_date = req
+        hwo.actual_delivery_date = delivered
+        hwo.received_date = req - timedelta(days=hrng.randint(20, 40))
+        hwo.dispatch_date = req - timedelta(days=hrng.randint(1, 5))
+        hwo.shipped_date = delivered
+        wos.append(hwo)
+
     session.flush()
     return wos
 
@@ -269,7 +298,11 @@ def seed_daily_data(session: Session, spec: ClientSpec, days: int, entered_by: s
     shifts = seed_shifts(session, cid)
     lines, _ = seed_lines(session, cid)
     employees = seed_employees(session, spec)
-    work_orders = session.query(WorkOrder).filter_by(client_id=cid).order_by(WorkOrder.work_order_id).all()
+    work_orders = [
+        wo
+        for wo in session.query(WorkOrder).filter_by(client_id=cid).order_by(WorkOrder.work_order_id).all()
+        if not wo.work_order_id.split("-")[-1].startswith("H")
+    ]
     product, shift, line = products[0], shifts[0], lines[0]
     end = anchor
     ideal_ct = float(product.ideal_cycle_time or Decimal("0.12"))
