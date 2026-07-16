@@ -179,7 +179,7 @@ def seed_holds(session: Session, client_id: str, work_orders: list, entered_by: 
     # Construct HoldEntry directly: TestDataFactory.create_hold_entry mints
     # hold_entry_id via _next_id("HOLD") (process-local counter → cross-process
     # PK collision). Use a deterministic client-scoped PK instead.
-    from datetime import datetime, timezone
+    from datetime import datetime, timedelta, timezone
     from backend.orm import HoldEntry, WorkOrderStatus
 
     if session.query(HoldEntry).filter_by(client_id=client_id).first() is not None:
@@ -202,8 +202,22 @@ def seed_holds(session: Session, client_id: str, work_orders: list, entered_by: 
     # Prefer the WO actually in ON_HOLD status for open holds; fall back to the
     # first WO if (defensively) none is ON_HOLD, so this never StopIteration-crashes.
     on_hold_wo = next((w for w in work_orders if w.status == WorkOrderStatus.ON_HOLD), work_orders[0])
+    anchor_dt = datetime.combine(anchor, datetime.min.time(), tzinfo=timezone.utc)
+    resolved_statuses = {"RESUMED", "RELEASED", "CANCELLED", "SCRAPPED"}
     for i, hold_status in enumerate(chain, start=1):
         wo = on_hold_wo if hold_status in open_statuses else work_orders[i % len(work_orders)]
+        # Backdate deterministically so WIP-Aging shows real aging. The ON_HOLD
+        # hold is the chronic one (60-70d) so the active-hold aging is pronounced.
+        hrng = rng_for(client_id, "hold_age", i)
+        age_days = hrng.randint(60, 70) if hold_status == "ON_HOLD" else hrng.randint(10, 70)
+        hold_date = anchor_dt - timedelta(days=age_days)
+        # Resolved holds carry a resume_date strictly between hold_date and anchor
+        # (correct inactive semantics + the discontinuity that makes an SPC
+        # WIP-Aging OOC flag likely). Open-status holds stay active (resume_date NULL).
+        resume_date = None
+        if hold_status in resolved_statuses:
+            resume_offset = rng_for(client_id, "hold_resume", i).randint(1, max(2, age_days - 1))
+            resume_date = hold_date + timedelta(days=resume_offset)
         session.add(
             HoldEntry(
                 hold_entry_id=f"HOLD-{client_id}-{i:03d}",
@@ -213,7 +227,8 @@ def seed_holds(session: Session, client_id: str, work_orders: list, entered_by: 
                 hold_reason="QUALITY_ISSUE",
                 hold_reason_category="QUALITY",
                 hold_status=hold_status,
-                hold_date=datetime.combine(anchor, datetime.min.time(), tzinfo=timezone.utc),
+                hold_date=hold_date,
+                resume_date=resume_date,
             )
         )
     session.flush()

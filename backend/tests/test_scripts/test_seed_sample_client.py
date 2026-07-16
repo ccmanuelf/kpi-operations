@@ -299,6 +299,34 @@ def test_work_orders_cover_all_statuses_with_transitions_and_holds(db_session):
         assert expected in hold_statuses, f"missing hold status {expected}"
 
 
+def test_holds_are_backdated_with_chronic_active_and_resolved_resume(db_session):
+    from backend.orm import HoldEntry
+
+    _seed_admin(db_session)
+    spec = seed.CLIENT_SPECS["DEMO-PIECE"]
+    seed.seed_client(db_session, spec, days=10, anchor=FIXED_ANCHOR)
+
+    holds = db_session.query(HoldEntry).filter_by(client_id="DEMO-PIECE").all()
+    assert len(holds) == 7
+    open_statuses = {"PENDING_HOLD_APPROVAL", "ON_HOLD", "PENDING_RESUME_APPROVAL"}
+    resolved_statuses = {"RESUMED", "RELEASED", "CANCELLED", "SCRAPPED"}
+
+    for h in holds:
+        age = (FIXED_ANCHOR - h.hold_date.date()).days
+        assert 10 <= age <= 70, f"{h.hold_status} age {age} out of band"
+        if h.hold_status in open_statuses:
+            assert h.resume_date is None
+        if h.hold_status in resolved_statuses:
+            assert h.resume_date is not None
+            assert h.hold_date < h.resume_date
+            assert h.resume_date.date() <= FIXED_ANCHOR
+
+    on_hold = next(h for h in holds if h.hold_status == "ON_HOLD")
+    chronic_age = (FIXED_ANCHOR - on_hold.hold_date.date()).days
+    assert chronic_age >= 60, f"ON_HOLD hold should be chronic, got {chronic_age}d"
+    assert on_hold.resume_date is None
+
+
 def test_daily_data_scales_with_days_and_is_credible(db_session):
     from decimal import Decimal  # noqa: F401
     from backend.orm import (
