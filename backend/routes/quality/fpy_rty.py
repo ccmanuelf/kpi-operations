@@ -8,11 +8,13 @@ with repair/rework distinction, and comprehensive quality score calculation.
 from datetime import date, datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from backend.database import get_db
 from backend.auth.jwt import ClientScope, get_current_user, resolve_client_scope
+from backend.middleware.client_auth import verify_client_access
+from backend.orm.product import Product
 from backend.orm.user import User
 from backend.schemas.quality import FPYRTYCalculationResponse, InferenceMetadata
 from decimal import Decimal
@@ -208,9 +210,11 @@ def get_fpy_rty_breakdown(
     effective_product_id = product_id or 0
 
     fpy_breakdown = calculate_fpy_with_repair_breakdown(
-        db, effective_product_id, start_date, end_date, inspection_stage
+        db, effective_product_id, start_date, end_date, inspection_stage, client_ids=scope.client_ids
     )
-    rty_breakdown = calculate_rty_with_repair_impact(db, effective_product_id, start_date, end_date)
+    rty_breakdown = calculate_rty_with_repair_impact(
+        db, effective_product_id, start_date, end_date, client_ids=scope.client_ids
+    )
 
     return {
         "period": {"start_date": start_date.isoformat(), "end_date": end_date.isoformat()},
@@ -269,9 +273,18 @@ def get_quality_score(
     """
     Calculate comprehensive quality score combining multiple metrics
     Includes FPY, RTY, PPM, and DPMO analysis
+
+    SECURITY: product_id is client-owned; verifies the caller is authorized
+    for the product's client before returning any data.
     """
     from backend.utils.date_range import validate_date_range
 
     # Reject reversed range (Run-6 audit R6-D-001) before defaulting.
     validate_date_range(start_date, end_date)
+
+    product = db.query(Product).filter(Product.product_id == product_id).first()
+    if product is None:
+        raise HTTPException(status_code=404, detail="Product not found")
+    verify_client_access(current_user, product.client_id, db)
+
     return calculate_quality_score(db, product_id, start_date, end_date)

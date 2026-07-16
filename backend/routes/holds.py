@@ -29,6 +29,7 @@ from backend.auth.jwt import (
     ClientScope,
     resolve_client_scope,
 )
+from backend.middleware.client_auth import verify_client_access
 from backend.orm.user import User
 from backend.constants import DEFAULT_PAGE_SIZE, SMALL_PAGE_SIZE, LOOKBACK_MONTHLY_DAYS
 from backend.utils.logging_utils import get_module_logger
@@ -179,10 +180,8 @@ def approve_hold(
     if not db_hold:
         raise HTTPException(status_code=404, detail="WIP hold not found")
 
-    # Verify supervisor has access to this client
-    if current_user.role != "admin" and current_user.client_id_assigned:
-        if db_hold.client_id != current_user.client_id_assigned:
-            raise HTTPException(status_code=403, detail="Access denied to this client's hold")
+    # Verify caller has access to this hold's client
+    verify_client_access(current_user, db_hold.client_id, db)
 
     # Validate status transition
     if db_hold.hold_status != HoldStatus.PENDING_HOLD_APPROVAL:
@@ -218,10 +217,8 @@ def request_resume(
     if not db_hold:
         raise HTTPException(status_code=404, detail="WIP hold not found")
 
-    # Verify user has access to this client
-    if current_user.role != "admin" and current_user.client_id_assigned:
-        if db_hold.client_id != current_user.client_id_assigned:
-            raise HTTPException(status_code=403, detail="Access denied to this client's hold")
+    # Verify caller has access to this hold's client
+    verify_client_access(current_user, db_hold.client_id, db)
 
     # Validate status transition
     if db_hold.hold_status != HoldStatus.ON_HOLD:
@@ -257,10 +254,8 @@ def approve_resume(
     if not db_hold:
         raise HTTPException(status_code=404, detail="WIP hold not found")
 
-    # Verify supervisor has access to this client
-    if current_user.role != "admin" and current_user.client_id_assigned:
-        if db_hold.client_id != current_user.client_id_assigned:
-            raise HTTPException(status_code=403, detail="Access denied to this client's hold")
+    # Verify caller has access to this hold's client
+    verify_client_access(current_user, db_hold.client_id, db)
 
     # Validate status transition
     if db_hold.hold_status != HoldStatus.PENDING_RESUME_APPROVAL:
@@ -516,7 +511,10 @@ def get_wip_aging_trend(
 
 @wip_aging_router.get("/chronic-holds")
 def get_chronic_holds(
-    threshold_days: int = 30, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+    threshold_days: int = 30,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    scope: ClientScope = Depends(resolve_client_scope),
 ) -> list:
     """
     Identify chronic WIP holds.
@@ -526,4 +524,4 @@ def get_chronic_holds(
 
     SECURITY: Requires authentication; client filtering applied in identify_chronic_holds.
     """
-    return identify_chronic_holds(db, threshold_days)
+    return identify_chronic_holds(db, threshold_days, client_id=scope.as_single())

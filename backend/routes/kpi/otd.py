@@ -94,7 +94,10 @@ def calculate_otd_kpi(
 
 @otd_router.get("/late-orders")
 def get_late_orders(
-    as_of_date: Optional[date] = None, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+    as_of_date: Optional[date] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    scope: ClientScope = Depends(resolve_client_scope),
 ) -> Any:
     """
     Identify late orders.
@@ -104,7 +107,7 @@ def get_late_orders(
 
     SECURITY: Requires authentication; client filtering applied in identify_late_orders.
     """
-    return identify_late_orders(db, as_of_date or date.today())
+    return identify_late_orders(db, as_of_date or date.today(), client_ids=scope.client_ids)
 
 
 @otd_router.get("/otd/by-client")
