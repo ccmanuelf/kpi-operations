@@ -17,7 +17,7 @@ from backend.services.break_time_service import (
     update_break_time_record as update_break_time,
     deactivate_break_time_record as deactivate_break_time,
 )
-from backend.auth.jwt import get_current_user, get_current_active_supervisor
+from backend.auth.jwt import get_current_user, get_current_active_supervisor, ClientScope, resolve_client_scope
 from backend.orm.user import User
 
 logger = get_module_logger(__name__)
@@ -31,6 +31,7 @@ def list_breaks(
     client_id: Optional[str] = Query(None, max_length=50, description="Filter by client ID"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    scope: ClientScope = Depends(resolve_client_scope),
 ) -> Any:
     """List break times, optionally filtered by shift and/or client."""
     if shift_id is not None and client_id is not None:

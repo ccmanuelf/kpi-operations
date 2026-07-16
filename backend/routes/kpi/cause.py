@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from backend.database import get_db
-from backend.auth.jwt import get_current_user
+from backend.auth.jwt import get_current_user, ClientScope, resolve_client_scope
 from backend.orm.user import User
 from backend.services import kpi_cause_service as svc
 
@@ -36,13 +36,10 @@ def get_kpi_cause(
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    scope: ClientScope = Depends(resolve_client_scope),
 ) -> dict[str, Any]:
     if metric not in _ALL_METRICS:
         raise HTTPException(status_code=422, detail=f"Unknown metric: {metric}")
-
-    effective_client_id = client_id
-    if not effective_client_id and current_user.role != "admin" and current_user.client_id_assigned:
-        effective_client_id = current_user.client_id_assigned
 
     empty = {
         "date": date.isoformat(),
@@ -58,7 +55,7 @@ def get_kpi_cause(
     if driver is None:  # fallback metric -> keep SP1 hint on the frontend
         return empty
 
-    result = driver(db, effective_client_id, date)
+    result = driver(db, scope.as_single(), date)
     if result is None:
         return empty
     return {

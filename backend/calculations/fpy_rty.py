@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import and_
 from datetime import date
 from decimal import Decimal
-from typing import Optional, List
+from typing import Optional, List, Sequence
 
 from backend.orm.quality_entry import QualityEntry
 from backend.orm.production_entry import ProductionEntry
@@ -193,7 +193,12 @@ def calculate_fpy(
 
 
 def calculate_fpy_with_repair_breakdown(
-    db: Session, product_id: int, start_date: date, end_date: date, inspection_stage: Optional[str] = None
+    db: Session,
+    product_id: int,
+    start_date: date,
+    end_date: date,
+    inspection_stage: Optional[str] = None,
+    client_ids: Optional[Sequence[str]] = None,
 ) -> dict:
     """
     Calculate FPY with detailed repair vs rework breakdown
@@ -202,6 +207,10 @@ def calculate_fpy_with_repair_breakdown(
     - True FPY (excludes both rework and repair)
     - Rework impact (quick fixes, in-line corrections)
     - Repair impact (significant resource usage, external fixes)
+
+    Args:
+        client_ids: Optional client scope. None = no filter (admin/poweruser,
+            all clients); otherwise restrict to these client ids.
 
     Returns: Dict with FPY and repair/rework breakdown
     """
@@ -216,6 +225,9 @@ def calculate_fpy_with_repair_breakdown(
 
     if inspection_stage:
         query = query.filter(QualityEntry.inspection_stage == inspection_stage)
+
+    if client_ids is not None:
+        query = query.filter(QualityEntry.client_id.in_(client_ids))
 
     inspections = query.all()
 
@@ -309,7 +321,12 @@ def calculate_rty(
 
 
 def calculate_rty_with_repair_impact(
-    db: Session, product_id: int, start_date: date, end_date: date, process_steps: Optional[List[str]] = None
+    db: Session,
+    product_id: int,
+    start_date: date,
+    end_date: date,
+    process_steps: Optional[List[str]] = None,
+    client_ids: Optional[Sequence[str]] = None,
 ) -> dict:
     """
     Calculate RTY with repair impact analysis
@@ -318,6 +335,11 @@ def calculate_rty_with_repair_impact(
     - Standard RTY (rolled across all stages)
     - Repair impact on throughput (how much repair affects overall yield)
     - Rework vs Repair breakdown per stage
+
+    Args:
+        client_ids: Optional client scope, forwarded to the per-step FPY
+            breakdown calls. None = no filter (admin/poweruser, all clients);
+            otherwise restrict to these client ids.
 
     Returns: Dict with RTY and repair impact metrics
     """
@@ -332,7 +354,9 @@ def calculate_rty_with_repair_impact(
     total_inspected_across_stages = 0
 
     for step in process_steps:
-        breakdown = calculate_fpy_with_repair_breakdown(db, product_id, start_date, end_date, inspection_stage=step)
+        breakdown = calculate_fpy_with_repair_breakdown(
+            db, product_id, start_date, end_date, inspection_stage=step, client_ids=client_ids
+        )
 
         # Convert FPY percentage to decimal for multiplication
         fpy_decimal = breakdown["fpy_percentage"] / 100

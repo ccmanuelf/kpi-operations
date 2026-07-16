@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, and_
 from datetime import date, datetime, timedelta
 from decimal import Decimal
-from typing import Any, Optional, Dict, List
+from typing import Any, Optional, Dict, List, Sequence
 from dataclasses import dataclass
 
 from backend.orm.production_entry import ProductionEntry
@@ -197,11 +197,17 @@ def calculate_delivery_variance(
     }
 
 
-def identify_late_orders(db: Session, as_of_date: Optional[date] = None) -> List[Dict[str, Any]]:
+def identify_late_orders(
+    db: Session, as_of_date: Optional[date] = None, client_ids: Optional[Sequence[str]] = None
+) -> List[Dict[str, Any]]:
     """
     Identify work orders that are potentially late
 
     In MVP: Orders without confirmation that are older than 7 days
+
+    Args:
+        client_ids: Optional client scope. None = no filter (admin/poweruser,
+            all clients); otherwise restrict to these client ids.
     """
 
     if as_of_date is None:
@@ -209,17 +215,18 @@ def identify_late_orders(db: Session, as_of_date: Optional[date] = None) -> List
 
     threshold_date = as_of_date - timedelta(days=7)
 
-    late_entries = (
-        db.query(ProductionEntry)
-        .filter(
-            and_(
-                ProductionEntry.production_date <= threshold_date,
-                ProductionEntry.confirmed_by.is_(None),
-                ProductionEntry.work_order_id.isnot(None),
-            )
+    query = db.query(ProductionEntry).filter(
+        and_(
+            ProductionEntry.production_date <= threshold_date,
+            ProductionEntry.confirmed_by.is_(None),
+            ProductionEntry.work_order_id.isnot(None),
         )
-        .all()
     )
+
+    if client_ids is not None:
+        query = query.filter(ProductionEntry.client_id.in_(client_ids))
+
+    late_entries = query.all()
 
     # Group by work order
     work_orders: Dict[str, Dict[str, Any]] = {}

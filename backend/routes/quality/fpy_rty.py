@@ -8,11 +8,13 @@ with repair/rework distinction, and comprehensive quality score calculation.
 from datetime import date, datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from backend.database import get_db
-from backend.auth.jwt import get_current_user
+from backend.auth.jwt import ClientScope, get_current_user, resolve_client_scope
+from backend.middleware.client_auth import verify_client_access
+from backend.orm.product import Product
 from backend.orm.user import User
 from backend.schemas.quality import FPYRTYCalculationResponse, InferenceMetadata
 from decimal import Decimal
@@ -45,6 +47,7 @@ def calculate_fpy_rty_kpi(
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    scope: ClientScope = Depends(resolve_client_scope),
 ) -> FPYRTYCalculationResponse:
     """
     Calculate FPY (First Pass Yield) and RTY (Rolled Throughput Yield) with client filtering
@@ -66,10 +69,6 @@ def calculate_fpy_rty_kpi(
     if start_date is None:
         start_date = end_date - timedelta(days=30)
 
-    effective_client_id = client_id
-    if not effective_client_id and current_user.role != "admin" and current_user.client_id_assigned:
-        effective_client_id = current_user.client_id_assigned
-
     # Overall FPY query
     query = db.query(
         func.sum(QualityEntry.units_inspected).label("total"),
@@ -79,8 +78,7 @@ def calculate_fpy_rty_kpi(
         QualityEntry.shift_date <= datetime.combine(end_date, datetime.max.time()),
     )
 
-    if effective_client_id:
-        query = query.filter(QualityEntry.client_id == effective_client_id)
+    query = query.filter(scope.filter(QualityEntry.client_id))
 
     result = query.first()
     # query.first() returns Optional[Row]; guard the empty-window case.
@@ -93,8 +91,7 @@ def calculate_fpy_rty_kpi(
         QualityEntry.shift_date >= datetime.combine(start_date, datetime.min.time()),
         QualityEntry.shift_date <= datetime.combine(end_date, datetime.max.time()),
     )
-    if effective_client_id:
-        scrapped_query = scrapped_query.filter(QualityEntry.client_id == effective_client_id)
+    scrapped_query = scrapped_query.filter(scope.filter(QualityEntry.client_id))
     scrapped_result = scrapped_query.first()
     total_scrapped = (scrapped_result.scrapped or 0) if scrapped_result is not None else 0
 
@@ -112,8 +109,7 @@ def calculate_fpy_rty_kpi(
         QualityEntry.shift_date <= datetime.combine(end_date, datetime.max.time()),
         QualityEntry.inspection_stage.isnot(None),
     )
-    if effective_client_id:
-        stage_query = stage_query.filter(QualityEntry.client_id == effective_client_id)
+    stage_query = stage_query.filter(scope.filter(QualityEntry.client_id))
     stage_results = stage_query.group_by(QualityEntry.inspection_stage).all()
 
     steps = []
@@ -179,6 +175,7 @@ def get_fpy_rty_breakdown(
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    scope: ClientScope = Depends(resolve_client_scope),
 ) -> dict:
     """
     Calculate FPY and RTY with detailed repair vs rework breakdown
@@ -210,21 +207,19 @@ def get_fpy_rty_breakdown(
     if start_date is None:
         start_date = end_date - timedelta(days=30)
 
-    effective_client_id = client_id
-    if not effective_client_id and current_user.role != "admin" and current_user.client_id_assigned:
-        effective_client_id = current_user.client_id_assigned
-
     effective_product_id = product_id or 0
 
     fpy_breakdown = calculate_fpy_with_repair_breakdown(
-        db, effective_product_id, start_date, end_date, inspection_stage
+        db, effective_product_id, start_date, end_date, inspection_stage, client_ids=scope.client_ids
     )
-    rty_breakdown = calculate_rty_with_repair_impact(db, effective_product_id, start_date, end_date)
+    rty_breakdown = calculate_rty_with_repair_impact(
+        db, effective_product_id, start_date, end_date, client_ids=scope.client_ids
+    )
 
     return {
         "period": {"start_date": start_date.isoformat(), "end_date": end_date.isoformat()},
         "product_id": product_id,
-        "client_id": effective_client_id,
+        "client_id": client_id,
         "inspection_stage_filter": inspection_stage,
         "fpy_breakdown": {
             "fpy_percentage": float(fpy_breakdown["fpy_percentage"]),
@@ -278,9 +273,18 @@ def get_quality_score(
     """
     Calculate comprehensive quality score combining multiple metrics
     Includes FPY, RTY, PPM, and DPMO analysis
+
+    SECURITY: product_id is client-owned; verifies the caller is authorized
+    for the product's client before returning any data.
     """
     from backend.utils.date_range import validate_date_range
 
     # Reject reversed range (Run-6 audit R6-D-001) before defaulting.
     validate_date_range(start_date, end_date)
+
+    product = db.query(Product).filter(Product.product_id == product_id).first()
+    if product is None:
+        raise HTTPException(status_code=404, detail="Product not found")
+    verify_client_access(current_user, product.client_id, db)
+
     return calculate_quality_score(db, product_id, start_date, end_date)

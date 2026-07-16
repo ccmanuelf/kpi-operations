@@ -12,7 +12,7 @@ import uuid
 
 from backend.utils.logging_utils import get_module_logger
 from backend.database import get_db
-from backend.auth.jwt import get_current_planner, get_current_user
+from backend.auth.jwt import get_current_planner, get_current_user, ClientScope, resolve_client_scope
 from backend.orm.user import User
 
 logger = get_module_logger(__name__)
@@ -22,7 +22,10 @@ thresholds_router = APIRouter(prefix="/api/kpi-thresholds", tags=["KPI Threshold
 
 @thresholds_router.get("")
 def get_kpi_thresholds(
-    client_id: Optional[str] = None, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+    client_id: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    scope: ClientScope = Depends(resolve_client_scope),
 ) -> Any:
     """
     Get KPI thresholds for a specific client or global defaults.

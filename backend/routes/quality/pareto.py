@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from backend.database import get_db
-from backend.auth.jwt import get_current_user
+from backend.auth.jwt import ClientScope, get_current_user, resolve_client_scope
 from backend.orm.user import User
 from backend.calculations.ppm import identify_top_defects
 from backend.utils.logging_utils import get_module_logger
@@ -31,6 +31,7 @@ def get_top_defects(
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    scope: ClientScope = Depends(resolve_client_scope),
 ) -> list:
     """
     Get top defect types (Pareto analysis)
@@ -50,7 +51,7 @@ def get_top_defects(
         work_order_id=work_order_id,
         start_date=start_date,
         end_date=end_date,
-        client_id=client_id,
+        client_id=scope.as_single(),
         limit=limit,
     )
 
@@ -63,6 +64,7 @@ def get_defects_by_type(
     limit: int = 10,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    scope: ClientScope = Depends(resolve_client_scope),
 ) -> list[dict]:
     """
     Get defect counts grouped by type with client filtering
@@ -84,11 +86,6 @@ def get_defects_by_type(
     if start_date is None:
         start_date = end_date - timedelta(days=30)
 
-    # Determine effective client filter
-    effective_client_id = client_id
-    if not effective_client_id and current_user.role != "admin" and current_user.client_id_assigned:
-        effective_client_id = current_user.client_id_assigned
-
     query = (
         db.query(
             DefectDetail.defect_type,
@@ -105,8 +102,7 @@ def get_defects_by_type(
         )
     )
 
-    if effective_client_id:
-        query = query.filter(DefectDetail.client_id_fk == effective_client_id)
+    query = query.filter(scope.filter(DefectDetail.client_id_fk))
 
     results = (
         query.group_by(DefectDetail.defect_type).order_by(func.sum(DefectDetail.defect_count).desc()).limit(limit).all()
@@ -133,6 +129,7 @@ def get_quality_by_product(
     limit: int = 10,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    scope: ClientScope = Depends(resolve_client_scope),
 ) -> list[dict]:
     """
     Get quality metrics (FPY) grouped by product/style with client filtering
@@ -154,11 +151,6 @@ def get_quality_by_product(
     if start_date is None:
         start_date = end_date - timedelta(days=30)
 
-    # Determine effective client filter
-    effective_client_id = client_id
-    if not effective_client_id and current_user.role != "admin" and current_user.client_id_assigned:
-        effective_client_id = current_user.client_id_assigned
-
     query = (
         db.query(
             WorkOrder.style_model.label("product_name"),
@@ -173,8 +165,7 @@ def get_quality_by_product(
         )
     )
 
-    if effective_client_id:
-        query = query.filter(QualityEntry.client_id == effective_client_id)
+    query = query.filter(scope.filter(QualityEntry.client_id))
 
     results = (
         query.group_by(WorkOrder.style_model).order_by(func.sum(QualityEntry.units_inspected).desc()).limit(limit).all()

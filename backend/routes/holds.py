@@ -22,7 +22,14 @@ from backend.services.hold_service import (
     validate_reason_for_client as validate_hold_reason_for_client,
 )
 from backend.calculations.wip_aging import identify_chronic_holds
-from backend.auth.jwt import get_current_active_supervisor, get_current_contributor, get_current_user
+from backend.auth.jwt import (
+    get_current_active_supervisor,
+    get_current_contributor,
+    get_current_user,
+    ClientScope,
+    resolve_client_scope,
+)
+from backend.middleware.client_auth import verify_client_access
 from backend.orm.user import User
 from backend.constants import DEFAULT_PAGE_SIZE, SMALL_PAGE_SIZE, LOOKBACK_MONTHLY_DAYS
 from backend.utils.logging_utils import get_module_logger
@@ -173,10 +180,8 @@ def approve_hold(
     if not db_hold:
         raise HTTPException(status_code=404, detail="WIP hold not found")
 
-    # Verify supervisor has access to this client
-    if current_user.role != "admin" and current_user.client_id_assigned:
-        if db_hold.client_id != current_user.client_id_assigned:
-            raise HTTPException(status_code=403, detail="Access denied to this client's hold")
+    # Verify caller has access to this hold's client
+    verify_client_access(current_user, db_hold.client_id, db)
 
     # Validate status transition
     if db_hold.hold_status != HoldStatus.PENDING_HOLD_APPROVAL:
@@ -212,10 +217,8 @@ def request_resume(
     if not db_hold:
         raise HTTPException(status_code=404, detail="WIP hold not found")
 
-    # Verify user has access to this client
-    if current_user.role != "admin" and current_user.client_id_assigned:
-        if db_hold.client_id != current_user.client_id_assigned:
-            raise HTTPException(status_code=403, detail="Access denied to this client's hold")
+    # Verify caller has access to this hold's client
+    verify_client_access(current_user, db_hold.client_id, db)
 
     # Validate status transition
     if db_hold.hold_status != HoldStatus.ON_HOLD:
@@ -251,10 +254,8 @@ def approve_resume(
     if not db_hold:
         raise HTTPException(status_code=404, detail="WIP hold not found")
 
-    # Verify supervisor has access to this client
-    if current_user.role != "admin" and current_user.client_id_assigned:
-        if db_hold.client_id != current_user.client_id_assigned:
-            raise HTTPException(status_code=403, detail="Access denied to this client's hold")
+    # Verify caller has access to this hold's client
+    verify_client_access(current_user, db_hold.client_id, db)
 
     # Validate status transition
     if db_hold.hold_status != HoldStatus.PENDING_RESUME_APPROVAL:
@@ -295,6 +296,7 @@ def get_pending_approvals(
     approval_type: Optional[str] = None,  # "hold" or "resume"
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_supervisor),
+    scope: ClientScope = Depends(resolve_client_scope),
 ) -> List[HoldEntry]:
     """
     Get all holds pending approval (supervisor only).
@@ -304,9 +306,8 @@ def get_pending_approvals(
 
     query = db.query(HoldEntry)
 
-    # Apply client filter for non-admin supervisors
-    if current_user.role != "admin" and current_user.client_id_assigned:
-        query = query.filter(HoldEntry.client_id == current_user.client_id_assigned)
+    # Client-scope authorization for supervisors
+    query = query.filter(scope.filter(HoldEntry.client_id))
 
     # Filter by approval type
     if approval_type == "hold":
@@ -335,6 +336,7 @@ def calculate_wip_aging_kpi(
     end_date: Optional[date] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    scope: ClientScope = Depends(resolve_client_scope),
 ) -> WIPAgingResponse:
     """
     Calculate WIP aging analysis with client filtering.
@@ -350,17 +352,11 @@ def calculate_wip_aging_kpi(
     # Reject reversed range (Run-6 audit R6-D-001) before defaulting.
     validate_date_range(start_date, end_date)
 
-    # Determine effective client filter
-    effective_client_id = client_id
-    if not effective_client_id and current_user.role != "admin" and current_user.client_id_assigned:
-        effective_client_id = current_user.client_id_assigned
-
     # Build query for hold entries - only active holds
     query = db.query(HoldEntry).filter(HoldEntry.hold_status == HoldStatus.ON_HOLD)
 
     # Apply client filter
-    if effective_client_id:
-        query = query.filter(HoldEntry.client_id == effective_client_id)
+    query = query.filter(scope.filter(HoldEntry.client_id))
 
     # Apply date filters if provided (on hold_date)
     if start_date:
@@ -430,6 +426,7 @@ def get_top_aging_items(
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    scope: ClientScope = Depends(resolve_client_scope),
 ) -> list[dict]:
     """Get top aging WIP items - for WIP Aging view table"""
     from backend.orm.hold_entry import HoldEntry, HoldStatus
@@ -451,10 +448,7 @@ def get_top_aging_items(
     )
 
     # Apply client filter
-    if client_id:
-        query = query.filter(HoldEntry.client_id == client_id)
-    elif current_user.role != "admin" and current_user.client_id_assigned:
-        query = query.filter(HoldEntry.client_id == current_user.client_id_assigned)
+    query = query.filter(scope.filter(HoldEntry.client_id))
 
     results = query.order_by(date_diff_days(func.now(), HoldEntry.hold_date).desc()).limit(limit).all()
 
@@ -476,6 +470,7 @@ def get_wip_aging_trend(
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    scope: ClientScope = Depends(resolve_client_scope),
 ) -> list[dict]:
     """Get WIP aging trend data - for WIP Aging view chart"""
     from backend.orm.hold_entry import HoldEntry
@@ -502,10 +497,7 @@ def get_wip_aging_trend(
         )
 
         # Apply client filter
-        if client_id:
-            query = query.filter(HoldEntry.client_id == client_id)
-        elif current_user.role != "admin" and current_user.client_id_assigned:
-            query = query.filter(HoldEntry.client_id == current_user.client_id_assigned)
+        query = query.filter(scope.filter(HoldEntry.client_id))
 
         result = query.scalar()
         avg_age = float(result) if result else 0
@@ -519,7 +511,10 @@ def get_wip_aging_trend(
 
 @wip_aging_router.get("/chronic-holds")
 def get_chronic_holds(
-    threshold_days: int = 30, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+    threshold_days: int = 30,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    scope: ClientScope = Depends(resolve_client_scope),
 ) -> list:
     """
     Identify chronic WIP holds.
@@ -528,5 +523,8 @@ def get_chronic_holds(
     Useful for identifying systemic issues in the production pipeline.
 
     SECURITY: Requires authentication; client filtering applied in identify_chronic_holds.
+    A multi-client leader sees chronic holds across all their assigned clients
+    (list-based filter) rather than being rejected by the scalar as_single() check.
     """
-    return identify_chronic_holds(db, threshold_days)
+    threshold_client = scope.client_ids[0] if scope.client_ids is not None and len(scope.client_ids) == 1 else None
+    return identify_chronic_holds(db, threshold_days, client_id=threshold_client, client_ids=scope.client_ids)

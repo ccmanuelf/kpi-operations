@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional, cast
 
 from backend.database import get_db
-from backend.auth.jwt import get_current_user, get_current_active_supervisor
+from backend.auth.jwt import get_current_user, get_current_active_supervisor, ClientScope, resolve_client_scope
 from backend.orm.hold_reason_catalog import HoldReasonCatalog
 from backend.orm.hold_status_catalog import HoldStatusCatalog
 from backend.orm.user import User
@@ -48,6 +48,7 @@ def get_hold_statuses(
     client_id: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    scope: ClientScope = Depends(resolve_client_scope),
 ) -> List[HoldStatusCatalog]:
     """
     List active hold statuses for a client.
@@ -127,6 +128,7 @@ def get_hold_reasons(
     client_id: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    scope: ClientScope = Depends(resolve_client_scope),
 ) -> List[HoldReasonCatalog]:
     """
     List active hold reasons for a client.

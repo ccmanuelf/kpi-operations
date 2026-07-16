@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import and_
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Sequence, Tuple
 import logging
 
 from backend.orm.hold_entry import HoldEntry, HoldStatus
@@ -228,12 +228,23 @@ def calculate_hold_resolution_rate(
 
 
 def identify_chronic_holds(
-    db: Session, threshold_days: Optional[int] = None, client_id: Optional[str] = None
+    db: Session,
+    threshold_days: Optional[int] = None,
+    client_id: Optional[str] = None,
+    client_ids: Optional[Sequence[str]] = None,
 ) -> List[Dict]:
     """
     Identify holds that have been open longer than threshold
 
     Phase 7.2: Uses client-specific critical threshold if threshold_days not provided
+
+    Args:
+        client_id: Scalar client filter, also used for the per-client threshold
+            lookup when threshold_days is not provided.
+        client_ids: List/tuple of client ids to filter by (multi-client scope,
+            e.g. a leader with several assigned clients). Coexists with
+            client_id; when only client_ids is supplied, client_id stays None
+            and its scalar filter is a no-op.
     """
 
     today = date.today()
@@ -254,6 +265,10 @@ def identify_chronic_holds(
     # Filter by client_id if provided
     if client_id:
         query = query.filter(HoldEntry.client_id == client_id)
+
+    # Filter by client_ids (multi-client scope) if provided
+    if client_ids is not None:
+        query = query.filter(HoldEntry.client_id.in_(client_ids))
 
     chronic_holds = query.all()
 

@@ -14,7 +14,7 @@ from decimal import Decimal
 
 from backend.utils.logging_utils import get_module_logger
 from backend.database import get_db
-from backend.auth.jwt import get_current_user
+from backend.auth.jwt import get_current_user, ClientScope, resolve_client_scope
 from backend.orm.user import User
 from backend.services.calculations.performance import (
     ExpectedOutputInputs,
@@ -33,6 +33,7 @@ def get_efficiency_by_shift(
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    scope: ClientScope = Depends(resolve_client_scope),
 ) -> Any:
     """
     Get efficiency aggregated by shift.
@@ -62,8 +63,7 @@ def get_efficiency_by_shift(
         .filter(ProductionEntry.shift_date >= start_date, ProductionEntry.shift_date <= end_date)
     )
 
-    if client_id:
-        query = query.filter(ProductionEntry.client_id == client_id)
+    query = query.filter(scope.filter(ProductionEntry.client_id))
 
     results = query.group_by(ProductionEntry.shift_id, Shift.shift_name).all()
 
@@ -97,6 +97,7 @@ def get_efficiency_by_product(
     limit: int = 10,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    scope: ClientScope = Depends(resolve_client_scope),
 ) -> Any:
     """
     Get top products by efficiency.
@@ -126,8 +127,7 @@ def get_efficiency_by_product(
         .filter(ProductionEntry.shift_date >= start_date, ProductionEntry.shift_date <= end_date)
     )
 
-    if client_id:
-        query = query.filter(ProductionEntry.client_id == client_id)
+    query = query.filter(scope.filter(ProductionEntry.client_id))
 
     results = (
         query.group_by(ProductionEntry.product_id, Product.product_name)
@@ -154,6 +154,7 @@ def get_efficiency_trend(
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    scope: ClientScope = Depends(resolve_client_scope),
 ) -> Any:
     """
     Get daily efficiency trend data.
@@ -170,10 +171,6 @@ def get_efficiency_trend(
     if start_date is None:
         start_date = end_date - timedelta(days=30)
 
-    effective_client_id = client_id
-    if not effective_client_id and current_user.role != "admin" and current_user.client_id_assigned:
-        effective_client_id = current_user.client_id_assigned
-
     query = db.query(
         func.date(ProductionEntry.shift_date).label("date"),
         func.avg(ProductionEntry.efficiency_percentage).label("value"),
@@ -182,8 +179,7 @@ def get_efficiency_trend(
         ProductionEntry.shift_date <= datetime.combine(end_date, datetime.max.time()),
     )
 
-    if effective_client_id:
-        query = query.filter(ProductionEntry.client_id == effective_client_id)
+    query = query.filter(scope.filter(ProductionEntry.client_id))
 
     results = (
         query.group_by(func.date(ProductionEntry.shift_date)).order_by(func.date(ProductionEntry.shift_date)).all()

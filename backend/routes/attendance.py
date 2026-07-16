@@ -28,7 +28,13 @@ from backend.services.attendance_service import (
     mark_all_employees_present as mark_all_present,
 )
 from backend.calculations.absenteeism import calculate_bradford_factor
-from backend.auth.jwt import get_current_active_supervisor, get_current_contributor, get_current_user
+from backend.auth.jwt import (
+    get_current_active_supervisor,
+    get_current_contributor,
+    get_current_user,
+    ClientScope,
+    resolve_client_scope,
+)
 from backend.orm.attendance_entry import AttendanceEntry
 from backend.orm.user import User
 from backend.middleware.client_auth import build_client_filter_clause, verify_client_access
@@ -296,6 +302,7 @@ def calculate_absenteeism_kpi(
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    scope: ClientScope = Depends(resolve_client_scope),
 ) -> dict:
     """
     Calculate absenteeism KPI for a shift and date range with client filtering
@@ -322,11 +329,6 @@ def calculate_absenteeism_kpi(
     if start_date is None:
         start_date = end_date - timedelta(days=LOOKBACK_MONTHLY_DAYS)
 
-    # Determine effective client filter
-    effective_client_id = client_id
-    if not effective_client_id and current_user.role != "admin" and current_user.client_id_assigned:
-        effective_client_id = current_user.client_id_assigned
-
     # Date filter conditions
     date_filter = [
         AttendanceEntry.shift_date >= datetime.combine(start_date, datetime.min.time()),
@@ -350,8 +352,7 @@ def calculate_absenteeism_kpi(
     # Apply optional filters
     if shift_id:
         query = query.filter(AttendanceEntry.shift_id == shift_id)
-    if effective_client_id:
-        query = query.filter(AttendanceEntry.client_id == effective_client_id)
+    query = query.filter(scope.filter(AttendanceEntry.client_id))
 
     result = query.first()
     if result is None:
@@ -371,8 +372,7 @@ def calculate_absenteeism_kpi(
         from backend.orm.shift import Shift
 
         shift_query = db.query(Shift)
-        if effective_client_id:
-            shift_query = shift_query.filter(Shift.client_id == effective_client_id)
+        shift_query = shift_query.filter(scope.filter(Shift.client_id))
         first_shift = shift_query.first()
         shift_id = first_shift.shift_id if first_shift else 1
 
@@ -394,8 +394,7 @@ def calculate_absenteeism_kpi(
         AttendanceEntry.is_absent == 1,
     )
 
-    if effective_client_id:
-        reason_query = reason_query.filter(AttendanceEntry.client_id == effective_client_id)
+    reason_query = reason_query.filter(scope.filter(AttendanceEntry.client_id))
 
     reason_results = reason_query.group_by(absence_type_label).all()
 
@@ -418,8 +417,7 @@ def calculate_absenteeism_kpi(
         func.sum(func.coalesce(AttendanceEntry.absence_hours, 0)).label("absent_hrs"),
     ).filter(*date_filter)
 
-    if effective_client_id:
-        dept_query = dept_query.filter(AttendanceEntry.client_id == effective_client_id)
+    dept_query = dept_query.filter(scope.filter(AttendanceEntry.client_id))
 
     dept_results = dept_query.group_by(AttendanceEntry.client_id).all()
 
@@ -441,8 +439,7 @@ def calculate_absenteeism_kpi(
         func.max(AttendanceEntry.shift_date).label("last_absence"),
     ).filter(*date_filter, AttendanceEntry.is_absent == 1)
 
-    if effective_client_id:
-        high_absence_query = high_absence_query.filter(AttendanceEntry.client_id == effective_client_id)
+    high_absence_query = high_absence_query.filter(scope.filter(AttendanceEntry.client_id))
 
     high_absence_results = (
         high_absence_query.group_by(AttendanceEntry.employee_id, AttendanceEntry.client_id)
@@ -487,6 +484,7 @@ def get_absenteeism_trend(
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    scope: ClientScope = Depends(resolve_client_scope),
 ) -> list[dict]:
     """
     Get daily absenteeism trend data for charting
@@ -507,11 +505,6 @@ def get_absenteeism_trend(
     if start_date is None:
         start_date = end_date - timedelta(days=LOOKBACK_MONTHLY_DAYS)
 
-    # Determine effective client filter
-    effective_client_id = client_id
-    if not effective_client_id and current_user.role != "admin" and current_user.client_id_assigned:
-        effective_client_id = current_user.client_id_assigned
-
     # Query daily absenteeism rates
     # Calculate absent hours: only count when is_absent=1
     # Note: `case` is imported at module level
@@ -524,8 +517,7 @@ def get_absenteeism_trend(
         AttendanceEntry.shift_date <= datetime.combine(end_date, datetime.max.time()),
     )
 
-    if effective_client_id:
-        query = query.filter(AttendanceEntry.client_id == effective_client_id)
+    query = query.filter(scope.filter(AttendanceEntry.client_id))
 
     results = query.group_by(func.date(AttendanceEntry.shift_date)).order_by("date").all()
 

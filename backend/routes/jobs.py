@@ -22,7 +22,7 @@ from backend.services.job_service import (
     complete_job_record as complete_job,
 )
 from backend.calculations.fpy_rty import calculate_job_yield, calculate_work_order_job_rty, calculate_job_rty_summary
-from backend.auth.jwt import get_current_user, get_current_active_supervisor
+from backend.auth.jwt import get_current_user, get_current_active_supervisor, ClientScope, resolve_client_scope
 from backend.orm.user import User
 from backend.utils.logging_utils import get_module_logger
 
@@ -161,7 +161,10 @@ def get_job_yield(job_id: str, db: Session = Depends(get_db), current_user: User
 
 @work_order_jobs_router.get("/{work_order_id}/rty")
 def get_work_order_job_rty(
-    work_order_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+    work_order_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    scope: ClientScope = Depends(resolve_client_scope),
 ) -> Any:
     """
     Calculate RTY across all jobs within a work order.
@@ -174,12 +177,7 @@ def get_work_order_job_rty(
     - Bottleneck identification (lowest yield job)
     - Total scrap across all jobs
     """
-    # Determine client filter
-    client_id = None
-    if current_user.role != "admin" and current_user.client_id_assigned:
-        client_id = current_user.client_id_assigned
-
-    result = calculate_work_order_job_rty(db, work_order_id, client_id)
+    result = calculate_work_order_job_rty(db, work_order_id, scope.as_single())
 
     if "error" in result and result.get("job_count", 0) == 0:
         raise HTTPException(status_code=404, detail=result.get("error", "No jobs found"))
@@ -194,6 +192,7 @@ def get_job_rty_summary(
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    scope: ClientScope = Depends(resolve_client_scope),
 ) -> Any:
     """
     Get aggregate job-level RTY summary for a date range.
@@ -219,12 +218,7 @@ def get_job_rty_summary(
     if start_date is None:
         start_date = end_date - timedelta(days=30)
 
-    # Determine effective client filter
-    effective_client_id = client_id
-    if not effective_client_id and current_user.role != "admin" and current_user.client_id_assigned:
-        effective_client_id = current_user.client_id_assigned
-
-    return calculate_job_rty_summary(db, start_date, end_date, effective_client_id)
+    return calculate_job_rty_summary(db, start_date, end_date, scope.as_single())
 
 
 # ============================================================================

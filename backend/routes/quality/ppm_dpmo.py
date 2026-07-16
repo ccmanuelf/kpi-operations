@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from backend.database import get_db
-from backend.auth.jwt import get_current_user
+from backend.auth.jwt import ClientScope, get_current_user, resolve_client_scope
 from backend.orm.user import User
 from backend.schemas.quality import (
     PPMCalculationResponse,
@@ -36,6 +36,7 @@ def calculate_ppm_kpi(
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    scope: ClientScope = Depends(resolve_client_scope),
 ) -> PPMCalculationResponse:
     """
     Calculate PPM (Parts Per Million) defect rate with client filtering
@@ -57,11 +58,6 @@ def calculate_ppm_kpi(
     if start_date is None:
         start_date = end_date - timedelta(days=30)
 
-    # Determine effective client filter
-    effective_client_id = client_id
-    if not effective_client_id and current_user.role != "admin" and current_user.client_id_assigned:
-        effective_client_id = current_user.client_id_assigned
-
     # Build query with client filter - using QUALITY_ENTRY table
     query = db.query(
         func.sum(QualityEntry.units_inspected).label("inspected"),
@@ -71,8 +67,7 @@ def calculate_ppm_kpi(
         QualityEntry.shift_date <= datetime.combine(end_date, datetime.max.time()),
     )
 
-    if effective_client_id:
-        query = query.filter(QualityEntry.client_id == effective_client_id)
+    query = query.filter(scope.filter(QualityEntry.client_id))
 
     result = query.first()
     # query.first() on an aggregate is None when no QualityEntry rows
@@ -111,6 +106,7 @@ def get_ppm_trend(
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    scope: ClientScope = Depends(resolve_client_scope),
 ) -> Any:
     """Daily PPM defect-rate series ((defects/inspected)*1e6 per day). Lower is better."""
     from datetime import timedelta
@@ -124,10 +120,6 @@ def get_ppm_trend(
     if start_date is None:
         start_date = end_date - timedelta(days=30)
 
-    effective_client_id = client_id
-    if not effective_client_id and current_user.role != "admin" and current_user.client_id_assigned:
-        effective_client_id = current_user.client_id_assigned
-
     query = db.query(
         func.date(QualityEntry.shift_date).label("date"),
         func.sum(QualityEntry.units_inspected).label("inspected"),
@@ -136,8 +128,7 @@ def get_ppm_trend(
         QualityEntry.shift_date >= datetime.combine(start_date, datetime.min.time()),
         QualityEntry.shift_date <= datetime.combine(end_date, datetime.max.time()),
     )
-    if effective_client_id:
-        query = query.filter(QualityEntry.client_id == effective_client_id)
+    query = query.filter(scope.filter(QualityEntry.client_id))
     query = query.group_by(func.date(QualityEntry.shift_date)).order_by(func.date(QualityEntry.shift_date))
 
     out = []
@@ -159,6 +150,7 @@ def calculate_dpmo_kpi(
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    scope: ClientScope = Depends(resolve_client_scope),
 ) -> DPMOCalculationResponse:
     """
     Calculate DPMO (Defects Per Million Opportunities) and Sigma Level
@@ -185,11 +177,6 @@ def calculate_dpmo_kpi(
     if start_date is None:
         start_date = end_date - timedelta(days=30)
 
-    # Effective client filter (admin can pass through, others scoped)
-    effective_client_id = client_id
-    if not effective_client_id and current_user.role != "admin" and current_user.client_id_assigned:
-        effective_client_id = current_user.client_id_assigned
-
     query = db.query(
         func.sum(QualityEntry.units_inspected).label("inspected"),
         func.sum(func.coalesce(QualityEntry.total_defects_count, QualityEntry.units_defective, 0)).label("defects"),
@@ -198,8 +185,7 @@ def calculate_dpmo_kpi(
         QualityEntry.shift_date <= datetime.combine(end_date, datetime.max.time()),
     )
 
-    if effective_client_id:
-        query = query.filter(QualityEntry.client_id == effective_client_id)
+    query = query.filter(scope.filter(QualityEntry.client_id))
 
     result = query.first()
     units = int(result.inspected) if result is not None and result.inspected else 0
@@ -247,6 +233,7 @@ def calculate_dpmo_by_part(
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    scope: ClientScope = Depends(resolve_client_scope),
 ) -> dict:
     """
     Calculate DPMO using part-specific opportunities from PART_OPPORTUNITIES table.
@@ -273,15 +260,11 @@ def calculate_dpmo_by_part(
     if start_date is None:
         start_date = end_date - timedelta(days=30)
 
-    effective_client_id = client_id
-    if not effective_client_id and current_user.role != "admin" and current_user.client_id_assigned:
-        effective_client_id = current_user.client_id_assigned
-
-    result = calculate_dpmo_with_part_lookup(db, start_date, end_date, effective_client_id)
+    result = calculate_dpmo_with_part_lookup(db, start_date, end_date, scope.as_single())
 
     return {
         "period": {"start_date": start_date.isoformat(), "end_date": end_date.isoformat()},
-        "client_id": effective_client_id,
+        "client_id": client_id,
         **result,
         "calculation_timestamp": datetime.now(tz=timezone.utc).isoformat(),
     }

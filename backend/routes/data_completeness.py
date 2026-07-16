@@ -10,9 +10,8 @@ from typing import Any, Optional
 from datetime import date, datetime, timedelta, timezone
 
 from backend.database import get_db
-from backend.auth.jwt import get_current_user
+from backend.auth.jwt import get_current_user, ClientScope, resolve_client_scope
 from backend.orm.user import User
-from backend.middleware.client_auth import build_client_filter_clause
 from backend.utils.logging_utils import get_module_logger
 
 logger = get_module_logger(__name__)
@@ -94,6 +93,7 @@ def get_data_completeness(
     client_id: Optional[str] = Query(None, description="Client ID filter"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    scope: ClientScope = Depends(resolve_client_scope),
 ) -> Any:
     """
     Get data completeness indicators for a specific date and shift.
@@ -121,23 +121,14 @@ def get_data_completeness(
     if target_date is None:
         target_date = date.today()
 
-    # Determine effective client filter
-    effective_client_id = client_id
-    if not effective_client_id and current_user.role != "admin" and current_user.client_id_assigned:
-        effective_client_id = current_user.client_id_assigned
-
     # Helper function to count entries
     def count_entries(model: Any, date_column: Any, extra_filters: Any = None) -> Any:
         date_start, date_end = get_date_filter(target_date, date_column)
         query = db.query(func.count()).filter(date_start, date_end)
 
         # Apply client filter if model has client_id
-        if hasattr(model, "client_id") and effective_client_id:
-            query = query.filter(model.client_id == effective_client_id)
-        elif hasattr(model, "client_id"):
-            client_filter = build_client_filter_clause(current_user, model.client_id)
-            if client_filter is not None:
-                query = query.filter(client_filter)
+        if hasattr(model, "client_id"):
+            query = query.filter(scope.filter(model.client_id))
 
         # Apply shift filter if provided and model supports it
         if shift_id and hasattr(model, "shift_id"):
@@ -160,23 +151,23 @@ def get_data_completeness(
 
     # Count entries for each category
     production_entered = count_entries(ProductionEntry, ProductionEntry.shift_date)
-    production_expected = calculate_expected_entries(db, target_date, shift_id, effective_client_id, "production")
+    production_expected = calculate_expected_entries(db, target_date, shift_id, scope.as_single(), "production")
     production_pct = min((production_entered / production_expected * 100) if production_expected > 0 else 100, 100)
 
     downtime_entered = count_entries(DowntimeEntry, DowntimeEntry.shift_date)
-    downtime_expected = calculate_expected_entries(db, target_date, shift_id, effective_client_id, "downtime")
+    downtime_expected = calculate_expected_entries(db, target_date, shift_id, scope.as_single(), "downtime")
     downtime_pct = min((downtime_entered / downtime_expected * 100) if downtime_expected > 0 else 100, 100)
 
     attendance_entered = count_entries(AttendanceEntry, AttendanceEntry.shift_date)
-    attendance_expected = calculate_expected_entries(db, target_date, shift_id, effective_client_id, "attendance")
+    attendance_expected = calculate_expected_entries(db, target_date, shift_id, scope.as_single(), "attendance")
     attendance_pct = min((attendance_entered / attendance_expected * 100) if attendance_expected > 0 else 100, 100)
 
     quality_entered = count_entries(QualityEntry, QualityEntry.shift_date)
-    quality_expected = calculate_expected_entries(db, target_date, shift_id, effective_client_id, "quality")
+    quality_expected = calculate_expected_entries(db, target_date, shift_id, scope.as_single(), "quality")
     quality_pct = min((quality_entered / quality_expected * 100) if quality_expected > 0 else 100, 100)
 
     hold_entered = count_entries(HoldEntry, HoldEntry.hold_date)
-    hold_expected = calculate_expected_entries(db, target_date, shift_id, effective_client_id, "hold")
+    hold_expected = calculate_expected_entries(db, target_date, shift_id, scope.as_single(), "hold")
     hold_pct = min((hold_entered / hold_expected * 100) if hold_expected > 0 else 100, 100)
 
     # Calculate overall completeness (weighted average)
@@ -194,7 +185,7 @@ def get_data_completeness(
     return {
         "date": target_date.isoformat(),
         "shift_id": shift_id,
-        "client_id": effective_client_id,
+        "client_id": client_id,
         "production": {
             "entered": production_entered,
             "expected": production_expected,
@@ -237,6 +228,7 @@ def get_completeness_summary(
     client_id: Optional[str] = Query(None, description="Client ID filter"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    scope: ClientScope = Depends(resolve_client_scope),
 ) -> Any:
     """
     Get data completeness summary for a date range.
@@ -261,7 +253,12 @@ def get_completeness_summary(
     while current_date <= end_date:
         # Get completeness for this day (simplified - just overall percentage)
         completeness = get_data_completeness(
-            target_date=current_date, shift_id=None, client_id=client_id, db=db, current_user=current_user
+            target_date=current_date,
+            shift_id=None,
+            client_id=client_id,
+            db=db,
+            current_user=current_user,
+            scope=scope,
         )
 
         daily_completeness.append(
@@ -298,6 +295,7 @@ def get_completeness_by_category(
     client_id: Optional[str] = Query(None, description="Client ID filter"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    scope: ClientScope = Depends(resolve_client_scope),
 ) -> Any:
     """
     Get detailed completeness breakdown by category.
@@ -310,7 +308,12 @@ def get_completeness_by_category(
 
     # Get base completeness
     completeness = get_data_completeness(
-        target_date=target_date, shift_id=None, client_id=client_id, db=db, current_user=current_user
+        target_date=target_date,
+        shift_id=None,
+        client_id=client_id,
+        db=db,
+        current_user=current_user,
+        scope=scope,
     )
 
     # Build category details with navigation hints
