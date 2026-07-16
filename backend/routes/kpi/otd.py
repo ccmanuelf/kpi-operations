@@ -13,7 +13,7 @@ from datetime import date, datetime, timedelta, timezone
 from backend.utils.logging_utils import get_module_logger
 from backend.database import get_db
 from backend.calculations.otd import identify_late_orders
-from backend.auth.jwt import get_current_user
+from backend.auth.jwt import get_current_user, ClientScope, resolve_client_scope
 from backend.orm.user import User
 
 logger = get_module_logger(__name__)
@@ -28,6 +28,7 @@ def calculate_otd_kpi(
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    scope: ClientScope = Depends(resolve_client_scope),
 ) -> Any:
     """Calculate On-Time Delivery KPI with client filtering
 
@@ -43,11 +44,6 @@ def calculate_otd_kpi(
     if start_date is None:
         start_date = end_date - timedelta(days=30)
 
-    # Determine effective client filter
-    effective_client_id = client_id
-    if not effective_client_id and current_user.role != "admin" and current_user.client_id_assigned:
-        effective_client_id = current_user.client_id_assigned
-
     # Build query with client filter - use required_date as the due date
     query = db.query(WorkOrder).filter(
         WorkOrder.required_date.isnot(None),
@@ -56,8 +52,7 @@ def calculate_otd_kpi(
     )
 
     # Apply client filter
-    if effective_client_id:
-        query = query.filter(WorkOrder.client_id == effective_client_id)
+    query = query.filter(scope.filter(WorkOrder.client_id))
 
     work_orders = query.all()
 
@@ -89,7 +84,7 @@ def calculate_otd_kpi(
     return {
         "start_date": start_date,
         "end_date": end_date,
-        "client_id": effective_client_id,
+        "client_id": client_id,
         "otd_percentage": round(otd_percentage, 2),
         "on_time_count": on_time_count,
         "total_orders": total_orders,
@@ -187,6 +182,7 @@ def get_late_deliveries(
     limit: int = 20,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    scope: ClientScope = Depends(resolve_client_scope),
 ) -> Any:
     """
     Get recent late deliveries with details.
@@ -204,11 +200,6 @@ def get_late_deliveries(
         end_date = date.today()
     if start_date is None:
         start_date = end_date - timedelta(days=30)
-
-    # Determine effective client filter
-    effective_client_id = client_id
-    if not effective_client_id and current_user.role != "admin" and current_user.client_id_assigned:
-        effective_client_id = current_user.client_id_assigned
 
     # Query for late deliveries (actual_delivery_date > required_date)
     query = (
@@ -231,8 +222,7 @@ def get_late_deliveries(
     )
 
     # Apply client filter
-    if effective_client_id:
-        query = query.filter(WorkOrder.client_id == effective_client_id)
+    query = query.filter(scope.filter(WorkOrder.client_id))
 
     # Order by delivery date (most recent first) and limit
     results = query.order_by(WorkOrder.actual_delivery_date.desc()).limit(limit).all()

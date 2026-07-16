@@ -13,7 +13,7 @@ from datetime import date, datetime, timedelta
 
 from backend.utils.logging_utils import get_module_logger
 from backend.database import get_db
-from backend.auth.jwt import get_current_user
+from backend.auth.jwt import get_current_user, ClientScope, resolve_client_scope
 from backend.orm.user import User
 
 logger = get_module_logger(__name__)
@@ -28,6 +28,7 @@ def get_performance_trend(
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    scope: ClientScope = Depends(resolve_client_scope),
 ) -> Any:
     """
     Get daily performance trend data.
@@ -44,10 +45,6 @@ def get_performance_trend(
     if start_date is None:
         start_date = end_date - timedelta(days=30)
 
-    effective_client_id = client_id
-    if not effective_client_id and current_user.role != "admin" and current_user.client_id_assigned:
-        effective_client_id = current_user.client_id_assigned
-
     query = db.query(
         func.date(ProductionEntry.shift_date).label("date"),
         func.avg(ProductionEntry.performance_percentage).label("value"),
@@ -56,8 +53,7 @@ def get_performance_trend(
         ProductionEntry.shift_date <= datetime.combine(end_date, datetime.max.time()),
     )
 
-    if effective_client_id:
-        query = query.filter(ProductionEntry.client_id == effective_client_id)
+    query = query.filter(scope.filter(ProductionEntry.client_id))
 
     results = (
         query.group_by(func.date(ProductionEntry.shift_date)).order_by(func.date(ProductionEntry.shift_date)).all()
@@ -73,6 +69,7 @@ def get_performance_by_shift(
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    scope: ClientScope = Depends(resolve_client_scope),
 ) -> Any:
     """
     Get performance aggregated by shift.
@@ -90,10 +87,6 @@ def get_performance_by_shift(
     if not end_date:
         end_date = date.today()
 
-    effective_client_id = client_id
-    if not effective_client_id and current_user.role != "admin" and current_user.client_id_assigned:
-        effective_client_id = current_user.client_id_assigned
-
     query = (
         db.query(
             ProductionEntry.shift_id,
@@ -110,8 +103,7 @@ def get_performance_by_shift(
         )
     )
 
-    if effective_client_id:
-        query = query.filter(ProductionEntry.client_id == effective_client_id)
+    query = query.filter(scope.filter(ProductionEntry.client_id))
 
     results = (
         query.group_by(ProductionEntry.shift_id, Shift.shift_name)
@@ -139,6 +131,7 @@ def get_performance_by_product(
     limit: int = 10,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    scope: ClientScope = Depends(resolve_client_scope),
 ) -> Any:
     """
     Get performance aggregated by product.
@@ -156,10 +149,6 @@ def get_performance_by_product(
     if not end_date:
         end_date = date.today()
 
-    effective_client_id = client_id
-    if not effective_client_id and current_user.role != "admin" and current_user.client_id_assigned:
-        effective_client_id = current_user.client_id_assigned
-
     query = (
         db.query(
             ProductionEntry.product_id,
@@ -176,8 +165,7 @@ def get_performance_by_product(
         )
     )
 
-    if effective_client_id:
-        query = query.filter(ProductionEntry.client_id == effective_client_id)
+    query = query.filter(scope.filter(ProductionEntry.client_id))
 
     results = (
         query.group_by(ProductionEntry.product_id, Product.product_name)
@@ -205,6 +193,7 @@ def get_quality_trend(
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    scope: ClientScope = Depends(resolve_client_scope),
 ) -> Any:
     """Get daily quality (FPY) trend data"""
     from backend.orm.quality_entry import QualityEntry
@@ -213,10 +202,6 @@ def get_quality_trend(
         end_date = date.today()
     if start_date is None:
         start_date = end_date - timedelta(days=30)
-
-    effective_client_id = client_id
-    if not effective_client_id and current_user.role != "admin" and current_user.client_id_assigned:
-        effective_client_id = current_user.client_id_assigned
 
     query = db.query(
         func.date(QualityEntry.shift_date).label("date"),
@@ -227,8 +212,7 @@ def get_quality_trend(
         QualityEntry.shift_date <= datetime.combine(end_date, datetime.max.time()),
     )
 
-    if effective_client_id:
-        query = query.filter(QualityEntry.client_id == effective_client_id)
+    query = query.filter(scope.filter(QualityEntry.client_id))
 
     results = query.group_by(func.date(QualityEntry.shift_date)).order_by(func.date(QualityEntry.shift_date)).all()
 
@@ -248,6 +232,7 @@ def get_availability_trend(
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    scope: ClientScope = Depends(resolve_client_scope),
 ) -> Any:
     """Get daily availability trend data (calculated from downtime)"""
     from backend.orm.downtime_entry import DowntimeEntry
@@ -258,10 +243,6 @@ def get_availability_trend(
     if start_date is None:
         start_date = end_date - timedelta(days=30)
 
-    effective_client_id = client_id
-    if not effective_client_id and current_user.role != "admin" and current_user.client_id_assigned:
-        effective_client_id = current_user.client_id_assigned
-
     # Get production days (scheduled time proxy)
     prod_query = db.query(
         func.date(ProductionEntry.shift_date).label("date"),
@@ -270,8 +251,7 @@ def get_availability_trend(
         ProductionEntry.shift_date >= datetime.combine(start_date, datetime.min.time()),
         ProductionEntry.shift_date <= datetime.combine(end_date, datetime.max.time()),
     )
-    if effective_client_id:
-        prod_query = prod_query.filter(ProductionEntry.client_id == effective_client_id)
+    prod_query = prod_query.filter(scope.filter(ProductionEntry.client_id))
     prod_results = {
         str(r.date): r.entries * 8 for r in prod_query.group_by(func.date(ProductionEntry.shift_date)).all()
     }
@@ -284,8 +264,7 @@ def get_availability_trend(
         DowntimeEntry.shift_date >= datetime.combine(start_date, datetime.min.time()),
         DowntimeEntry.shift_date <= datetime.combine(end_date, datetime.max.time()),
     )
-    if effective_client_id:
-        dt_query = dt_query.filter(DowntimeEntry.client_id == effective_client_id)
+    dt_query = dt_query.filter(scope.filter(DowntimeEntry.client_id))
     dt_results = {
         str(r.date): float(r.downtime_mins) / 60 if r.downtime_mins else 0
         for r in dt_query.group_by(func.date(DowntimeEntry.shift_date)).all()
@@ -309,6 +288,7 @@ def get_oee_trend(
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    scope: ClientScope = Depends(resolve_client_scope),
 ) -> Any:
     """Get daily OEE trend data (Availability x Performance x Quality)"""
     from backend.orm.production_entry import ProductionEntry
@@ -320,10 +300,6 @@ def get_oee_trend(
     if start_date is None:
         start_date = end_date - timedelta(days=30)
 
-    effective_client_id = client_id
-    if not effective_client_id and current_user.role != "admin" and current_user.client_id_assigned:
-        effective_client_id = current_user.client_id_assigned
-
     # Get performance by day
     perf_query = db.query(
         func.date(ProductionEntry.shift_date).label("date"),
@@ -333,8 +309,7 @@ def get_oee_trend(
         ProductionEntry.shift_date >= datetime.combine(start_date, datetime.min.time()),
         ProductionEntry.shift_date <= datetime.combine(end_date, datetime.max.time()),
     )
-    if effective_client_id:
-        perf_query = perf_query.filter(ProductionEntry.client_id == effective_client_id)
+    perf_query = perf_query.filter(scope.filter(ProductionEntry.client_id))
     perf_results = {
         str(r.date): {"performance": float(r.performance) if r.performance else 95, "entries": r.entries}
         for r in perf_query.group_by(func.date(ProductionEntry.shift_date)).all()
@@ -349,8 +324,7 @@ def get_oee_trend(
         QualityEntry.shift_date >= datetime.combine(start_date, datetime.min.time()),
         QualityEntry.shift_date <= datetime.combine(end_date, datetime.max.time()),
     )
-    if effective_client_id:
-        qual_query = qual_query.filter(QualityEntry.client_id == effective_client_id)
+    qual_query = qual_query.filter(scope.filter(QualityEntry.client_id))
     qual_results = {
         str(r.date): (r.passed / r.inspected * 100) if r.inspected and r.inspected > 0 else 97
         for r in qual_query.group_by(func.date(QualityEntry.shift_date)).all()
@@ -364,8 +338,7 @@ def get_oee_trend(
         DowntimeEntry.shift_date >= datetime.combine(start_date, datetime.min.time()),
         DowntimeEntry.shift_date <= datetime.combine(end_date, datetime.max.time()),
     )
-    if effective_client_id:
-        dt_query = dt_query.filter(DowntimeEntry.client_id == effective_client_id)
+    dt_query = dt_query.filter(scope.filter(DowntimeEntry.client_id))
     dt_results = {
         str(r.date): float(r.downtime_mins) / 60 if r.downtime_mins else 0
         for r in dt_query.group_by(func.date(DowntimeEntry.shift_date)).all()
@@ -392,6 +365,7 @@ def get_otd_trend(
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    scope: ClientScope = Depends(resolve_client_scope),
 ) -> Any:
     """Get daily On-Time Delivery trend data"""
     from backend.orm.work_order import WorkOrder
@@ -400,10 +374,6 @@ def get_otd_trend(
         end_date = date.today()
     if start_date is None:
         start_date = end_date - timedelta(days=30)
-
-    effective_client_id = client_id
-    if not effective_client_id and current_user.role != "admin" and current_user.client_id_assigned:
-        effective_client_id = current_user.client_id_assigned
 
     # Query work orders grouped by required_date
     query = db.query(
@@ -416,8 +386,7 @@ def get_otd_trend(
         WorkOrder.required_date <= datetime.combine(end_date, datetime.max.time()),
     )
 
-    if effective_client_id:
-        query = query.filter(WorkOrder.client_id == effective_client_id)
+    query = query.filter(scope.filter(WorkOrder.client_id))
 
     results = query.group_by(func.date(WorkOrder.required_date)).order_by(func.date(WorkOrder.required_date)).all()
 
@@ -433,6 +402,7 @@ def get_absenteeism_trend(
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    scope: ClientScope = Depends(resolve_client_scope),
 ) -> Any:
     """Get daily absenteeism trend data"""
     from backend.orm.attendance_entry import AttendanceEntry
@@ -441,10 +411,6 @@ def get_absenteeism_trend(
         end_date = date.today()
     if start_date is None:
         start_date = end_date - timedelta(days=30)
-
-    effective_client_id = client_id
-    if not effective_client_id and current_user.role != "admin" and current_user.client_id_assigned:
-        effective_client_id = current_user.client_id_assigned
 
     # Query attendance grouped by shift_date
     query = db.query(
@@ -456,8 +422,7 @@ def get_absenteeism_trend(
         AttendanceEntry.shift_date <= datetime.combine(end_date, datetime.max.time()),
     )
 
-    if effective_client_id:
-        query = query.filter(AttendanceEntry.client_id == effective_client_id)
+    query = query.filter(scope.filter(AttendanceEntry.client_id))
 
     results = (
         query.group_by(func.date(AttendanceEntry.shift_date)).order_by(func.date(AttendanceEntry.shift_date)).all()
@@ -479,6 +444,7 @@ def get_throughput_time_trend(
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    scope: ClientScope = Depends(resolve_client_scope),
 ) -> Any:
     """
     Get daily throughput-time trend data.
@@ -498,10 +464,6 @@ def get_throughput_time_trend(
     if start_date is None:
         start_date = end_date - timedelta(days=30)
 
-    effective_client_id = client_id
-    if not effective_client_id and current_user.role != "admin" and current_user.client_id_assigned:
-        effective_client_id = current_user.client_id_assigned
-
     query = db.query(
         func.date(ProductionEntry.shift_date).label("date"),
         func.sum(ProductionEntry.run_time_hours).label("run_hours"),
@@ -510,8 +472,7 @@ def get_throughput_time_trend(
         ProductionEntry.shift_date >= datetime.combine(start_date, datetime.min.time()),
         ProductionEntry.shift_date <= datetime.combine(end_date, datetime.max.time()),
     )
-    if effective_client_id:
-        query = query.filter(ProductionEntry.client_id == effective_client_id)
+    query = query.filter(scope.filter(ProductionEntry.client_id))
 
     results = (
         query.group_by(func.date(ProductionEntry.shift_date)).order_by(func.date(ProductionEntry.shift_date)).all()
