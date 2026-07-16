@@ -1,149 +1,85 @@
-# Uniform Client-Scope Authorization (Design)
+# Uniform Client-Scope Authorization (Design) — Comprehensive Audit
 
-**Date:** 2026-07-16
-**Status:** Approved design → ready for implementation plan
-**Class:** Broken Access Control (horizontal privilege / cross-tenant read) — pre-existing, discovered during the SP2 (#142) and seed-polish (#143) reviews.
+**Date:** 2026-07-16 (revised after full-surface audit)
+**Status:** Approved design (scope broadened per user) → ready for revised implementation plan
+**Class:** Broken Access Control (horizontal privilege / cross-tenant read) — pre-existing, discovered during SP2 (#142) and seed-polish (#143) reviews; a prior partial fix ("VULN-003") fixed some endpoints but was applied inconsistently.
 
-## The bug
+## Scope decision
 
-28 read endpoints across 12 route files repeat this inline block verbatim:
+Initial recon found one buggy pattern (the `effective_client_id` block). A full audit revealed the vulnerability has **multiple shapes** across the route surface, plus three endpoints with **no tenant filter at all**. Per user decision, this fixes the **entire vulnerability class** in one effort — all vulnerable read endpoints, the 3 missing-scope leaks, the config/reference catalogs, the product-keyed quality-score, the INLINEROLE/leader-broken endpoints, and the 3 holds write-ownership checks.
 
-```python
-effective_client_id = client_id
-if not effective_client_id and current_user.role != "admin" and current_user.client_id_assigned:
-    effective_client_id = current_user.client_id_assigned
-```
+## Root cause (all shapes share it)
 
-It trusts a caller-supplied `client_id` and only falls back to the user's assignment when **none** is passed. So a scoped user (leader/supervisor/operator/viewer) can pass `?client_id=<other-tenant>` and read another client's data. It is doubly broken: `role != "admin"` omits **`poweruser`** (also an all-clients role), and `client_id_assigned` is a **comma-separated list** used as a scalar (so a multi-client `leader` gets nothing even on the fallback path).
+Endpoints trust a caller-supplied `client_id`, and/or use `role != "admin"` (which omits **`poweruser`**, an all-clients role) and treat `client_id_assigned` (a **comma-separated list**) as a scalar. Correct primitives already exist in `backend/middleware/client_auth.py`:
+- `get_user_client_filter(user, db)` → `None` for admin/poweruser, the authorized list for scoped users, raises `ClientAccessError` (403) if a scoped user has no assignment.
+- `verify_client_access(user, client_id, db)` → 403 if the user isn't authorized for `client_id` (admin/poweruser always pass).
+- `build_client_filter_clause(user, column)` → `None` for all-client roles, else `column.in_(clients)`.
 
-## Goal
+## Core unit (from Task 1, already shipped on the branch)
 
-Replace all 28 inline blocks with one shared, correct client-scope authorization dependency. A scoped user requesting an unauthorized `client_id` gets **403**. Admin/poweruser keep all-client access; `leader` keeps legitimate multi-client access. No existing behavior for authorized requests changes; the full test suite stays green; the change is validated end-to-end from the real user's standpoint in a browser.
+`backend/auth/jwt.py`:
+- `ClientScope(client_ids: Optional[tuple[str,...]])` — `.filter(column)` → `true()` if None else `column.in_(client_ids)`; `.as_single()` → None / the one id / 400 if multiple.
+- `resolve_client_scope(client_id=Query(None), current_user=Depends(get_current_user), db=Depends(get_db)) -> ClientScope` — admin/poweruser → all (or narrow to a passed client); scoped user + authorized client_id → that client; scoped + unauthorized client_id → **403**; scoped + omitted → their full authorized set; scoped + no assignment → **403**.
 
-## Role model (authoritative)
+## The five fix patterns (by bucket)
 
-`backend/orm/user.py` `UserRole` + `backend/auth/role_rules.py`:
-- **All-client roles** (`ALL_CLIENT_ROLES = {"admin", "poweruser"}`): see every client. `client_id_assigned` is NULL.
-- **Scoped roles** (`{"leader", "supervisor", "operator", "viewer"}`): restricted to assigned client(s). `leader` may be assigned **multiple** clients (`MULTI_CLIENT_ROLES = {"leader"}`); the others effectively one.
-- `client_id_assigned`: `String(500)`, nullable, **comma-separated list**. The authoritative parse is `middleware/client_auth.py:get_user_client_filter(user, db)`.
+**Pattern A — read endpoint WITH a `client_id` query param** (BLOCK, BAREIF, IFELIF, config catalogs): delete the inline scoping; add `scope: ClientScope = Depends(resolve_client_scope)`; replace `if client_id/effective_client_id: q = q.filter(Col == …)` with `q = q.filter(scope.filter(Col))`; scalar-service arg → `scope.as_single()`; response echo → the raw `client_id` param. Delegating endpoints (e.g. `top-defects`, `hold-catalogs`, `thresholds`) pass `scope.as_single()` into their helper OR the helper gains a `ClientScope`/list param — whichever is minimal for that helper (the plan specifies per site).
 
-## Design
+**Pattern B — read endpoint with NO `client_id` param** (INLINEROLE reads: `otd/by-client`, `work-order rty`, `holds/pending-approvals`, `my_shift ×3`; and `metric_results.list_results`): add `scope: ClientScope = Depends(resolve_client_scope)` (its `client_id` defaults `None` → the caller's full authorized set, `None`=all for admin/poweruser); delete the `if role != "admin" …` line; apply `scope.filter(Col)` to each scoped query. `metric_results` keeps honoring an explicit `client_id` for all-client roles — `resolve_client_scope` already expresses that.
 
-### 1. Core unit — `ClientScope` + `resolve_client_scope` (new, in `backend/auth/jwt.py`)
+**Pattern C — MISSING-SCOPE, no filter at all** (`/api/kpi/late-orders` → `identify_late_orders`, `/api/kpi/chronic-holds` → `identify_chronic_holds`, `/api/quality/kpi/quality-score` → `calculate_quality_score`): thread the user's scope into the helper and filter. For the two hold/otd helpers, add a client-scope filter (pass `scope`/client list; apply `build_client_filter_clause`-style `.in_`). For `quality-score` (keyed by `product_id`, and `Product` carries `client_id`), verify the product's owning client is in the caller's scope — a **product→client ownership check** (load the product, `verify_client_access(current_user, product.client_id, db)`), 403 otherwise.
 
-Co-located with the existing `get_current_*` guards; delegates the authorization decision to the already-correct `middleware/client_auth.py` helpers (`get_user_client_filter`, `ClientAccessError`).
+**Pattern D — write-ownership checks** (holds `approve-hold` / `request-resume` / `approve-resume`, POST): after loading the target hold row, `verify_client_access(current_user, hold.client_id, db)` before mutating (403 if not authorized), replacing the buggy `if role != "admin" and client_id_assigned` scalar comparison.
 
-```python
-from dataclasses import dataclass
-from typing import Optional
-from fastapi import Query
-from sqlalchemy import true
-from backend.middleware.client_auth import get_user_client_filter, ClientAccessError
+**Already-correct / out of scope (DO NOT TOUCH):** everything using `verify_client_access`/`build_client_filter_clause`/`scope.filter` today — `kpi/trends.py` (all), `kpi/otd.py:24`/`:178`, `kpi/efficiency.py:150` trend, `quality/entries.py`, `attendance.py:162`, `capacity/*`, `alerts/*`, `reports/*`, `analytics/*`, `reference.py`, `export.py`, `predictions.py`, `dual_view_calculate.py`, `qr.py`, etc.; admin/planner-gated writes (`users.py`, `thresholds` PUT/DELETE); and forces-own writes (`floating_pool` create). The Task-2 commit already moved the KPI trend/efficiency/otd endpoints into this column.
 
-@dataclass(frozen=True)
-class ClientScope:
-    """Resolved, authorized set of clients for a request.
-    client_ids is None => all clients (admin/poweruser); otherwise the exact
-    authorized tuple (length 1 for a scoped single-client or a narrowed request,
-    >1 for a leader querying their full set)."""
-    client_ids: Optional[tuple[str, ...]]
+## Authoritative migration inventory
 
-    def filter(self, column):
-        """SQLAlchemy clause scoping `column` to this scope. `true()` = no filter (all)."""
-        return true() if self.client_ids is None else column.in_(self.client_ids)
+**Pattern A (has client_id param):**
+- `attendance.py:292` absenteeism, `attendance.py:484` absenteeism/trend
+- `data_completeness.py:91` (+ delegated `:234`, `:296`)
+- `downtime.py:140` availability
+- `holds.py:330` wip-aging
+- `holds.py:428` wip-aging/top (IFELIF), `holds.py:473` wip-aging/trend (IFELIF)
+- `jobs.py:191` rty-summary
+- `kpi/cause.py:33`, `kpi/dashboard.py:26`
+- `kpi/efficiency.py:29` by-shift (BAREIF), `kpi/efficiency.py:92` by-product (BAREIF)
+- `quality/ppm_dpmo.py:30/107/152/243`, `quality/pareto.py:25` top-defects (BAREIF, +default-scope), `quality/pareto.py:58/128`, `quality/fpy_rty.py:40/173`
+- config catalogs: `kpi/thresholds.py:24`, `break_times.py:29`, `hold_catalogs.py:47`, `hold_catalogs.py:126`
 
-    def as_single(self) -> Optional[str]:
-        """Scalar client_id for legacy scalar-consuming service functions.
-        None = all (admin/poweruser). Exactly one = that client. Multiple
-        (a leader who did not narrow) => 400 asking them to specify a client_id."""
-        if self.client_ids is None:
-            return None
-        if len(self.client_ids) == 1:
-            return self.client_ids[0]
-        raise HTTPException(status_code=400, detail="Multiple clients in scope; specify a client_id")
+**Pattern B (no client_id param):**
+- `kpi/otd.py:111` by-client, `jobs.py:163` work-order rty, `holds.py:294` pending-approvals, `my_shift.py:89`/`:298`/`:357`, `metric_results.py:117` list_results
 
-def resolve_client_scope(
-    client_id: Optional[str] = Query(None),
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-) -> ClientScope:
-    allowed = get_user_client_filter(current_user, db)  # None=all; list=scoped; raises 403 if scoped & unassigned
-    if client_id is not None:
-        if allowed is not None and client_id not in allowed:
-            raise ClientAccessError(detail=f"Not authorized for client {client_id}")  # 403
-        return ClientScope((client_id,))
-    return ClientScope(None if allowed is None else tuple(allowed))
-```
+**Pattern C (missing-scope):**
+- `kpi/otd.py:96` late-orders (`calculations/otd.py:identify_late_orders`), `holds.py:521` chronic-holds (`calculations/wip_aging.py:identify_chronic_holds`), `quality/fpy_rty.py:271` quality-score (`calculate_quality_score`, product→client)
 
-Resolution matrix:
+**Pattern D (writes):**
+- `holds.py:163` approve-hold, `holds.py:202` request-resume, `holds.py:239` approve-resume
 
-| Caller | `client_id` passed | Result |
-|---|---|---|
-| admin / poweruser | none | `ClientScope(None)` → all clients |
-| admin / poweruser | any | `ClientScope((client_id,))` → narrowed to that client |
-| scoped (operator/viewer/supervisor) | their own | `ClientScope((client_id,))` |
-| scoped | someone else's | **403** |
-| scoped, no assignment | any / none | **403** (from `get_user_client_filter`) |
-| leader (multi) | one of theirs | `ClientScope((client_id,))` |
-| leader | not theirs | **403** |
-| leader | none | `ClientScope((c1, c2, ...))` → their full set (`.in_`) |
+## Behavior preservation
 
-`Query` must be added to the `fastapi` import in `jwt.py`; `true` from `sqlalchemy`; `get_user_client_filter`/`ClientAccessError` from `middleware.client_auth`. `HTTPException`, `Depends`, `User`, `get_db`, `get_current_user` are already in scope.
-
-### 2. Endpoint migration (28 sites, two patterns)
-
-Each endpoint drops its own `client_id: Optional[str] = None` parameter and the inline block, and adds `scope: ClientScope = Depends(resolve_client_scope)`. Endpoints that use `current_user` only for scoping may drop that param; those that use it for anything else keep it (FastAPI de-dupes the shared sub-dependency).
-
-- **SQL-filter endpoints (~24)** — replace
-  `if effective_client_id: q = q.filter(Model.client_id == effective_client_id)`
-  with `q = q.filter(scope.filter(Model.client_id))`.
-  For `DefectDetail`, the column is `client_id_fk` (`scope.filter(DefectDetail.client_id_fk)`).
-  `kpi/dashboard.py` applies `scope.filter(...)` to each of its ~7 heterogeneous sub-queries; `attendance.py` likewise across its shift/reason/dept/high-absence sub-queries.
-- **Scalar-service endpoints (~4)** — `kpi/cause.py` (`driver(db, scope.as_single(), date)`), `jobs.py:223` (`calculate_job_rty_summary(..., scope.as_single())`), `quality/ppm_dpmo.py:276` (`calculate_dpmo_with_part_lookup(..., scope.as_single())`), `data_completeness.py:125` (`calculate_expected_entries(..., scope.as_single())`). The service signatures (`Optional[str]`) are unchanged.
-
-### 3. The `onboarding._resolve_client_id` variant
-
-`routes/onboarding.py:32` is a helper (not the inline block) with the same trust-the-caller flaw but different semantics (raises 400, admin must pass explicitly). Reconcile it to validate a caller-supplied `client_id` against the user's authorized set (403 on mismatch) using the same `get_user_client_filter` primitive, preserving its "admin must specify" behavior. It stays a helper (not the FastAPI dependency) because its call sites are not endpoint signatures — but it must no longer trust an arbitrary `client_id`.
-
-### 4. Behavior preservation
-
-- The `client_id` query parameter remains on every endpoint (now declared by the dependency's `Query(None)`), so the OpenAPI **route set and tags are unchanged** → the golden-master (`test_openapi_surface.py`, which compares route paths + tags) does **not** need regenerating and must stay green.
-- Authorized requests (admin any client; scoped users on their own/assigned clients) return exactly what they did before.
-- `true()` renders portably on SQLite + MariaDB; `.in_(tuple)` is portable.
+- The `client_id` query param stays on Pattern-A/B read endpoints → OpenAPI route set + tags unchanged → `test_openapi_surface.py` stays green without regeneration. Pattern-C endpoints that gain scoping do **not** add a route; if any signature change alters the OpenAPI surface, that is a review flag.
+- Authorized requests (admin any client; scoped users on their own/assigned clients; leaders on any of theirs) return exactly what they did before.
+- Portability: `true()`, `.in_(tuple)` on SQLite + MariaDB.
+- Coverage gate ≥75% stays green; every existing tenant-isolation test stays green.
 
 ## Testing
 
-### Unit
-- `ClientScope.filter`: `None` → `true()`; `("A",)` → `col.in_(("A",))`; `("A","B")` → `col.in_(("A","B"))`.
-- `ClientScope.as_single`: `None`→`None`; `("A",)`→`"A"`; `("A","B")`→ raises 400.
-- `resolve_client_scope` against the conftest fixtures (admin, operator-CLIENT-A, operator-CLIENT-B, leader "CLIENT-A,CLIENT-B"): every row of the resolution matrix, especially the **403** paths (operator→other client, unassigned scoped user) and the leader multi-client set.
+**Unit** (Task 1, done): `ClientScope`/`resolve_client_scope` matrix.
 
-### Integration (HTTP, per representative endpoint)
-- operator-CLIENT-A + `?client_id=CLIENT-B` → **403** on a SQL-filter endpoint (e.g. `/api/kpi/efficiency/trend`) **and** a scalar-service endpoint (`/api/kpi/oee/cause` or `/api/kpi/quality/cause`).
-- operator-CLIENT-A + `?client_id=CLIENT-A` (own) → **200**, data scoped to A.
-- admin + `?client_id=CLIENT-B` → **200**, data scoped to B (narrowing works).
-- leader "CLIENT-A,CLIENT-B" + `?client_id=CLIENT-B` → **200**; + `?client_id=CLIENT-C` → **403**.
-- Rewrite `tests/test_api/test_data_completeness.py:454-468` (it reimplements the buggy block) to assert the corrected dependency behavior instead.
+**Integration (HTTP) — per pattern, representative + the severe cases:**
+- Pattern A: operator-CLIENT-A + `?client_id=CLIENT-B` → **403** on a BLOCK (`/api/kpi/availability` or `/api/quality/kpi/ppm`), a BAREIF (`/api/kpi/efficiency/by-shift`), an IFELIF (`/api/kpi/wip-aging/top`), and a config catalog (`/api/kpi-thresholds`); own client → 200; admin narrows to any → 200; leader authorized/unauthorized → 200/403.
+- Pattern B: operator-A on `/api/kpi/otd/by-client` and `/api/my-shift/summary` returns ONLY CLIENT-A data (no CLIENT-B rows); poweruser sees all; leader sees their set.
+- Pattern C (severe): a scoped user hitting `/api/kpi/late-orders`, `/api/kpi/chronic-holds`, `/api/quality/kpi/quality-score` (for another client's product) does **not** receive other clients' data (403 or empty-for-others, per endpoint).
+- Pattern D: operator-A approving a CLIENT-B hold → **403**.
+- Rewrite the buggy `test_data_completeness.py` test.
 
-### Whole-suite
-- `cd backend && pytest tests/` — coverage ≥75%, all green. Existing tenant-isolation tests (`test_all_endpoints.py` 403 gates, `test_hold_catalog_tenant_isolation.py`) must stay green.
+**Whole-suite:** `pytest tests/` green, coverage ≥75%; existing tenant-isolation tests green.
 
-### End-to-end browser smoke test (REQUIRED — user standpoint)
-After the code is merged and deployed to the VM, run a **full browser-agent e2e smoke test from the real user's standpoint** — not just API assertions. This is a hard gate on "done": the fix touches the tenant boundary the whole app relies on, and prior live-validation caught bugs unit tests missed. The browser smoke test must:
-1. **Log in as an all-client user** (admin/poweruser — `verify_bot`) and confirm the KPI dashboard + diagnostic charts load across clients, the client selector switches clients, and cause tooltips still render (SP2 unbroken).
-2. **Log in as a scoped user** (an operator/viewer bound to one DEMO client) and confirm: (a) they see only their client's data; (b) the client selector does not expose, and the app does not load, another client's data; (c) attempting another client's data (via the selector if present, or a crafted request) is refused (no cross-tenant data appears).
-3. Exercise the **previously-fixed surfaces** in the same pass so this is a genuine full regression from the user standpoint: WIP-Aging shows credible aging, OTD shows its out-of-control dip with the SP2 cause tooltip, and the 10 diagnostic charts render — for the logged-in user's authorized scope.
-4. Report the walked steps, what was observed per role, and screenshots/DOM evidence. Any cross-tenant leakage visible to a scoped user is a release blocker.
+**Static guard:** a test asserting no route reintroduces `role != "admin" and current_user.client_id_assigned` **and** no vulnerable bare `if client_id:`-without-verify pattern in the migrated files.
 
-If a scoped DEMO user does not already exist for the smoke test, create one on the VM (scoped to one DEMO client) as a confirmed, non-destructive step — do not alter existing users.
-
-## Out of Scope / Deferred (YAGNI)
-
-- CSV and capacity routes (gated by `get_current_planner`/supervisor, planner-only) — not in the vulnerable set.
-- Write endpoints (`floating_pool.py` already forces the user's own client) — not vulnerable.
-- No change to the role model, JWT contents, or the `client_auth.py` primitives themselves (only consumed).
-- No new UI for client selection — the fix is server-side enforcement.
+**End-to-end browser smoke test (REQUIRED gate — user standpoint):** after merge + VM deploy, a full browser-agent e2e from the real user's standpoint: (1) all-client user (`verify_bot`) — dashboards/10 charts/client-switching/SP2 tooltips/WIP/OTD all work; (2) a scoped DEMO user (created confirmed + non-destructively, bound to one DEMO client) — sees only their client, the app never loads another client's data, cross-tenant attempts are refused. Report walked steps + per-role evidence. Any cross-tenant data visible to the scoped user is a release blocker.
 
 ## Related Memory
 
-[[user-roles-dialog-fix]] (the six-role model + `validate_role_client_assignment`), [[diagnostic-kpi-charts]] (SP2, the /cause endpoint this scopes), [[verify-rigorously-not-sample]] (validate against the running app), [[production-deployment-planning]] (single-tenancy policy on the VM).
+[[user-roles-dialog-fix]], [[diagnostic-kpi-charts]], [[verify-rigorously-not-sample]], [[production-deployment-planning]].
