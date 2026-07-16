@@ -523,5 +523,8 @@ def get_chronic_holds(
     Useful for identifying systemic issues in the production pipeline.
 
     SECURITY: Requires authentication; client filtering applied in identify_chronic_holds.
+    A multi-client leader sees chronic holds across all their assigned clients
+    (list-based filter) rather than being rejected by the scalar as_single() check.
     """
-    return identify_chronic_holds(db, threshold_days, client_id=scope.as_single())
+    threshold_client = scope.client_ids[0] if scope.client_ids is not None and len(scope.client_ids) == 1 else None
+    return identify_chronic_holds(db, threshold_days, client_id=threshold_client, client_ids=scope.client_ids)

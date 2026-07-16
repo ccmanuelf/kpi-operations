@@ -223,6 +223,48 @@ def test_operator_chronic_holds_scoped_excludes_other_client(_bind, operator_use
         app.dependency_overrides.pop(get_current_user, None)
 
 
+def test_leader_multi_client_chronic_holds_not_400_sees_both_clients(_bind, leader_user_multi_client):
+    """Regression: get_chronic_holds used to pass scope.as_single() as the
+    hold filter, which raises HTTPException(400) for any multi-client leader
+    (client_ids has >1 entry). identify_chronic_holds now accepts a list-based
+    client_ids filter, so a leader assigned to CLIENT-A and CLIENT-B gets 200
+    and sees chronic holds from both clients, not a 400."""
+    db = _bind
+    TestDataFactory.create_client(db, client_id="CLIENT-A")
+    TestDataFactory.create_client(db, client_id="CLIENT-B")
+    admin = TestDataFactory.create_user(db, username="chronic_leader_admin", role="admin")
+    wo_a = TestDataFactory.create_work_order(db, client_id="CLIENT-A")
+    wo_b = TestDataFactory.create_work_order(db, client_id="CLIENT-B")
+    old_hold_date = datetime.now(tz=timezone.utc) - timedelta(days=40)
+    hold_a = TestDataFactory.create_hold_entry(
+        db,
+        work_order_id=wo_a.work_order_id,
+        client_id="CLIENT-A",
+        created_by=admin.user_id,
+        hold_status=HoldStatus.ON_HOLD,
+        hold_date=old_hold_date,
+    )
+    hold_b = TestDataFactory.create_hold_entry(
+        db,
+        work_order_id=wo_b.work_order_id,
+        client_id="CLIENT-B",
+        created_by=admin.user_id,
+        hold_status=HoldStatus.ON_HOLD,
+        hold_date=old_hold_date,
+    )
+    db.commit()
+
+    c = _as(leader_user_multi_client)
+    try:
+        r = c.get("/api/kpi/chronic-holds")
+        assert r.status_code == 200
+        hold_ids = [item["hold_id"] for item in r.json()]
+        assert hold_a.hold_entry_id in hold_ids
+        assert hold_b.hold_entry_id in hold_ids
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+
+
 def test_operator_quality_score_blocked_for_other_client(_bind, operator_user_client_a):
     """/api/quality/kpi/quality-score is product-keyed with no tenant check
     at all — any authenticated user could pass any product_id. Confirm a
