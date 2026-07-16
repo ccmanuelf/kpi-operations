@@ -14,7 +14,7 @@ from datetime import date, datetime, timedelta
 
 from backend.utils.logging_utils import get_module_logger
 from backend.database import get_db
-from backend.auth.jwt import get_current_user
+from backend.auth.jwt import get_current_user, ClientScope, resolve_client_scope
 from backend.orm.user import User
 
 logger = get_module_logger(__name__)
@@ -29,6 +29,7 @@ def get_aggregated_dashboard(
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    scope: ClientScope = Depends(resolve_client_scope),
 ) -> Any:
     """
     Get aggregated KPI dashboard data in a single API call.
@@ -62,18 +63,13 @@ def get_aggregated_dashboard(
     if start_date is None:
         start_date = end_date - timedelta(days=30)
 
-    # Effective client filter
-    effective_client_id = client_id
-    if not effective_client_id and current_user.role != "admin" and current_user.client_id_assigned:
-        effective_client_id = current_user.client_id_assigned
-
     # Build date filter conditions
     start_dt = datetime.combine(start_date, datetime.min.time())
     end_dt = datetime.combine(end_date, datetime.max.time())
 
     result: Dict[str, Any] = {
         "date_range": {"start_date": str(start_date), "end_date": str(end_date)},
-        "client_id": effective_client_id,
+        "client_id": client_id,
         "efficiency": None,
         "performance": None,
         "quality": None,
@@ -93,8 +89,7 @@ def get_aggregated_dashboard(
             func.sum(ProductionEntry.units_produced).label("total_units"),
             func.sum(ProductionEntry.run_time_hours).label("total_hours"),
         ).filter(ProductionEntry.shift_date >= start_dt, ProductionEntry.shift_date <= end_dt)
-        if effective_client_id:
-            prod_query = prod_query.filter(ProductionEntry.client_id == effective_client_id)
+        prod_query = prod_query.filter(scope.filter(ProductionEntry.client_id))
 
         prod_result = prod_query.first()
         result["efficiency"] = {
@@ -111,8 +106,7 @@ def get_aggregated_dashboard(
             func.avg(ProductionEntry.efficiency_percentage).label("efficiency"),
             func.avg(ProductionEntry.performance_percentage).label("performance"),
         ).filter(ProductionEntry.shift_date >= start_dt, ProductionEntry.shift_date <= end_dt)
-        if effective_client_id:
-            trend_query = trend_query.filter(ProductionEntry.client_id == effective_client_id)
+        trend_query = trend_query.filter(scope.filter(ProductionEntry.client_id))
 
         trend_results = (
             trend_query.group_by(func.date(ProductionEntry.shift_date))
@@ -156,10 +150,10 @@ def get_aggregated_dashboard(
         # when a per-entry value isn't present. We resolve a fallback via
         # the most recent client config; absent that, use 1 (so DPMO ≡ PPM).
         opps_per_unit = 1
-        if effective_client_id:
+        if scope.as_single():
             from backend.orm.client_config import ClientConfig
 
-            cc = db.query(ClientConfig).filter(ClientConfig.client_id == effective_client_id).first()
+            cc = db.query(ClientConfig).filter(ClientConfig.client_id == scope.as_single()).first()
             opps_default = getattr(cc, "dpmo_opportunities_default", None) if cc else None
             if opps_default is not None:
                 opps_per_unit = max(1, int(opps_default))
@@ -173,8 +167,7 @@ def get_aggregated_dashboard(
             QualityEntry.shift_date >= start_dt,
             QualityEntry.shift_date <= end_dt,
         )
-        if effective_client_id:
-            q_query = q_query.filter(QualityEntry.client_id == effective_client_id)
+        q_query = q_query.filter(scope.filter(QualityEntry.client_id))
         q_result = q_query.first()
 
         inspected = int(q_result.inspected or 0) if q_result else 0
@@ -223,8 +216,7 @@ def get_aggregated_dashboard(
         downtime_query = db.query(
             func.sum(DowntimeEntry.downtime_duration_minutes / 60.0).label("downtime_hours")
         ).filter(DowntimeEntry.shift_date >= start_dt, DowntimeEntry.shift_date <= end_dt)
-        if effective_client_id:
-            downtime_query = downtime_query.filter(DowntimeEntry.client_id == effective_client_id)
+        downtime_query = downtime_query.filter(scope.filter(DowntimeEntry.client_id))
 
         downtime_result = downtime_query.first()
         downtime_hours = float(downtime_result.downtime_hours or 0) if downtime_result else 0.0
@@ -253,8 +245,7 @@ def get_aggregated_dashboard(
             func.sum(func.coalesce(AttendanceEntry.absence_hours, 0)).label("absent"),
             func.count(func.distinct(AttendanceEntry.employee_id)).label("employee_count"),
         ).filter(AttendanceEntry.shift_date >= start_dt, AttendanceEntry.shift_date <= end_dt)
-        if effective_client_id:
-            att_query = att_query.filter(AttendanceEntry.client_id == effective_client_id)
+        att_query = att_query.filter(scope.filter(AttendanceEntry.client_id))
 
         att_result = att_query.first()
         if att_result is None:
@@ -289,8 +280,7 @@ def get_aggregated_dashboard(
         wip_query = db.query(func.count(HoldEntry.hold_entry_id).label("total_count")).filter(
             HoldEntry.hold_status == HoldStatus.ON_HOLD
         )
-        if effective_client_id:
-            wip_query = wip_query.filter(HoldEntry.client_id == effective_client_id)
+        wip_query = wip_query.filter(scope.filter(HoldEntry.client_id))
 
         wip_result = wip_query.first()
         total_active = wip_result.total_count if wip_result else 0
@@ -320,8 +310,7 @@ def get_aggregated_dashboard(
             WorkOrder.required_date <= end_dt,
             WorkOrder.actual_delivery_date.isnot(None),
         )
-        if effective_client_id:
-            otd_query = otd_query.filter(WorkOrder.client_id == effective_client_id)
+        otd_query = otd_query.filter(scope.filter(WorkOrder.client_id))
 
         otd_result = otd_query.first()
         if otd_result is None:

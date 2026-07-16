@@ -33,6 +33,7 @@ def get_efficiency_by_shift(
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    scope: ClientScope = Depends(resolve_client_scope),
 ) -> Any:
     """
     Get efficiency aggregated by shift.
@@ -62,8 +63,7 @@ def get_efficiency_by_shift(
         .filter(ProductionEntry.shift_date >= start_date, ProductionEntry.shift_date <= end_date)
     )
 
-    if client_id:
-        query = query.filter(ProductionEntry.client_id == client_id)
+    query = query.filter(scope.filter(ProductionEntry.client_id))
 
     results = query.group_by(ProductionEntry.shift_id, Shift.shift_name).all()
 
@@ -97,6 +97,7 @@ def get_efficiency_by_product(
     limit: int = 10,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    scope: ClientScope = Depends(resolve_client_scope),
 ) -> Any:
     """
     Get top products by efficiency.
@@ -126,8 +127,7 @@ def get_efficiency_by_product(
         .filter(ProductionEntry.shift_date >= start_date, ProductionEntry.shift_date <= end_date)
     )
 
-    if client_id:
-        query = query.filter(ProductionEntry.client_id == client_id)
+    query = query.filter(scope.filter(ProductionEntry.client_id))
 
     results = (
         query.group_by(ProductionEntry.product_id, Product.product_name)

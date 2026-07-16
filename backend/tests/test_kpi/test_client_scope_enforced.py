@@ -42,3 +42,30 @@ def test_admin_can_narrow_to_any_client(_bind, admin_user):
         assert r.status_code == 200
     finally:
         app.dependency_overrides.pop(get_current_user, None)
+
+
+def test_operator_cannot_read_other_clients_cause(_bind, operator_user_client_a):
+    c = _as(operator_user_client_a)
+    try:
+        assert (
+            c.get("/api/kpi/availability/cause", params={"date": "2026-07-14", "client_id": "CLIENT-B"}).status_code
+            == 403
+        )
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+
+
+def test_operator_cannot_read_other_clients_efficiency_by_shift(_bind, operator_user_client_a):
+    c = _as(operator_user_client_a)
+    try:
+        assert c.get("/api/kpi/efficiency/by-shift", params={"client_id": "CLIENT-B"}).status_code == 403
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+
+
+def test_operator_cannot_read_other_clients_dashboard(_bind, operator_user_client_a):
+    c = _as(operator_user_client_a)
+    try:
+        assert c.get("/api/kpi/dashboard/aggregated", params={"client_id": "CLIENT-B"}).status_code == 403
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
