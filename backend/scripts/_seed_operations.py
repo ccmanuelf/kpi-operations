@@ -96,6 +96,10 @@ def seed_work_orders(session: Session, spec: ClientSpec, entered_by: str, anchor
         # create_work_order doesn't read actual_delivery_date via **kwargs; set directly.
         wo.actual_delivery_date = delivered
 
+        # OTD reads required_date (not planned_ship_date). Anchor it to the plan
+        # so the 10 status WOs participate in the On-Time-Delivery metric.
+        wo.required_date = planned_ship
+
         # --- Milestones (status-coherent, anchor-relative, deterministic) ---
         wo.received_date = now - timedelta(days=rng.randint(30, 70))
         if status in (WorkOrderStatus.SHIPPED, WorkOrderStatus.CLOSED):

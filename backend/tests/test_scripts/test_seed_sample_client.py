@@ -299,6 +299,19 @@ def test_work_orders_cover_all_statuses_with_transitions_and_holds(db_session):
         assert expected in hold_statuses, f"missing hold status {expected}"
 
 
+def test_all_work_orders_have_required_date(db_session):
+    from backend.orm import WorkOrder
+
+    _seed_admin(db_session)
+    spec = seed.CLIENT_SPECS["DEMO-PIECE"]
+    seed.seed_client(db_session, spec, days=10, anchor=FIXED_ANCHOR)
+
+    wos = db_session.query(WorkOrder).filter_by(client_id="DEMO-PIECE").all()
+    assert len(wos) >= 10
+    for wo in wos:
+        assert wo.required_date is not None, f"{wo.work_order_id} missing required_date"
+
+
 def test_holds_are_backdated_with_chronic_active_and_resolved_resume(db_session):
     from backend.orm import HoldEntry
 
