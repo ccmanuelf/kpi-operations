@@ -5,12 +5,14 @@ Token creation, validation, password hashing
 
 import hashlib
 import uuid
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional, cast
 import jwt
 from jwt import PyJWTError
-from fastapi import Depends, HTTPException, Request, status
+from fastapi import Depends, HTTPException, Query, Request, status
 from fastapi.security import OAuth2PasswordBearer
+from sqlalchemy import true
 from sqlalchemy.orm import Session
 
 from backend.auth.password import hash_password as _hash_password
@@ -303,3 +305,47 @@ def get_current_admin(current_user: User = Depends(get_current_user)) -> User:
     if current_user.role != "admin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
     return current_user
+
+
+@dataclass(frozen=True)
+class ClientScope:
+    """Resolved, authorized set of clients for a request. client_ids is None
+    => all clients (admin/poweruser); otherwise the exact authorized tuple."""
+
+    client_ids: Optional[tuple[str, ...]]
+
+    def filter(self, column: Any) -> Any:
+        """SQLAlchemy clause scoping `column` to this scope (true() = no filter)."""
+        if self.client_ids is None:
+            return true()
+        return column.in_(self.client_ids)
+
+    def as_single(self) -> Optional[str]:
+        """Scalar client_id for legacy scalar-consuming services."""
+        if self.client_ids is None:
+            return None
+        if len(self.client_ids) == 1:
+            return self.client_ids[0]
+        raise HTTPException(status_code=400, detail="Multiple clients in scope; specify a client_id")
+
+
+def resolve_client_scope(
+    client_id: Optional[str] = Query(None),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> ClientScope:
+    """Central client-scope authorization for read endpoints. Admin/poweruser
+    see all clients (or narrow to one); scoped users are confined to their
+    assigned client(s); an unauthorized client_id -> 403."""
+    # Deferred import: backend.middleware's __init__ imports write_access,
+    # which imports get_current_user from this module. A module-level import
+    # here would deadlock jwt.py's own import (circular). By call time this
+    # module is already fully loaded, so the cycle doesn't apply.
+    from backend.middleware.client_auth import get_user_client_filter, ClientAccessError
+
+    allowed = get_user_client_filter(current_user, db)  # None=all; list=scoped; raises 403 if scoped & unassigned
+    if client_id is not None:
+        if allowed is not None and client_id not in allowed:
+            raise ClientAccessError(detail=f"Not authorized for client {client_id}")
+        return ClientScope((client_id,))
+    return ClientScope(None if allowed is None else tuple(allowed))
