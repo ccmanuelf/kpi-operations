@@ -337,7 +337,7 @@ def seed_daily_data(session: Session, spec: ClientSpec, days: int, entered_by: s
             is_last = k == num_entries - 1
             day_idx = (len(working_days) - 1) if is_last else min(k * step, len(working_days) - 1)
             day = working_days[day_idx]
-            day_dt = datetime.combine(day, datetime.min.time())
+            day_dt = datetime.combine(day, shift.start_time)
 
             if is_last:
                 units = max(1, target_total - running)
@@ -452,7 +452,7 @@ def seed_daily_data(session: Session, spec: ClientSpec, days: int, entered_by: s
     # --- Attendance: one per employee per working day, independent of the
     # per-WO production split. ---
     for day_seq, day in enumerate(working_days, start=1):
-        day_dt = datetime.combine(day, datetime.min.time())
+        day_dt = datetime.combine(day, shift.start_time)
         for j, emp in enumerate(employees, start=1):
             arng = rng_for(cid, "att", day.isoformat(), emp.employee_id)
             absent = arng.random() < 0.05

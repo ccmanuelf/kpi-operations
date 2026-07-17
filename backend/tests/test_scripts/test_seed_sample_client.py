@@ -805,3 +805,23 @@ def test_seed_client_under_foreign_key_enforcement(tmp_path):
             assert s.query(DefectDetail).filter_by(client_id_fk="DEMO-PIECE").count() > 0
     finally:
         eng.dispose()
+
+
+def test_seeded_entries_use_shift_start_time_not_midnight(db_session):
+    """Operational entries are timestamped at their shift's start time (06:00 for
+    the Day shift), not midnight — realistic data + lets the date-range boundary
+    fix (#145) be exercised on live seed data."""
+    from datetime import time
+    from backend.orm import ProductionEntry, AttendanceEntry
+
+    _seed_admin(db_session)
+    spec = seed.CLIENT_SPECS["DEMO-PIECE"]
+    seed.seed_client(db_session, spec, days=10, anchor=FIXED_ANCHOR)
+
+    pe = db_session.query(ProductionEntry).filter_by(client_id="DEMO-PIECE").first()
+    ae = db_session.query(AttendanceEntry).filter_by(client_id="DEMO-PIECE").first()
+    assert pe is not None and ae is not None
+    # Day shift starts 06:00; entries must carry that intraday time, not 00:00.
+    assert pe.shift_date.time() == time(6, 0), f"production shift_date {pe.shift_date} not at shift start"
+    assert ae.shift_date.time() == time(6, 0), f"attendance shift_date {ae.shift_date} not at shift start"
+    assert pe.shift_date.time() != time(0, 0)
