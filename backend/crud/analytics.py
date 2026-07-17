@@ -231,8 +231,8 @@ def get_defect_pareto_data(
         .where(
             and_(
                 DefectDetail.client_id_fk == client_id,
-                QualityEntry.inspection_date >= start_date,
-                QualityEntry.inspection_date <= end_date,
+                QualityEntry.inspection_date >= datetime.combine(start_date, datetime.min.time()),
+                QualityEntry.inspection_date <= datetime.combine(end_date, datetime.max.time()),
             )
         )
         .group_by(DefectDetail.defect_type)

@@ -9,7 +9,7 @@ genuine red (0 rows) on SQLite; post-fix (datetime.combine bounds) it is
 green (>=1 row).
 """
 
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
@@ -162,3 +162,82 @@ def test_calculate_otd_includes_same_day_intraday_row(db_session):
     _otd_percentage, _on_time_count, total_count = calculate_otd(db_session, start_date=SAME_DAY, end_date=SAME_DAY)
 
     assert total_count >= 1, "same-day 08:00 production row must be included when start_date == end_date"
+
+
+def test_defect_pareto_data_includes_same_day_intraday_row(db_session):
+    """crud/analytics.py get_defect_pareto_data: QualityEntry.inspection_date
+    (DateTime) vs bare-date end bound, called directly."""
+    from backend.crud.analytics import get_defect_pareto_data
+
+    admin = TestDataFactory.create_user(db_session, username="pareto_admin", role="admin")
+    test_client = TestDataFactory.create_client(db_session)
+    work_order = TestDataFactory.create_work_order(db_session, client_id=test_client.client_id)
+    quality_entry = QualityEntry(
+        quality_entry_id="QE-BOUND-2",
+        client_id=test_client.client_id,
+        work_order_id=work_order.work_order_id,
+        inspection_date=INTRADAY,
+        shift_date=INTRADAY,
+        units_inspected=100,
+        units_passed=90,
+        units_defective=10,
+        total_defects_count=10,
+    )
+    db_session.add(quality_entry)
+    db_session.flush()
+    TestDataFactory.create_defect_detail(
+        db_session,
+        quality_entry_id=quality_entry.quality_entry_id,
+        defect_type=DefectType.STITCHING,
+        defect_count=4,
+        client_id_fk=test_client.client_id,
+    )
+    db_session.commit()
+
+    rows = get_defect_pareto_data(
+        db_session, client_id=test_client.client_id, start_date=SAME_DAY, end_date=SAME_DAY, current_user=admin
+    )
+
+    assert rows, "same-day 08:00 inspection defect row must be included when start_date == end_date"
+    assert any(defect_type == DefectType.STITCHING.value for defect_type, _count in rows)
+
+
+def test_identify_late_orders_includes_threshold_day_intraday_row(db_session):
+    """calculations/otd.py identify_late_orders: production_date <= threshold_date
+    (as_of_date - 7d) upper bound. A row timestamped on the threshold day at
+    08:00 must still count as late (pre-fix it is excluded)."""
+    from backend.calculations.otd import identify_late_orders
+
+    as_of_date = date(2026, 6, 17)
+    threshold_at_0800 = datetime.combine(as_of_date - timedelta(days=7), datetime.min.time()).replace(hour=8)
+
+    test_client = TestDataFactory.create_client(db_session)
+    product = TestDataFactory.create_product(db_session, client_id=test_client.client_id)
+    shift = TestDataFactory.create_shift(db_session, client_id=test_client.client_id)
+    work_order = TestDataFactory.create_work_order(db_session, client_id=test_client.client_id)
+    production_entry = ProductionEntry(
+        production_entry_id="PE-BOUND-3",
+        client_id=test_client.client_id,
+        product_id=product.product_id,
+        shift_id=shift.shift_id,
+        work_order_id=work_order.work_order_id,
+        entered_by="tester",
+        production_date=threshold_at_0800,
+        shift_date=threshold_at_0800,
+        units_produced=500,
+        employees_assigned=5,
+        employees_present=5,
+        run_time_hours=8,
+        defect_count=0,
+        scrap_count=0,
+        rework_count=0,
+        confirmed_by=None,
+    )
+    db_session.add(production_entry)
+    db_session.commit()
+
+    late = identify_late_orders(db_session, as_of_date=as_of_date)
+
+    assert any(
+        row["work_order"] == work_order.work_order_id for row in late
+    ), "an unconfirmed WO on the threshold day at 08:00 must count as late"

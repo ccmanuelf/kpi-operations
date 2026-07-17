@@ -46,7 +46,7 @@ def calculate_expected_entries(
 
     # Get active work orders for the date
     work_order_query = db.query(func.count(WorkOrder.work_order_id)).filter(
-        WorkOrder.planned_start_date <= target_date,
+        WorkOrder.planned_start_date <= datetime.combine(target_date, datetime.max.time()),
         (WorkOrder.actual_delivery_date >= target_date) | (WorkOrder.actual_delivery_date.is_(None)),
         WorkOrder.status != "COMPLETED",
     )

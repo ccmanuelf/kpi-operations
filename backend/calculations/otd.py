@@ -220,7 +220,7 @@ def identify_late_orders(
 
     query = db.query(ProductionEntry).filter(
         and_(
-            ProductionEntry.production_date <= threshold_date,
+            ProductionEntry.production_date <= datetime.combine(threshold_date, datetime.max.time()),
             ProductionEntry.confirmed_by.is_(None),
             ProductionEntry.work_order_id.isnot(None),
         )
