@@ -176,7 +176,7 @@ def get_quality_by_product(
             "product_name": r.product_name or "Unknown",
             "inspected": r.inspected or 0,
             "defects": r.defects or 0,
-            "fpy": round((r.passed / r.inspected) * 100, 1) if r.inspected and r.inspected > 0 else 0,
+            "fpy": round((float(r.passed) / float(r.inspected)) * 100, 1) if r.inspected and r.inspected > 0 else 0,
         }
         for r in results
     ]

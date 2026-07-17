@@ -219,7 +219,7 @@ def get_quality_trend(
     return [
         {
             "date": str(r.date),
-            "value": round((r.passed / r.inspected) * 100, 2) if r.inspected and r.inspected > 0 else 0,
+            "value": round((float(r.passed) / float(r.inspected)) * 100, 2) if r.inspected and r.inspected > 0 else 0,
         }
         for r in results
     ]
@@ -391,7 +391,8 @@ def get_otd_trend(
     results = query.group_by(func.date(WorkOrder.required_date)).order_by(func.date(WorkOrder.required_date)).all()
 
     return [
-        {"date": str(r.date), "value": round((r.on_time / r.total * 100) if r.total > 0 else 0, 2)} for r in results
+        {"date": str(r.date), "value": round((float(r.on_time) / float(r.total) * 100) if r.total > 0 else 0, 2)}
+        for r in results
     ]
 
 
@@ -431,7 +432,7 @@ def get_absenteeism_trend(
     return [
         {
             "date": str(r.date),
-            "value": round((r.absent / r.scheduled * 100) if r.scheduled and r.scheduled > 0 else 0, 2),
+            "value": round((float(r.absent) / float(r.scheduled) * 100) if r.scheduled and r.scheduled > 0 else 0, 2),
         }
         for r in results
     ]
