@@ -106,7 +106,10 @@ def calculate_otd(
     """
 
     query = db.query(ProductionEntry).filter(
-        and_(ProductionEntry.production_date >= start_date, ProductionEntry.production_date <= end_date)
+        and_(
+            ProductionEntry.production_date >= datetime.combine(start_date, datetime.min.time()),
+            ProductionEntry.production_date <= datetime.combine(end_date, datetime.max.time()),
+        )
     )
 
     if product_id:

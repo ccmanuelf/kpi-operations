@@ -5,7 +5,7 @@ Defect analysis endpoints: top defects, defects by type, and quality by product.
 Used for Pareto root-cause analysis.
 """
 
-from datetime import date
+from datetime import date, datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends
@@ -97,8 +97,8 @@ def get_defects_by_type(
         )
         .join(QualityEntry, DefectDetail.quality_entry_id == QualityEntry.quality_entry_id)
         .filter(
-            QualityEntry.shift_date >= start_date.isoformat(),
-            QualityEntry.shift_date <= end_date.isoformat(),
+            QualityEntry.shift_date >= datetime.combine(start_date, datetime.min.time()),
+            QualityEntry.shift_date <= datetime.combine(end_date, datetime.max.time()),
         )
     )
 
@@ -160,8 +160,8 @@ def get_quality_by_product(
         )
         .join(WorkOrder, QualityEntry.work_order_id == WorkOrder.work_order_id)
         .filter(
-            QualityEntry.shift_date >= start_date.isoformat(),
-            QualityEntry.shift_date <= end_date.isoformat(),
+            QualityEntry.shift_date >= datetime.combine(start_date, datetime.min.time()),
+            QualityEntry.shift_date <= datetime.combine(end_date, datetime.max.time()),
         )
     )
 

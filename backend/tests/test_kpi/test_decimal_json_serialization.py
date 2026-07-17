@@ -134,10 +134,7 @@ def test_quality_by_product_fpy_is_number(client, db_session):
         )
     )
     db_session.commit()
-    # by-product filters shift_date against date.isoformat() strings (no time component),
-    # so an end_date equal to the seeded day excludes the 08:00 timestamp lexicographically;
-    # widen to the next day (revealed by an empty response body during collection).
     body = client.get(
-        "/api/quality/kpi/by-product", params={"start_date": "2026-06-10", "end_date": "2026-06-11"}
+        "/api/quality/kpi/by-product", params={"start_date": "2026-06-10", "end_date": "2026-06-10"}
     ).json()
     assert body and _num(body[0]["fpy"])
