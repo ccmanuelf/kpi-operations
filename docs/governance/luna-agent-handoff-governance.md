@@ -82,7 +82,7 @@ Two tables follow: what Luna **may** call (read-only) and what it **may not**. E
 | Clients / employees / floating-pool | `POST/PUT/DELETE /api/clients**`, `/api/employees**`, `/api/floating-pool**`, assign/unassign actions | Master-data & assignment decisions |
 | Part opportunities | `POST/PUT/DELETE /api/part-opportunities**` | Master-data writes |
 | Reference / topology / catalog writes | `POST/PUT/DELETE /api/{shifts,break-times,production-lines,equipment,employee-line-assignments,hold-catalogs,defect-types}**` | Configuration changes |
-| Capacity / planning writes | `POST/PUT/PATCH/DELETE /api/capacity/**`, incl. `…/schedules/generate`, `…/schedules/{id}/commit`, `…/analysis/calculate` | Planning decisions (also server-blocked for poweruser/supervisor via `require_capacity_write`) |
+| Capacity / planning writes | `POST/PUT/PATCH/DELETE /api/capacity/**`, incl. `…/schedules/generate`, `…/schedules/{id}/commit`, `…/analysis/calculate` | Planning decisions (the `poweruser` role is additionally server-blocked from these writes via `require_capacity_write`) |
 | Simulation & capacity scenario runs/writes | `POST/PUT/DELETE /api/capacity/scenarios**`, `POST /api/v2/simulation/{run,run-monte-carlo,validate,optimize-operators,rebalance-bottlenecks,sequence-products,plan-horizon,scenarios**}` | Running/altering what-if analysis |
 | Workflow config & transitions | `POST /api/workflow/**/transition`, `/bulk-transition`, `PUT /api/workflow/config/{client_id}`, `…/apply-template` | Advances work-order state / changes config |
 | Alerts writes | `POST /api/alerts/**` (create, acknowledge, resolve, dismiss, generate/*) | Acting on or generating alerts is a decision |
@@ -126,7 +126,7 @@ Because Luna calls the API **as the human** (§3), every shipped control applies
 |---|---|
 | **Viewer read-only** on transactional data entry | Luna only reads anyway; and if the human is a viewer, the server refuses writes regardless of caller. |
 | **Client-scope isolation (403 cross-tenant)** via `resolve_client_scope` / `ClientScope` | Luna's requests carry the human's scope; the server returns 403 for any client the human can't access — Luna cannot widen that scope. |
-| **Supervisor/poweruser capacity-write block** via `require_capacity_write` | Even if Luna's read-only rule failed, the server independently blocks these writes for the relevant roles. |
+| **Poweruser capacity-write block** via `require_capacity_write` | Even if Luna's read-only rule failed, the server independently blocks capacity-planning writes for the `poweruser` role. |
 | **Six-role permission tiers** (admin / poweruser / leader / supervisor / operator / viewer) | Luna inherits the human's role exactly; it gains no capability the human lacks. |
 
 The read-only allow-list (§4) and this server-side enforcement are **defense in depth**: two independent layers, either of which alone prevents Luna from changing anything.
