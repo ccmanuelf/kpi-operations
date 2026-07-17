@@ -5,7 +5,7 @@ PHASE 2
 
 from sqlalchemy.orm import Session
 from typing import Optional, List
-from datetime import date
+from datetime import date, datetime
 from fastapi import HTTPException
 
 from backend.orm.downtime_entry import DowntimeEntry
@@ -65,10 +65,10 @@ def get_downtime_events(
         query = query.filter(DowntimeEntry.client_id == client_id)
 
     if start_date:
-        query = query.filter(DowntimeEntry.shift_date >= start_date)
+        query = query.filter(DowntimeEntry.shift_date >= datetime.combine(start_date, datetime.min.time()))
 
     if end_date:
-        query = query.filter(DowntimeEntry.shift_date <= end_date)
+        query = query.filter(DowntimeEntry.shift_date <= datetime.combine(end_date, datetime.max.time()))
 
     if work_order_id:
         query = query.filter(DowntimeEntry.work_order_id == work_order_id)

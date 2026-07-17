@@ -5,7 +5,7 @@ SECURITY: Multi-tenant client filtering enabled
 """
 
 from typing import List, Optional
-from datetime import date
+from datetime import date, datetime
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, func
 
@@ -57,9 +57,9 @@ def get_production_entries(
 
     # Apply additional filters
     if start_date:
-        query = query.filter(ProductionEntry.production_date >= start_date)
+        query = query.filter(ProductionEntry.production_date >= datetime.combine(start_date, datetime.min.time()))
     if end_date:
-        query = query.filter(ProductionEntry.production_date <= end_date)
+        query = query.filter(ProductionEntry.production_date <= datetime.combine(end_date, datetime.max.time()))
     if product_id:
         query = query.filter(ProductionEntry.product_id == product_id)
     if shift_id:
@@ -113,7 +113,10 @@ def get_daily_summary(
 
     # Apply date filtering
     query = query.filter(
-        and_(ProductionEntry.production_date >= start_date, ProductionEntry.production_date <= end_date)
+        and_(
+            ProductionEntry.production_date >= datetime.combine(start_date, datetime.min.time()),
+            ProductionEntry.production_date <= datetime.combine(end_date, datetime.max.time()),
+        )
     ).group_by(ProductionEntry.production_date)
 
     results = query.all()

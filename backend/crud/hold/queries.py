@@ -5,7 +5,7 @@ List, filter, and lookup operations
 
 from sqlalchemy.orm import Session
 from typing import Optional, List
-from datetime import date
+from datetime import date, datetime
 
 from backend.orm.hold_entry import HoldEntry as WIPHold, HoldStatus
 from backend.schemas.hold import WIPHoldResponse
@@ -38,10 +38,10 @@ def get_wip_holds(
         query = query.filter(WIPHold.client_id == client_id)
 
     if start_date:
-        query = query.filter(WIPHold.hold_date >= start_date)
+        query = query.filter(WIPHold.hold_date >= datetime.combine(start_date, datetime.min.time()))
 
     if end_date:
-        query = query.filter(WIPHold.hold_date <= end_date)
+        query = query.filter(WIPHold.hold_date <= datetime.combine(end_date, datetime.max.time()))
 
     if work_order_id:
         query = query.filter(WIPHold.work_order_id == work_order_id)

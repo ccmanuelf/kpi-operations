@@ -89,10 +89,10 @@ def get_attendance_records(
         query = query.filter(AttendanceEntry.client_id == client_id)
 
     if start_date:
-        query = query.filter(AttendanceEntry.shift_date >= start_date)
+        query = query.filter(AttendanceEntry.shift_date >= datetime.combine(start_date, datetime.min.time()))
 
     if end_date:
-        query = query.filter(AttendanceEntry.shift_date <= end_date)
+        query = query.filter(AttendanceEntry.shift_date <= datetime.combine(end_date, datetime.max.time()))
 
     if employee_id:
         query = query.filter(AttendanceEntry.employee_id == employee_id)

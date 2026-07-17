@@ -5,7 +5,7 @@ Database queries for retrieving analytics data with multi-tenant filtering
 
 from typing import List, Optional, Tuple
 from decimal import Decimal
-from datetime import date
+from datetime import date, datetime
 from sqlalchemy.orm import Session
 from sqlalchemy import func, select, and_
 from backend.middleware.client_auth import get_user_client_filter
@@ -61,8 +61,8 @@ def get_kpi_time_series_data(
         .where(
             and_(
                 WorkOrder.client_id == client_id,
-                ProductionEntry.production_date >= start_date,
-                ProductionEntry.production_date <= end_date,
+                ProductionEntry.production_date >= datetime.combine(start_date, datetime.min.time()),
+                ProductionEntry.production_date <= datetime.combine(end_date, datetime.max.time()),
                 kpi_column.isnot(None),
             )
         )
@@ -121,8 +121,8 @@ def get_shift_heatmap_data(
         .where(
             and_(
                 WorkOrder.client_id == client_id,
-                ProductionEntry.production_date >= start_date,
-                ProductionEntry.production_date <= end_date,
+                ProductionEntry.production_date >= datetime.combine(start_date, datetime.min.time()),
+                ProductionEntry.production_date <= datetime.combine(end_date, datetime.max.time()),
             )
         )
         .group_by(ProductionEntry.production_date, Shift.shift_id, Shift.shift_name)
@@ -185,8 +185,8 @@ def get_client_comparison_data(
         .join(ProductionEntry, WorkOrder.work_order_id == ProductionEntry.work_order_id)
         .where(
             and_(
-                ProductionEntry.production_date >= start_date,
-                ProductionEntry.production_date <= end_date,
+                ProductionEntry.production_date >= datetime.combine(start_date, datetime.min.time()),
+                ProductionEntry.production_date <= datetime.combine(end_date, datetime.max.time()),
                 kpi_column.isnot(None),
             )
         )
@@ -231,8 +231,8 @@ def get_defect_pareto_data(
         .where(
             and_(
                 DefectDetail.client_id_fk == client_id,
-                QualityEntry.inspection_date >= start_date,
-                QualityEntry.inspection_date <= end_date,
+                QualityEntry.inspection_date >= datetime.combine(start_date, datetime.min.time()),
+                QualityEntry.inspection_date <= datetime.combine(end_date, datetime.max.time()),
             )
         )
         .group_by(DefectDetail.defect_type)

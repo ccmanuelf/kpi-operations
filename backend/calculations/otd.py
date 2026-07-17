@@ -106,7 +106,10 @@ def calculate_otd(
     """
 
     query = db.query(ProductionEntry).filter(
-        and_(ProductionEntry.production_date >= start_date, ProductionEntry.production_date <= end_date)
+        and_(
+            ProductionEntry.production_date >= datetime.combine(start_date, datetime.min.time()),
+            ProductionEntry.production_date <= datetime.combine(end_date, datetime.max.time()),
+        )
     )
 
     if product_id:
@@ -217,7 +220,7 @@ def identify_late_orders(
 
     query = db.query(ProductionEntry).filter(
         and_(
-            ProductionEntry.production_date <= threshold_date,
+            ProductionEntry.production_date <= datetime.combine(threshold_date, datetime.max.time()),
             ProductionEntry.confirmed_by.is_(None),
             ProductionEntry.work_order_id.isnot(None),
         )

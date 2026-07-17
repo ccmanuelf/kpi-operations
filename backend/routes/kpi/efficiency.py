@@ -60,7 +60,10 @@ def get_efficiency_by_shift(
             func.count(ProductionEntry.production_entry_id).label("entry_count"),
         )
         .join(Shift, ProductionEntry.shift_id == Shift.shift_id)
-        .filter(ProductionEntry.shift_date >= start_date, ProductionEntry.shift_date <= end_date)
+        .filter(
+            ProductionEntry.shift_date >= datetime.combine(start_date, datetime.min.time()),
+            ProductionEntry.shift_date <= datetime.combine(end_date, datetime.max.time()),
+        )
     )
 
     query = query.filter(scope.filter(ProductionEntry.client_id))
@@ -124,7 +127,10 @@ def get_efficiency_by_product(
             func.count(ProductionEntry.production_entry_id).label("entry_count"),
         )
         .join(Product, ProductionEntry.product_id == Product.product_id)
-        .filter(ProductionEntry.shift_date >= start_date, ProductionEntry.shift_date <= end_date)
+        .filter(
+            ProductionEntry.shift_date >= datetime.combine(start_date, datetime.min.time()),
+            ProductionEntry.shift_date <= datetime.combine(end_date, datetime.max.time()),
+        )
     )
 
     query = query.filter(scope.filter(ProductionEntry.client_id))
