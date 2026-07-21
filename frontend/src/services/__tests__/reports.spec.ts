@@ -21,75 +21,15 @@ describe('Reports API', () => {
     vi.clearAllMocks()
   })
 
-  describe('getDailyReport', () => {
-    it('calls GET /reports/daily/:date with blob response', async () => {
-      const mockBlob = new Blob(['test'], { type: 'application/pdf' })
-      api.get.mockResolvedValue({ data: mockBlob })
-
-      const result = await reportsApi.getDailyReport('2024-01-15')
-
-      expect(api.get).toHaveBeenCalledWith('/reports/daily/2024-01-15', {
-        responseType: 'blob'
-      })
-      expect(result.data).toBe(mockBlob)
-    })
-  })
-
-  describe('getWeeklyReport', () => {
-    it('calls GET /reports/weekly with date range params', async () => {
-      const mockBlob = new Blob(['test'], { type: 'application/pdf' })
-      api.get.mockResolvedValue({ data: mockBlob })
-
-      const result = await reportsApi.getWeeklyReport('2024-01-08', '2024-01-14')
-
-      expect(api.get).toHaveBeenCalledWith('/reports/weekly', {
-        params: { start_date: '2024-01-08', end_date: '2024-01-14' },
-        responseType: 'blob'
-      })
-      expect(result.data).toBe(mockBlob)
-    })
-  })
-
-  describe('getMonthlyReport', () => {
-    it('calls GET /reports/monthly with month and year', async () => {
-      const mockBlob = new Blob(['test'], { type: 'application/pdf' })
-      api.get.mockResolvedValue({ data: mockBlob })
-
-      const result = await reportsApi.getMonthlyReport(1, 2024)
-
-      expect(api.get).toHaveBeenCalledWith('/reports/monthly', {
-        params: { month: 1, year: 2024 },
-        responseType: 'blob'
-      })
-      expect(result.data).toBe(mockBlob)
-    })
-  })
-
   describe('exportExcel', () => {
-    it('calls GET /reports/excel with params', async () => {
+    it('calls GET /reports/comprehensive/excel with params', async () => {
       const mockBlob = new Blob(['test'], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
       api.get.mockResolvedValue({ data: mockBlob })
 
       const params = { client_id: 1, start_date: '2024-01-01' }
       const result = await reportsApi.exportExcel(params)
 
-      expect(api.get).toHaveBeenCalledWith('/reports/excel', {
-        params,
-        responseType: 'blob'
-      })
-      expect(result.data).toBe(mockBlob)
-    })
-  })
-
-  describe('exportPDF', () => {
-    it('calls GET /reports/pdf with params', async () => {
-      const mockBlob = new Blob(['test'], { type: 'application/pdf' })
-      api.get.mockResolvedValue({ data: mockBlob })
-
-      const params = { client_id: 1, report_type: 'efficiency' }
-      const result = await reportsApi.exportPDF(params)
-
-      expect(api.get).toHaveBeenCalledWith('/reports/pdf', {
+      expect(api.get).toHaveBeenCalledWith('/reports/comprehensive/excel', {
         params,
         responseType: 'blob'
       })

@@ -1122,6 +1122,7 @@
     "filterSaved": "saved successfully",
     "filterSaveFailed": "Failed to save filter",
     "pleaseAddRecipient": "Please add at least one recipient",
+    "pleaseSelectClient": "Please select a client before emailing a report",
     "pleaseEnterFilterName": "Please enter a filter name",
     "errorRefreshingData": "Error refreshing data. Please try again.",
     "loggedUnitsForOrder": "Logged {count} units for {orderId}",

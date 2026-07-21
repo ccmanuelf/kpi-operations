@@ -52,7 +52,7 @@ export function useKPIReports(
     downloadingPDF.value = true
     try {
       const params = buildParams()
-      const response = await api.get(`/reports/pdf?${params.toString()}`, {
+      const response = await api.get(`/reports/comprehensive/pdf?${params.toString()}`, {
         responseType: 'blob',
       })
 
@@ -75,7 +75,7 @@ export function useKPIReports(
     downloadingExcel.value = true
     try {
       const params = buildParams()
-      const response = await api.get(`/reports/excel?${params.toString()}`, {
+      const response = await api.get(`/reports/comprehensive/excel?${params.toString()}`, {
         responseType: 'blob',
       })
 
@@ -100,11 +100,17 @@ export function useKPIReports(
       return
     }
 
+    const selectedClient = getSelectedClient()
+    if (!selectedClient) {
+      showSnackbar(t('success.pleaseSelectClient'), 'warning')
+      return
+    }
+
     sendingEmail.value = true
     try {
       const dateRange = getDateRange()
       const payload = {
-        client_id: getSelectedClient() || null,
+        client_id: selectedClient,
         start_date:
           dateRange && dateRange.length === 2
             ? format(dateRange[0], 'yyyy-MM-dd')
@@ -114,10 +120,9 @@ export function useKPIReports(
             ? format(dateRange[1], 'yyyy-MM-dd')
             : format(new Date(), 'yyyy-MM-dd'),
         recipient_emails: emailRecipients.value,
-        include_excel: false,
       }
 
-      await api.post('/reports/email', payload)
+      await api.post('/reports/send-manual', payload)
 
       showSnackbar(t('success.reportSent'), 'success')
       emailDialog.value = false
