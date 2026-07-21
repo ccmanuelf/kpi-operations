@@ -1,34 +1,7 @@
 import api from './client'
 
-export const getDailyReport = (date: string) => {
-  return api.get(`/reports/daily/${date}`, {
-    responseType: 'blob',
-  })
-}
-
-export const getWeeklyReport = (startDate: string, endDate: string) => {
-  return api.get('/reports/weekly', {
-    params: { start_date: startDate, end_date: endDate },
-    responseType: 'blob',
-  })
-}
-
-export const getMonthlyReport = (month: number, year: number) => {
-  return api.get('/reports/monthly', {
-    params: { month, year },
-    responseType: 'blob',
-  })
-}
-
 export const exportExcel = (params?: Record<string, unknown>) => {
-  return api.get('/reports/excel', {
-    params,
-    responseType: 'blob',
-  })
-}
-
-export const exportPDF = (params?: Record<string, unknown>) => {
-  return api.get('/reports/pdf', {
+  return api.get('/reports/comprehensive/excel', {
     params,
     responseType: 'blob',
   })

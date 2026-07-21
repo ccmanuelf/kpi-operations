@@ -427,7 +427,7 @@ const exportToExcel = async () => {
     const link = document.createElement('a')
     const url = URL.createObjectURL(blob)
     link.setAttribute('href', url)
-    link.setAttribute('download', `production_entries_${format(new Date(), 'yyyy-MM-dd')}.xlsx`)
+    link.setAttribute('download', `KPI_Report_${format(new Date(), 'yyyy-MM-dd')}.xlsx`)
     link.style.visibility = 'hidden'
     document.body.appendChild(link)
     link.click()
