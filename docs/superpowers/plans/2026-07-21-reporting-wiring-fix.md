@@ -149,39 +149,60 @@ git commit -m "fix(reports): repoint dashboard report buttons to real endpoints 
 
 ---
 
-### Task 2: Remove dead report helpers and the tests that lock in the broken paths
+### Task 2: Fix the second broken button (DashboardView Excel), remove the genuinely-dead helpers, fix the tests that lock in broken paths
+
+**Discovery (during execution):** `exportExcel` is NOT dead — `frontend/src/views/DashboardView.vue` (the home page, route `/`) has an "Export to Excel" button whose `exportToExcel()` calls `api.exportExcel()` → `/reports/excel` → **404**, then silently falls back to CSV (`catch { exportToCSV() }`). This is a second live instance of the same bug. Decision (user-approved): repoint `exportExcel` → `/reports/comprehensive/excel` so that button produces a real Excel workbook (consistent with the KPIDashboard fix), and fix its misleading download filename. Only 4 helpers are genuinely dead.
 
 **Files:**
-- Modify: `frontend/src/services/api/reports.ts` (remove 5 dead helpers, keep the rest)
-- Modify: `frontend/src/services/__tests__/reports.spec.ts` (remove the describe-blocks for the removed helpers)
+- Modify: `frontend/src/services/api/reports.ts` (delete 4 dead helpers; repoint `exportExcel`)
+- Modify: `frontend/src/views/DashboardView.vue` (download filename)
+- Modify: `frontend/src/services/__tests__/reports.spec.ts` (delete 4 dead-helper blocks; update the `exportExcel` test to the correct path)
 
 **Interfaces:**
 - Consumes: nothing new.
-- Produces: `reports.ts` exporting only `getEmailReportConfig`, `saveEmailReportConfig`, `updateEmailReportConfig`, `sendTestEmail`, `triggerManualReport`, and the `EmailReportConfig` interface.
+- Produces: `reports.ts` exporting `exportExcel` (now → `/reports/comprehensive/excel`), `getEmailReportConfig`, `saveEmailReportConfig`, `updateEmailReportConfig`, `sendTestEmail`, `triggerManualReport`, and the `EmailReportConfig` interface. `exportExcel(params?)` signature unchanged.
 
-- [ ] **Step 1: Confirm the helpers are truly unused (guard against a missed caller)**
+- [ ] **Step 1: Confirm the 4 dead helpers are truly unused (keep `exportExcel`)**
 
-Run: `cd frontend && grep -rn "getDailyReport\|getWeeklyReport\|getMonthlyReport\|exportExcel\|exportPDF" src --include='*.ts' --include='*.vue' | grep -v "services/api/reports.ts" | grep -v "__tests__"`
-Expected: no output (no callers). If any caller appears, STOP — it is a real usage to reconcile, not dead code.
+Run: `cd frontend && grep -rn "getDailyReport\|getWeeklyReport\|getMonthlyReport\|exportPDF" src --include='*.ts' --include='*.vue' | grep -v "services/api/reports.ts" | grep -v "__tests__"`
+Expected: no output. If any caller appears for one of these four, STOP and report BLOCKED — it is real usage. (Do NOT grep for `exportExcel` here — we know it has a real caller, `DashboardView.vue:423`, and we are keeping+repointing it, not deleting it. Note the `t('reports.exportExcel')` i18n lookups in `.vue` templates are NOT function calls.)
 
-- [ ] **Step 2: Remove the dead helpers**
+- [ ] **Step 2: Delete the 4 dead helpers and repoint `exportExcel`**
 
-In `frontend/src/services/api/reports.ts`, delete these five exports entirely (lines 3–35 in the current file): `getDailyReport`, `getWeeklyReport`, `getMonthlyReport`, `exportExcel`, `exportPDF`. Keep everything from the `EmailReportConfig` interface (line 37) onward unchanged. The file's first line stays `import api from './client'`.
+In `frontend/src/services/api/reports.ts`:
+- Delete these four exports entirely: `getDailyReport`, `getWeeklyReport`, `getMonthlyReport`, `exportPDF` (current lines 3–21 and 30–35).
+- Keep `exportExcel` but change its path (current line 24) `` api.get('/reports/excel', { `` → `` api.get('/reports/comprehensive/excel', { ``. Its `(params?: Record<string, unknown>)` signature and `responseType: 'blob'` are unchanged.
+- Keep everything from the `EmailReportConfig` interface onward unchanged. The file's first line stays `import api from './client'`.
 
-- [ ] **Step 3: Remove the tests that assert the deleted (broken) paths**
+- [ ] **Step 3: Fix the DashboardView download filename**
 
-In `frontend/src/services/__tests__/reports.spec.ts`, delete the `describe(...)` blocks for `getDailyReport`, `getWeeklyReport`, `getMonthlyReport`, `exportExcel`, and `exportPDF` (they assert `/reports/daily/:date`, `/reports/weekly`, `/reports/monthly`, `/reports/excel`, `/reports/pdf` — all 404 paths). Keep the blocks for `getEmailReportConfig`, `saveEmailReportConfig`, `updateEmailReportConfig`, `sendTestEmail`, and `triggerManualReport` (correct contracts). Remove any now-unused imports of the deleted functions at the top of the spec.
+In `frontend/src/views/DashboardView.vue` line 430, the Excel download is misnamed `production_entries_*.xlsx` but the endpoint returns the comprehensive KPI workbook. Change:
+```typescript
+    link.setAttribute('download', `production_entries_${format(new Date(), 'yyyy-MM-dd')}.xlsx`)
+```
+to:
+```typescript
+    link.setAttribute('download', `KPI_Report_${format(new Date(), 'yyyy-MM-dd')}.xlsx`)
+```
+(This matches the `KPI_Report_*.xlsx` name the KPIDashboard Excel button already uses. Do not change the CSV-fallback filename at line ~412, which genuinely exports production_entries as CSV.)
 
-- [ ] **Step 4: Run the reports service tests + typecheck**
+- [ ] **Step 4: Update the tests — remove dead-helper blocks, fix the `exportExcel` assertion**
+
+In `frontend/src/services/__tests__/reports.spec.ts`:
+- Delete the `describe(...)` blocks for `getDailyReport`, `getWeeklyReport`, `getMonthlyReport`, and `exportPDF` (they assert `/reports/daily/:date`, `/reports/weekly`, `/reports/monthly`, `/reports/pdf` — 404 paths).
+- KEEP the `exportExcel` block but update its assertion from `expect(api.get).toHaveBeenCalledWith('/reports/excel', {...})` to `expect(api.get).toHaveBeenCalledWith('/reports/comprehensive/excel', {...})` (params/responseType unchanged) — this makes it a genuine guard for the correct path.
+- Keep the blocks for `getEmailReportConfig`, `saveEmailReportConfig`, `updateEmailReportConfig`, `sendTestEmail`, `triggerManualReport`. Remove any now-unused imports of the deleted functions (the spec uses `import * as reportsApi`, so likely no import edit needed — confirm no direct named import of the four deleted helpers remains).
+
+- [ ] **Step 5: Run the reports service tests + typecheck**
 
 Run: `cd frontend && npm run test -- reports && npm run typecheck`
-Expected: PASS — remaining tests green; no TS error for removed exports (typecheck confirms nothing else imports them).
+Expected: PASS — remaining tests green (incl. `exportExcel` now asserting the comprehensive path); typecheck clean (DashboardView still imports `exportExcel`, which still exists; the 4 deleted helpers have no importers).
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
-git add frontend/src/services/api/reports.ts frontend/src/services/__tests__/reports.spec.ts
-git commit -m "refactor(reports): remove dead report helpers pointing at non-existent endpoints"
+git add frontend/src/services/api/reports.ts frontend/src/services/__tests__/reports.spec.ts frontend/src/views/DashboardView.vue
+git commit -m "fix(reports): repoint home-page Excel export to comprehensive endpoint; drop dead helpers"
 ```
 
 ---
@@ -233,6 +254,20 @@ test.describe('KPIDashboard report buttons hit real endpoints', () => {
     const [resp] = await Promise.all([
       page.waitForResponse(/\/reports\/comprehensive\/excel/, { timeout: 30000 }),
       page.getByText(/export excel/i).click(),
+    ])
+    expect(resp.status()).toBeLessThan(400)
+  })
+
+  test('home-page (DashboardView) Export to Excel hits comprehensive/excel, not 404', async ({ page }) => {
+    // Regression guard for the second instance of the bug: DashboardView's
+    // "Export to Excel" button called /reports/excel (404) and silently fell
+    // back to CSV. It must now reach the real comprehensive Excel endpoint.
+    await login(page, 'admin')
+    await page.goto('/', { waitUntil: 'domcontentloaded' })
+
+    const [resp] = await Promise.all([
+      page.waitForResponse(/\/reports\/comprehensive\/excel/, { timeout: 30000 }),
+      page.getByText(/export.*excel/i).first().click(),
     ])
     expect(resp.status()).toBeLessThan(400)
   })
