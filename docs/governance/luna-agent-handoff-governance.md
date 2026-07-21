@@ -39,6 +39,8 @@ The allow-list is defined **by HTTP verb (GET), not by URL prefix**, and that ch
 
 The allow-list **may be narrowed** further — for example, to only the KPI-relevant reads, following least-privilege — but it must **never be widened** beyond GET, and any change requires re-approval under §10. The concrete list and its three edge cases follow in §5.
 
+**One assumption this rule rests on, stated explicitly so it can be checked:** the GET-only guarantee holds because in this API a read is side-effect-free — every state change uses a non-GET verb. A GET endpoint that mutated state as a side effect (an access-timestamp bump, a counter increment, a background job trigger) would defeat the rule. Before an endpoint is added to Luna's allow-list it must be confirmed side-effect-free, and any new GET route that introduces a write side effect must be excluded from the allow-list and flagged under §10. This assumption is why §7's server-side authorization matters as an independent second layer: even if a side-effecting GET slipped onto the list, it can still only do what the human's own role permits.
+
 ## 5. Operation catalog
 
 Two tables follow: what Luna **may** call (read-only) and what it **may not**. Each row gives both the concrete endpoint path(s) and the capability in plain language. Path globs (`**`) denote a uniform group; notable individual paths are spelled out.
