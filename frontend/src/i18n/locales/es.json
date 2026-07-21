@@ -1122,6 +1122,7 @@
     "filterSaved": "guardado exitosamente",
     "filterSaveFailed": "Error al guardar filtro",
     "pleaseAddRecipient": "Por favor agregue al menos un destinatario",
+    "pleaseSelectClient": "Por favor seleccione un cliente antes de enviar un reporte por correo",
     "pleaseEnterFilterName": "Por favor ingrese un nombre de filtro",
     "errorRefreshingData": "Error al actualizar datos. Por favor intente de nuevo.",
     "loggedUnitsForOrder": "Se registraron {count} unidades para {orderId}",
