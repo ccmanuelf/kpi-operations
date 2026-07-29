@@ -7,6 +7,7 @@ Reference: https://carbondesignsystem.com/guidelines/color/tokens
 """
 
 from datetime import date, datetime, timezone
+from decimal import Decimal
 from typing import Optional, List, Dict, Any
 from io import BytesIO
 from pathlib import Path
@@ -14,6 +15,8 @@ from pathlib import Path
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from sqlalchemy.orm import Session
+
+from backend.calculations.availability import calculate_availability_pure
 
 
 class ExcelReportGenerator:
@@ -576,6 +579,8 @@ class ExcelReportGenerator:
                 func.sum(ProductionEntry.units_produced).label("units"),
                 func.avg(ProductionEntry.efficiency_percentage).label("efficiency"),
                 func.avg(ProductionEntry.performance_percentage).label("performance"),
+                func.sum(ProductionEntry.run_time_hours).label("run_hours"),
+                func.sum(ProductionEntry.downtime_hours).label("downtime_hours"),
             )
             .join(Product)
             .filter(ProductionEntry.production_date.between(start_date, end_date))
@@ -597,7 +602,12 @@ class ExcelReportGenerator:
                 "units": r.units or 0,
                 "efficiency": float(r.efficiency or 0),
                 "performance": float(r.performance or 0),
-                "availability": 90.0,  # Placeholder - calculate from downtime
+                "availability": float(
+                    calculate_availability_pure(
+                        Decimal(str((r.run_hours or 0))) + Decimal(str(r.downtime_hours or 0)),
+                        Decimal(str(r.downtime_hours or 0)),
+                    )
+                ),
             }
             for r in results
         ]
