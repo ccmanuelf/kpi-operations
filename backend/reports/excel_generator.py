@@ -8,7 +8,7 @@ Reference: https://carbondesignsystem.com/guidelines/color/tokens
 
 from datetime import date, datetime, timezone
 from decimal import Decimal
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Sequence
 from io import BytesIO
 from pathlib import Path
 
@@ -48,31 +48,43 @@ class ExcelReportGenerator:
         }
 
     def generate_report(
-        self, client_id: Optional[str], start_date: date, end_date: date, output_path: Optional[Path] = None
+        self,
+        client_id: Optional[str],
+        start_date: date,
+        end_date: date,
+        output_path: Optional[Path] = None,
+        sheets: Optional[Sequence[str]] = None,
     ) -> BytesIO:
         """
-        Generate comprehensive KPI Excel report
+        Generate KPI Excel report.
 
         Args:
             client_id: Client ID (None for all clients)
             start_date: Report start date
             end_date: Report end date
             output_path: Optional file path to save Excel file
+            sheets: Sheet keys to include ("summary", "production", "quality",
+                "downtime", "attendance"). None = all sheets (comprehensive).
 
         Returns:
             BytesIO containing Excel data
         """
+        sheet_builders = {
+            "summary": self._create_summary_sheet,
+            "production": self._create_production_sheet,
+            "quality": self._create_quality_sheet,
+            "downtime": self._create_downtime_sheet,
+            "attendance": self._create_attendance_sheet,
+        }
+        selected = list(sheet_builders) if sheets is None else [key for key in sheet_builders if key in set(sheets)]
+
         wb = Workbook()
 
         # Remove default sheet
         wb.remove(wb.active)
 
-        # Create sheets
-        self._create_summary_sheet(wb, client_id, start_date, end_date)
-        self._create_production_sheet(wb, client_id, start_date, end_date)
-        self._create_quality_sheet(wb, client_id, start_date, end_date)
-        self._create_downtime_sheet(wb, client_id, start_date, end_date)
-        self._create_attendance_sheet(wb, client_id, start_date, end_date)
+        for key in selected:
+            sheet_builders[key](wb, client_id, start_date, end_date)
 
         # Save to buffer or file
         buffer = BytesIO()
