@@ -10,6 +10,7 @@ from datetime import datetime, date, timezone
 from typing import List, Optional, Dict, Any
 from pathlib import Path
 from io import BytesIO
+from decimal import Decimal
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
@@ -18,6 +19,8 @@ from reportlab.lib.units import inch
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
 from reportlab.lib.enums import TA_CENTER
 from sqlalchemy.orm import Session
+
+from backend.calculations.availability import calculate_availability_pure
 
 
 class PDFReportGenerator:
@@ -458,8 +461,15 @@ class PDFReportGenerator:
                 elif kpi_key == "performance":
                     values = [float(e.performance_percentage or 0) for e in entries]
                 else:
-                    # Calculate availability from downtime
-                    values = [85.0] * len(entries)  # Placeholder
+                    values = [
+                        float(
+                            calculate_availability_pure(
+                                Decimal(str(e.run_time_hours or 0)) + Decimal(str(e.downtime_hours or 0)),
+                                Decimal(str(e.downtime_hours or 0)),
+                            )
+                        )
+                        for e in entries
+                    ]
 
                 avg_value = sum(values) / len(values) if values else 0
                 details = {
