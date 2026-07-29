@@ -91,48 +91,6 @@
                 </v-chip>
               </template>
             </v-combobox>
-
-            <v-divider class="my-4" />
-
-            <!-- Report Content Options -->
-            <v-label class="text-body-2 mb-2">{{ $t('reports.reportContent') }}</v-label>
-            <v-checkbox
-              v-model="config.include_executive_summary"
-              :label="$t('reports.executiveSummary')"
-              hide-details
-              density="compact"
-            />
-            <v-checkbox
-              v-model="config.include_efficiency"
-              :label="$t('reports.productionEfficiency')"
-              hide-details
-              density="compact"
-            />
-            <v-checkbox
-              v-model="config.include_quality"
-              :label="$t('reports.qualityMetrics')"
-              hide-details
-              density="compact"
-            />
-            <v-checkbox
-              v-model="config.include_availability"
-              :label="$t('reports.equipmentAvailability')"
-              hide-details
-              density="compact"
-            />
-            <v-checkbox
-              v-model="config.include_attendance"
-              :label="$t('reports.attendanceAbsenteeism')"
-              hide-details
-              density="compact"
-            />
-            <v-checkbox
-              v-model="config.include_predictions"
-              :label="$t('reports.forecastsPredictions')"
-              hide-details
-              density="compact"
-              class="mb-4"
-            />
           </div>
         </v-expand-transition>
 
