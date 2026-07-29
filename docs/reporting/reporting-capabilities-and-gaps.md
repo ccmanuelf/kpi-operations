@@ -25,7 +25,7 @@ Every endpoint below is verified present in `backend/tests/test_bootstrap/openap
 | `/api/reports/production/pdf` | GET | PDF | `client_id` (optional), `start_date`, `end_date` | Authenticated | KPIs: efficiency, performance, availability, OEE |
 | `/api/reports/quality/pdf` | GET | PDF | `client_id` (optional), `start_date`, `end_date` | Authenticated | KPIs: FPY, RTY, PPM, DPMO |
 | `/api/reports/attendance/pdf` | GET | PDF | `client_id` (optional), `start_date`, `end_date` | Authenticated | KPIs: absenteeism |
-| `/api/reports/comprehensive/pdf` | GET | PDF | `client_id` (optional), `start_date`, `end_date` | Authenticated | All KPIs (`kpis_to_include=None`): efficiency, performance, availability, OEE, FPY, RTY, PPM, DPMO, absenteeism, downtime, on-time delivery |
+| `/api/reports/comprehensive/pdf` | GET | PDF | `client_id` (optional), `start_date`, `end_date` | Authenticated | All KPIs (`kpis_to_include=None`): efficiency, performance, availability, OEE, FPY, RTY, PPM, DPMO, absenteeism, on-time delivery |
 
 ### (b) Excel reports — type-aware via sheet selection (this PR)
 
@@ -83,9 +83,9 @@ These nine per-entity exports are the concrete expression of the data-first posi
 | Gap | Decision | Status |
 |---|---|---|
 | Excel ignores report type (identical 6-sheet workbook for all 4 types) | **Make real now** — PR item 1 | **DONE with this PR** — sheet selection implemented, see §2(b) |
-| Placeholder availability values (85.0 / 90.0) | **Make real now** — PR item 2 | **DONE with this PR** — availability now computed from run/downtime hours via the canonical formula in `backend/calculations`, shared with the dashboard |
+| Placeholder availability values (85.0 / 90.0) | **Make real now** — PR item 2 | **DONE with this PR** — availability now computed from run/downtime hours via the same canonical formula (`calculate_availability_pure` in `backend/calculations`) the dashboard uses; the *formula* is shared, but the *inputs* differ by context — reports use `run_time_hours + downtime_hours` from `ProductionEntry`, `routes/kpi/dashboard.py` uses run-only hours plus `DowntimeEntry` minutes, and `routes/kpi/trends.py` uses `entries × 8h` — so reported and dashboard values will generally differ |
 | Placeholder "Trend Charts" sheet | **Remove now** — PR item 3 (charts are explicitly not the product) | **DONE with this PR** — `_create_charts_sheet` removed from `excel_generator.py` |
-| Email content toggles never consumed | **Defer** to report-subscriptions spec; hide/mark now (PR item 4) | **DONE with this PR** (UI-visibility change) / deferred (functional wiring) |
+| Email content toggles never consumed | **Defer** to report-subscriptions spec; hide/mark now (PR item 4) | **DONE with this PR** — the six `include_*` toggles were **removed from the dialog template** (not hidden behind a flag, not relabeled as inactive); the `EmailReportConfig` payload contract is unchanged, so the fields are still accepted and stored, just no longer offered in the UI (UI-visibility change) / functional wiring still deferred |
 | Email config in-memory only | **Defer** — same spec | Deferred |
 | Scheduler daily-only, ignores frequency/recipients | **Defer** — same spec | Deferred |
 | Pivot/summarization layer | **Future spec #1** — blocked on remaining samples + concept register | Deferred |

@@ -78,6 +78,9 @@ class ExcelReportGenerator:
         }
         selected = list(sheet_builders) if sheets is None else [key for key in sheet_builders if key in set(sheets)]
 
+        if not selected:
+            raise ValueError("sheets selected no valid sheet keys")
+
         wb = Workbook()
 
         # Remove default sheet
