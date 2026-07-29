@@ -100,7 +100,6 @@ async def generate_comprehensive_excel_report(
     - Quality Metrics
     - Downtime Analysis
     - Attendance Records
-    - Trend Charts
     """
     try:
         if client_id:

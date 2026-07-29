@@ -73,7 +73,6 @@ class ExcelReportGenerator:
         self._create_quality_sheet(wb, client_id, start_date, end_date)
         self._create_downtime_sheet(wb, client_id, start_date, end_date)
         self._create_attendance_sheet(wb, client_id, start_date, end_date)
-        self._create_charts_sheet(wb, client_id, start_date, end_date)
 
         # Save to buffer or file
         buffer = BytesIO()
@@ -405,21 +404,6 @@ class ExcelReportGenerator:
         # Adjust column widths
         for col in ["A", "B", "C", "D", "E"]:
             ws.column_dimensions[col].width = 20
-
-    def _create_charts_sheet(self, wb: Workbook, client_id: Optional[str], start_date: date, end_date: date) -> None:
-        """Create sheet with embedded charts"""
-        ws = wb.create_sheet("Trend Charts")
-
-        # This would create actual charts using openpyxl's chart functionality
-        # For now, placeholder text
-        ws["A1"] = "KPI Trend Charts"
-        ws["A1"].font = Font(size=16, bold=True)
-
-        ws["A3"] = "Charts will be embedded here showing:"
-        ws["A4"] = "- Efficiency trends over time"
-        ws["A5"] = "- Quality rate trends"
-        ws["A6"] = "- Availability trends"
-        ws["A7"] = "- OEE performance"
 
     def _apply_table_borders(self, ws: Any, start_cell: str, end_cell: str) -> None:
         """Apply borders to table range"""
