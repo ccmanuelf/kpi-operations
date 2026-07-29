@@ -15,6 +15,7 @@ Two positions are committed to in writing:
 
 - **No carbon-copying of client Excel reports.** Every client's workbook differs in content, format, tags, colors, and headers (confirmed across two samples from two different clients). The app observes the *concepts* behind the reports, never the layouts. Management explicitly requested this.
 - **Data-first, not chart-first.** Reports summarize data; every on-screen summary must be downloadable as underlying data. Charts are optional garnish, never the deliverable. Configurable plotting/charting mechanisms are explicitly not the goal.
+- **No reports without underlying data.** A report may only be built over metrics kpi-operations actually tracks. Concepts graded **missing** in the register (e.g., shipments, stock, billed hours, cut quantities) are *capture-first*: adding the data capture is its own deliberate product decision, never a side effect of a reporting spec. Concepts derivable from data already tracked (**have**/**partial**) are welcome report additions.
 
 ## 2. Evidence base
 
@@ -92,6 +93,13 @@ Attribution across **machine / materials / scheduling / attendance / other**.
 
 **Have** (strongest area) — `HoldEntry` with catalog-backed `hold_reason` (`HOLD_REASON_CATALOG`), `hold_reason_category`, description; WIP-aging endpoints live (stalled / old / past-due triad shipped with the diagnostic-charts work). Open point: whether holds carry line/area attribution for the "where".
 
+### Reportable today vs capture-first
+
+Per the "no reports without underlying data" position, the register splits two ways:
+
+- **Reportable today** (data already tracked — welcome additions): DHU (from `defect_count`), rework as % of order (per-work-order rollup of `rework_count`), OTD, WIP triad (stalled/old/past-due), hold-reason/category breakdowns, demotion-churn counts and priority adherence (from `DEMOTED` transitions + `priority`), downtime by reason, per-type report sheets, real availability, earned-hours efficiency from `ideal_cycle_time` × units vs `run_time_hours`.
+- **Capture-first** (no underlying data — requires a product decision to start tracking before any report exists): shipments (shipment #), stock/inventory, billed hours and rates, OT tiers, direct/indirect classification, cut/started quantities, material-batch traceability, justified-delay classification, operator-level production, plant/module hierarchy.
+
 ### Structural observations (cross-question)
 
 - **Plant → Module/Cell → Line hierarchy**: the app models lines only; nothing above. Open modeling question.
@@ -109,8 +117,8 @@ Attribution across **machine / materials / scheduling / attendance / other**.
    1. **Pivot/summarization layer** — pre-defined time buckets (week/month/quarter/year), pre-defined groupings/categorizations/pivots, cross-metric comparison on the common hours basis (units ↔ SAM-earned hours ↔ operators ↔ attendance hours), everything downloadable as data. Blocked on: remaining client samples + concept-register completion.
    2. **Report subscriptions** — persisted email config (DB table replacing in-memory `_email_configs`), `include_*` toggles actually consumed by generators, scheduler honoring frequency (daily/weekly/monthly) and recipients.
    3. **Downtime cause taxonomy** — controlled vocabulary (machine/materials/scheduling/attendance/other + NPT buckets) over the existing `root_cause_category` field.
-   4. **Labor-hours accounting** — OT tiers (Normal/Double/Triple), direct/indirect classification, billed vs available-for-efficiency hours. Prerequisite for full Q1 coverage.
-   5. **Model extensions** justified by future samples (justified-delay flag, shipment #, batch traceability, cut-quantity capture, plant/module hierarchy, operator-level production).
+   4. **Labor-hours accounting** *(capture-first)* — OT tiers (Normal/Double/Triple), direct/indirect classification, billed vs available-for-efficiency hours. Prerequisite for full Q1 coverage; requires new data capture, so it is a product decision before it is a reporting feature.
+   5. **Model extensions** *(capture-first)* justified by future samples (justified-delay flag, shipment #, batch traceability, cut-quantity capture, plant/module hierarchy, operator-level production). Same rule: capture first, report after.
 
 ## 5. Honest-surface PR (one PR)
 
