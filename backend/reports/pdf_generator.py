@@ -336,7 +336,9 @@ class PDFReportGenerator:
 
         # Build base query with client filtering
         production_query = self.db.query(ProductionEntry).filter(
-            ProductionEntry.production_date.between(start_date, end_date)
+            ProductionEntry.production_date.between(
+                datetime.combine(start_date, datetime.min.time()), datetime.combine(end_date, datetime.max.time())
+            )
         )
 
         if client_id:
@@ -375,7 +377,11 @@ class PDFReportGenerator:
             )
 
         # Quality metrics
-        quality_query = self.db.query(QualityEntry).filter(QualityEntry.inspection_date.between(start_date, end_date))
+        quality_query = self.db.query(QualityEntry).filter(
+            QualityEntry.inspection_date.between(
+                datetime.combine(start_date, datetime.min.time()), datetime.combine(end_date, datetime.max.time())
+            )
+        )
 
         if client_id:
             quality_query = quality_query.filter(QualityEntry.client_id == client_id)
@@ -414,7 +420,9 @@ class PDFReportGenerator:
 
         # Attendance metrics
         attendance_query = self.db.query(AttendanceEntry).filter(
-            AttendanceEntry.shift_date.between(start_date, end_date)
+            AttendanceEntry.shift_date.between(
+                datetime.combine(start_date, datetime.min.time()), datetime.combine(end_date, datetime.max.time())
+            )
         )
 
         attendance_entries = attendance_query.all()
@@ -448,7 +456,12 @@ class PDFReportGenerator:
         details = {}
 
         if kpi_key in ["efficiency", "performance", "availability"]:
-            query = self.db.query(ProductionEntry).filter(ProductionEntry.production_date.between(start_date, end_date))
+            query = self.db.query(ProductionEntry).filter(
+                ProductionEntry.production_date.between(
+                    datetime.combine(start_date, datetime.min.time()),
+                    datetime.combine(end_date, datetime.max.time()),
+                )
+            )
 
             if client_id:
                 query = query.filter(ProductionEntry.client_id == client_id)
@@ -483,7 +496,12 @@ class PDFReportGenerator:
                 }
 
         elif kpi_key in ["fpy", "ppm", "dpmo"]:
-            query = self.db.query(QualityEntry).filter(QualityEntry.inspection_date.between(start_date, end_date))
+            query = self.db.query(QualityEntry).filter(
+                QualityEntry.inspection_date.between(
+                    datetime.combine(start_date, datetime.min.time()),
+                    datetime.combine(end_date, datetime.max.time()),
+                )
+            )
 
             if client_id:
                 query = query.filter(QualityEntry.client_id == client_id)
@@ -513,7 +531,12 @@ class PDFReportGenerator:
                     }
 
         elif kpi_key == "absenteeism":
-            query = self.db.query(AttendanceEntry).filter(AttendanceEntry.shift_date.between(start_date, end_date))
+            query = self.db.query(AttendanceEntry).filter(
+                AttendanceEntry.shift_date.between(
+                    datetime.combine(start_date, datetime.min.time()),
+                    datetime.combine(end_date, datetime.max.time()),
+                )
+            )
 
             entries = query.all()
 

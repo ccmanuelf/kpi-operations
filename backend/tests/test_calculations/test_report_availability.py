@@ -1,6 +1,6 @@
 """Guards that the report generators use real availability, not placeholders."""
 
-from datetime import date, timedelta
+from datetime import date, datetime, time
 from decimal import Decimal
 from pathlib import Path
 
@@ -25,13 +25,18 @@ class TestNoPlaceholderAvailability:
         assert "calculate_availability_pure" in src
 
 
-def _seed_production_entry(db, *, run_time_hours: Decimal, downtime_hours: Decimal, entry_date: date):
-    """Insert one ProductionEntry with known run/downtime hours through real FKs."""
+def _seed_production_entry(
+    db, *, run_time_hours: Decimal, downtime_hours: Decimal, entry_date: date, entry_time: time = time(18, 0)
+):
+    """Insert one ProductionEntry with known run/downtime hours through real FKs,
+    timestamped late in the day (18:00 by default) on entry_date rather than
+    midnight. Combined with querying start_date == end_date == entry_date, this
+    exercises the DateTime-vs-date upper-bound boundary case (#145 pattern)."""
     client = TestDataFactory.create_client(db)
     user = TestDataFactory.create_user(db, role="admin", client_id=client.client_id)
     product = TestDataFactory.create_product(db, client_id=client.client_id)
     shift = TestDataFactory.create_shift(db, client_id=client.client_id)
-    TestDataFactory.create_production_entry(
+    entry = TestDataFactory.create_production_entry(
         db,
         client_id=client.client_id,
         product_id=product.product_id,
@@ -41,6 +46,7 @@ def _seed_production_entry(db, *, run_time_hours: Decimal, downtime_hours: Decim
         run_time_hours=run_time_hours,
         downtime_hours=downtime_hours,
     )
+    entry.production_date = datetime.combine(entry_date, entry_time)
     db.flush()
     return client
 
@@ -50,16 +56,17 @@ class TestAvailabilityValueEquality:
     assert the emitted availability figure exactly. run=7h + downtime=1h ->
     scheduled=8h -> availability == 87.5, per calculate_availability_pure's
     (scheduled - downtime) / scheduled * 100 formula.
+
+    The fixture entry is timestamped 18:00 on entry_date and queried with
+    start_date == end_date == entry_date — the DateTime-vs-date upper-bound
+    boundary case fixed in this change (the #145 `datetime.combine(start_date,
+    datetime.min.time())` / `datetime.combine(end_date, datetime.max.time())`
+    pattern, applied to every `_fetch_*` method in both generators). An entry
+    timestamped anywhere on end_date, not just midnight, must be included.
     """
 
     def test_excel_fetch_production_data_availability_is_exact(self, transactional_db):
         entry_date = date(2026, 1, 15)
-        # Query range is entry_date..entry_date+1, not entry_date..entry_date: the
-        # generator's .between(start_date, end_date) compares a DateTime column
-        # against bare date bounds, and SQLite's textual comparison drops a row
-        # whose datetime exactly equals the upper bound date (pre-existing bug,
-        # same class as the one fixed in PR #145 for other modules; out of scope
-        # for this fix wave — see final-review-report.md "Fix wave" notes).
         client = _seed_production_entry(
             transactional_db,
             run_time_hours=Decimal("7.0"),
@@ -67,16 +74,13 @@ class TestAvailabilityValueEquality:
             entry_date=entry_date,
         )
 
-        rows = ExcelReportGenerator(transactional_db)._fetch_production_data(
-            client.client_id, entry_date, entry_date + timedelta(days=1)
-        )
+        rows = ExcelReportGenerator(transactional_db)._fetch_production_data(client.client_id, entry_date, entry_date)
 
         assert len(rows) == 1
         assert rows[0]["availability"] == 87.5
 
     def test_pdf_fetch_kpi_details_availability_is_exact(self, transactional_db):
         entry_date = date(2026, 1, 15)
-        # Same upper-bound-exclusion quirk as above; widen the range by a day.
         client = _seed_production_entry(
             transactional_db,
             run_time_hours=Decimal("7.0"),
@@ -85,7 +89,7 @@ class TestAvailabilityValueEquality:
         )
 
         details = PDFReportGenerator(transactional_db)._fetch_kpi_details(
-            "availability", client.client_id, entry_date, entry_date + timedelta(days=1)
+            "availability", client.client_id, entry_date, entry_date
         )
 
         assert details["Current Value"] == "87.5%"
