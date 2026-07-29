@@ -13,10 +13,10 @@
 
 ## 2. What works today — report catalog
 
-Every endpoint below is verified present in `backend/tests/test_bootstrap/openapi_surface.json` (Step 1 of this task) and its role requirement is read directly from the `Depends(...)` guard on the route, not inferred. Role tiers, from `backend/orm/user.py`:
+Every endpoint below is verified present in `backend/tests/test_bootstrap/openapi_surface.json` (Step 1 of this task) and its role requirement is read directly from the `Depends(...)` guard on the route, not inferred. Guard functions live in `backend/auth/jwt.py`; the six-role enum and role-tier lists (`PLANNER_ROLES`, `SUPERVISORY_ROLES`, `CONTRIBUTOR_ROLES`) they check against live in `backend/orm/user.py`:
 
-- **Authenticated** — `get_current_user`: any of the six roles (admin, poweruser, leader, supervisor, operator, viewer).
-- **Supervisory tier** — `get_current_active_supervisor`: admin, poweruser, leader, supervisor (excludes operator and viewer).
+- **Authenticated** — `get_current_user` (`backend/auth/jwt.py`): any of the six roles (admin, poweruser, leader, supervisor, operator, viewer).
+- **Supervisory tier** — `get_current_active_supervisor` (`backend/auth/jwt.py`): admin, poweruser, leader, supervisor (excludes operator and viewer).
 
 ### (a) PDF reports — type-aware via `kpis_to_include`
 
