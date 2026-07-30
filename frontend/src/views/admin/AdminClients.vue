@@ -116,7 +116,7 @@
               </v-col>
               <v-col cols="12" md="6">
                 <v-text-field
-                  v-model="clientFormData.contact_name"
+                  v-model="clientFormData.client_contact"
                   :label="t('admin.clients.contactName')"
                   prepend-icon="mdi-account"
                   variant="outlined"
@@ -125,7 +125,7 @@
               </v-col>
               <v-col cols="12" md="6">
                 <v-text-field
-                  v-model="clientFormData.contact_email"
+                  v-model="clientFormData.client_email"
                   :label="t('admin.clients.contactEmail')"
                   prepend-icon="mdi-email"
                   :rules="[rules.email]"
@@ -135,7 +135,7 @@
               </v-col>
               <v-col cols="12" md="6">
                 <v-text-field
-                  v-model="clientFormData.contact_phone"
+                  v-model="clientFormData.client_phone"
                   :label="t('admin.clients.contactPhone')"
                   prepend-icon="mdi-phone"
                   variant="outlined"
@@ -200,26 +200,26 @@
               <v-list-item-title>{{ t('admin.clients.clientId') }}</v-list-item-title>
               <v-list-item-subtitle>{{ selectedClient.client_id }}</v-list-item-subtitle>
             </v-list-item>
-            <v-list-item v-if="selectedClient.contact_name">
+            <v-list-item v-if="selectedClient.client_contact">
               <template v-slot:prepend>
                 <v-icon>mdi-account</v-icon>
               </template>
               <v-list-item-title>{{ t('admin.clients.contactName') }}</v-list-item-title>
-              <v-list-item-subtitle>{{ selectedClient.contact_name }}</v-list-item-subtitle>
+              <v-list-item-subtitle>{{ selectedClient.client_contact }}</v-list-item-subtitle>
             </v-list-item>
-            <v-list-item v-if="selectedClient.contact_email">
+            <v-list-item v-if="selectedClient.client_email">
               <template v-slot:prepend>
                 <v-icon>mdi-email</v-icon>
               </template>
               <v-list-item-title>{{ t('admin.clients.contactEmail') }}</v-list-item-title>
-              <v-list-item-subtitle>{{ selectedClient.contact_email }}</v-list-item-subtitle>
+              <v-list-item-subtitle>{{ selectedClient.client_email }}</v-list-item-subtitle>
             </v-list-item>
-            <v-list-item v-if="selectedClient.contact_phone">
+            <v-list-item v-if="selectedClient.client_phone">
               <template v-slot:prepend>
                 <v-icon>mdi-phone</v-icon>
               </template>
               <v-list-item-title>{{ t('admin.clients.contactPhone') }}</v-list-item-title>
-              <v-list-item-subtitle>{{ selectedClient.contact_phone }}</v-list-item-subtitle>
+              <v-list-item-subtitle>{{ selectedClient.client_phone }}</v-list-item-subtitle>
             </v-list-item>
             <v-list-item v-if="selectedClient.industry">
               <template v-slot:prepend>
@@ -307,9 +307,9 @@ const snackbarColor = ref('success')
 const clientFormData = ref({
   client_id: '',
   client_name: '',
-  contact_name: '',
-  contact_email: '',
-  contact_phone: '',
+  client_contact: '',
+  client_email: '',
+  client_phone: '',
   industry: '',
   address: '',
   notes: ''
@@ -318,8 +318,8 @@ const clientFormData = ref({
 const headers = computed(() => [
   { title: t('admin.clients.clientId'), key: 'client_id', sortable: true },
   { title: t('admin.clients.clientName'), key: 'client_name', sortable: true },
-  { title: t('admin.clients.contactName'), key: 'contact_name', sortable: true },
-  { title: t('admin.clients.contactEmail'), key: 'contact_email', sortable: true },
+  { title: t('admin.clients.contactName'), key: 'client_contact', sortable: true },
+  { title: t('admin.clients.contactEmail'), key: 'client_email', sortable: true },
   { title: t('admin.clients.industry'), key: 'industry', sortable: true },
   { title: t('common.status'), key: 'is_active', sortable: true },
   { title: t('admin.clients.created'), key: 'created_at', sortable: true },
@@ -374,9 +374,9 @@ const openCreateDialog = () => {
   clientFormData.value = {
     client_id: '',
     client_name: '',
-    contact_name: '',
-    contact_email: '',
-    contact_phone: '',
+    client_contact: '',
+    client_email: '',
+    client_phone: '',
     industry: '',
     address: '',
     notes: ''
@@ -394,9 +394,9 @@ const editClient = (client) => {
   clientFormData.value = {
     client_id: client.client_id,
     client_name: client.client_name,
-    contact_name: client.contact_name || '',
-    contact_email: client.contact_email || '',
-    contact_phone: client.contact_phone || '',
+    client_contact: client.client_contact || '',
+    client_email: client.client_email || '',
+    client_phone: client.client_phone || '',
     industry: client.industry || '',
     address: client.address || '',
     notes: client.notes || ''
