@@ -4,7 +4,7 @@
  */
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import axios from 'axios'
+import api from '@/services/api'
 
 export type DateRangeOption = '7d' | '30d' | '90d' | string
 
@@ -65,16 +65,20 @@ export function useDashboardOverviewData(props: DashboardOverviewProps) {
         fpyRes,
         rtyRes,
       ] = await Promise.all([
-        axios.get('/api/kpi/efficiency/trend'),
-        axios.get('/api/kpi/performance/trend'),
-        axios.get('/api/kpi/wip-aging'),
-        axios.get('/api/kpi/otd'),
-        axios.get('/api/kpi/availability'),
-        axios.get('/api/attendance/kpi/absenteeism'),
-        axios.get('/api/quality/kpi/ppm'),
-        axios.get('/api/quality/kpi/dpmo'),
-        axios.get('/api/quality/kpi/fpy-rty'),
-        axios.get('/api/quality/kpi/fpy-rty'),
+        // Paths are relative to the shared client's baseURL (no leading
+        // /api/ — see calculationAssumptions.ts's double-prefix note).
+        // Also: this used to be raw `axios`, bypassing the shared
+        // client's Authorization interceptor entirely (ISSUE-020 class).
+        api.get('/kpi/efficiency/trend'),
+        api.get('/kpi/performance/trend'),
+        api.get('/kpi/wip-aging'),
+        api.get('/kpi/otd'),
+        api.get('/kpi/availability'),
+        api.get('/attendance/kpi/absenteeism'),
+        api.get('/quality/kpi/ppm'),
+        api.get('/quality/kpi/dpmo'),
+        api.get('/quality/kpi/fpy-rty'),
+        api.get('/quality/kpi/fpy-rty'),
       ])
 
       kpiData.value = {

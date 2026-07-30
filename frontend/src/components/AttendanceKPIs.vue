@@ -118,7 +118,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import axios from 'axios'
+import api from '@/services/api'
 
 const { t } = useI18n()
 
@@ -141,7 +141,7 @@ const floatingPool = ref({
 
 const fetchData = async () => {
   try {
-    const response = await axios.get('/api/attendance/kpi/absenteeism')
+    const response = await api.get('/attendance/kpi/absenteeism')
     absenteeism.value = parseFloat(response.data.absenteeism_rate.toFixed(1))
 
     // Mock absence breakdown (would come from API). Round numerically
