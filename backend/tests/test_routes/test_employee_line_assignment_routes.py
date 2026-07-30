@@ -332,7 +332,7 @@ class TestCreateEndpoint:
         data = response.json()
         assert data["employee_id"] == emp.employee_id
         assert data["line_id"] == line.line_id
-        assert data["allocation_percentage"] == "100.00"
+        assert data["allocation_percentage"] == 100.0
         assert data["is_primary"] is True
         assert "assignment_id" in data
         assert "created_at" in data
@@ -473,7 +473,7 @@ class TestUpdateEndpoint:
             json={"allocation_percentage": "80.00"},
         )
         assert response.status_code == 200
-        assert response.json()["allocation_percentage"] == "80.00"
+        assert response.json()["allocation_percentage"] == 80.0
 
     def test_update_is_primary(self, supervisor_client):
         """Update is_primary flag."""

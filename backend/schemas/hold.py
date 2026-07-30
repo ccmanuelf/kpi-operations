@@ -12,7 +12,6 @@ Legacy aliases kept for backward compatibility of imports.
 from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional
 from datetime import date, datetime
-from decimal import Decimal
 
 # ---------------------------------------------------------------------------
 # Backward-compatible aliases so ``from backend.schemas.hold import
@@ -119,7 +118,7 @@ class WIPHoldResponse(BaseModel):
     hold_status: str
     hold_date: Optional[datetime] = None
     resume_date: Optional[datetime] = None
-    total_hold_duration_hours: Optional[Decimal] = None
+    total_hold_duration_hours: Optional[float] = None
     hold_reason_category: Optional[str] = None
     hold_reason: Optional[str] = None
     hold_reason_description: Optional[str] = None
@@ -139,7 +138,7 @@ class WIPAgingResponse(BaseModel):
     """WIP aging analysis"""
 
     total_held_quantity: int
-    average_aging_days: Decimal
+    average_aging_days: float
     aging_0_7_days: int
     aging_8_14_days: int
     aging_15_30_days: int
@@ -152,9 +151,9 @@ class WIPAgingAdjustedResponse(BaseModel):
     """WIP aging with hold-time adjustment - P2-001"""
 
     work_order_number: str
-    raw_age_hours: Decimal
-    total_hold_duration_hours: Decimal
-    adjusted_age_hours: Decimal
+    raw_age_hours: float
+    total_hold_duration_hours: float
+    adjusted_age_hours: float
     hold_count: int
     is_currently_on_hold: bool
 
@@ -163,6 +162,6 @@ class TotalHoldDurationResponse(BaseModel):
     """Total hold duration for a work order - P2-001"""
 
     work_order_number: str
-    total_hold_duration_hours: Decimal
+    total_hold_duration_hours: float
     hold_count: int
     active_holds: int

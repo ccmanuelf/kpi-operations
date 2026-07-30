@@ -79,10 +79,10 @@ class AlertResponse(AlertBase):
     client_name: Optional[str] = None
     kpi_key: Optional[str] = None
     work_order_id: Optional[str] = None
-    current_value: Optional[Decimal] = None
-    threshold_value: Optional[Decimal] = None
-    predicted_value: Optional[Decimal] = None
-    confidence: Optional[Decimal] = None
+    current_value: Optional[float] = None
+    threshold_value: Optional[float] = None
+    predicted_value: Optional[float] = None
+    confidence: Optional[float] = None
     status: AlertStatus = AlertStatus.ACTIVE
     created_at: datetime
     acknowledged_at: Optional[datetime] = None
@@ -156,9 +156,9 @@ class OTDRiskAlert(BaseModel):
     work_order_id: str
     client_name: str
     due_date: datetime
-    current_completion: Decimal
-    required_completion: Decimal
-    risk_score: Decimal = Field(..., ge=0, le=100, description="0-100 risk score")
+    current_completion: float
+    required_completion: float
+    risk_score: float = Field(..., ge=0, le=100, description="0-100 risk score")
     days_remaining: int
     recommended_actions: List[str] = []
 
@@ -167,9 +167,9 @@ class QualityTrendAlert(BaseModel):
     """Quality trend alert details"""
 
     kpi_type: Literal["fpy", "rty", "dpmo", "ppm"]
-    current_value: Decimal
+    current_value: float
     trend_direction: Literal["improving", "stable", "declining"]
-    change_percent: Decimal
+    change_percent: float
     period_days: int
     affected_product_lines: List[str] = []
 
@@ -177,11 +177,11 @@ class QualityTrendAlert(BaseModel):
 class CapacityAlert(BaseModel):
     """Capacity planning alert details"""
 
-    load_percent: Decimal
+    load_percent: float
     status: Literal["underutilized", "optimal", "overloaded"]
     recommended_action: str
     idle_days_predicted: Optional[int] = None
-    overtime_hours_needed: Optional[Decimal] = None
+    overtime_hours_needed: Optional[float] = None
     bottleneck_station: Optional[str] = None
 
 
@@ -208,6 +208,11 @@ class AlertConfigResponse(AlertConfigBase):
 
     config_id: str
     client_id: Optional[str] = None
+    # Override AlertConfigBase's Decimal typing: response fields must serialize
+    # as JSON numbers, not Decimal-as-string (see #145 mechanism). Create keeps
+    # Decimal for input-validation precision.
+    warning_threshold: Optional[float] = None  # type: ignore[assignment]
+    critical_threshold: Optional[float] = None  # type: ignore[assignment]
     created_at: datetime
     updated_at: Optional[datetime] = None
 

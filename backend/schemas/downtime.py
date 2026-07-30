@@ -143,10 +143,10 @@ class AvailabilityCalculationResponse(BaseModel):
     product_id: int = Field(..., description="Product identifier for this availability calculation")
     shift_id: int = Field(..., description="Shift identifier for the calculation period")
     production_date: date = Field(..., description="Production date of the availability calculation")
-    total_scheduled_hours: Decimal = Field(..., description="Total scheduled production hours for the period")
-    total_downtime_hours: Decimal = Field(..., description="Sum of all downtime hours during the period")
-    available_hours: Decimal = Field(..., description="Net available hours (scheduled minus downtime)")
-    availability_percentage: Decimal = Field(
+    total_scheduled_hours: float = Field(..., description="Total scheduled production hours for the period")
+    total_downtime_hours: float = Field(..., description="Sum of all downtime hours during the period")
+    available_hours: float = Field(..., description="Net available hours (scheduled minus downtime)")
+    availability_percentage: float = Field(
         ..., description="Availability rate as percentage (available / scheduled * 100)"
     )
     downtime_events: int = Field(..., description="Count of distinct downtime events in the period")

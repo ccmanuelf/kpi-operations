@@ -122,9 +122,9 @@ class AttendanceRecordResponse(BaseModel):
     line_id: Optional[int] = None
     shift_date: datetime
     shift_id: Optional[int] = None
-    scheduled_hours: Decimal
-    actual_hours: Optional[Decimal] = None
-    absence_hours: Optional[Decimal] = None
+    scheduled_hours: float
+    actual_hours: Optional[float] = None
+    absence_hours: Optional[float] = None
     is_absent: int
     absence_type: Optional[str] = None
     covered_by_employee_id: Optional[int] = None
@@ -167,10 +167,10 @@ class AbsenteeismCalculationResponse(BaseModel):
     shift_id: int
     start_date: date
     end_date: date
-    total_scheduled_hours: Decimal
-    total_hours_worked: Decimal
-    total_hours_absent: Decimal
-    absenteeism_rate: Decimal
+    total_scheduled_hours: float
+    total_hours_worked: float
+    total_hours_absent: float
+    absenteeism_rate: float
     total_employees: int
     total_absences: int
     calculation_timestamp: datetime

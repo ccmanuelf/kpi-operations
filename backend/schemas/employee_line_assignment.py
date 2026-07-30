@@ -47,7 +47,7 @@ class EmployeeLineAssignmentResponse(BaseModel):
     employee_id: int
     line_id: int
     client_id: str
-    allocation_percentage: Decimal
+    allocation_percentage: float
     is_primary: bool
     effective_date: date
     end_date: Optional[date] = None
