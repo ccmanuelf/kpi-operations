@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from typing import Dict, List
 
 from backend.database import get_db
-from backend.auth.jwt import get_current_user, get_current_active_supervisor
+from backend.auth.jwt import get_current_user, get_current_active_supervisor, ClientScope, resolve_client_scope
 from backend.orm.production_line import ProductionLine
 from backend.orm.user import User
 from backend.utils.logging_utils import get_module_logger
@@ -22,7 +22,6 @@ from backend.schemas.production_line import (
 )
 from backend.services.production_line_service import (
     create_line as create_production_line,
-    list_lines as list_production_lines,
     get_line as get_production_line,
     get_line_tree as get_production_line_tree,
     update_line as update_production_line,
@@ -40,21 +39,30 @@ router = APIRouter(prefix="/api/production-lines", tags=["Production Lines"])
 
 @router.get("/", response_model=List[ProductionLineResponse])
 def list_production_lines_endpoint(
-    client_id: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    scope: ClientScope = Depends(resolve_client_scope),
 ) -> List[ProductionLine]:
     """
-    List active production lines for a client.
+    List active production lines for the caller's authorized client scope.
+
+    Admin/poweruser with no client_id see lines for all clients; scoped
+    roles (leader/operator/etc.) see only their assigned client(s); an
+    explicit client_id narrows the result, subject to the same
+    scope-authorization behavior as the other resolve_client_scope endpoints.
 
     Returns all active lines ordered by line_code.
     """
     logger.info(
-        "Listing production lines for client_id=%s by user=%s",
-        client_id,
+        "Listing production lines for scope=%s by user=%s",
+        scope.client_ids,
         current_user.user_id,
     )
-    return list_production_lines(db, client_id)
+    query = db.query(ProductionLine).filter(
+        scope.filter(ProductionLine.client_id),
+        ProductionLine.is_active.is_(True),
+    )
+    return query.order_by(ProductionLine.line_code).all()
 
 
 @router.get("/tree", response_model=List[ProductionLineTreeResponse])

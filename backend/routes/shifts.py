@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from typing import List
 
 from backend.database import get_db
-from backend.auth.jwt import get_current_user, get_current_active_supervisor
+from backend.auth.jwt import get_current_user, get_current_active_supervisor, ClientScope, resolve_client_scope
 from backend.orm.shift import Shift
 from backend.orm.user import User
 from backend.utils.logging_utils import get_module_logger
@@ -23,7 +23,6 @@ from backend.schemas.shift import (
 )
 from backend.services.shift_service import (
     create_shift_record as create_shift,
-    list_client_shifts as list_shifts,
     get_shift_by_id as get_shift,
     update_shift_record as update_shift,
     deactivate_shift_record as deactivate_shift,
@@ -38,20 +37,29 @@ router = APIRouter(prefix="/api/shifts", tags=["Shifts"])
 
 @router.get("/", response_model=List[ShiftResponse])
 def list_shifts_endpoint(
-    client_id: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    scope: ClientScope = Depends(resolve_client_scope),
 ) -> List[Shift]:
     """
-    List active shifts for a client.
+    List active shifts for the caller's authorized client scope.
+
+    Admin/poweruser with no client_id see shifts for all clients; scoped
+    roles (leader/operator/etc.) see only their assigned client(s); an
+    explicit client_id narrows the result, subject to the same
+    scope-authorization behavior as the other resolve_client_scope endpoints.
 
     Returns all active shifts ordered by shift_name. The response is
     serialised through ShiftResponse via FastAPI's response_model — the
     function itself returns the ORM rows, so the annotation reflects
     that rather than lying about the post-serialisation type.
     """
-    logger.info("Listing shifts for client_id=%s by user=%s", client_id, current_user.user_id)
-    return list_shifts(db, client_id)
+    logger.info("Listing shifts for scope=%s by user=%s", scope.client_ids, current_user.user_id)
+    query = db.query(Shift).filter(
+        scope.filter(Shift.client_id),
+        Shift.is_active.is_(True),
+    )
+    return query.order_by(Shift.shift_name).all()
 
 
 @router.post("/", response_model=ShiftResponseWithWarnings, status_code=status.HTTP_201_CREATED)

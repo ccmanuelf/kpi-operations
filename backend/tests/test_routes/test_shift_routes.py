@@ -21,6 +21,7 @@ from backend.tests.conftest import clone_template_engine
 # =============================================================================
 
 CLIENT_ID = "SHIFT-RT-C1"
+CLIENT_ID_2 = "SHIFT-RT-C2"
 
 
 def _create_test_app(db_session, role="supervisor"):
@@ -94,17 +95,66 @@ def operator_client(shift_db):
     return TestClient(app), shift_db
 
 
-def _create_shift(db, shift_name="1st", start="06:00:00", end="14:00:00"):
+def _create_shift(db, shift_name="1st", start="06:00:00", end="14:00:00", client_id=CLIENT_ID):
     """Helper to seed a shift directly in the DB."""
     shift = TestDataFactory.create_shift(
         db,
-        client_id=CLIENT_ID,
+        client_id=client_id,
         shift_name=shift_name,
         start_time=start,
         end_time=end,
     )
     db.commit()
     return shift
+
+
+def _create_test_app_scoped(db_session, role, client_id_assigned):
+    """Variant of _create_test_app that allows an arbitrary (possibly
+    multi-client or unassigned) client_id_assigned, for the client-scope
+    matrix below. Read-only endpoint under test, so no supervisor override
+    is needed."""
+    app = FastAPI()
+    app.include_router(shifts_router)
+
+    def override_get_db():
+        try:
+            yield db_session
+        finally:
+            pass
+
+    mock_user = User(
+        user_id=f"test-shift-scope-{role}",
+        username=f"shift_scope_{role}",
+        email=f"shift_scope_{role}@test.com",
+        role=role,
+        client_id_assigned=client_id_assigned,
+        is_active=True,
+    )
+
+    app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_current_user] = lambda: mock_user
+    return app
+
+
+@pytest.fixture
+def scope_db():
+    """Fresh DB seeded with two clients, one active shift each, for the
+    client-scope matrix (ISSUE-002/013)."""
+    engine = clone_template_engine()
+    TestingSession = sessionmaker(bind=engine)
+    session = TestingSession()
+    TestDataFactory.reset_counters()
+    TestDataFactory.create_client(session, client_id=CLIENT_ID, client_name="Shift Scope Client 1")
+    TestDataFactory.create_client(session, client_id=CLIENT_ID_2, client_name="Shift Scope Client 2")
+    session.commit()
+    _create_shift(session, "C1-SHIFT", "06:00:00", "14:00:00", client_id=CLIENT_ID)
+    _create_shift(session, "C2-SHIFT", "06:00:00", "14:00:00", client_id=CLIENT_ID_2)
+    try:
+        yield session
+    finally:
+        session.rollback()
+        session.close()
+        engine.dispose()
 
 
 # ============================================================================
@@ -134,6 +184,86 @@ class TestShiftListEndpoint:
         response = client.get("/api/shifts/", params={"client_id": CLIENT_ID})
         assert response.status_code == 200
         assert response.json() == []
+
+
+# ============================================================================
+# TestShiftListEndpointScopeMatrix (ISSUE-002/013)
+# ============================================================================
+class TestShiftListEndpointScopeMatrix:
+    """Per-role client-scope matrix for GET /api/shifts/.
+
+    client_id is now optional and resolved via resolve_client_scope:
+    admin/poweruser default to all clients when omitted; scoped roles
+    (leader/operator/viewer) default to their own assignment; an explicit
+    client_id is still honored, subject to the existing
+    resolve_client_scope authorization behavior (403 for an unauthorized
+    client).
+    """
+
+    def test_admin_no_param_sees_all_clients(self, scope_db):
+        """Admin with no client_id gets rows for every client (was a 422)."""
+        client = TestClient(_create_test_app_scoped(scope_db, "admin", None))
+        response = client.get("/api/shifts/")
+        assert response.status_code == 200
+        names = {s["shift_name"] for s in response.json()}
+        assert names == {"C1-SHIFT", "C2-SHIFT"}
+
+    def test_leader_no_param_sees_scoped_clients_only(self, scope_db):
+        """Leader assigned to both clients sees both, and no others."""
+        client = TestClient(_create_test_app_scoped(scope_db, "leader", f"{CLIENT_ID},{CLIENT_ID_2}"))
+        response = client.get("/api/shifts/")
+        assert response.status_code == 200
+        names = {s["shift_name"] for s in response.json()}
+        assert names == {"C1-SHIFT", "C2-SHIFT"}
+
+    def test_leader_scoped_to_single_client_excludes_other(self, scope_db):
+        """Leader assigned to only one client does not see the other's rows."""
+        client = TestClient(_create_test_app_scoped(scope_db, "leader", CLIENT_ID))
+        response = client.get("/api/shifts/")
+        assert response.status_code == 200
+        names = {s["shift_name"] for s in response.json()}
+        assert names == {"C1-SHIFT"}
+
+    def test_operator_no_param_sees_own_client_only(self, scope_db):
+        """Operator with no client_id gets only their assigned client's rows."""
+        client = TestClient(_create_test_app_scoped(scope_db, "operator", CLIENT_ID))
+        response = client.get("/api/shifts/")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 1
+        assert data[0]["shift_name"] == "C1-SHIFT"
+
+    def test_viewer_no_param_sees_own_client_only(self, scope_db):
+        """Viewer with no client_id gets only their assigned client's rows."""
+        client = TestClient(_create_test_app_scoped(scope_db, "viewer", CLIENT_ID_2))
+        response = client.get("/api/shifts/")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 1
+        assert data[0]["shift_name"] == "C2-SHIFT"
+
+    def test_admin_explicit_client_id_narrows_result(self, scope_db):
+        """Admin can still narrow to one client via an explicit client_id."""
+        client = TestClient(_create_test_app_scoped(scope_db, "admin", None))
+        response = client.get("/api/shifts/", params={"client_id": CLIENT_ID})
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 1
+        assert data[0]["shift_name"] == "C1-SHIFT"
+
+    def test_operator_explicit_foreign_client_id_forbidden(self, scope_db):
+        """Operator requesting a client_id outside their scope is 403,
+        mirroring the existing resolve_client_scope authorization behavior."""
+        client = TestClient(_create_test_app_scoped(scope_db, "operator", CLIENT_ID))
+        response = client.get("/api/shifts/", params={"client_id": CLIENT_ID_2})
+        assert response.status_code == 403
+
+    def test_scoped_role_with_no_assignment_forbidden(self, scope_db):
+        """A scoped role with no client assignment at all is 403 — unchanged
+        pre-existing get_user_client_filter behavior."""
+        client = TestClient(_create_test_app_scoped(scope_db, "operator", None))
+        response = client.get("/api/shifts/")
+        assert response.status_code == 403
 
 
 # ============================================================================
