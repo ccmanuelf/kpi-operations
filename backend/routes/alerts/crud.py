@@ -5,7 +5,7 @@ Covers: list, dashboard, summary, get, create, acknowledge, resolve, dismiss.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Query as OrmQuery, Session
 from typing import Any, List, Optional
 from datetime import datetime, timedelta, timezone
 import uuid
@@ -28,7 +28,6 @@ from backend.auth.jwt import get_current_user
 from backend.middleware.client_auth import verify_client_access
 from backend.orm.user import User
 from backend.constants import (
-    LOOKBACK_WEEKLY_DAYS,
     LOOKBACK_DAILY_HOURS,
     MEDIUM_PAGE_SIZE,
     MAX_ALERT_PAGE_SIZE,
@@ -42,26 +41,26 @@ logger = get_module_logger(__name__)
 crud_router = APIRouter()
 
 
-@crud_router.get("/", response_model=List[AlertResponse])
-async def list_alerts(
-    client_id: Optional[str] = Query(None, description="Filter by client"),
-    category: Optional[AlertCategory] = Query(None, description="Filter by category"),
-    severity: Optional[AlertSeverity] = Query(None, description="Filter by severity"),
-    status: Optional[AlertStatus] = Query(AlertStatus.ACTIVE, description="Filter by status"),
-    kpi_key: Optional[str] = Query(None, description="Filter by KPI"),
-    days: int = Query(LOOKBACK_WEEKLY_DAYS, ge=MIN_DAYS_LOOKBACK, le=MAX_DAYS_SHORT, description="Days to look back"),
-    limit: int = Query(MEDIUM_PAGE_SIZE, ge=MIN_DAYS_LOOKBACK, le=MAX_ALERT_PAGE_SIZE, description="Maximum results"),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-) -> Any:
-    """
-    List alerts with optional filters
+def _build_alerts_query(
+    db: Session,
+    *,
+    client_id: Optional[str] = None,
+    category: Optional[AlertCategory] = None,
+    severity: Optional[AlertSeverity] = None,
+    status: Optional[AlertStatus] = None,
+    kpi_key: Optional[str] = None,
+    days: Optional[int] = None,
+) -> "OrmQuery[Alert]":
+    """Single source of truth for filtering the ALERT table.
 
-    Returns alerts matching the specified criteria, sorted by creation date descending.
+    Both the list endpoint and the summary/dashboard endpoints build their
+    queries here so they can never disagree about which alerts count as
+    "active" (ISSUE-008). Previously `list_alerts` silently applied a
+    7-day recency window by default while `get_alert_summary` applied none,
+    so alerts older than a week were counted in the summary chips but never
+    appeared in the unfiltered list (summary total_active=9, list=[]). The
+    `days` window is now opt-in (None = no date filter) on every caller.
     """
-    if client_id:
-        verify_client_access(current_user, client_id)
-
     query = db.query(Alert)
 
     if client_id:
@@ -74,10 +73,50 @@ async def list_alerts(
         query = query.filter(Alert.status == status.value)
     if kpi_key:
         query = query.filter(Alert.kpi_key == kpi_key)
+    if days is not None:
+        from_date = datetime.now(tz=timezone.utc) - timedelta(days=days)
+        query = query.filter(Alert.created_at >= from_date)
 
-    # Date filter
-    from_date = datetime.now(tz=timezone.utc) - timedelta(days=days)
-    query = query.filter(Alert.created_at >= from_date)
+    return query
+
+
+@crud_router.get("/", response_model=List[AlertResponse])
+async def list_alerts(
+    client_id: Optional[str] = Query(None, description="Filter by client"),
+    category: Optional[AlertCategory] = Query(None, description="Filter by category"),
+    severity: Optional[AlertSeverity] = Query(None, description="Filter by severity"),
+    status: Optional[AlertStatus] = Query(AlertStatus.ACTIVE, description="Filter by status"),
+    kpi_key: Optional[str] = Query(None, description="Filter by KPI"),
+    days: Optional[int] = Query(
+        None,
+        ge=MIN_DAYS_LOOKBACK,
+        le=MAX_DAYS_SHORT,
+        description="Optional recency window in days; omit to match every alert on the same basis as /summary",
+    ),
+    limit: int = Query(MEDIUM_PAGE_SIZE, ge=MIN_DAYS_LOOKBACK, le=MAX_ALERT_PAGE_SIZE, description="Maximum results"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Any:
+    """
+    List alerts with optional filters
+
+    Returns alerts matching the specified criteria, sorted by creation date descending.
+    Without an explicit `days` value, this returns every alert matching the other
+    filters (same basis /summary uses), so an unfiltered active-status list and the
+    summary's total_active can never disagree.
+    """
+    if client_id:
+        verify_client_access(current_user, client_id)
+
+    query = _build_alerts_query(
+        db,
+        client_id=client_id,
+        category=category,
+        severity=severity,
+        status=status,
+        kpi_key=kpi_key,
+        days=days,
+    )
 
     alerts = query.order_by(Alert.created_at.desc()).limit(limit).all()
 
@@ -98,12 +137,7 @@ async def get_alert_dashboard(
     if client_id:
         verify_client_access(current_user, client_id)
 
-    base_query = db.query(Alert).filter(Alert.status == "active")
-
-    if client_id:
-        base_query = base_query.filter(Alert.client_id == client_id)
-
-    all_active = base_query.all()
+    all_active = _build_alerts_query(db, client_id=client_id, status=AlertStatus.ACTIVE).all()
 
     # Build summary
     by_severity: dict[str, int] = {}
@@ -159,12 +193,7 @@ async def get_alert_summary(
     if client_id:
         verify_client_access(current_user, client_id)
 
-    query = db.query(Alert).filter(Alert.status == "active")
-
-    if client_id:
-        query = query.filter(Alert.client_id == client_id)
-
-    alerts = query.all()
+    alerts = _build_alerts_query(db, client_id=client_id, status=AlertStatus.ACTIVE).all()
 
     by_severity: dict[str, int] = {}
     by_category: dict[str, int] = {}
