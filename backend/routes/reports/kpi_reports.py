@@ -108,7 +108,9 @@ async def generate_quality_excel_report(
 
         validate_date_range(start, end)
 
-        excel_buffer = ExcelReportGenerator(db).generate_report(client_id=client_id, start_date=start, end_date=end)
+        excel_buffer = ExcelReportGenerator(db).generate_report(
+            client_id=client_id, start_date=start, end_date=end, sheets=["summary", "quality"]
+        )
 
         timestamp = datetime.now(tz=timezone.utc).strftime("%Y%m%d_%H%M%S")
         client_suffix = f"_client_{client_id}" if client_id else "_all_clients"
@@ -211,7 +213,9 @@ async def generate_attendance_excel_report(
 
         validate_date_range(start, end)
 
-        excel_buffer = ExcelReportGenerator(db).generate_report(client_id=client_id, start_date=start, end_date=end)
+        excel_buffer = ExcelReportGenerator(db).generate_report(
+            client_id=client_id, start_date=start, end_date=end, sheets=["summary", "attendance"]
+        )
 
         timestamp = datetime.now(tz=timezone.utc).strftime("%Y%m%d_%H%M%S")
         client_suffix = f"_client_{client_id}" if client_id else "_all_clients"

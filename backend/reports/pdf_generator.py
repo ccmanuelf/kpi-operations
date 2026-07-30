@@ -10,6 +10,7 @@ from datetime import datetime, date, timezone
 from typing import List, Optional, Dict, Any
 from pathlib import Path
 from io import BytesIO
+from decimal import Decimal
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
@@ -18,6 +19,8 @@ from reportlab.lib.units import inch
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
 from reportlab.lib.enums import TA_CENTER
 from sqlalchemy.orm import Session
+
+from backend.calculations.availability import calculate_availability_pure
 
 
 class PDFReportGenerator:
@@ -333,7 +336,9 @@ class PDFReportGenerator:
 
         # Build base query with client filtering
         production_query = self.db.query(ProductionEntry).filter(
-            ProductionEntry.production_date.between(start_date, end_date)
+            ProductionEntry.production_date.between(
+                datetime.combine(start_date, datetime.min.time()), datetime.combine(end_date, datetime.max.time())
+            )
         )
 
         if client_id:
@@ -372,7 +377,11 @@ class PDFReportGenerator:
             )
 
         # Quality metrics
-        quality_query = self.db.query(QualityEntry).filter(QualityEntry.inspection_date.between(start_date, end_date))
+        quality_query = self.db.query(QualityEntry).filter(
+            QualityEntry.inspection_date.between(
+                datetime.combine(start_date, datetime.min.time()), datetime.combine(end_date, datetime.max.time())
+            )
+        )
 
         if client_id:
             quality_query = quality_query.filter(QualityEntry.client_id == client_id)
@@ -411,7 +420,9 @@ class PDFReportGenerator:
 
         # Attendance metrics
         attendance_query = self.db.query(AttendanceEntry).filter(
-            AttendanceEntry.shift_date.between(start_date, end_date)
+            AttendanceEntry.shift_date.between(
+                datetime.combine(start_date, datetime.min.time()), datetime.combine(end_date, datetime.max.time())
+            )
         )
 
         attendance_entries = attendance_query.all()
@@ -445,7 +456,12 @@ class PDFReportGenerator:
         details = {}
 
         if kpi_key in ["efficiency", "performance", "availability"]:
-            query = self.db.query(ProductionEntry).filter(ProductionEntry.production_date.between(start_date, end_date))
+            query = self.db.query(ProductionEntry).filter(
+                ProductionEntry.production_date.between(
+                    datetime.combine(start_date, datetime.min.time()),
+                    datetime.combine(end_date, datetime.max.time()),
+                )
+            )
 
             if client_id:
                 query = query.filter(ProductionEntry.client_id == client_id)
@@ -458,8 +474,15 @@ class PDFReportGenerator:
                 elif kpi_key == "performance":
                     values = [float(e.performance_percentage or 0) for e in entries]
                 else:
-                    # Calculate availability from downtime
-                    values = [85.0] * len(entries)  # Placeholder
+                    values = [
+                        float(
+                            calculate_availability_pure(
+                                Decimal(str(e.run_time_hours or 0)) + Decimal(str(e.downtime_hours or 0)),
+                                Decimal(str(e.downtime_hours or 0)),
+                            )
+                        )
+                        for e in entries
+                    ]
 
                 avg_value = sum(values) / len(values) if values else 0
                 details = {
@@ -473,7 +496,12 @@ class PDFReportGenerator:
                 }
 
         elif kpi_key in ["fpy", "ppm", "dpmo"]:
-            query = self.db.query(QualityEntry).filter(QualityEntry.inspection_date.between(start_date, end_date))
+            query = self.db.query(QualityEntry).filter(
+                QualityEntry.inspection_date.between(
+                    datetime.combine(start_date, datetime.min.time()),
+                    datetime.combine(end_date, datetime.max.time()),
+                )
+            )
 
             if client_id:
                 query = query.filter(QualityEntry.client_id == client_id)
@@ -503,7 +531,12 @@ class PDFReportGenerator:
                     }
 
         elif kpi_key == "absenteeism":
-            query = self.db.query(AttendanceEntry).filter(AttendanceEntry.shift_date.between(start_date, end_date))
+            query = self.db.query(AttendanceEntry).filter(
+                AttendanceEntry.shift_date.between(
+                    datetime.combine(start_date, datetime.min.time()),
+                    datetime.combine(end_date, datetime.max.time()),
+                )
+            )
 
             entries = query.all()
 

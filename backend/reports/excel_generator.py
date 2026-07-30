@@ -7,13 +7,16 @@ Reference: https://carbondesignsystem.com/guidelines/color/tokens
 """
 
 from datetime import date, datetime, timezone
-from typing import Optional, List, Dict, Any
+from decimal import Decimal
+from typing import Optional, List, Dict, Any, Sequence
 from io import BytesIO
 from pathlib import Path
 
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from sqlalchemy.orm import Session
+
+from backend.calculations.availability import calculate_availability_pure
 
 
 class ExcelReportGenerator:
@@ -45,32 +48,46 @@ class ExcelReportGenerator:
         }
 
     def generate_report(
-        self, client_id: Optional[str], start_date: date, end_date: date, output_path: Optional[Path] = None
+        self,
+        client_id: Optional[str],
+        start_date: date,
+        end_date: date,
+        output_path: Optional[Path] = None,
+        sheets: Optional[Sequence[str]] = None,
     ) -> BytesIO:
         """
-        Generate comprehensive KPI Excel report
+        Generate KPI Excel report.
 
         Args:
             client_id: Client ID (None for all clients)
             start_date: Report start date
             end_date: Report end date
             output_path: Optional file path to save Excel file
+            sheets: Sheet keys to include ("summary", "production", "quality",
+                "downtime", "attendance"). None = all sheets (comprehensive).
 
         Returns:
             BytesIO containing Excel data
         """
+        sheet_builders = {
+            "summary": self._create_summary_sheet,
+            "production": self._create_production_sheet,
+            "quality": self._create_quality_sheet,
+            "downtime": self._create_downtime_sheet,
+            "attendance": self._create_attendance_sheet,
+        }
+        selected = list(sheet_builders) if sheets is None else [key for key in sheet_builders if key in set(sheets)]
+
+        if not selected:
+            raise ValueError("sheets selected no valid sheet keys")
+
         wb = Workbook()
 
         # Remove default sheet
         wb.remove(wb.active)
 
-        # Create sheets
-        self._create_summary_sheet(wb, client_id, start_date, end_date)
-        self._create_production_sheet(wb, client_id, start_date, end_date)
-        self._create_quality_sheet(wb, client_id, start_date, end_date)
-        self._create_downtime_sheet(wb, client_id, start_date, end_date)
-        self._create_attendance_sheet(wb, client_id, start_date, end_date)
-        self._create_charts_sheet(wb, client_id, start_date, end_date)
+        for key in selected:
+            sheet_builders[key](wb, client_id, start_date, end_date)
 
         # Save to buffer or file
         buffer = BytesIO()
@@ -403,21 +420,6 @@ class ExcelReportGenerator:
         for col in ["A", "B", "C", "D", "E"]:
             ws.column_dimensions[col].width = 20
 
-    def _create_charts_sheet(self, wb: Workbook, client_id: Optional[str], start_date: date, end_date: date) -> None:
-        """Create sheet with embedded charts"""
-        ws = wb.create_sheet("Trend Charts")
-
-        # This would create actual charts using openpyxl's chart functionality
-        # For now, placeholder text
-        ws["A1"] = "KPI Trend Charts"
-        ws["A1"].font = Font(size=16, bold=True)
-
-        ws["A3"] = "Charts will be embedded here showing:"
-        ws["A4"] = "- Efficiency trends over time"
-        ws["A5"] = "- Quality rate trends"
-        ws["A6"] = "- Availability trends"
-        ws["A7"] = "- OEE performance"
-
     def _apply_table_borders(self, ws: Any, start_cell: str, end_cell: str) -> None:
         """Apply borders to table range"""
         thin_border = Border(
@@ -459,7 +461,9 @@ class ExcelReportGenerator:
 
         # Production KPIs
         production_query = self.db.query(ProductionEntry).filter(
-            ProductionEntry.production_date.between(start_date, end_date)
+            ProductionEntry.production_date.between(
+                datetime.combine(start_date, datetime.min.time()), datetime.combine(end_date, datetime.max.time())
+            )
         )
 
         if client_id:
@@ -497,7 +501,11 @@ class ExcelReportGenerator:
             )
 
         # Quality KPIs
-        quality_query = self.db.query(QualityEntry).filter(QualityEntry.shift_date.between(start_date, end_date))
+        quality_query = self.db.query(QualityEntry).filter(
+            QualityEntry.shift_date.between(
+                datetime.combine(start_date, datetime.min.time()), datetime.combine(end_date, datetime.max.time())
+            )
+        )
 
         if client_id:
             quality_query = quality_query.filter(QualityEntry.client_id == client_id)
@@ -536,7 +544,9 @@ class ExcelReportGenerator:
 
         # Attendance KPIs
         attendance_query = self.db.query(AttendanceEntry).filter(
-            AttendanceEntry.shift_date.between(start_date, end_date)
+            AttendanceEntry.shift_date.between(
+                datetime.combine(start_date, datetime.min.time()), datetime.combine(end_date, datetime.max.time())
+            )
         )
         if client_id:
             attendance_query = attendance_query.filter(AttendanceEntry.client_id == client_id)
@@ -576,9 +586,16 @@ class ExcelReportGenerator:
                 func.sum(ProductionEntry.units_produced).label("units"),
                 func.avg(ProductionEntry.efficiency_percentage).label("efficiency"),
                 func.avg(ProductionEntry.performance_percentage).label("performance"),
+                func.sum(ProductionEntry.run_time_hours).label("run_hours"),
+                func.sum(ProductionEntry.downtime_hours).label("downtime_hours"),
             )
             .join(Product)
-            .filter(ProductionEntry.production_date.between(start_date, end_date))
+            .filter(
+                ProductionEntry.production_date.between(
+                    datetime.combine(start_date, datetime.min.time()),
+                    datetime.combine(end_date, datetime.max.time()),
+                )
+            )
         )
 
         if client_id:
@@ -597,7 +614,12 @@ class ExcelReportGenerator:
                 "units": r.units or 0,
                 "efficiency": float(r.efficiency or 0),
                 "performance": float(r.performance or 0),
-                "availability": 90.0,  # Placeholder - calculate from downtime
+                "availability": float(
+                    calculate_availability_pure(
+                        Decimal(str((r.run_hours or 0))) + Decimal(str(r.downtime_hours or 0)),
+                        Decimal(str(r.downtime_hours or 0)),
+                    )
+                ),
             }
             for r in results
         ]
@@ -608,7 +630,11 @@ class ExcelReportGenerator:
 
         # QualityEntry is keyed by shift_date and carries client_id directly
         # (no Product join needed). `inspection_date` is optional metadata.
-        query = self.db.query(QualityEntry).filter(QualityEntry.shift_date.between(start_date, end_date))
+        query = self.db.query(QualityEntry).filter(
+            QualityEntry.shift_date.between(
+                datetime.combine(start_date, datetime.min.time()), datetime.combine(end_date, datetime.max.time())
+            )
+        )
 
         if client_id:
             query = query.filter(QualityEntry.client_id == client_id)
@@ -630,7 +656,11 @@ class ExcelReportGenerator:
         """Fetch downtime data from database"""
         from backend.orm.downtime_entry import DowntimeEntry
 
-        query = self.db.query(DowntimeEntry).filter(DowntimeEntry.shift_date.between(start_date, end_date))
+        query = self.db.query(DowntimeEntry).filter(
+            DowntimeEntry.shift_date.between(
+                datetime.combine(start_date, datetime.min.time()), datetime.combine(end_date, datetime.max.time())
+            )
+        )
 
         if client_id:
             query = query.filter(DowntimeEntry.client_id == client_id)
@@ -660,7 +690,11 @@ class ExcelReportGenerator:
             AttendanceEntry.shift_date,
             func.count(AttendanceEntry.attendance_entry_id).label("scheduled"),
             func.sum(case((AttendanceEntry.is_absent == 1, 1), else_=0)).label("absent"),
-        ).filter(AttendanceEntry.shift_date.between(start_date, end_date))
+        ).filter(
+            AttendanceEntry.shift_date.between(
+                datetime.combine(start_date, datetime.min.time()), datetime.combine(end_date, datetime.max.time())
+            )
+        )
         if client_id:
             query = query.filter(AttendanceEntry.client_id == client_id)
         query = query.group_by(AttendanceEntry.shift_date).order_by(AttendanceEntry.shift_date)

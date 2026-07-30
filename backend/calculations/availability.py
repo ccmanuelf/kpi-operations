@@ -146,3 +146,16 @@ def calculate_mttr(
         return mttr
 
     return None
+
+
+def calculate_availability_pure(scheduled_hours: Decimal, downtime_hours: Decimal) -> Decimal:
+    """
+    Pure availability formula: (scheduled - downtime) / scheduled * 100.
+
+    Same math as calculate_availability() above, decoupled from the DB so the
+    report generators can reuse it. Clamped to [0, 100]; 0 when nothing scheduled.
+    """
+    if scheduled_hours <= 0:
+        return Decimal("0")
+    availability_pct = ((scheduled_hours - downtime_hours) / scheduled_hours) * 100
+    return min(max(availability_pct, Decimal("0")), Decimal("100"))
