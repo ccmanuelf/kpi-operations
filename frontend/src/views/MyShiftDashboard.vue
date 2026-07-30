@@ -81,7 +81,8 @@
 
             <div v-else class="pa-6 text-center">
               <v-icon size="48" color="grey-lighten-1" class="mb-3">mdi-clipboard-text-off-outline</v-icon>
-              <p class="text-body-1 text-grey">{{ t('common.noData') }}</p>
+              <p class="text-body-1 text-grey mb-1">{{ t('myShift.noWorkOrders') }}</p>
+              <p class="text-caption text-grey mb-2">{{ t('myShift.noWorkOrdersGuidance') }}</p>
               <v-btn color="primary" variant="outlined" class="mt-2" @click="goToWorkOrders">
                 {{ t('navigation.workOrders') }}
               </v-btn>
@@ -90,7 +91,7 @@
         </v-card>
 
         <!-- My Stats Panel -->
-        <v-card class="mb-4" elevation="2">
+        <v-card v-if="hasAssignments" class="mb-4" elevation="2">
           <v-card-title class="d-flex align-center bg-grey-darken-3 text-white py-3">
             <v-icon class="mr-2">mdi-chart-bar</v-icon>
             {{ t('dashboard.todaySummary') }}
@@ -185,7 +186,7 @@
             <v-icon class="mr-2">mdi-lightning-bolt</v-icon>
             {{ t('common.actions') }}
           </v-card-title>
-          <v-card-text class="pa-4">
+          <v-card-text v-if="hasAssignments" class="pa-4">
             <v-row class="quick-actions-grid">
               <v-col v-for="action in quickActions" :key="action.key" cols="6">
                 <v-card class="quick-action-card elevation-1" :color="action.color" @click="action.handler" role="button" tabindex="0">
@@ -217,6 +218,11 @@
             <p v-if="!selectedWorkOrder" class="text-caption text-grey text-center mt-2">
               {{ t('shifts.selectWorkOrderForQuickLog') }}
             </p>
+          </v-card-text>
+          <v-card-text v-else class="pa-6 text-center">
+            <v-icon size="40" color="grey-lighten-1" class="mb-2">mdi-hand-wave-outline</v-icon>
+            <p class="text-body-2 text-grey mb-1">{{ t('myShift.noWorkOrders') }}</p>
+            <p class="text-caption text-grey">{{ t('myShift.noWorkOrdersGuidance') }}</p>
           </v-card-text>
         </v-card>
       </v-col>
@@ -297,6 +303,7 @@ const {
   currentDate,
   currentDateFormatted,
   workOrderOptions,
+  hasAssignments,
   formatRelativeTime,
   getProgressPercent,
   getProgressColor,

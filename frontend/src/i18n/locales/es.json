@@ -4364,5 +4364,9 @@
       "equipmentBreakdown": "Falla de equipo: {minutes} min de inactividad",
       "downtimeEvent": "{reason}: {minutes} min de inactividad"
     }
+  },
+  "myShift": {
+    "noWorkOrders": "No hay órdenes de trabajo asignadas a tu turno",
+    "noWorkOrdersGuidance": "Las órdenes de trabajo aparecerán aquí cuando se te asigne a una línea de producción. Contacta a tu supervisor si crees que esto es un error."
   }
 }

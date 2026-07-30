@@ -16,34 +16,6 @@ export interface ShiftWorkOrderRow {
   [key: string]: unknown
 }
 
-export interface ProductionRow {
-  id?: string | number
-  work_order_id?: string | number
-  units_produced?: number
-  target_production?: number
-  date?: string
-  created_at?: string
-  [key: string]: unknown
-}
-
-export interface DowntimeRow {
-  id?: string | number
-  reason?: string
-  downtime_minutes?: number
-  date?: string
-  created_at?: string
-  [key: string]: unknown
-}
-
-export interface QualityRow {
-  id?: string | number
-  inspected_quantity?: number
-  defect_quantity?: number
-  date?: string
-  created_at?: string
-  [key: string]: unknown
-}
-
 export type ActivityType = 'production' | 'downtime' | 'quality' | 'hold' | string
 
 export interface ActivityEntry {
@@ -66,7 +38,7 @@ interface WorkOrderOption {
 }
 
 export function useShiftDashboardData() {
-  const { t, locale } = useI18n()
+  const { locale } = useI18n()
   const currentTime = ref(new Date())
   let timeInterval: ReturnType<typeof setInterval> | null = null
 
@@ -153,169 +125,47 @@ export function useShiftDashboardData() {
     return icons[type] || 'mdi-information'
   }
 
-  // Demo fallback data — preserved verbatim for parity with the
-  // JS version when the API is unavailable.
-  const fallbackData = (): void => {
-    assignedWorkOrders.value = [
-      {
-        id: 1,
-        work_order_id: 'WO-2024-001',
-        product_name: 'Widget A',
-        target_qty: 1000,
-        produced: 450,
-      },
-      {
-        id: 2,
-        work_order_id: 'WO-2024-002',
-        product_name: 'Widget B',
-        target_qty: 500,
-        produced: 320,
-      },
-      {
-        id: 3,
-        work_order_id: 'WO-2024-003',
-        product_name: 'Component X',
-        target_qty: 750,
-        produced: 600,
-      },
-    ]
-    myStats.value = {
-      unitsProduced: 1370,
-      efficiency: 85,
-      downtimeIncidents: 2,
-      qualityChecks: 5,
+  // Whether the shift screen has any real assignment to show. Drives the
+  // honest empty state — the screen must never invent records when this
+  // is false (e.g. a user with no line/shift mapping for today).
+  const hasAssignments = computed(() => assignedWorkOrders.value.length > 0)
+
+  interface MyShiftSummaryResponse {
+    stats?: {
+      units_produced?: number
+      efficiency?: number
+      downtime_incidents?: number
+      quality_checks?: number
     }
-    recentActivity.value = [
-      {
-        id: '1',
-        type: 'production',
-        description: t('shift.activity.loggedUnits', { count: 50, orderId: 'WO-2024-001' }),
-        timestamp: new Date(Date.now() - 15 * 60000).toISOString(),
-      },
-      {
-        id: '2',
-        type: 'quality',
-        description: t('shift.activity.qualityCheck', { inspected: 100, defects: 1 }),
-        timestamp: new Date(Date.now() - 45 * 60000).toISOString(),
-      },
-      {
-        id: '3',
-        type: 'downtime',
-        description: t('shift.activity.equipmentBreakdown', { minutes: 15 }),
-        timestamp: new Date(Date.now() - 90 * 60000).toISOString(),
-      },
-      {
-        id: '4',
-        type: 'production',
-        description: t('shift.activity.loggedUnits', { count: 100, orderId: 'WO-2024-002' }),
-        timestamp: new Date(Date.now() - 120 * 60000).toISOString(),
-      },
-      {
-        id: '5',
-        type: 'production',
-        description: t('shift.activity.loggedUnits', { count: 75, orderId: 'WO-2024-003' }),
-        timestamp: new Date(Date.now() - 180 * 60000).toISOString(),
-      },
-    ]
+    assigned_work_orders?: ShiftWorkOrderRow[]
+    recent_activity?: ActivityEntry[]
   }
 
   const fetchMyShiftData = async (): Promise<void> => {
     try {
-      const woResponse = await api.getWorkOrders({
-        status: 'in_progress',
-        date: currentDate.value,
-      })
-      assignedWorkOrders.value =
-        (woResponse.data as { items?: ShiftWorkOrderRow[] })?.items ||
-        (woResponse.data as ShiftWorkOrderRow[]) ||
-        []
+      // Single source of truth: the backend's own /my-shift/summary endpoint
+      // (backend/routes/my_shift.py), which is purpose-built for this screen
+      // and already applies client-scope authorization. It returns real,
+      // possibly-empty data — never fabricated records.
+      const response = await api.getMyShiftSummary({ shift_date: currentDate.value })
+      const summary = response.data as MyShiftSummaryResponse
 
-      // No backend shift-session tracking exists, so we don't filter by
-      // shift number — all of today's entries are aggregated.
-      const prodResponse = await api.getProductionEntries({
-        date: currentDate.value,
-      })
-      const productions: ProductionRow[] =
-        (prodResponse.data as { items?: ProductionRow[] })?.items ||
-        (prodResponse.data as ProductionRow[]) ||
-        []
-
-      let totalUnits = 0
-      let totalTarget = 0
-      productions.forEach((p) => {
-        totalUnits += p.units_produced || 0
-        totalTarget += p.target_production || p.units_produced || 0
-      })
-
-      const downResponse = await api.getDowntimeEntries({
-        date: currentDate.value,
-      })
-      const downtimes: DowntimeRow[] =
-        (downResponse.data as { items?: DowntimeRow[] })?.items ||
-        (downResponse.data as DowntimeRow[]) ||
-        []
-
-      const qualityResponse = await api.getQualityEntries({
-        date: currentDate.value,
-      })
-      const qualities: QualityRow[] =
-        (qualityResponse.data as { items?: QualityRow[] })?.items ||
-        (qualityResponse.data as QualityRow[]) ||
-        []
-
+      assignedWorkOrders.value = summary.assigned_work_orders || []
+      recentActivity.value = summary.recent_activity || []
       myStats.value = {
-        unitsProduced: totalUnits,
-        efficiency: totalTarget > 0 ? Math.round((totalUnits / totalTarget) * 100) : 0,
-        downtimeIncidents: downtimes.length,
-        qualityChecks: qualities.length,
+        unitsProduced: summary.stats?.units_produced ?? 0,
+        efficiency: summary.stats?.efficiency ?? 0,
+        downtimeIncidents: summary.stats?.downtime_incidents ?? 0,
+        qualityChecks: summary.stats?.quality_checks ?? 0,
       }
-
-      const allActivities: ActivityEntry[] = [
-        ...productions.map((p) => ({
-          id: `prod-${p.id}`,
-          type: 'production' as const,
-          description: t('shift.activity.loggedUnits', { count: p.units_produced, orderId: p.work_order_id }),
-          timestamp: p.created_at || p.date || '',
-        })),
-        ...downtimes.map((d) => ({
-          id: `down-${d.id}`,
-          type: 'downtime' as const,
-          description: t('shift.activity.downtimeEvent', { reason: d.reason, minutes: d.downtime_minutes }),
-          timestamp: d.created_at || d.date || '',
-        })),
-        ...qualities.map((q) => ({
-          id: `qual-${q.id}`,
-          type: 'quality' as const,
-          description: t('shift.activity.qualityCheck', { inspected: q.inspected_quantity, defects: q.defect_quantity }),
-          timestamp: q.created_at || q.date || '',
-        })),
-      ]
-
-      allActivities.sort(
-        (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
-      )
-      recentActivity.value = allActivities.slice(0, 5)
-
-      // Progress = overall order completion (cumulative actual vs planned), not
-      // just today's logged units — otherwise every bar reads 0% at the start of
-      // a shift. Fall back to today's production only when the order carries no
-      // cumulative actual.
-      assignedWorkOrders.value = assignedWorkOrders.value.map((wo) => {
-        const planned = (wo.planned_quantity as number | undefined) ?? wo.target_qty
-        const actual = wo.actual_quantity as number | undefined
-        const todayProduced = productions
-          .filter((p) => p.work_order_id === wo.work_order_id)
-          .reduce((sum, p) => sum + (p.units_produced || 0), 0)
-        return {
-          ...wo,
-          target_qty: wo.target_qty ?? planned,
-          produced: typeof actual === 'number' && actual > 0 ? actual : todayProduced,
-        }
-      })
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('Failed to fetch shift data:', error)
-      fallbackData()
+      // Honest failure: never invent records. Reset to the real empty state
+      // and let the UI render its "no work orders assigned" messaging.
+      assignedWorkOrders.value = []
+      recentActivity.value = []
+      myStats.value = { unitsProduced: 0, efficiency: 0, downtimeIncidents: 0, qualityChecks: 0 }
     }
   }
 
@@ -342,6 +192,7 @@ export function useShiftDashboardData() {
     currentDate,
     currentDateFormatted,
     workOrderOptions,
+    hasAssignments,
     formatTime,
     formatRelativeTime,
     getProgressPercent,

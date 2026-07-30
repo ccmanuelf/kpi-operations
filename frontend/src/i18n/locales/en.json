@@ -4364,5 +4364,9 @@
       "equipmentBreakdown": "Equipment Breakdown: {minutes} min downtime",
       "downtimeEvent": "{reason}: {minutes} min downtime"
     }
+  },
+  "myShift": {
+    "noWorkOrders": "No work orders assigned to your shift",
+    "noWorkOrdersGuidance": "Work orders will appear here once you're assigned to a production line. Contact your supervisor if you think this is a mistake."
   }
 }
