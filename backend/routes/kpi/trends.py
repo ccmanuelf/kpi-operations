@@ -326,7 +326,12 @@ def get_oee_trend(
     )
     qual_query = qual_query.filter(scope.filter(QualityEntry.client_id))
     qual_results = {
-        str(r.date): (r.passed / r.inspected * 100) if r.inspected and r.inspected > 0 else 97
+        # units_passed/units_inspected are Integer columns; MariaDB's SUM() over
+        # an exact-value (integer) column promotes the result to decimal.Decimal
+        # via the DBAPI driver, while SQLite returns int. Coerce to float at this
+        # boundary (matching perf_results/dt_results above) so the OEE formula
+        # below never mixes float and Decimal operands.
+        str(r.date): (float(r.passed) / float(r.inspected) * 100) if r.inspected and r.inspected > 0 else 97
         for r in qual_query.group_by(func.date(QualityEntry.shift_date)).all()
     }
 
