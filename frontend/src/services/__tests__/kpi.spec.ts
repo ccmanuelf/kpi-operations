@@ -108,12 +108,32 @@ describe('KPI API', () => {
       expect(result.data.max_days).toBe(45)
     })
 
-    it('returns defaults on error', async () => {
+    // Regression for e2e-sweep ISSUE-003: the KPI Dashboard WIP Aging card
+    // showed "0.0days" against a real `average_aging_days: 74.7` backend
+    // reading. Root cause was two-fold: the mapping fell back through dead
+    // fields (`average_age`, `avg_hold_duration`) that no backend response
+    // ever populates, and a `.catch` on the primary request silently
+    // substituted an empty object — masking any real request failure as a
+    // fabricated `average_days: 0` indistinguishable from genuine zero WIP.
+    it('maps average_aging_days directly, including double-digit real readings', async () => {
+      api.get.mockImplementation((url) => {
+        if (url === '/kpi/wip-aging') {
+          return Promise.resolve({ data: { average_aging_days: 74.7, aging_over_30_days: 3 } })
+        }
+        return Promise.resolve({ data: [] })
+      })
+
+      const result = await kpiApi.getWIPAging({})
+
+      expect(result.data.average_days).toBe(74.7)
+    })
+
+    it('reports average_days: null (not a fabricated 0) when the request fails', async () => {
       api.get.mockRejectedValue(new Error('Error'))
 
       const result = await kpiApi.getWIPAging({})
 
-      expect(result.data.average_days).toBe(0)
+      expect(result.data.average_days).toBeNull()
       expect(result.data.total_held).toBe(0)
     })
   })

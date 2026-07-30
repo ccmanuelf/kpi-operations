@@ -726,6 +726,36 @@ def test_global_defaults_seeded_once(db_session):
     assert db_session.query(MetricAssumptionDependency).count() >= 1
 
 
+def test_global_kpi_thresholds_seeded_once_and_cover_settings_panel_keys(db_session):
+    """Regression for the Admin Settings "KPI Thresholds" panel showing every
+    field as an empty placeholder: the prod-safe seeder never created any
+    client_id=NULL KPIThreshold row, so get_kpi_thresholds's default
+    (no-client) view always returned an empty `thresholds` dict. Every key
+    the frontend's kpiList renders must be present."""
+    from backend.orm.kpi_threshold import KPIThreshold
+
+    seed.seed_global_defaults(db_session)
+    seed.seed_global_defaults(db_session)  # idempotent — no duplicate rows / no error
+    db_session.commit()
+
+    rows = db_session.query(KPIThreshold).filter_by(client_id=None).all()
+    keys = {row.kpi_key for row in rows}
+    expected_keys = {
+        "efficiency",
+        "quality",
+        "availability",
+        "performance",
+        "oee",
+        "ppm",
+        "absenteeism",
+        "otd",
+        "wip_aging",
+        "throughput",
+    }
+    assert keys == expected_keys
+    assert all(row.target_value is not None for row in rows)
+
+
 def test_delivered_history_batch_drives_credible_and_ooc_otd(db_session):
     from collections import defaultdict
     from backend.orm import WorkOrder, ProductionEntry

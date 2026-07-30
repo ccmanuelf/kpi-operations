@@ -139,12 +139,12 @@ describe('Reference Data API Service', () => {
       )
     })
 
-    it('calls admin/clients endpoint', async () => {
+    it('calls the live /clients endpoint (not the dead /admin/clients path)', async () => {
       api.get.mockResolvedValueOnce({ data: [] })
 
       await referenceApi.getClients()
 
-      expect(api.get).toHaveBeenCalledWith('/admin/clients')
+      expect(api.get).toHaveBeenCalledWith('/clients')
     })
   })
 
@@ -161,12 +161,12 @@ describe('Reference Data API Service', () => {
       )
     })
 
-    it('calls admin/defect-types endpoint', async () => {
+    it('calls the live /defect-types/global endpoint (not the dead /admin/defect-types path)', async () => {
       api.get.mockResolvedValueOnce({ data: [] })
 
       await referenceApi.getDefectTypes()
 
-      expect(api.get).toHaveBeenCalledWith('/admin/defect-types')
+      expect(api.get).toHaveBeenCalledWith('/defect-types/global')
     })
   })
 

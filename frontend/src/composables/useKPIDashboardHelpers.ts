@@ -107,6 +107,10 @@ export function useKPIDashboardHelpers() {
     const status = getStatusColor(kpi)
     if (status === 'success') return t('operationsHealth.onTarget')
     if (status === 'warning') return t('operationsHealth.atRisk')
+    // 'gray' means no value/target to evaluate (kpiStatus's own definition)
+    // — that's "no data", not "Critical". Only a real 'error' status is
+    // Critical.
+    if (status === 'gray') return t('common.na')
     return t('operationsHealth.critical')
   }
 

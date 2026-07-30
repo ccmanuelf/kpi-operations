@@ -263,6 +263,54 @@ class TestAggregateOTD:
         result = aggregate_otd_inputs(transactional_db, client.client_id, PERIOD_START, PERIOD_END)
         assert result.orders == []
 
+    def test_missing_planned_start_date_falls_back_to_received_date(self, transactional_db):
+        """Regression for e2e-sweep ISSUE-017: planned_start_date is only
+        populated for the subset of work orders bridged to a CapacityOrder;
+        every other delivered order — including the ones the plain OTD KPI
+        counts via required_date — was silently excluded, starving the
+        capacity-planning OTD tile down to 0%. received_date is populated
+        on every work order and is the aggregator's own documented
+        lead-time-anchor equivalent, so it's the correct fallback."""
+        client, _ = _client_user(transactional_db)
+        wo = WorkOrder(
+            work_order_id="WO-NO-PLANNED-START",
+            client_id=client.client_id,
+            style_model="X",
+            planned_quantity=100,
+            planned_start_date=None,
+            received_date=datetime(2026, 4, 1, tzinfo=timezone.utc),
+            planned_ship_date=datetime(2026, 4, 15, tzinfo=timezone.utc),
+            actual_delivery_date=datetime(2026, 4, 18, tzinfo=timezone.utc),
+            status=WorkOrderStatus.SHIPPED,
+        )
+        transactional_db.add(wo)
+        transactional_db.commit()
+
+        result = aggregate_otd_inputs(transactional_db, client.client_id, PERIOD_START, PERIOD_END)
+
+        assert len(result.orders) == 1
+        # Lead time (received→ship) = 14 days; delivered 3 days late.
+        assert abs(float(result.orders[0].delay_pct) - 3 / 14) < 0.001
+
+    def test_missing_both_start_anchors_skipped(self, transactional_db):
+        client, _ = _client_user(transactional_db)
+        wo = WorkOrder(
+            work_order_id="WO-NO-ANCHOR",
+            client_id=client.client_id,
+            style_model="X",
+            planned_quantity=100,
+            planned_start_date=None,
+            received_date=None,
+            planned_ship_date=datetime(2026, 4, 15, tzinfo=timezone.utc),
+            actual_delivery_date=datetime(2026, 4, 18, tzinfo=timezone.utc),
+            status=WorkOrderStatus.SHIPPED,
+        )
+        transactional_db.add(wo)
+        transactional_db.commit()
+
+        result = aggregate_otd_inputs(transactional_db, client.client_id, PERIOD_START, PERIOD_END)
+        assert result.orders == []
+
 
 class TestAggregateOEEFilters:
     def test_work_order_id_filter_applied(self, transactional_db):
