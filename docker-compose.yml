@@ -5,6 +5,21 @@ services:
       dockerfile: Dockerfile
       target: production
     container_name: kpi-backend
+    # Override the Dockerfile's default CMD to drop --proxy-headers/
+    # --forwarded-allow-ips (otherwise identical: same module/host/port, no
+    # --reload here either way). This compose file publishes 8000 straight to
+    # the host with NO reverse proxy in front, so unlike the VM (Caddy) and
+    # Render (their edge), there's no proxy hop here needing the
+    # redirect-scheme fix — and trusting forwarded headers would let any LAN
+    # client reaching this port spoof X-Forwarded-For, which uvicorn's
+    # ProxyHeadersMiddleware would then use to overwrite scope["client"],
+    # poisoning request.client.host in the auth audit log
+    # (backend/routes/auth.py LOGIN_FAILED/SUCCESS entries). uvicorn's own
+    # default (proxy_headers=True, forwarded_allow_ips="127.0.0.1") is safe
+    # here too — Docker's port-publish NAT means a real client's peer IP is
+    # never 127.0.0.1 — but omitting the flags entirely states the intent
+    # explicitly rather than relying on that default.
+    command: ["python", "-m", "uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]
     ports:
       - "8000:8000"
     environment:

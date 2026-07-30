@@ -1,7 +1,17 @@
 """
-Regression guard for ISSUE-012 (e2e-sweep remediation): frontend axios call
-paths must hit backend routers on the FIRST request, not via a 307
-redirect_slashes bounce.
+Regression guard for ISSUE-012 (e2e-sweep remediation): the backend must
+accept each of frontend/src's canonical collection-root call paths on the
+FIRST request, not via a 307 redirect_slashes bounce.
+
+Scope: this test only pins the BACKEND side — that `_CANONICAL_FRONTEND_PATHS`
+below (a hand-copied snapshot of what frontend/src currently calls) resolves
+without a redirect. It does NOT verify that frontend/src still calls these
+exact strings — if a frontend caller regressed back to a slash-less path,
+THIS test would keep passing (it never re-reads frontend source). That side
+is pinned by frontend/src/services/__tests__/dataEntry.spec.ts, which asserts
+the literal path string `dataEntry.ts` passes to axios. The two tests
+together close the loop: frontend spec pins the call string, this test pins
+that the call string is redirect-free on the backend.
 
 Why this matters: behind a reverse proxy that doesn't trust
 X-Forwarded-Proto (the VM's Caddy -> gunicorn/UvicornWorker hop before the
@@ -13,10 +23,10 @@ GET /api/quality with no trailing slash against a router registered at
 "/api/quality/").
 
 This test does NOT touch DB state and does NOT disable redirect_slashes —
-it asserts the frontend's *exact* call string lands on a router-registered
-path so no redirect is ever issued for it. A redirect for one of these
-paths (3xx here) is the regression this guards against; the specific
-status code otherwise (200/401/422/...) is not the point.
+it asserts each canonical path lands on a router-registered path so no
+redirect is ever issued for it. A redirect for one of these paths (3xx
+here) is the regression this guards against; the specific status code
+otherwise (200/401/422/...) is not the point.
 """
 
 from __future__ import annotations
@@ -26,12 +36,16 @@ from fastapi.testclient import TestClient
 
 from backend.main import app
 
-# (method, path) — the exact strings frontend/src callers pass to axios for
-# every backend router registered with a trailing-slash collection root
-# (`APIRouter(prefix=...)` + `@router.get("/")` / `@router.post("/")`) that
-# frontend/src actually calls. Sourced by introspecting `app.routes` and
-# cross-referencing frontend/src/services/api/*.ts + composables/*.ts
-# callers (see task-2-report.md for the full alignment table).
+# (method, path) — a hand-copied SNAPSHOT of the exact strings frontend/src
+# callers currently pass to axios for every backend router registered with a
+# trailing-slash collection root (`APIRouter(prefix=...)` +
+# `@router.get("/")` / `@router.post("/")`) that frontend/src actually
+# calls. Sourced by introspecting `app.routes` and cross-referencing
+# frontend/src/services/api/*.ts + composables/*.ts callers (see
+# task-2-report.md for the full alignment table). Being a snapshot, this
+# list does not automatically track frontend/src — see the module docstring
+# for how frontend/src/services/__tests__/dataEntry.spec.ts covers that gap
+# for the quality paths specifically.
 #
 # GET /api/quality/ and POST /api/quality/ were the misaligned pair fixed
 # by this task (frontend/src/services/api/dataEntry.ts); the rest were
