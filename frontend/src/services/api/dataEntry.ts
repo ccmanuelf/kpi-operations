@@ -22,8 +22,14 @@ export const markAllPresent = (params?: Params) =>
   api.post('/attendance/mark-all-present', null, { params })
 
 // Quality
-export const createQualityEntry = (data: Payload) => api.post('/quality', data)
-export const getQualityEntries = (params?: Params) => api.get('/quality', { params })
+// Trailing slash matches the backend's APIRouter("/") definition (same
+// rationale as production-lines below): without it, FastAPI 307-redirects,
+// and behind a reverse proxy that doesn't forward X-Forwarded-Proto trust,
+// the redirect's Location header can downgrade https->http, which the
+// browser blocks as mixed content (ISSUE-012 — this was the captured
+// casualty: "Failed to load quality entries").
+export const createQualityEntry = (data: Payload) => api.post('/quality/', data)
+export const getQualityEntries = (params?: Params) => api.get('/quality/', { params })
 export const updateQualityEntry = (id: Id, data: Payload) => api.put(`/quality/${id}`, data)
 export const deleteQualityEntry = (id: Id) => api.delete(`/quality/${id}`)
 

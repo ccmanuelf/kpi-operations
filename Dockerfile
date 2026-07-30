@@ -76,5 +76,16 @@ USER kpiuser
 # Use entrypoint script for initialization
 ENTRYPOINT ["/app/docker-entrypoint.sh"]
 
-# Default command - start uvicorn server
-CMD ["python", "-m", "uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Default command - start uvicorn server.
+# --forwarded-allow-ips '*': this CMD is also Render's actual container
+# entrypoint (Render terminates TLS at its edge and proxies to the container
+# over its own internal network — the container is never reachable except
+# through that edge) and, unmodified, the same CMD docker-compose.yml (local
+# dev) runs directly. Without trusting X-Forwarded-Proto, uvicorn's default
+# forwarded_allow_ips ("127.0.0.1" only) ignores it from any real proxy peer,
+# so redirect_slashes Location headers report scheme="http" even behind
+# HTTPS — the scheme-downgraded-redirect bug (ISSUE-012). --proxy-headers is
+# uvicorn's default already; named explicitly here for clarity alongside the
+# trust-list change. (The VM compose stack overrides this CMD with gunicorn +
+# the equivalent --forwarded-allow-ips — see docker-compose.prod.yml.)
+CMD ["python", "-m", "uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips", "*"]
