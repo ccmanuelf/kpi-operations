@@ -28,7 +28,7 @@ const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFin
 export function computeOutOfControl(
   raw: { date: string; value: number }[],
   threshold: OocThreshold | null,
-  opts: { minSpcPoints?: number } = {},
+  opts: { minSpcPoints?: number; domain?: [number, number] } = {},
 ): OocResult {
   const minSpc = opts.minSpcPoints ?? 8
   const points: OocPoint[] = raw.map((p) => ({ date: p.date, value: p.value, ooc: false, reasons: [] }))
@@ -83,6 +83,17 @@ export function computeOutOfControl(
     if (sd > 0) {
       ucl = mean + 3 * sd
       lcl = mean - 3 * sd
+      // Clamp to the metric's valid domain (e.g. [0, 100] for a percentage):
+      // an outlier-inflated sigma can otherwise push a flat control-limit
+      // line outside the range the metric can ever actually take, dragging
+      // the chart's y-axis out with it (ISSUE 004 — OTD chart axis at
+      // ±200 for a 0-100% metric). Clamping here — before the limits are
+      // used for both flagging and charting — keeps the two in sync.
+      if (opts.domain) {
+        const [domainMin, domainMax] = opts.domain
+        ucl = Math.min(ucl, domainMax)
+        lcl = Math.max(lcl, domainMin)
+      }
       for (const p of points) {
         if (!isNum(p.value)) continue
         if (p.value > ucl) {

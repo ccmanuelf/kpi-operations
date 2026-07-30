@@ -94,12 +94,29 @@
 .ag-theme-material .ag-header-cell-label {
   justify-content: flex-start;
   align-items: center;
+  /* Let the label shrink below its content's intrinsic width so the
+     ellipsis rule on .ag-header-cell-text below can actually engage — a
+     flex item's default min-width is `auto` (= content width), which
+     defeats text-overflow:ellipsis entirely and lets the header's fixed
+     40px height silently clip an overflowing/wrapped line mid-glyph
+     instead (ISSUE 014). */
+  overflow: hidden;
+  min-width: 0;
 }
 
 .ag-theme-material .ag-header-cell-text {
   overflow: hidden;
   text-overflow: ellipsis;
   line-height: normal;
+  /* AG Grid's own core CSS (v33+) sets word-break:break-word and
+     white-space:normal on header text, wrapping long labels onto a second
+     line by default. Combined with the fixed single-line header height
+     used by this theme, the wrapped line has nowhere to go and gets cut
+     off mid-character. Force single-line + ellipsis truncation instead —
+     headers must ellipsize or fit, never cut glyphs. */
+  white-space: nowrap;
+  word-break: normal;
+  min-width: 0;
 }
 
 .ag-theme-material .ag-header-icon {

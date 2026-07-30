@@ -12,7 +12,8 @@
 import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useProductionDataStore } from '@/stores/productionDataStore'
-import { format, differenceInDays } from 'date-fns'
+import { differenceInDays } from 'date-fns'
+import { formatLocaleDate } from '@/utils/localeDate'
 
 export type HoldStatus =
   | 'PENDING_HOLD_APPROVAL'
@@ -86,7 +87,7 @@ export const HOLD_REASON_CODES: string[] = [
 ]
 
 export function useHoldGridData() {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const kpiStore = useProductionDataStore()
 
   const gridRef = ref<unknown>(null)
@@ -197,7 +198,7 @@ export function useHoldGridData() {
       editable: true,
       cellEditor: 'agDateStringCellEditor',
       valueFormatter: (params) =>
-        params.value ? format(new Date(params.value as string), 'MMM dd, yyyy') : '',
+        params.value ? formatLocaleDate(params.value as string, 'MMM dd, yyyy', locale.value) : '',
       cellClass: 'font-weight-bold',
       pinned: 'left',
       width: 140,
@@ -271,7 +272,7 @@ export function useHoldGridData() {
       editable: true,
       cellEditor: 'agDateStringCellEditor',
       valueFormatter: (params) =>
-        params.value ? format(new Date(params.value as string), 'MMM dd, yyyy') : '',
+        params.value ? formatLocaleDate(params.value as string, 'MMM dd, yyyy', locale.value) : '',
       width: 150,
     },
     {
@@ -280,7 +281,7 @@ export function useHoldGridData() {
       editable: false,
       valueFormatter: (params) =>
         params.value
-          ? format(new Date(params.value as string), 'MMM dd, yyyy HH:mm')
+          ? formatLocaleDate(params.value as string, 'MMM dd, yyyy HH:mm', locale.value)
           : t('grids.holds.notYetResumed'),
       cellClass: (params) => (params.value ? 'ag-cell-success' : ''),
       width: 180,

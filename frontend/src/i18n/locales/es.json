@@ -1038,6 +1038,11 @@
       "audit_log": "Registro de auditoría del sistema"
     }
   },
+  "notFound": {
+    "title": "Página no encontrada",
+    "description": "La página que buscas no existe o ha sido movida.",
+    "goHome": "Ir al Tablero"
+  },
   "notifications": {
     "title": "Notificaciones",
     "markAllRead": "Marcar Todo como Leído",

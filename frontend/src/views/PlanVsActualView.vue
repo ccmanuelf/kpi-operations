@@ -134,16 +134,18 @@
 
             <!-- Completion progress bar -->
             <template #item.completion_percentage="{ item }">
-              <v-progress-linear
-                :model-value="Math.min(item.completion_percentage, 100)"
-                :color="getCompletionColor(item.completion_percentage)"
-                height="20"
-                rounded
-              >
-                <template #default>
-                  <span class="text-caption font-weight-medium">{{ item.completion_percentage?.toFixed(1) }}%</span>
-                </template>
-              </v-progress-linear>
+              <div class="d-flex align-center ga-2">
+                <v-progress-linear
+                  :model-value="Math.min(item.completion_percentage, 100)"
+                  :color="getCompletionColor(item.completion_percentage)"
+                  height="8"
+                  rounded
+                  class="flex-grow-1"
+                />
+                <span class="text-caption font-weight-medium completion-label">
+                  {{ item.completion_percentage?.toFixed(1) }}%
+                </span>
+              </div>
             </template>
 
             <!-- Required date slot -->
@@ -279,3 +281,13 @@ onMounted(() => {
   fetchData()
 })
 </script>
+
+<style scoped>
+/* The completion % now renders beside the bar (not overlaid on it) so the
+   label never collides with the fill color at any percentage — ISSUE
+   observation: 50.0% label was unreadable against the red bar. */
+.completion-label {
+  min-width: 44px;
+  text-align: right;
+}
+</style>

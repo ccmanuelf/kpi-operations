@@ -1038,6 +1038,11 @@
       "audit_log": "System audit trail"
     }
   },
+  "notFound": {
+    "title": "Page not found",
+    "description": "The page you're looking for doesn't exist or has been moved.",
+    "goHome": "Go to Dashboard"
+  },
   "notifications": {
     "title": "Notifications",
     "markAllRead": "Mark All as Read",

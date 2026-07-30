@@ -14,6 +14,7 @@ import { useAuthStore } from '@/stores/authStore'
 import { useKPIStore } from '@/stores/kpi'
 import api from '@/services/api'
 import { format } from 'date-fns'
+import { formatLocaleDate } from '@/utils/localeDate'
 
 export interface QualityRow {
   quality_entry_id?: string | number
@@ -66,7 +67,7 @@ export interface ConfirmationField {
 }
 
 export default function useQualityGridData() {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const authStore = useAuthStore()
   const kpiStore = useKPIStore()
 
@@ -162,7 +163,7 @@ export default function useQualityGridData() {
       editable: true,
       cellEditor: 'agDateStringCellEditor',
       valueFormatter: (params: { value?: string }) =>
-        params.value ? format(new Date(params.value), 'MMM dd, yyyy') : '',
+        params.value ? formatLocaleDate(params.value, 'MMM dd, yyyy', locale.value) : '',
       width: 140,
     },
     {

@@ -204,7 +204,8 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { format, parseISO } from 'date-fns'
+import { parseISO } from 'date-fns'
+import { formatLocaleDate } from '@/utils/localeDate'
 import { getWorkOrderElapsedTime } from '@/services/api/workflow'
 
 const props = defineProps({
@@ -228,7 +229,7 @@ const props = defineProps({
 
 const emit = defineEmits(['loaded', 'error'])
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 // State
 const loading = ref(false)
@@ -293,7 +294,7 @@ const formatHours = (hours) => {
 const formatDate = (dateStr) => {
   if (!dateStr) return '-'
   try {
-    return format(parseISO(dateStr), 'MMM dd, yyyy')
+    return formatLocaleDate(parseISO(dateStr), 'MMM dd, yyyy', locale.value)
   } catch {
     return dateStr
   }

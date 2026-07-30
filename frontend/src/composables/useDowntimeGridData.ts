@@ -15,6 +15,7 @@ import { useAuthStore } from '@/stores/authStore'
 import { useKPIStore } from '@/stores/kpi'
 import { useProductionDataStore } from '@/stores/productionDataStore'
 import { format } from 'date-fns'
+import { formatLocaleDate } from '@/utils/localeDate'
 
 export interface DowntimeRow {
   downtime_entry_id?: string | number
@@ -93,7 +94,7 @@ export const DOWNTIME_REASON_CODES: string[] = [
 const DEFAULT_REASON = 'OTHER'
 
 export default function useDowntimeGridData() {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const authStore = useAuthStore()
   const kpiSelectionStore = useKPIStore()
   const kpiStore = useProductionDataStore()
@@ -222,7 +223,7 @@ export default function useDowntimeGridData() {
       editable: true,
       cellEditor: 'agDateStringCellEditor',
       valueFormatter: (params: { value?: string }) =>
-        params.value ? format(new Date(params.value), 'MMM dd, yyyy') : '',
+        params.value ? formatLocaleDate(params.value, 'MMM dd, yyyy', locale.value) : '',
       cellClass: 'font-weight-bold',
       pinned: 'left' as const,
       width: 140,

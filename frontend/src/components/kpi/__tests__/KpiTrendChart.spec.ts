@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createI18n } from 'vue-i18n'
 import { createVuetify } from 'vuetify'
+import { Chart as ChartJS } from 'chart.js'
 import KpiTrendChart from '../KpiTrendChart.vue'
 import { fetchKpiCauses } from '@/services/api/kpi'
 
@@ -228,5 +229,41 @@ describe('KpiTrendChart', () => {
     // Injects the LOCALIZED label t('kpi.performance') = 'Performance', not the raw token 'performance'.
     expect(label.some((l: string) => l.includes('Performance'))).toBe(true)
     expect(label.some((l: string) => l.includes('performance'))).toBe(false)
+  })
+
+  it('registers the Chart.js Filler plugin (ISSUE 005: fill:true requires it, else Chart.js warns)', () => {
+    // The main dataset sets `fill: true` (blueFill area under the line). Without
+    // registering Filler, Chart.js logs "Tried to use the 'fill' option without
+    // the 'Filler' plugin enabled" on every render — importing this module (done
+    // at the top of this file) must have already registered it as a side effect.
+    expect(ChartJS.registry.plugins.get('filler')).toBeTruthy()
+  })
+
+  it('clamps the y-axis to [0,100] for a percentage metric even when raw control limits overshoot', async () => {
+    // 8 points with one deep outlier: sigma-derived UCL would be >100 for a
+    // percentage metric (ISSUE 004). The chart's y-axis must never exceed the
+    // metric's valid domain regardless of how wide the raw control limits are.
+    const fetchTrend = vi.fn().mockResolvedValue(
+      [95, 96, 94, 97, 95, 20, 96, 95].map((value, i) => ({ date: `2026-06-${(i + 1).toString().padStart(2, '0')}`, value })),
+    )
+    const w = mountChart(fetchTrend, null)
+    await flushPromises()
+    const options: any = w.findComponent({ name: 'Line' }).props('options')
+    expect(options.scales.y.max).toBeLessThanOrEqual(100)
+    expect(options.scales.y.min).toBeGreaterThanOrEqual(0)
+  })
+
+  it('pads a near-constant series y-axis instead of over-zooming to its raw min/max', async () => {
+    const fetchTrend = vi.fn().mockResolvedValue([
+      { date: '2026-06-10', value: 99.16 },
+      { date: '2026-06-11', value: 99.18 },
+      { date: '2026-06-12', value: 99.17 },
+    ])
+    const w = mountChart(fetchTrend, null)
+    await flushPromises()
+    const options: any = w.findComponent({ name: 'Line' }).props('options')
+    // Padding must widen the axis beyond the raw [99.16, 99.18] data range.
+    expect(options.scales.y.min).toBeLessThan(99.16)
+    expect(options.scales.y.max).toBeGreaterThan(99.18)
   })
 })
