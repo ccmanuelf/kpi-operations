@@ -50,6 +50,7 @@ const { shiftDashboardState } = vi.hoisted(() => ({
     recentActivity: [] as Array<Record<string, unknown>>,
     myStats: { unitsProduced: 0, efficiency: 0, downtimeIncidents: 0, qualityChecks: 0 },
     hasAssignments: false,
+    hasLoadError: false,
   },
 }))
 
@@ -59,6 +60,7 @@ vi.mock('@/composables/useShiftDashboardData', () => ({
     recentActivity: ref(shiftDashboardState.recentActivity),
     myStats: ref(shiftDashboardState.myStats),
     hasAssignments: computed(() => shiftDashboardState.hasAssignments),
+    hasLoadError: computed(() => shiftDashboardState.hasLoadError),
     currentDate: ref('2026-07-30'),
     currentDateFormatted: computed(() => 'July 30, 2026'),
     workOrderOptions: computed(() =>
@@ -130,6 +132,7 @@ const globalStubs = {
   'v-list-item-subtitle': { template: '<span class="v-list-item-subtitle"><slot /></span>' },
   'v-progress-circular': { template: '<span class="v-progress-circular"><slot /></span>' },
   'v-snackbar': { template: '<div class="v-snackbar"><slot /><slot name="actions" /></div>' },
+  'v-alert': { template: '<div class="v-alert" role="alert"><slot /></div>' },
 }
 
 function mountDashboard() {
@@ -145,6 +148,7 @@ describe('MyShiftDashboard.vue', () => {
     shiftDashboardState.recentActivity = []
     shiftDashboardState.myStats = { unitsProduced: 0, efficiency: 0, downtimeIncidents: 0, qualityChecks: 0 }
     shiftDashboardState.hasAssignments = false
+    shiftDashboardState.hasLoadError = false
   })
 
   describe('unassigned user (verify_bot case)', () => {
@@ -202,6 +206,29 @@ describe('MyShiftDashboard.vue', () => {
 
       expect(html).toContain('stat-card')
       expect(html).toContain('quick-action-card')
+    })
+  })
+
+  describe('load-failure state (distinguishable from genuine emptiness)', () => {
+    it('shows the error indicator when the fetch failed', () => {
+      shiftDashboardState.hasLoadError = true
+
+      const wrapper = mountDashboard()
+
+      expect(wrapper.find('.v-alert').exists()).toBe(true)
+      expect(wrapper.text()).toContain('notifications.myShift.loadFailed')
+    })
+
+    it('does not show the error indicator on a genuinely empty (successful) fetch', () => {
+      shiftDashboardState.hasLoadError = false
+      shiftDashboardState.hasAssignments = false
+
+      const wrapper = mountDashboard()
+
+      expect(wrapper.find('.v-alert').exists()).toBe(false)
+      // The empty state still renders — failure and emptiness are visually
+      // distinct, not both silently absent.
+      expect(wrapper.text()).toContain('myShift.noWorkOrders')
     })
   })
 })

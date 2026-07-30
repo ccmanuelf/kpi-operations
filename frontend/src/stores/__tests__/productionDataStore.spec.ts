@@ -17,6 +17,7 @@ vi.mock('@/services/api', () => ({
     getProducts: vi.fn(),
     getShifts: vi.fn(),
     getDowntimeReasons: vi.fn(),
+    getWorkOrders: vi.fn(),
     uploadCSV: vi.fn(),
     batchImportProduction: vi.fn(),
     getDowntimeEntries: vi.fn(),
@@ -178,6 +179,7 @@ describe('KPI Store', () => {
       api.getProducts.mockResolvedValue({ data: [{ product_id: 1, product_name: 'Widget' }] })
       api.getShifts.mockResolvedValue({ data: [{ shift_id: 1, shift_name: 'Day' }] })
       api.getDowntimeReasons.mockResolvedValue({ data: [{ reason_id: 1, reason: 'Maintenance' }] })
+      api.getWorkOrders.mockResolvedValue({ data: [] })
 
       const store = useProductionDataStore()
       const result = await store.fetchReferenceData()
@@ -186,6 +188,85 @@ describe('KPI Store', () => {
       expect(store.products).toHaveLength(1)
       expect(store.shifts).toHaveLength(1)
       expect(store.downtimeReasons).toHaveLength(1)
+    })
+
+    it('fetchReferenceData loads real work orders from the API and maps work_order_number from work_order_id', async () => {
+      api.getProducts.mockResolvedValue({ data: [] })
+      api.getShifts.mockResolvedValue({ data: [] })
+      api.getDowntimeReasons.mockResolvedValue({ data: [] })
+      api.getWorkOrders.mockResolvedValue({
+        data: [
+          { work_order_id: 'WO-DEMO-001', status: 'IN_PROGRESS', style_model: 'Real Style' },
+          { work_order_id: 'WO-DEMO-002', status: 'RELEASED', style_model: 'Another Style' },
+        ],
+      })
+
+      const store = useProductionDataStore()
+      const result = await store.fetchReferenceData()
+
+      expect(result.success).toBe(true)
+      expect(api.getWorkOrders).toHaveBeenCalled()
+      expect(store.workOrders).toEqual([
+        {
+          work_order_id: 'WO-DEMO-001',
+          work_order_number: 'WO-DEMO-001',
+          status: 'IN_PROGRESS',
+          style_model: 'Real Style',
+        },
+        {
+          work_order_id: 'WO-DEMO-002',
+          work_order_number: 'WO-DEMO-002',
+          status: 'RELEASED',
+          style_model: 'Another Style',
+        },
+      ])
+    })
+
+    it('fetchReferenceData excludes closed-out work orders (COMPLETED/SHIPPED/CLOSED)', async () => {
+      api.getProducts.mockResolvedValue({ data: [] })
+      api.getShifts.mockResolvedValue({ data: [] })
+      api.getDowntimeReasons.mockResolvedValue({ data: [] })
+      api.getWorkOrders.mockResolvedValue({
+        data: [
+          { work_order_id: 'WO-DEMO-010', status: 'IN_PROGRESS' },
+          { work_order_id: 'WO-DEMO-011', status: 'COMPLETED' },
+          { work_order_id: 'WO-DEMO-012', status: 'SHIPPED' },
+          { work_order_id: 'WO-DEMO-013', status: 'CLOSED' },
+        ],
+      })
+
+      const store = useProductionDataStore()
+      await store.fetchReferenceData()
+
+      expect(store.workOrders.map((wo) => wo.work_order_id)).toEqual(['WO-DEMO-010'])
+    })
+
+    it('fetchReferenceData never fabricates work orders — empty API result yields an empty dropdown', async () => {
+      api.getProducts.mockResolvedValue({ data: [] })
+      api.getShifts.mockResolvedValue({ data: [] })
+      api.getDowntimeReasons.mockResolvedValue({ data: [] })
+      api.getWorkOrders.mockResolvedValue({ data: [] })
+
+      const store = useProductionDataStore()
+      const result = await store.fetchReferenceData()
+
+      expect(result.success).toBe(true)
+      expect(store.workOrders).toEqual([])
+      expect(JSON.stringify(store.workOrders)).not.toMatch(/WO-2024-\d+/)
+    })
+
+    it('fetchReferenceData reports failure (does not fabricate) when getWorkOrders rejects', async () => {
+      api.getProducts.mockResolvedValue({ data: [] })
+      api.getShifts.mockResolvedValue({ data: [] })
+      api.getDowntimeReasons.mockResolvedValue({ data: [] })
+      api.getWorkOrders.mockRejectedValue({ response: { data: { detail: 'boom' } } })
+
+      const store = useProductionDataStore()
+      const result = await store.fetchReferenceData()
+
+      expect(result.success).toBe(false)
+      expect(store.workOrders).toEqual([])
+      expect(JSON.stringify(store.workOrders)).not.toMatch(/WO-2024-\d+/)
     })
   })
 

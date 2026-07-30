@@ -1085,6 +1085,9 @@
     "workflow": {
       "templateLoadFailed": "Error al cargar plantillas de flujo de trabajo. Por favor intente de nuevo.",
       "activeShiftFetchFailed": "Error al obtener turno activo. Por favor recargue la página."
+    },
+    "myShift": {
+      "loadFailed": "No se pudieron cargar los datos de tu turno. Actualiza la página o contacta a tu supervisor si esto continúa."
     }
   },
   "errors": {
@@ -4355,14 +4358,6 @@
       "downtime": "Tiempo de Paro",
       "hold": "En Espera/WIP",
       "coverage": "Cobertura"
-    }
-  },
-  "shift": {
-    "activity": {
-      "loggedUnits": "Se registraron {count} unidades para {orderId}",
-      "qualityCheck": "Revisión de calidad: {inspected} inspeccionadas, {defects} defecto(s)",
-      "equipmentBreakdown": "Falla de equipo: {minutes} min de inactividad",
-      "downtimeEvent": "{reason}: {minutes} min de inactividad"
     }
   },
   "myShift": {

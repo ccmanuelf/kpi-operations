@@ -80,6 +80,7 @@ vi.mock('@/composables/useShiftDashboardData', () => ({
     recentActivity: ref([]),
     myStats: ref({}),
     hasAssignments: computed(() => false),
+    hasLoadError: computed(() => false),
     currentDate: ref(new Date()),
     currentDateFormatted: computed(() => 'May 07, 2026'),
     workOrderOptions: ref([]),

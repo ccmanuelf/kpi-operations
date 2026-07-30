@@ -1085,6 +1085,9 @@
     "workflow": {
       "templateLoadFailed": "Failed to load workflow templates. Please try again.",
       "activeShiftFetchFailed": "Failed to fetch active shift. Please refresh the page."
+    },
+    "myShift": {
+      "loadFailed": "Failed to load your shift data. Please refresh, or contact your supervisor if this continues."
     }
   },
   "errors": {
@@ -4355,14 +4358,6 @@
       "downtime": "Downtime",
       "hold": "Hold/WIP",
       "coverage": "Coverage"
-    }
-  },
-  "shift": {
-    "activity": {
-      "loggedUnits": "Logged {count} units for {orderId}",
-      "qualityCheck": "Quality check: {inspected} inspected, {defects} defect(s)",
-      "equipmentBreakdown": "Equipment Breakdown: {minutes} min downtime",
-      "downtimeEvent": "{reason}: {minutes} min downtime"
     }
   },
   "myShift": {

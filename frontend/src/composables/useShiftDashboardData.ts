@@ -6,6 +6,7 @@ import { ref, computed, type Ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import api from '@/services/api'
 import { formatLocaleDateIntl, formatLocaleTimeIntl } from '@/utils/localeDate'
+import { useNotificationStore } from '@/stores/notificationStore'
 
 export interface ShiftWorkOrderRow {
   id: string | number
@@ -38,7 +39,8 @@ interface WorkOrderOption {
 }
 
 export function useShiftDashboardData() {
-  const { locale } = useI18n()
+  const { t, locale } = useI18n()
+  const notificationStore = useNotificationStore()
   const currentTime = ref(new Date())
   let timeInterval: ReturnType<typeof setInterval> | null = null
 
@@ -130,6 +132,13 @@ export function useShiftDashboardData() {
   // is false (e.g. a user with no line/shift mapping for today).
   const hasAssignments = computed(() => assignedWorkOrders.value.length > 0)
 
+  // A failed fetch and a genuinely empty (no assignments) shift must render
+  // differently — otherwise a transient backend/network failure is
+  // indistinguishable from "you have nothing today," which is its own kind
+  // of dishonesty. Reset on every fetch attempt so a successful retry clears
+  // a prior failure.
+  const hasLoadError = ref(false)
+
   interface MyShiftSummaryResponse {
     stats?: {
       units_produced?: number
@@ -158,14 +167,19 @@ export function useShiftDashboardData() {
         downtimeIncidents: summary.stats?.downtime_incidents ?? 0,
         qualityChecks: summary.stats?.quality_checks ?? 0,
       }
+      hasLoadError.value = false
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('Failed to fetch shift data:', error)
       // Honest failure: never invent records. Reset to the real empty state
-      // and let the UI render its "no work orders assigned" messaging.
+      // and surface a distinct error indicator — a failed fetch must not
+      // look identical to "no work orders assigned" (that's its own kind of
+      // fabrication-by-omission).
       assignedWorkOrders.value = []
       recentActivity.value = []
       myStats.value = { unitsProduced: 0, efficiency: 0, downtimeIncidents: 0, qualityChecks: 0 }
+      hasLoadError.value = true
+      notificationStore.showError(t('notifications.myShift.loadFailed'))
     }
   }
 
@@ -193,6 +207,7 @@ export function useShiftDashboardData() {
     currentDateFormatted,
     workOrderOptions,
     hasAssignments,
+    hasLoadError,
     formatTime,
     formatRelativeTime,
     getProgressPercent,

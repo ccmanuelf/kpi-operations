@@ -23,6 +23,19 @@
       </v-col>
     </v-row>
 
+    <!-- Load Error Banner — a failed fetch must never look identical to the
+         honest "no work orders assigned" empty state. -->
+    <v-alert
+      v-if="hasLoadError"
+      type="error"
+      class="mb-4"
+      closable
+      role="alert"
+      aria-live="polite"
+    >
+      {{ t('notifications.myShift.loadFailed') }}
+    </v-alert>
+
     <!-- Main Content Grid -->
     <v-row>
       <!-- Left Column: Tasks & Stats -->
@@ -304,6 +317,7 @@ const {
   currentDateFormatted,
   workOrderOptions,
   hasAssignments,
+  hasLoadError,
   formatRelativeTime,
   getProgressPercent,
   getProgressColor,

@@ -5,6 +5,12 @@ import { format, subDays } from 'date-fns'
 type Payload = Record<string, unknown>
 type Params = Record<string, unknown>
 
+// Work orders in these terminal states are done — entry grids shouldn't
+// offer them for new production/downtime/quality/hold logging. Mirrors the
+// backend's WorkOrderStatus lifecycle (backend/orm/work_order.py):
+// RECEIVED -> RELEASED -> IN_PROGRESS -> COMPLETED -> SHIPPED -> CLOSED.
+const CLOSED_WORK_ORDER_STATUSES = new Set(['COMPLETED', 'SHIPPED', 'CLOSED'])
+
 export interface ProductionEntry {
   entry_id?: number | string
   production_date?: string
@@ -228,21 +234,36 @@ export const useProductionDataStore = defineStore('productionData', {
 
     async fetchReferenceData(): Promise<ActionResult> {
       try {
-        const [productsRes, shiftsRes, reasonsRes] = await Promise.all([
+        const [productsRes, shiftsRes, reasonsRes, workOrdersRes] = await Promise.all([
           api.getProducts(),
           api.getShifts(),
           api.getDowntimeReasons(),
+          api.getWorkOrders(),
         ])
 
         this.products = productsRes.data
         this.shifts = shiftsRes.data
         this.downtimeReasons = reasonsRes.data
 
-        this.workOrders = [
-          { work_order_id: 1, work_order_number: 'WO-2024-001' },
-          { work_order_id: 2, work_order_number: 'WO-2024-002' },
-          { work_order_id: 3, work_order_number: 'WO-2024-003' },
-        ]
+        // Real work orders (GET /api/work-orders — same list endpoint
+        // WorkOrderManagement/useWorkOrderData.ts use, no status filter so
+        // this matches that view's default "all" load). Entry grids only
+        // need orders operators can still log against, so closed-out ones
+        // are excluded client-side (the backend's status_filter is a single
+        // exact match, not a list, so this can't be pushed server-side
+        // without N calls). The backend's `work_order_id` (e.g.
+        // "WO-DEMO-001") IS the human-readable order number — there is no
+        // separate `work_order_number` field — so it's aliased here for
+        // existing grid consumers (useHoldGridData.ts, useDowntimeGridData.ts)
+        // that read `.work_order_number` as a display fallback.
+        const rawWorkOrders = (workOrdersRes.data as Array<Record<string, unknown>>) || []
+        this.workOrders = rawWorkOrders
+          .filter((wo) => !CLOSED_WORK_ORDER_STATUSES.has(String(wo.status)))
+          .map((wo) => ({
+            ...wo,
+            work_order_id: wo.work_order_id as string | number,
+            work_order_number: String(wo.work_order_id ?? ''),
+          })) as WorkOrder[]
 
         return { success: true }
       } catch (error) {

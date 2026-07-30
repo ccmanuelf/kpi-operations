@@ -11,16 +11,21 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-const { mockApi } = vi.hoisted(() => ({
+const { mockApi, mockShowError } = vi.hoisted(() => ({
   mockApi: {
     getMyShiftSummary: vi.fn(),
   },
+  mockShowError: vi.fn(),
 }))
 
 vi.mock('@/services/api', () => ({ default: mockApi }))
 
 vi.mock('vue-i18n', () => ({
-  useI18n: () => ({ locale: { value: 'en' } }),
+  useI18n: () => ({ t: (key: string) => key, locale: { value: 'en' } }),
+}))
+
+vi.mock('@/stores/notificationStore', () => ({
+  useNotificationStore: () => ({ showError: mockShowError }),
 }))
 
 import { useShiftDashboardData } from '../useShiftDashboardData'
@@ -72,8 +77,14 @@ describe('useShiftDashboardData', () => {
         },
       })
 
-      const { assignedWorkOrders, recentActivity, myStats, hasAssignments, fetchMyShiftData } =
-        useShiftDashboardData()
+      const {
+        assignedWorkOrders,
+        recentActivity,
+        myStats,
+        hasAssignments,
+        hasLoadError,
+        fetchMyShiftData,
+      } = useShiftDashboardData()
 
       await fetchMyShiftData()
 
@@ -86,14 +97,23 @@ describe('useShiftDashboardData', () => {
         qualityChecks: 0,
       })
       expect(hasAssignments.value).toBe(false)
+      // A genuinely empty (successful) fetch is NOT a load error — this is
+      // the honest "no assignments" case, distinct from a failure.
+      expect(hasLoadError.value).toBe(false)
       assertNoFabricatedRecords(assignedWorkOrders.value, recentActivity.value, myStats.value)
     })
 
     it('renders the real empty state — never the mock fallback — when the API call fails', async () => {
       mockApi.getMyShiftSummary.mockRejectedValueOnce(new Error('network error'))
 
-      const { assignedWorkOrders, recentActivity, myStats, hasAssignments, fetchMyShiftData } =
-        useShiftDashboardData()
+      const {
+        assignedWorkOrders,
+        recentActivity,
+        myStats,
+        hasAssignments,
+        hasLoadError,
+        fetchMyShiftData,
+      } = useShiftDashboardData()
 
       await fetchMyShiftData()
 
@@ -106,7 +126,43 @@ describe('useShiftDashboardData', () => {
         qualityChecks: 0,
       })
       expect(hasAssignments.value).toBe(false)
+      // A failed fetch IS a load error — distinct from the genuinely empty
+      // (successful, zero-assignment) case asserted above.
+      expect(hasLoadError.value).toBe(true)
       assertNoFabricatedRecords(assignedWorkOrders.value, recentActivity.value, myStats.value)
+    })
+  })
+
+  describe('load-failure state (distinguishable from genuine emptiness)', () => {
+    it('sets hasLoadError=true and notifies on a failed fetch', async () => {
+      mockApi.getMyShiftSummary.mockRejectedValueOnce(new Error('network error'))
+
+      const { hasLoadError, fetchMyShiftData } = useShiftDashboardData()
+      expect(hasLoadError.value).toBe(false)
+
+      await fetchMyShiftData()
+
+      expect(hasLoadError.value).toBe(true)
+      expect(mockShowError).toHaveBeenCalledWith('notifications.myShift.loadFailed')
+    })
+
+    it('clears a prior hasLoadError once a retry succeeds', async () => {
+      mockApi.getMyShiftSummary.mockRejectedValueOnce(new Error('network error'))
+      const { hasLoadError, fetchMyShiftData } = useShiftDashboardData()
+
+      await fetchMyShiftData()
+      expect(hasLoadError.value).toBe(true)
+
+      mockApi.getMyShiftSummary.mockResolvedValueOnce({
+        data: {
+          stats: { units_produced: 0, efficiency: 0, downtime_incidents: 0, quality_checks: 0 },
+          assigned_work_orders: [],
+          recent_activity: [],
+        },
+      })
+      await fetchMyShiftData()
+
+      expect(hasLoadError.value).toBe(false)
     })
   })
 
