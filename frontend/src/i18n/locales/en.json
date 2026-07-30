@@ -1520,6 +1520,7 @@
       "contactName": "Contact Name",
       "contactEmail": "Contact Email",
       "contactPhone": "Contact Phone",
+      "location": "Location",
       "industry": "Industry",
       "address": "Address",
       "confirmDeleteClient": "Are you sure you want to delete this client?",

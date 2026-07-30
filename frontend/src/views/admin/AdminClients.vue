@@ -142,33 +142,13 @@
                   density="comfortable"
                 />
               </v-col>
-              <v-col cols="12" md="6">
-                <v-text-field
-                  v-model="clientFormData.industry"
-                  :label="t('admin.clients.industry')"
-                  prepend-icon="mdi-factory"
-                  variant="outlined"
-                  density="comfortable"
-                />
-              </v-col>
               <v-col cols="12">
-                <v-textarea
-                  v-model="clientFormData.address"
-                  :label="t('common.address')"
+                <v-text-field
+                  v-model="clientFormData.location"
+                  :label="t('admin.clients.location')"
                   prepend-icon="mdi-map-marker"
                   variant="outlined"
                   density="comfortable"
-                  rows="2"
-                />
-              </v-col>
-              <v-col cols="12">
-                <v-textarea
-                  v-model="clientFormData.notes"
-                  :label="t('common.notes')"
-                  prepend-icon="mdi-note-text"
-                  variant="outlined"
-                  density="comfortable"
-                  rows="2"
                 />
               </v-col>
             </v-row>
@@ -221,19 +201,12 @@
               <v-list-item-title>{{ t('admin.clients.contactPhone') }}</v-list-item-title>
               <v-list-item-subtitle>{{ selectedClient.client_phone }}</v-list-item-subtitle>
             </v-list-item>
-            <v-list-item v-if="selectedClient.industry">
-              <template v-slot:prepend>
-                <v-icon>mdi-factory</v-icon>
-              </template>
-              <v-list-item-title>{{ t('admin.clients.industry') }}</v-list-item-title>
-              <v-list-item-subtitle>{{ selectedClient.industry }}</v-list-item-subtitle>
-            </v-list-item>
-            <v-list-item v-if="selectedClient.address">
+            <v-list-item v-if="selectedClient.location">
               <template v-slot:prepend>
                 <v-icon>mdi-map-marker</v-icon>
               </template>
-              <v-list-item-title>{{ t('common.address') }}</v-list-item-title>
-              <v-list-item-subtitle>{{ selectedClient.address }}</v-list-item-subtitle>
+              <v-list-item-title>{{ t('admin.clients.location') }}</v-list-item-title>
+              <v-list-item-subtitle>{{ selectedClient.location }}</v-list-item-subtitle>
             </v-list-item>
             <v-list-item>
               <template v-slot:prepend>
@@ -310,9 +283,7 @@ const clientFormData = ref({
   client_contact: '',
   client_email: '',
   client_phone: '',
-  industry: '',
-  address: '',
-  notes: ''
+  location: ''
 })
 
 const headers = computed(() => [
@@ -320,7 +291,6 @@ const headers = computed(() => [
   { title: t('admin.clients.clientName'), key: 'client_name', sortable: true },
   { title: t('admin.clients.contactName'), key: 'client_contact', sortable: true },
   { title: t('admin.clients.contactEmail'), key: 'client_email', sortable: true },
-  { title: t('admin.clients.industry'), key: 'industry', sortable: true },
   { title: t('common.status'), key: 'is_active', sortable: true },
   { title: t('admin.clients.created'), key: 'created_at', sortable: true },
   { title: t('common.actions'), key: 'actions', sortable: false, align: 'center' }
@@ -377,9 +347,7 @@ const openCreateDialog = () => {
     client_contact: '',
     client_email: '',
     client_phone: '',
-    industry: '',
-    address: '',
-    notes: ''
+    location: ''
   }
   clientDialog.value = true
 }
@@ -397,9 +365,7 @@ const editClient = (client) => {
     client_contact: client.client_contact || '',
     client_email: client.client_email || '',
     client_phone: client.client_phone || '',
-    industry: client.industry || '',
-    address: client.address || '',
-    notes: client.notes || ''
+    location: client.location || ''
   }
   clientDialog.value = true
 }

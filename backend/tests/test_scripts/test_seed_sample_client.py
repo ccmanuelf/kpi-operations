@@ -936,8 +936,9 @@ def test_shipped_work_orders_have_consistent_actuals(db_session):
 
 
 def test_client_contact_fields_populated(db_session):
-    """Observation: Client Management showed empty contact_name/contact_email.
-    Every demo client (and SAMPLE_REF) must carry plausible fixed values."""
+    """Observation: Client Management showed empty contact_name/contact_email/
+    location. Every demo client (and SAMPLE_REF) must carry plausible fixed
+    values."""
     from backend.orm import Client
 
     for spec in seed.CLIENT_SPECS.values():
@@ -949,4 +950,5 @@ def test_client_contact_fields_populated(db_session):
         assert client.client_contact, f"{client_id} missing client_contact"
         assert client.client_email, f"{client_id} missing client_email"
         assert client.client_phone, f"{client_id} missing client_phone"
+        assert client.location, f"{client_id} missing location"
         assert "@" in client.client_email
