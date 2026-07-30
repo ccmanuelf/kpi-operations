@@ -10,6 +10,15 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url))
     }
   },
+  server: {
+    fs: {
+      // Mirrors vite.config.ts: frontend/src/help/index.ts globs
+      // ../../../docs/user-guide/*.md (project root) for the in-app Help
+      // Center, and vitest's dev server enforces the same fs.allow
+      // boundary as `vite dev` — without this, that glob 403s under test.
+      allow: ['..']
+    }
+  },
   test: {
     globals: true,
     environment: 'happy-dom',

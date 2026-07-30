@@ -140,6 +140,7 @@ vi.mock('@/help', () => ({
   getAllDocs: () => [],
   getDocById: () => null,
   getDefaultDocId: () => 'getting-started',
+  computeContentUnavailable: (docs: unknown[]) => docs.length === 0,
 }))
 
 // ---------- child components stubbed ----------

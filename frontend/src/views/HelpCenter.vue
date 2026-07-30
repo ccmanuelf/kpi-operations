@@ -1,6 +1,15 @@
 <template>
   <v-container fluid class="help-center pa-0">
-    <v-row no-gutters>
+    <v-alert
+      v-if="contentUnavailable"
+      type="error"
+      variant="tonal"
+      class="ma-6"
+      role="alert"
+    >
+      {{ t('help.contentUnavailable') }}
+    </v-alert>
+    <v-row v-else no-gutters>
       <!-- Sidebar: doc list + search -->
       <v-col cols="12" md="3" class="help-sidebar pa-4">
         <v-text-field
@@ -70,7 +79,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useNotificationStore } from '@/stores/notificationStore'
 import { marked } from 'marked'
-import { getAllDocs, getDocById, getDefaultDocId } from '@/help'
+import { getAllDocs, getDocById, getDefaultDocId, computeContentUnavailable } from '@/help'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -78,6 +87,7 @@ const router = useRouter()
 const notify = useNotificationStore()
 
 const docs = getAllDocs()
+const contentUnavailable = computeContentUnavailable(docs)
 const activeId = ref(getDefaultDocId())
 const search = ref('')
 

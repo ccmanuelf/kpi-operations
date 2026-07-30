@@ -78,3 +78,31 @@ export function getDocById(id: string): HelpDoc | undefined {
 export function getDefaultDocId(): string {
   return 'README'
 }
+
+// Signature of an SPA-fallback response (nginx `try_files ... /index.html`)
+// leaking in where real content was expected.
+const HTML_DOCUMENT_RE = /^\s*<(!doctype html|html)\b/i
+
+/**
+ * Pure predicate behind `isHelpContentUnavailable` — takes the resolved doc
+ * list explicitly so it's testable without mocking `import.meta.glob`.
+ *
+ * Detects two real production failure modes for the embedded doc set:
+ *  1. Zero docs shipped (e.g. `docs/user-guide` missing from the Docker
+ *     build context — ISSUE-018 — so the glob above resolved to nothing).
+ *  2. A doc's "content" is actually an HTML document — the SPA-fallback
+ *     signature — which would surface if this loader is ever changed to
+ *     fetch content at runtime from a path that isn't a real static asset.
+ *
+ * Belt-and-braces: even after the build ships the real content, this
+ * guards against a future regression silently degrading to "No matches
+ * found" instead of a clear, actionable error.
+ */
+export function computeContentUnavailable(list: HelpDoc[]): boolean {
+  if (list.length === 0) return true
+  return list.some((d) => HTML_DOCUMENT_RE.test(d.raw))
+}
+
+export function isHelpContentUnavailable(): boolean {
+  return computeContentUnavailable(docs)
+}

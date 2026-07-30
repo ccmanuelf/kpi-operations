@@ -4177,6 +4177,7 @@
     "tableOfContents": "Table of contents",
     "searchPlaceholder": "Search the user guide…",
     "noResults": "No matches found",
+    "contentUnavailable": "Help content failed to load. This looks like a deployment issue — please contact your administrator.",
     "selectDoc": "Select a section from the left to begin.",
     "copyLink": "Copy link",
     "linkCopied": "Link copied to clipboard",

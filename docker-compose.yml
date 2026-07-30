@@ -58,8 +58,8 @@ services:
 
   frontend:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: frontend/Dockerfile
       target: development
     container_name: kpi-frontend
     ports:
@@ -70,8 +70,9 @@ services:
       backend:
         condition: service_healthy
     volumes:
-      - ./frontend:/app
-      - /app/node_modules
+      - ./frontend:/workspace/frontend
+      - ./docs/user-guide:/workspace/docs/user-guide:ro
+      - /workspace/frontend/node_modules
     restart: unless-stopped
     networks:
       - kpi-network
@@ -79,8 +80,8 @@ services:
   # Production frontend with nginx (use --profile production)
   frontend-prod:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: frontend/Dockerfile
       target: production
       args:
         VITE_API_URL: /api

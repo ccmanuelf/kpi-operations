@@ -4177,6 +4177,7 @@
     "tableOfContents": "Tabla de contenido",
     "searchPlaceholder": "Buscar en la guía de usuario…",
     "noResults": "Sin coincidencias",
+    "contentUnavailable": "No se pudo cargar el contenido de ayuda. Esto parece un problema de despliegue — contacta a tu administrador.",
     "selectDoc": "Selecciona una sección de la izquierda para comenzar.",
     "copyLink": "Copiar enlace",
     "linkCopied": "Enlace copiado al portapapeles",
