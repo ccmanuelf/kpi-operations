@@ -100,3 +100,19 @@ def test_status_requires_supervisor(test_client):
 def test_providers_requires_supervisor(test_client):
     r = test_client.get("/api/admin/database/providers")
     assert r.status_code == 401
+
+
+def test_status_forbidden_for_non_admin(test_client, auth_headers):
+    """
+    ISSUE-020 regression: a valid but non-supervisory session (self-registered
+    operator, per Run 7 C-2) must be rejected with exactly 403 (insufficient
+    role), not 401 (would indicate the auth dependency itself is broken).
+    """
+    r = test_client.get("/api/admin/database/status", headers=auth_headers)
+    assert r.status_code == 403
+
+
+def test_providers_forbidden_for_non_admin(test_client, auth_headers):
+    """ISSUE-020 regression: same 403-not-401 guarantee for /providers."""
+    r = test_client.get("/api/admin/database/providers", headers=auth_headers)
+    assert r.status_code == 403
