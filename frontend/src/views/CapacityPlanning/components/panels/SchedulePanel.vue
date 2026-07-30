@@ -206,8 +206,9 @@
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useCapacityPlanningStore } from '@/stores/capacityPlanningStore'
+import { formatLocaleDateIntl } from '@/utils/localeDate'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const store = useCapacityPlanningStore()
 
 const showGenerateDialog = ref(false)
@@ -250,7 +251,7 @@ const getDetailStatusColor = (status) => {
 
 const formatDate = (date) => {
   if (!date) return ''
-  return new Date(date).toLocaleDateString('en-US', {
+  return formatLocaleDateIntl(new Date(date), locale.value, {
     weekday: 'short',
     month: 'short',
     day: 'numeric'
@@ -261,7 +262,7 @@ const generateSchedule = async () => {
   showGenerateDialog.value = false
   try {
     await store.generateSchedule(
-      scheduleName.value || `Schedule ${new Date().toLocaleDateString()}`,
+      scheduleName.value || `Schedule ${formatLocaleDateIntl(new Date(), locale.value)}`,
       startDate.value,
       endDate.value,
       includeAllOrders.value ? null : []
@@ -299,6 +300,6 @@ onMounted(() => {
 
   startDate.value = today.toISOString().slice(0, 10)
   endDate.value = thirtyDaysLater.toISOString().slice(0, 10)
-  scheduleName.value = `Schedule ${today.toLocaleDateString()}`
+  scheduleName.value = `Schedule ${formatLocaleDateIntl(today, locale.value)}`
 })
 </script>

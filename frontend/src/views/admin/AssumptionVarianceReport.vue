@@ -145,8 +145,9 @@ import {
   getVarianceReport,
   type VarianceRow,
 } from '@/services/api/calculationAssumptions'
+import { formatLocaleDateIntl } from '@/utils/localeDate'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 const rows = ref<VarianceRow[]>([])
 const loading = ref(false)
@@ -195,7 +196,7 @@ const formatMagnitude = (magnitude: number, name: string): string => {
   return t('variance.deviates')
 }
 
-const formatDate = (iso: string): string => new Date(iso).toLocaleDateString()
+const formatDate = (iso: string): string => formatLocaleDateIntl(new Date(iso), locale.value)
 
 onMounted(() => {
   loadRows()

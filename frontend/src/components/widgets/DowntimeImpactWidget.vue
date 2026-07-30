@@ -138,8 +138,9 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import api from '@/services/api'
+import { formatLocaleTimeIntl } from '@/utils/localeDate'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 // Props
 const props = defineProps<{
@@ -251,7 +252,7 @@ const fetchData = async () => {
       await fetchDowntimeEvents()
     }
 
-    lastUpdated.value = new Date().toLocaleTimeString()
+    lastUpdated.value = formatLocaleTimeIntl(new Date(), locale.value)
   } catch {
     // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
     if (import.meta.env.DEV) console.warn('Downtime impact API not available, using fallback calculation')
@@ -315,7 +316,7 @@ const fetchDowntimeEvents = async () => {
       })
     }
 
-    lastUpdated.value = new Date().toLocaleTimeString()
+    lastUpdated.value = formatLocaleTimeIntl(new Date(), locale.value)
   } catch (err: unknown) {
     const axiosErr = err as { response?: { data?: { detail?: string } } }
     error.value = axiosErr.response?.data?.detail || 'Failed to load downtime data'

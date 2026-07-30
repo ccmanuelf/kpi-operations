@@ -8,6 +8,7 @@ import { defineStore } from 'pinia'
 import i18n from '@/i18n'
 import api from '@/services/api'
 import { useNotificationStore } from '@/stores/notificationStore'
+import { formatLocaleDateIntl } from '@/utils/localeDate'
 
 export type KPIKey =
   | 'efficiency'
@@ -788,7 +789,7 @@ export const useKPIStore = defineStore('kpi', {
 
       const forecastLabels = prediction.predictions.map((p) => {
         const date = new Date(p.date)
-        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+        return formatLocaleDateIntl(date, i18n.global.locale.value, { month: 'short', day: 'numeric' })
       })
 
       const forecastValues = prediction.predictions.map((p) => p.predicted_value)

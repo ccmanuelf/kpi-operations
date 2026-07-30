@@ -9,9 +9,18 @@ const STORAGE_KEY = 'kpi-platform-language'
 const isLocale = (v: string | null): v is Locale => v === 'en' || v === 'es'
 
 const getStoredLanguage = (): Locale => {
-  if (typeof window !== 'undefined') {
-    const stored = localStorage.getItem(STORAGE_KEY)
-    return isLocale(stored) ? stored : 'en'
+  try {
+    // window.localStorage (not bare `localStorage`): in some test/SSR
+    // environments `window` exists but the bare global `localStorage`
+    // identifier resolves to a different (or non-functional) binding than
+    // `window.localStorage`. Also guards Safari private-mode, which throws
+    // on access rather than being merely absent.
+    if (typeof window !== 'undefined' && window.localStorage) {
+      const stored = window.localStorage.getItem(STORAGE_KEY)
+      return isLocale(stored) ? stored : 'en'
+    }
+  } catch {
+    // fall through to default
   }
   return 'en'
 }
@@ -55,7 +64,11 @@ const i18n = createI18n({
 export const setLanguage = (locale: Locale): void => {
   i18n.global.locale.value = locale
   if (typeof window !== 'undefined') {
-    localStorage.setItem(STORAGE_KEY, locale)
+    try {
+      window.localStorage?.setItem(STORAGE_KEY, locale)
+    } catch {
+      // best-effort persistence — locale still applies for this session
+    }
     document.documentElement.setAttribute('lang', locale)
   }
 }

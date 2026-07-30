@@ -32,6 +32,7 @@ import { computed, type ComputedRef, type Ref } from 'vue'
 import { tagStyle } from './gridTagStyle'
 import { useI18n } from 'vue-i18n'
 import api from '@/services/api'
+import { formatLocaleDateTimeIntl } from '@/utils/localeDate'
 
 export interface FloatingPoolGridRow {
   pool_id?: string | number | null
@@ -117,17 +118,17 @@ const notifyError = (notify: SnackbarLike, msg: string): void => {
   else if (notify.show) notify.show(msg, 'error')
 }
 
-const formatDateTime = (value: unknown): string => {
+const formatDateTime = (value: unknown, locale: string | undefined): string => {
   if (!value) return '-'
   const d = new Date(String(value))
   if (Number.isNaN(d.getTime())) return String(value)
-  return d.toLocaleString()
+  return formatLocaleDateTimeIntl(d, locale)
 }
 
 export default function useFloatingPoolGridData(
   options: UseFloatingPoolGridDataOptions,
 ): UseFloatingPoolGridDataReturn {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   // `entries` is part of the options surface for caller symmetry, but
   // the composable doesn't read from it directly — fetchData() owns
   // the refresh path after every mutation.
@@ -285,7 +286,7 @@ export default function useFloatingPoolGridData(
         field: 'available_from',
         editable: true,
         cellEditor: 'agDateStringCellEditor',
-        valueFormatter: (params) => formatDateTime(params.value),
+        valueFormatter: (params) => formatDateTime(params.value, locale.value),
         width: 180,
       },
       {
@@ -293,7 +294,7 @@ export default function useFloatingPoolGridData(
         field: 'available_to',
         editable: true,
         cellEditor: 'agDateStringCellEditor',
-        valueFormatter: (params) => formatDateTime(params.value),
+        valueFormatter: (params) => formatDateTime(params.value, locale.value),
         width: 180,
       },
       {

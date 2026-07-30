@@ -188,8 +188,9 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import api from '@/services/api'
+import { formatLocaleDateIntl } from '@/utils/localeDate'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 // Props interface
 interface DataCompletenessProps {
@@ -324,7 +325,7 @@ const formattedDate = computed(() => {
     return 'Today'
   }
 
-  return d.toLocaleDateString('en-US', {
+  return formatLocaleDateIntl(d, locale.value, {
     month: 'short',
     day: 'numeric'
   })

@@ -196,6 +196,7 @@ import { computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import { useMetricLineage } from '@/composables/useMetricLineage'
+import { formatLocaleDateIntl, formatLocaleDateTimeIntl } from '@/utils/localeDate'
 
 interface Props {
   modelValue: boolean
@@ -205,7 +206,7 @@ interface Props {
 const props = defineProps<Props>()
 defineEmits<{ 'update:modelValue': [value: boolean] }>()
 
-useI18n() // template uses $t directly; keep i18n initialised
+const { locale } = useI18n() // template uses $t directly; keep i18n initialised
 const { lineage, loading, error, load, clear } = useMetricLineage()
 
 watch(
@@ -242,12 +243,12 @@ const formatInputValue = (value: unknown): string => {
 }
 
 const formatPeriod = (start: string, end: string): string => {
-  const s = new Date(start).toLocaleDateString()
-  const e = new Date(end).toLocaleDateString()
+  const s = formatLocaleDateIntl(new Date(start), locale.value)
+  const e = formatLocaleDateIntl(new Date(end), locale.value)
   return `${s} – ${e}`
 }
 
 const formatDate = (iso: string): string => {
-  return new Date(iso).toLocaleString()
+  return formatLocaleDateTimeIntl(new Date(iso), locale.value)
 }
 </script>

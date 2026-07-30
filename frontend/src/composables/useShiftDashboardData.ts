@@ -5,6 +5,7 @@
 import { ref, computed, type Ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import api from '@/services/api'
+import { formatLocaleDateIntl, formatLocaleTimeIntl } from '@/utils/localeDate'
 
 export interface ShiftWorkOrderRow {
   id: string | number
@@ -65,7 +66,7 @@ interface WorkOrderOption {
 }
 
 export function useShiftDashboardData() {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const currentTime = ref(new Date())
   let timeInterval: ReturnType<typeof setInterval> | null = null
 
@@ -80,7 +81,7 @@ export function useShiftDashboardData() {
 
   const currentDate = computed(() => new Date().toISOString().split('T')[0])
   const currentDateFormatted = computed(() =>
-    new Date().toLocaleDateString('en-US', {
+    formatLocaleDateIntl(new Date(), locale.value, {
       weekday: 'long',
       month: 'long',
       day: 'numeric',
@@ -98,7 +99,7 @@ export function useShiftDashboardData() {
     if (!timeString) return ''
     const date = new Date(timeString)
     if (isNaN(date.getTime())) return ''
-    return date.toLocaleTimeString('en-US', {
+    return formatLocaleTimeIntl(date, locale.value, {
       hour: '2-digit',
       minute: '2-digit',
     })
@@ -116,7 +117,7 @@ export function useShiftDashboardData() {
     if (minutes < 1) return 'Just now'
     if (minutes < 60) return `${minutes}m ago`
     if (hours < 24) return `${hours}h ago`
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    return formatLocaleDateIntl(date, locale.value, { month: 'short', day: 'numeric' })
   }
 
   const getProgressPercent = (wo: ShiftWorkOrderRow): number => {

@@ -281,8 +281,9 @@
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 import api from '@/services/api'
+import { formatLocaleDateIntl } from '@/utils/localeDate'
 
 const loading = ref(false)
 const saving = ref(false)
@@ -351,7 +352,7 @@ const showSnackbar = (message, color = 'success') => {
 
 const formatDate = (date) => {
   if (!date) return t('common.na')
-  return new Date(date).toLocaleDateString()
+  return formatLocaleDateIntl(new Date(date), locale.value)
 }
 
 const refreshClients = async () => {
