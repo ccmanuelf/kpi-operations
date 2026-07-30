@@ -78,9 +78,16 @@ def seed_work_orders(session: Session, spec: ClientSpec, entered_by: str, anchor
     for i, status in enumerate(states, start=1):
         wo_id = f"WO-{cid}-{i:03d}"  # full client_id — work_order_id PK is GLOBALLY unique
         planned_ship = now - timedelta(days=rng.randint(5, 40))
-        # delivered on time for terminal states so OTD computes both hit/miss
+        # delivered on time for terminal states so OTD computes both hit/miss.
+        # Clamp to `now` (the anchor) — the +6 upper bound on the offset can
+        # otherwise land in the future when planned_ship is only ~5 days old,
+        # producing a "shipped in the future" row that leaks the seeded
+        # window's true max date past the anchor (ISSUE-009). Lateness
+        # (delivered > required_date == planned_ship) is unaffected: the
+        # offset is only ever clamped downward, and it's already positive
+        # whenever the clamp triggers.
         delivered = (
-            planned_ship + timedelta(days=rng.randint(-3, 6))
+            min(planned_ship + timedelta(days=rng.randint(-3, 6)), now)
             if status in (WorkOrderStatus.SHIPPED, WorkOrderStatus.CLOSED)
             else None
         )
@@ -106,7 +113,9 @@ def seed_work_orders(session: Session, spec: ClientSpec, entered_by: str, anchor
             wo.dispatch_date = wo.received_date + timedelta(days=rng.randint(2, 10))
             wo.shipped_date = delivered
         if status == WorkOrderStatus.CLOSED:
-            wo.closure_date = (wo.shipped_date or now) + timedelta(days=rng.randint(1, 5))
+            # Same future-leak clamp as `delivered` above (ISSUE-009): shipped_date
+            # is already <= now, but adding another +[1,5] days can still overshoot.
+            wo.closure_date = min((wo.shipped_date or now) + timedelta(days=rng.randint(1, 5)), now)
         if status == WorkOrderStatus.ON_HOLD:
             wo.previous_status = WorkOrderStatus.IN_PROGRESS.value
         if status == WorkOrderStatus.REJECTED:
@@ -178,6 +187,13 @@ def seed_work_orders(session: Session, spec: ClientSpec, entered_by: str, anchor
         hwo.received_date = req - timedelta(days=hrng.randint(20, 40))
         hwo.dispatch_date = req - timedelta(days=hrng.randint(1, 5))
         hwo.shipped_date = delivered
+        # This batch never goes through seed_daily_data's per-WO production
+        # true-up (deliberately, to keep OEE/throughput unchanged — see the
+        # comment below), so without this a SHIPPED WO would carry the
+        # factory default actual_quantity=0 / 0% progress, which is
+        # incoherent for a terminal, delivered status. SHIPPED implies fully
+        # produced, so true it up to the full planned quantity directly.
+        hwo.actual_quantity = hwo.planned_quantity
         wos.append(hwo)
 
     session.flush()
@@ -356,7 +372,17 @@ def seed_daily_data(session: Session, spec: ClientSpec, days: int, entered_by: s
             defects = max(1, int(units * wrng.uniform(0.003, 0.012)))
             scrap = defects // 3
             rework = defects - scrap
-            efficiency = performance = min(100.0, max(0.01, round(target_perf * 100, 2)))
+            performance = min(100.0, max(0.01, round(target_perf * 100, 2)))
+            # Efficiency is measured against the FULL scheduled shift window
+            # (run time + downtime + setup + maintenance), while performance
+            # is measured against run time alone — so efficiency is
+            # realistically lower than performance by an availability-loss
+            # factor. Derive that factor from the downtime/setup/maint hours
+            # already generated above (not an independent random draw) so
+            # the two metrics stay coherent (ISSUE-010: previously identical).
+            scheduled_h = run_time + downtime_h + setup_h + maint_h
+            availability_frac = (run_time / scheduled_h) if scheduled_h > 0 else 1.0
+            efficiency = min(100.0, max(0.01, round(performance * availability_frac, 2)))
             quality_pct = min(100.0, max(0.01, round(100 - (defects + scrap) / units * 100, 2)))
             employees_present = max(0, len(employees) - (1 if wrng.random() < 0.15 else 0))
 
