@@ -167,6 +167,7 @@ export const getWIPAging = async (params?: Params) => {
       : []
     const aging_15_30 = data.aging_15_30_days || 0
     const aging_over_30 = data.aging_over_30_days || 0
+    const totalHeld = data.total_held_quantity || 0
 
     const maxDays =
       topAgingItems.length > 0 ? Math.max(...topAgingItems.map((item) => item.age || 0)) : 0
@@ -178,12 +179,25 @@ export const getWIPAging = async (params?: Params) => {
         // to `average_age`/`avg_hold_duration` — no backend response has
         // ever populated those; the dead fallback chain masked mapping
         // bugs instead of surfacing them.
+        //
+        // The backend (backend/routes/holds.py::calculate_wip_aging_kpi)
+        // returns `average_aging_days: 0` — not null — whenever the
+        // filtered window has zero active holds (`total_held_quantity: 0`),
+        // since it can't divide by zero. Left as-is, that 0 is
+        // indistinguishable from a real zero-aging reading and rendered as
+        // a fabricated "0.0days" next to the (correctly gray/N/A) status
+        // badge. `total_held_quantity` is the authoritative no-data signal
+        // here (a genuine zero average can only occur when there ARE
+        // holds, e.g. all opened the same day) — gate on it, not on the
+        // average value itself.
         average_days:
-          data.average_aging_days === null || data.average_aging_days === undefined
+          totalHeld === 0 ||
+          data.average_aging_days === null ||
+          data.average_aging_days === undefined
             ? null
             : Number(data.average_aging_days),
-        total_held: data.total_held_quantity || 0,
-        total_units: data.total_held_quantity || 0,
+        total_held: totalHeld,
+        total_units: totalHeld,
         aging_0_7: data.aging_0_7_days || 0,
         age_0_7: data.aging_0_7_days || 0,
         aging_8_14: data.aging_8_14_days || 0,

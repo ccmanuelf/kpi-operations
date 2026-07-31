@@ -266,4 +266,25 @@ describe('KpiTrendChart', () => {
     expect(options.scales.y.min).toBeLessThan(99.16)
     expect(options.scales.y.max).toBeGreaterThan(99.18)
   })
+
+  // e2e-sweep live-VM residual: a PPM chart's y-axis padded to a min of
+  // -687 (screenshot evidence). The [0,100] clamp only ever applied to
+  // '%' units — PPM (and every other non-percentage metric here) got no
+  // floor at all, so a series with a wide swing and a small minimum could
+  // pad well below zero even though no KPI rendered by this chart can be
+  // negative.
+  it('floors a non-percentage metric (e.g. PPM) y-axis min at 0 even with a wide swing', async () => {
+    const fetchTrend = vi.fn().mockResolvedValue(
+      [5, 900, 10].map((value, i) => ({ date: `2026-06-${(i + 1).toString().padStart(2, '0')}`, value })),
+    )
+    const w = mount(KpiTrendChart, {
+      props: {
+        metricKey: 'defectRates', title: 'PPM', threshold: null, clientId: 'C', unit: 'ppm', fetchTrend, alertKey: null,
+      },
+      global: { plugins: [i18n, createVuetify()] },
+    })
+    await flushPromises()
+    const options: any = w.findComponent({ name: 'Line' }).props('options')
+    expect(options.scales.y.min).toBeGreaterThanOrEqual(0)
+  })
 })

@@ -113,13 +113,26 @@ const hasValues = computed(() => {
 })
 
 const timeAgo = computed(() => {
-  const created = new Date(props.alert.created_at)
+  // Backend timestamps are stored naive-UTC (no timezone designator).
+  // `new Date(str)` parses a timezone-less string as LOCAL time, not UTC —
+  // for any viewer not in UTC, that silently shifts `created` by the
+  // viewer's UTC offset, which can put it in the "future" relative to
+  // `now` and render a negative "-296m ago". Force UTC interpretation by
+  // appending 'Z' when the string doesn't already carry an explicit
+  // timezone designator ('Z' or a +/-HH:MM offset).
+  const raw = props.alert.created_at
+  const hasTz = typeof raw === 'string' && /(?:[zZ]|[+-]\d{2}:?\d{2})$/.test(raw)
+  const created = new Date(hasTz ? raw : `${raw}Z`)
   const now = new Date()
-  const diffMs = now - created
+  // Even with correct UTC parsing, clock skew or in-flight latency can
+  // still leave `created` a few seconds ahead of `now` — clamp to 0 rather
+  // than surface any negative duration.
+  const diffMs = Math.max(0, now - created)
   const diffMins = Math.floor(diffMs / 60000)
   const diffHours = Math.floor(diffMs / 3600000)
   const diffDays = Math.floor(diffMs / 86400000)
 
+  if (diffMins < 1) return t('alerts.justNow')
   if (diffMins < 60) return `${diffMins}m ago`
   if (diffHours < 24) return `${diffHours}h ago`
   if (diffDays < 7) return `${diffDays}d ago`
