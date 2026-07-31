@@ -150,7 +150,7 @@ Run:
 ```bash
 git diff --stat main...HEAD
 ```
-Expected: exactly two files, both under `docs/` — `docs/superpowers/specs/2026-07-31-reporting-data-capture-roadmap-design.md` (add) and `docs/reporting/reporting-capabilities-and-gaps.md` (modify). Anything else = stop and investigate.
+Expected: exactly three files, all under `docs/` — `docs/superpowers/specs/2026-07-31-reporting-data-capture-roadmap-design.md` (add), `docs/superpowers/plans/2026-07-31-reporting-data-capture-roadmap.md` (add), and `docs/reporting/reporting-capabilities-and-gaps.md` (modify). Anything else = stop and investigate.
 
 - [ ] **Step 2: Run /cross-review** (main session — it is a user-invocable skill)
 
