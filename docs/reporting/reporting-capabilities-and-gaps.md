@@ -11,6 +11,8 @@
 
 **No reports without underlying data (capture-first rule).** A report may only be built over metrics kpi-operations actually tracks. Concepts graded **missing** in the concept register (§4) — for example shipments, stock, billed hours, or cut quantities — are *capture-first*: adding the data capture itself is its own deliberate product decision, and is never a side effect of a reporting spec. Concepts already graded **have** or **partial** are welcome report additions today.
 
+**Capture-first focus (management decision, 2026-07-30).** No further client report samples are coming — management chose this deliberately to avoid Excel reconstruction. The engagement shifts to **data capture** for the five key operations questions (§4): downtime cause taxonomy, justified-delay classification, and labor-hours accounting, followed by a pivot/summarization layer built once over the enriched data. Sequencing lives in §5; roadmap spec: `docs/superpowers/specs/2026-07-31-reporting-data-capture-roadmap-design.md`.
+
 ## 2. What works today — report catalog
 
 Every endpoint below is verified present in `backend/tests/test_bootstrap/openapi_surface.json` (Step 1 of this task) and its role requirement is read directly from the `Depends(...)` guard on the route, not inferred. Guard functions live in `backend/auth/jwt.py`; the six-role enum and role-tier lists (`PLANNER_ROLES`, `SUPERVISORY_ROLES`, `CONTRIBUTOR_ROLES`) they check against live in `backend/orm/user.py`:
@@ -88,9 +90,9 @@ These nine per-entity exports are the concrete expression of the data-first posi
 | Email content toggles never consumed | **Defer** to report-subscriptions spec; hide/mark now (PR item 4) | **DONE with this PR** — the six `include_*` toggles were **removed from the dialog template** (not hidden behind a flag, not relabeled as inactive); the `EmailReportConfig` payload contract is unchanged, so the fields are still accepted and stored, just no longer offered in the UI (UI-visibility change) / functional wiring still deferred |
 | Email config in-memory only | **Defer** — same spec | Deferred |
 | Scheduler daily-only, ignores frequency/recipients | **Defer** — same spec | Deferred |
-| Pivot/summarization layer | **Future spec #1** — blocked on remaining samples + concept register | Deferred |
-| Downtime cause taxonomy | **Future spec** — small, high leverage for Q2 | Deferred |
-| Labor-hours accounting (OT tiers, direct/indirect, billed vs available) | **Future spec** — prerequisite for full Q1 | Deferred |
+| Pivot/summarization layer | **Active lane — Cycle 4** (§5); the remaining-samples blocker was dissolved by the 2026-07-30 management decision | Sequenced (§5) |
+| Downtime cause taxonomy | **Active lane — Cycle 1** (§5) — small, high leverage for Q2 | Sequenced (§5) |
+| Labor-hours accounting (OT tiers, direct/indirect, billed vs available) | **Active lane — Cycle 3** (§5) — prerequisite for full Q1 | Sequenced (§5) |
 | Workbook replication | **Rejected permanently** — concepts, not layouts | Rejected (permanent, see §1) |
 
 ## 4. Concept register (living)
@@ -159,14 +161,24 @@ Per the "no reports without underlying data" position (§1), the register splits
 
 ### How to update this register
 
-Each new client report sample gets analyzed the same way the two evidence samples in the spec were: identify every concept the client's report exposes, slot it under one (or more) of the five management questions above, and grade it have/partial/missing against the current ORM and endpoint surface. Grades get revised in place — a concept can move from missing to partial to have as capture work lands. Anything newly graded missing is not built directly; it is routed to the deferred-spec queue (§5) as a capture-first item, since a report may never be the vehicle that introduces a new data capture.
+Each new client report sample gets analyzed the same way the two evidence samples in the spec were: identify every concept the client's report exposes, slot it under one (or more) of the five management questions above, and grade it have/partial/missing against the current ORM and endpoint surface. Grades get revised in place — a concept can move from missing to partial to have as capture work lands. Anything newly graded missing is not built directly; it is routed to the roadmap's deferred remainder (§5) as a capture-first item, since a report may never be the vehicle that introduces a new data capture.
 
-## 5. Deferred-spec queue
+## 5. Roadmap — active lane and deferred remainder
 
-Ordered future work; each item requires its own brainstorm→spec cycle before any build:
+Sequenced per the approved roadmap spec (`docs/superpowers/specs/2026-07-31-reporting-data-capture-roadmap-design.md`, 2026-07-31). Every cycle still requires its own brainstorm→spec cycle before any build.
 
-1. **Pivot/summarization layer** — pre-defined time buckets (week/month/quarter/year), pre-defined groupings/categorizations/pivots, cross-metric comparison on the common hours basis (units ↔ SAM-earned hours ↔ operators ↔ attendance hours), everything downloadable as data. Blocked on: remaining client samples + concept-register completion.
-2. **Report subscriptions** — persisted email config (DB table replacing in-memory `_email_configs`), `include_*` toggles actually consumed by generators, scheduler honoring frequency (daily/weekly/monthly) and recipients.
-3. **Downtime cause taxonomy** — controlled vocabulary (machine/materials/scheduling/attendance/other + NPT buckets) over the existing `root_cause_category` field.
-4. **Labor-hours accounting** *(capture-first)* — OT tiers (Normal/Double/Triple), direct/indirect classification, billed vs available-for-efficiency hours. Prerequisite for full Q1 coverage; requires new data capture, so it is a product decision before it is a reporting feature.
-5. **Model extensions** *(capture-first)* justified by future samples (justified-delay flag, shipment #, batch traceability, cut-quantity capture, plant/module hierarchy, operator-level production). Same rule: capture first, report after.
+### Active lane (in order)
+
+1. **Cycle 1 — Downtime cause taxonomy** (Q2; smallest, highest leverage): controlled vocabulary — **machine / materials / scheduling / attendance / other**, with NPT sub-buckets — over the existing free-form `root_cause_category` on `DowntimeEntry`; entry UI becomes a select; migration maps confidently-matchable free-form values, everything else defaults to `uncategorized`.
+2. **Cycle 2 — Justified-delay flag** (Q3): justified/unjustified classification plus reason on late work orders; delivery performance becomes reportable both gross and net-of-justified (the concept behind PGI's exclusion, never its layout).
+3. **Cycle 3 — Labor-hours accounting** (Q1; the big capture): OT tiers (Normal/Double/Triple — Mexican labor law, structural), direct/indirect classification on `Employee`, billed vs available-for-efficiency hours. Expected 2 PRs — capture model + entry UI, then derived Q1 metrics; the split is decided in that cycle's spec.
+4. **Cycle 4 — Pivot/summarization layer** (largest; built once, over the enriched data): pre-defined time buckets (week/month/quarter/year), pre-defined groupings/categorizations, cross-metric comparison on the common hours basis (units ↔ SAM-earned hours ↔ operators ↔ attendance hours), every summary downloadable as its underlying data. Expected 2–3 PRs; split decided in that cycle's spec.
+
+**Capture policy (uniform across all cycles):** new capture fields ship optional or defaulted (e.g. `uncategorized`) and never block existing entry flows at introduction; each capture surface gets a completeness indicator; flip-to-required happens per field once completeness ≥ 90 % over a trailing 30 days AND management confirms the shop-floor workflow has adapted (the flip is its own small change); the demo seeder is updated in the same cycle that introduces a field.
+
+### Deferred remainder
+
+Parked until management asks or an active-lane cycle surfaces a hard dependency:
+
+- **Report subscriptions** — persisted email config (DB table replacing the in-memory `_email_configs`), `include_*` toggles actually consumed by the generators, scheduler honoring the configured frequency (daily/weekly/monthly) and recipients.
+- **Model extensions** *(capture-first)* — shipment #, material-batch traceability, cut-quantity capture, plant/module hierarchy, operator-level production. Same standing rule: capture first, report after.
