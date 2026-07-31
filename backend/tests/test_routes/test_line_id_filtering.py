@@ -254,7 +254,7 @@ class TestBackwardCompatibility:
             client_id="LINE-TEST",
             work_order_id="WO-LINE-001",
             shift_date=now,
-            downtime_reason="Equipment Maintenance",
+            downtime_reason="MAINTENANCE",
             downtime_duration_minutes=30,
         )
         db.add(entry)
@@ -330,7 +330,7 @@ class TestWithLineId:
             client_id="LINE-TEST",
             work_order_id="WO-LINE-001",
             shift_date=now,
-            downtime_reason="Material Shortage",
+            downtime_reason="MATERIAL_SHORTAGE",
             downtime_duration_minutes=45,
             line_id=line.line_id,
         )

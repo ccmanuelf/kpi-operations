@@ -459,8 +459,8 @@ def seed_daily_data(session: Session, spec: ClientSpec, days: int, entered_by: s
                             [
                                 "EQUIPMENT_FAILURE",
                                 "MATERIAL_SHORTAGE",
-                                "CHANGEOVER",
-                                "PLANNED_MAINTENANCE",
+                                "SETUP_CHANGEOVER",
+                                "MAINTENANCE",
                                 "QUALITY_HOLD",
                             ]
                         ),

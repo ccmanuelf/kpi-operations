@@ -8,7 +8,7 @@ from datetime import datetime
 from typing import Optional
 
 from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, validates
 from sqlalchemy.sql import func
 
 from backend.database import Base
@@ -63,3 +63,23 @@ class DowntimeEntry(Base):
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
     updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    @validates("downtime_reason")
+    def _validate_downtime_reason(self, key: str, value: str) -> str:
+        from backend.orm.downtime_taxonomy import DowntimeReasonEnum
+
+        valid = {r.value for r in DowntimeReasonEnum}
+        if value not in valid:
+            raise ValueError(f"downtime_reason must be one of {sorted(valid)}, got {value!r}")
+        return value
+
+    @validates("root_cause_category")
+    def _validate_root_cause_category(self, key: str, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return value
+        from backend.orm.downtime_taxonomy import DowntimeCategoryEnum
+
+        valid = {c.value for c in DowntimeCategoryEnum}
+        if value not in valid:
+            raise ValueError(f"root_cause_category must be one of {sorted(valid)} or NULL, got {value!r}")
+        return value

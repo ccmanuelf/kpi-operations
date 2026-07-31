@@ -35,28 +35,30 @@ def test_top_downtime_reason_picks_max_minutes_and_share(db_session):
                 downtime_entry_id="DT1",
                 client_id="C1",
                 shift_date=_dt(8),
-                downtime_reason="Changeover",
+                downtime_reason="SETUP_CHANGEOVER",
                 downtime_duration_minutes=90,
             ),
             DowntimeEntry(
                 downtime_entry_id="DT2",
                 client_id="C1",
                 shift_date=_dt(9),
-                downtime_reason="Breakdown",
+                downtime_reason="EQUIPMENT_FAILURE",
                 downtime_duration_minutes=30,
             ),
             DowntimeEntry(
                 downtime_entry_id="DT3",
                 client_id="C1",
                 shift_date=_dt(10),
-                downtime_reason="Changeover",
+                downtime_reason="SETUP_CHANGEOVER",
                 downtime_duration_minutes=30,
             ),
         ]
     )
     db_session.commit()
     res = top_downtime_reason(db_session, "C1", DAY)
-    assert res == CauseResult(kind="downtime", factor="Changeover", value=120.0, unit="min", share=0.8)
+    # Same math as before the taxonomy validator landed (SETUP_CHANGEOVER
+    # replaces the free-text "Changeover" 1:1): 90+30=120 min of 150 total = 0.8 share.
+    assert res == CauseResult(kind="downtime", factor="SETUP_CHANGEOVER", value=120.0, unit="min", share=0.8)
 
 
 def test_top_downtime_reason_empty_day_returns_none(db_session):
@@ -355,13 +357,15 @@ def test_oee_dominant_loss_availability(db_session):
             downtime_entry_id="DT1",
             client_id="C1",
             shift_date=_dt(9),
-            downtime_reason="Breakdown",
+            downtime_reason="EQUIPMENT_FAILURE",
             downtime_duration_minutes=240,
         )
     )
     db_session.commit()
     res = oee_dominant_loss(db_session, "C1", DAY)
-    assert res.kind == "downtime" and res.factor == "Breakdown"
+    # "Breakdown" (free text) -> "EQUIPMENT_FAILURE" (canonical enum), same magnitude (240 min),
+    # so this remains the dominant downtime loss factor.
+    assert res.kind == "downtime" and res.factor == "EQUIPMENT_FAILURE"
 
 
 def test_oee_dominant_loss_quality(db_session):

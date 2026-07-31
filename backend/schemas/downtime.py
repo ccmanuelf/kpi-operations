@@ -7,19 +7,8 @@ from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional
 from datetime import date, datetime
 from decimal import Decimal
-from enum import Enum
 
-
-class DowntimeReasonEnum(str, Enum):
-    """Downtime categories for availability calculation - matches DB enum"""
-
-    EQUIPMENT_FAILURE = "EQUIPMENT_FAILURE"
-    MATERIAL_SHORTAGE = "MATERIAL_SHORTAGE"
-    SETUP_CHANGEOVER = "SETUP_CHANGEOVER"
-    QUALITY_HOLD = "QUALITY_HOLD"
-    MAINTENANCE = "MAINTENANCE"
-    POWER_OUTAGE = "POWER_OUTAGE"
-    OTHER = "OTHER"
+from backend.orm.downtime_taxonomy import DowntimeCategoryEnum, DowntimeReasonEnum  # noqa: F401  (re-exported)
 
 
 class DowntimeEventCreate(BaseModel):
