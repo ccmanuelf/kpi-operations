@@ -66,6 +66,9 @@ services:
       - "3000:3000"
     environment:
       - VITE_API_URL=http://localhost:8000
+      # Demo mode (set to true to show the self-registration button on Login;
+      # mirrors backend's DEMO_MODE, which gates the endpoint it calls)
+      - VITE_DEMO_MODE=${VITE_DEMO_MODE:-false}
     depends_on:
       backend:
         condition: service_healthy
