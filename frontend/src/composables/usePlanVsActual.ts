@@ -5,6 +5,7 @@
  */
 import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { formatLocaleDateIntl } from '@/utils/localeDate'
 import { getPlanVsActual, getPlanVsActualSummary } from '@/services/api/planVsActual'
 import { useAuthStore } from '@/stores/authStore'
 import { useNotificationStore } from '@/stores/notificationStore'
@@ -60,7 +61,7 @@ export interface TableHeader {
 }
 
 export function usePlanVsActual() {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const authStore = useAuthStore()
   const notificationStore = useNotificationStore()
 
@@ -192,7 +193,7 @@ export function usePlanVsActual() {
     if (!dateStr) return '-'
     try {
       const d = new Date(dateStr)
-      return d.toLocaleDateString(undefined, {
+      return formatLocaleDateIntl(d, locale.value, {
         year: 'numeric',
         month: 'short',
         day: 'numeric',

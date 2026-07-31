@@ -112,8 +112,9 @@ import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { QrcodeStream } from 'vue-qrcode-reader'
 import { useQRScanner } from '@/composables/useQRScanner'
+import { formatLocaleTimeIntl } from '@/utils/localeDate'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 const emit = defineEmits(['auto-fill', 'scanned'])
 
@@ -224,7 +225,7 @@ const downloadQR = () => {
 }
 
 const formatTime = (timestamp) => {
-  return new Date(timestamp).toLocaleTimeString()
+  return formatLocaleTimeIntl(new Date(timestamp), locale.value)
 }
 </script>
 

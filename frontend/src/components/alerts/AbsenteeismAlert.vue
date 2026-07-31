@@ -113,7 +113,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import axios from 'axios'
+import api from '@/services/api'
 
 const { t } = useI18n()
 
@@ -220,7 +220,7 @@ const fetchData = async () => {
   if (!props.autoFetch) return
 
   try {
-    const response = await axios.get('/api/attendance/kpi/absenteeism', {
+    const response = await api.get('/attendance/kpi/absenteeism', {
       params: {
         client_id: props.clientId,
         start_date: props.startDate,

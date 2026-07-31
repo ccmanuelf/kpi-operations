@@ -186,7 +186,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import axios from 'axios'
+import api from '@/services/api'
 
 const { t } = useI18n()
 
@@ -324,7 +324,7 @@ const fetchData = async () => {
 
   try {
     // Try to fetch rework by operation from API
-    const response = await axios.get('/api/kpi/quality/rework-by-operation', {
+    const response = await api.get('/kpi/quality/rework-by-operation', {
       params: {
         client_id: props.clientId,
         product_id: props.productId,
@@ -374,7 +374,7 @@ const fetchData = async () => {
 const fetchQualityAndAggregate = async () => {
   try {
     // Fallback: fetch quality inspections and aggregate by operation/stage
-    const response = await axios.get('/api/quality', {
+    const response = await api.get('/quality', {
       params: {
         start_date: props.startDate,
         end_date: props.endDate,

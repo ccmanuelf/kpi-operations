@@ -71,7 +71,11 @@ export default defineConfig({
       timeout: 120 * 1000,
     },
     {
-      command: 'npm run dev',
+      // VITE_DEMO_MODE=true keeps env parity with the backend's DEMO_MODE=true
+      // above — the Register button (LoginView.vue) is gated on this flag
+      // (ISSUE-006), and auth.spec.ts's Registration describe depends on it
+      // being visible.
+      command: 'VITE_DEMO_MODE=true npm run dev',
       url: 'http://localhost:3000',
       reuseExistingServer: !process.env.CI,
       timeout: 120 * 1000,

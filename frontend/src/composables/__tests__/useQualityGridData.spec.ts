@@ -22,7 +22,7 @@ const { mockApi } = vi.hoisted(() => ({
 }))
 
 vi.mock('vue-i18n', () => ({
-  useI18n: () => ({ t: (key: string) => key }),
+  useI18n: () => ({ t: (key: string) => key, locale: { value: 'en' } }),
 }))
 
 vi.mock('@/services/api', () => ({ default: mockApi }))

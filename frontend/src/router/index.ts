@@ -228,6 +228,15 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/HelpCenter.vue'),
     meta: { requiresAuth: true },
   },
+  // Catch-all: any path that doesn't match a route above renders an honest
+  // 404 view instead of a blank app shell (ISSUE 015). Intentionally public
+  // (no requiresAuth) — an unknown URL is unknown regardless of session
+  // state, and this view reveals nothing route-specific.
+  {
+    path: '/:pathMatch(.*)*',
+    name: 'not-found',
+    component: () => import('@/views/NotFoundView.vue'),
+  },
 ]
 
 const router = createRouter({

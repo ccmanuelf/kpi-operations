@@ -6,7 +6,7 @@
  */
 import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { format } from 'date-fns'
+import { formatLocaleDate } from '@/utils/localeDate'
 import { useKPIStore } from '@/stores/kpi'
 import api from '@/services/api'
 
@@ -22,7 +22,7 @@ interface TableHeader {
 }
 
 export default function useOEEData() {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const kpiStore = useKPIStore()
 
   const loading = ref(false)
@@ -65,7 +65,7 @@ export default function useOEEData() {
 
   const formatDate = (dateStr: string): string => {
     try {
-      return format(new Date(dateStr), 'MMM dd, yyyy')
+      return formatLocaleDate(dateStr, 'MMM dd, yyyy', locale.value)
     } catch {
       return dateStr
     }

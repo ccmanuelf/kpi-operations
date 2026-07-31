@@ -44,7 +44,8 @@ export const getDowntimeReasons = (options: CacheOptions = {}) => {
 }
 
 export const getClients = (options: CacheOptions = {}) => {
-  return referenceDataCache.get('reference:clients', () => api.get('/admin/clients'), {
+  // Live route is /api/clients — /admin/clients never existed (404).
+  return referenceDataCache.get('reference:clients', () => api.get('/clients'), {
     ttl: CACHE_TTL.CLIENTS,
     staleWhileRevalidate: true,
     forceRefresh: options.forceRefresh || false,
@@ -52,7 +53,8 @@ export const getClients = (options: CacheOptions = {}) => {
 }
 
 export const getDefectTypes = (options: CacheOptions = {}) => {
-  return referenceDataCache.get('reference:defect-types', () => api.get('/admin/defect-types'), {
+  // Live route is /api/defect-types/global — /admin/defect-types never existed (404).
+  return referenceDataCache.get('reference:defect-types', () => api.get('/defect-types/global'), {
     ttl: CACHE_TTL.DEFECT_TYPES,
     staleWhileRevalidate: true,
     forceRefresh: options.forceRefresh || false,

@@ -41,6 +41,7 @@ import {
   Tooltip,
   Legend,
   LineController,
+  Filler,
   type ChartData,
   type ChartDataset,
   type ChartOptions,
@@ -52,7 +53,16 @@ import { computeOutOfControl, type OocPoint, type OocThreshold } from '@/utils/o
 import { fetchActiveAlertsForKpi, fetchKpiCauses, type KpiCause } from '@/services/api/kpi'
 import { unwrapTrend } from './kpiChartConfig'
 
-ChartJS.register(LineElement, PointElement, LinearScale, CategoryScale, Tooltip, Legend, LineController)
+// Filler is required whenever a dataset sets `fill: true` (the main series
+// below does) — without it Chart.js silently no-ops the fill and logs
+// "Tried to use the 'fill' option without the 'Filler' plugin enabled"
+// on every render (ISSUE 005; 10x per KPI Dashboard load, one per card).
+ChartJS.register(LineElement, PointElement, LinearScale, CategoryScale, Tooltip, Legend, LineController, Filler)
+
+// Percentage metrics can never fall outside 0-100; clamping control limits
+// to this domain before charting keeps a sigma-inflated UCL/LCL from
+// dragging the y-axis out to absurd values (ISSUE 004).
+const PERCENT_DOMAIN: [number, number] = [0, 100]
 
 interface Props {
   metricKey: string
@@ -96,7 +106,9 @@ const error = ref(false)
 watch(
   [rawPoints, () => props.threshold],
   ([raw, threshold]) => {
-    const result = computeOutOfControl(raw, threshold)
+    const result = computeOutOfControl(raw, threshold, {
+      domain: props.unit === '%' ? PERCENT_DOMAIN : undefined,
+    })
     points.value = result.points
     oocMeta.value = { ucl: result.ucl, lcl: result.lcl, target: result.target, critical: result.critical }
   },
@@ -254,6 +266,35 @@ const tooltipLabel = (ctx: TooltipItem<'line'>): string | string[] => {
 
 defineExpose({ onRangeChange, tooltipLabel })
 
+// Chart.js auto-scales the y-axis tightly around whatever datasets are
+// rendered. With no control limits present (SPC arm didn't trigger — too
+// few points, or zero variance) a near-constant metric like Quality
+// (99.16-99.18%) gets an axis spanning only that sliver, exaggerating
+// noise-level movement (over-zoom observation). Padding the observed range
+// by a fixed fraction keeps small series readable without re-widening the
+// axis the way the (now-clamped) control limits used to.
+const yAxisRange = computed<{ min: number | undefined; max: number | undefined }>(() => {
+  const values = points.value.map((p) => p.value).filter((v) => Number.isFinite(v))
+  const { target, critical, ucl, lcl } = oocMeta.value
+  for (const v of [target, critical, ucl, lcl]) {
+    if (v !== null) values.push(v)
+  }
+  if (values.length === 0) return { min: undefined, max: undefined }
+
+  let min = Math.min(...values)
+  let max = Math.max(...values)
+  const range = max - min
+  const pad = range > 0 ? range * 0.15 : Math.max(Math.abs(max) * 0.05, 1)
+  min -= pad
+  max += pad
+
+  if (props.unit === '%') {
+    min = Math.max(min, PERCENT_DOMAIN[0])
+    max = Math.min(max, PERCENT_DOMAIN[1])
+  }
+  return { min, max }
+})
+
 const chartOptions = computed<ChartOptions<'line'>>(() => ({
   responsive: true,
   maintainAspectRatio: true,
@@ -266,7 +307,12 @@ const chartOptions = computed<ChartOptions<'line'>>(() => ({
     },
   },
   scales: {
-    y: { ticks: scaleDefaults.value.ticks, grid: scaleDefaults.value.grid },
+    y: {
+      ticks: scaleDefaults.value.ticks,
+      grid: scaleDefaults.value.grid,
+      min: yAxisRange.value.min,
+      max: yAxisRange.value.max,
+    },
     x: { ticks: scaleDefaults.value.ticks, grid: scaleDefaults.value.grid },
   },
   interaction: { mode: 'nearest', axis: 'x', intersect: false },

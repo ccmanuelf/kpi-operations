@@ -1038,6 +1038,11 @@
       "audit_log": "Registro de auditoría del sistema"
     }
   },
+  "notFound": {
+    "title": "Página no encontrada",
+    "description": "La página que buscas no existe o ha sido movida.",
+    "goHome": "Ir al Tablero"
+  },
   "notifications": {
     "title": "Notificaciones",
     "markAllRead": "Marcar Todo como Leído",
@@ -1080,6 +1085,9 @@
     "workflow": {
       "templateLoadFailed": "Error al cargar plantillas de flujo de trabajo. Por favor intente de nuevo.",
       "activeShiftFetchFailed": "Error al obtener turno activo. Por favor recargue la página."
+    },
+    "myShift": {
+      "loadFailed": "No se pudieron cargar los datos de tu turno. Actualiza la página o contacta a tu supervisor si esto continúa."
     }
   },
   "errors": {
@@ -1512,6 +1520,7 @@
       "contactName": "Nombre de Contacto",
       "contactEmail": "Correo de Contacto",
       "contactPhone": "Teléfono de Contacto",
+      "location": "Ubicación",
       "industry": "Industria",
       "address": "Dirección",
       "confirmDeleteClient": "¿Está seguro que desea eliminar este cliente?",
@@ -4169,6 +4178,7 @@
     "tableOfContents": "Tabla de contenido",
     "searchPlaceholder": "Buscar en la guía de usuario…",
     "noResults": "Sin coincidencias",
+    "contentUnavailable": "No se pudo cargar el contenido de ayuda. Esto parece un problema de despliegue — contacta a tu administrador.",
     "selectDoc": "Selecciona una sección de la izquierda para comenzar.",
     "copyLink": "Copiar enlace",
     "linkCopied": "Enlace copiado al portapapeles",
@@ -4352,12 +4362,13 @@
       "coverage": "Cobertura"
     }
   },
-  "shift": {
+  "myShift": {
+    "noWorkOrders": "No hay órdenes de trabajo asignadas a tu turno",
+    "noWorkOrdersGuidance": "Las órdenes de trabajo aparecerán aquí cuando se te asigne a una línea de producción. Contacta a tu supervisor si crees que esto es un error.",
     "activity": {
-      "loggedUnits": "Se registraron {count} unidades para {orderId}",
-      "qualityCheck": "Revisión de calidad: {inspected} inspeccionadas, {defects} defecto(s)",
-      "equipmentBreakdown": "Falla de equipo: {minutes} min de inactividad",
-      "downtimeEvent": "{reason}: {minutes} min de inactividad"
+      "productionLogged": "Se registraron {units} unidades para {workOrderId}",
+      "downtimeLogged": "{reason}: {minutes} min de inactividad",
+      "qualityChecked": "Inspección de calidad: {inspected} inspeccionadas, {defects} defectos"
     }
   }
 }

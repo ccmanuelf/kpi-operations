@@ -1362,8 +1362,9 @@ import DemandGrid from '@/components/simulation/DemandGrid.vue'
 import BreakdownsGrid from '@/components/simulation/BreakdownsGrid.vue'
 import ValidationPanel from '@/components/simulation/ValidationPanel.vue'
 import ResultsView from '@/components/simulation/ResultsView.vue'
+import { formatLocaleDateTimeIntl } from '@/utils/localeDate'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const store = useSimulationV2Store()
 const {
   currentResult,
@@ -1849,7 +1850,7 @@ async function handleDeleteScenario(scenario) {
 function formatDate(iso) {
   if (!iso) return ''
   try {
-    return new Date(iso).toLocaleString()
+    return formatLocaleDateTimeIntl(new Date(iso), locale.value)
   } catch {
     return iso
   }

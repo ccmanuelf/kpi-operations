@@ -32,7 +32,7 @@ const { mockApi, kpiStoreState } = vi.hoisted(() => ({
 
 vi.mock('@/services/api', () => ({ default: mockApi }))
 vi.mock('vue-i18n', () => ({
-  useI18n: () => ({ t: (k: string) => k }),
+  useI18n: () => ({ t: (k: string) => k, locale: { value: 'en' } }),
 }))
 vi.mock('@/stores/kpi', () => ({
   useKPIStore: () => kpiStoreState,

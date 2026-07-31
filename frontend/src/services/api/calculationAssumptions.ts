@@ -55,10 +55,13 @@ export interface VarianceRow {
   rationale: string | null
 }
 
-export const getCatalog = () => api.get<CatalogEntry[]>('/api/assumptions/catalog')
+// Paths are relative to the `api` client's baseURL (/api/v1, rewritten to
+// /api server-side) — a literal leading `/api/` here double-prefixes the
+// request (e.g. /api/v1/api/assumptions/variance), which 404s.
+export const getCatalog = () => api.get<CatalogEntry[]>('/assumptions/catalog')
 
 export const getVarianceReport = (staleAfterDays = 365) =>
-  api.get<VarianceRow[]>('/api/assumptions/variance', {
+  api.get<VarianceRow[]>('/assumptions/variance', {
     params: { stale_after_days: staleAfterDays },
   })
 
@@ -67,4 +70,4 @@ export const listAssumptions = (params?: {
   assumption_name?: string
   status?: AssumptionStatus
   include_inactive?: boolean
-}) => api.get<AssumptionResponse[]>('/api/assumptions', { params })
+}) => api.get<AssumptionResponse[]>('/assumptions', { params })

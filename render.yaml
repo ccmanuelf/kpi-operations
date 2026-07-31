@@ -50,13 +50,15 @@ services:
     name: kpi-operations-frontend
     runtime: docker
     dockerfilePath: ./frontend/Dockerfile
-    dockerContext: ./frontend
+    dockerContext: .
     plan: free
     region: oregon
     healthCheckPath: /health
     envVars:
       - key: VITE_API_URL
         value: https://kpi-operations-api.onrender.com/api/v1
+      - key: VITE_DEMO_MODE
+        value: "true"
       - key: BACKEND_URL
         value: https://kpi-operations-api.onrender.com
       - key: CSP_CONNECT_EXTRA

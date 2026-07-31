@@ -4,7 +4,7 @@
  */
 import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { format } from 'date-fns'
+import { formatLocaleDate } from '@/utils/localeDate'
 import api from '@/services/api'
 import { getFloatingPoolSimulationInsights } from '@/services/api/simulation'
 
@@ -65,7 +65,7 @@ export interface TableHeader {
 }
 
 export default function useFloatingPoolData() {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
 
   const loading = ref(false)
   const loadingInsights = ref(false)
@@ -179,7 +179,7 @@ export default function useFloatingPoolData() {
   const formatDate = (dateStr: string | null | undefined): string => {
     if (!dateStr) return '-'
     try {
-      return format(new Date(dateStr), 'MMM dd, yyyy HH:mm')
+      return formatLocaleDate(dateStr, 'MMM dd, yyyy HH:mm', locale.value)
     } catch {
       return dateStr
     }

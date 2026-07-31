@@ -7,6 +7,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useProductionDataStore } from '@/stores/productionDataStore'
 import { format } from 'date-fns'
+import { formatLocaleDate } from '@/utils/localeDate'
 
 export interface ProductionRow {
   entry_id?: string | number
@@ -72,7 +73,7 @@ export interface ConfirmationField {
 }
 
 export default function useProductionGridData() {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const kpiStore = useProductionDataStore()
   const gridRef = ref<AGGridRef | null>(null)
   const unsavedChanges = ref<Set<string | number>>(new Set())
@@ -188,7 +189,7 @@ export default function useProductionGridData() {
       editable: true,
       cellEditor: 'agDateStringCellEditor',
       valueFormatter: (params: { value?: string }) =>
-        params.value ? format(new Date(params.value), 'MMM dd, yyyy') : '',
+        params.value ? formatLocaleDate(params.value, 'MMM dd, yyyy', locale.value) : '',
       cellClass: 'font-weight-bold',
       pinned: 'left' as const,
       width: 140,

@@ -13,6 +13,7 @@ import { computed, type ComputedRef } from 'vue'
 import { tagStyle } from './gridTagStyle'
 import { useI18n } from 'vue-i18n'
 import { useCapacityPlanningStore } from '@/stores/capacityPlanningStore'
+import { formatLocaleDateIntl } from '@/utils/localeDate'
 
 export interface KPITrackingRow {
   _id?: number | string
@@ -71,10 +72,10 @@ interface UseKPITrackingGridDataReturn {
   onCellValueChanged: () => void
 }
 
-const formatDate = (value: unknown): string => {
+const formatDate = (value: unknown, locale: string | undefined): string => {
   if (!value) return ''
   const d = new Date(value as string)
-  return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString()
+  return Number.isNaN(d.getTime()) ? '' : formatLocaleDateIntl(d, locale)
 }
 
 export const classifyVariance = (
@@ -88,7 +89,7 @@ export const classifyVariance = (
 }
 
 export default function useKPITrackingGridData(): UseKPITrackingGridDataReturn {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const store = useCapacityPlanningStore()
 
   const kpiData = computed<KPITrackingRow[]>(
@@ -174,7 +175,7 @@ export default function useKPITrackingGridData(): UseKPITrackingGridDataReturn {
         const start = params.data.period_start
         const end = params.data.period_end
         if (!start || !end) return ''
-        return `${formatDate(start)} - ${formatDate(end)}`
+        return `${formatDate(start, locale.value)} - ${formatDate(end, locale.value)}`
       },
       width: 200,
     },

@@ -222,7 +222,10 @@ const loadJobs = async () => {
 
   loading.value = true
   try {
-    const response = await api.get(`/api/work-orders/${props.workOrderId}/jobs`)
+    // Path is relative to the shared client's baseURL (/api/v1, rewritten to
+    // /api server-side) — a literal leading /api/ here double-prefixes the
+    // request (e.g. /api/v1/api/work-orders/.../jobs), which 404s.
+    const response = await api.get(`/work-orders/${props.workOrderId}/jobs`)
     jobs.value = response.data || []
   } catch (error) {
     // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
@@ -238,7 +241,7 @@ const loadWorkOrderRty = async () => {
 
   loadingRty.value = true
   try {
-    const response = await api.get(`/api/work-orders/${props.workOrderId}/rty`)
+    const response = await api.get(`/work-orders/${props.workOrderId}/rty`)
     rtyData.value = response.data
     emit('rty-loaded', response.data)
   } catch (error) {
@@ -255,7 +258,7 @@ const loadJobYield = async (job) => {
   loadingJobId.value = job.job_id
 
   try {
-    const response = await api.get(`/api/jobs/${job.job_id}/yield`)
+    const response = await api.get(`/jobs/${job.job_id}/yield`)
     jobYieldData.value = response.data
     yieldDialog.value = true
   } catch (error) {

@@ -120,7 +120,8 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { format, parseISO, formatDistanceToNow } from 'date-fns'
+import { parseISO, formatDistanceToNow } from 'date-fns'
+import { formatLocaleDate, getDateFnsLocale } from '@/utils/localeDate'
 import { getTransitionHistory } from '@/services/api/workflow'
 
 const props = defineProps({
@@ -156,7 +157,7 @@ const props = defineProps({
 
 const emit = defineEmits(['loaded', 'error'])
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 // State
 const loading = ref(false)
@@ -210,8 +211,8 @@ const formatDateTime = (dateStr) => {
   if (!dateStr) return ''
   try {
     const date = parseISO(dateStr)
-    const formatted = format(date, 'MMM dd, yyyy h:mm a')
-    const relative = formatDistanceToNow(date, { addSuffix: true })
+    const formatted = formatLocaleDate(date, 'MMM dd, yyyy h:mm a', locale.value)
+    const relative = formatDistanceToNow(date, { addSuffix: true, locale: getDateFnsLocale(locale.value) })
     return `${formatted} (${relative})`
   } catch {
     return dateStr

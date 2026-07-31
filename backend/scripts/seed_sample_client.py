@@ -60,6 +60,19 @@ CLIENT_SPECS: dict[str, ClientSpec] = {
     "SAMPLE_REF": ClientSpec("SAMPLE_REF", "SAMPLE_REF", ClientType.PIECE_RATE, 8, 8),
 }
 
+# Fixed, plausible contact details per demo client (Client Management screen
+# observation: contact_name/contact_email/location were empty). ".example"
+# domains are the RFC 2606 reserved non-routable TLD — safe placeholders,
+# never a real mailbox. Deterministic (no rng) since the allowlist is a
+# fixed, tiny set. `location` mirrors backend/schemas/client.py's
+# `location: Optional[str]` field.
+CLIENT_CONTACTS: dict[str, tuple[str, str, str, str]] = {
+    "DEMO-PIECE": ("Maria Torres", "maria.torres@demopiece.example", "+1-555-0101", "Monterrey, MX"),
+    "DEMO-HOURLY": ("James Whitfield", "james.whitfield@demohourly.example", "+1-555-0102", "Dhaka, BD"),
+    "DEMO-HYBRID": ("Aiko Tanaka", "aiko.tanaka@demohybrid.example", "+1-555-0103", "Ho Chi Minh City, VN"),
+    "SAMPLE_REF": ("Reference Contact", "reference.contact@sampleref.example", "+1-555-0104", "Reference Site, US"),
+}
+
 
 def ensure_migrated(engine: "Engine") -> None:
     """Refuse to touch a database Alembic hasn't built (never creates schema)."""
@@ -98,11 +111,16 @@ def seed_client_row(session: Session, spec: ClientSpec) -> None:
     """Idempotent CLIENT insert."""
     if session.get(Client, spec.client_id) is not None:
         return
+    contact_name, contact_email, contact_phone, location = CLIENT_CONTACTS.get(spec.client_id, (None, None, None, None))
     session.add(
         Client(
             client_id=spec.client_id,
             client_name=spec.client_name,
             client_type=spec.client_type,
+            client_contact=contact_name,
+            client_email=contact_email,
+            client_phone=contact_phone,
+            location=location,
             is_active=1,
         )
     )

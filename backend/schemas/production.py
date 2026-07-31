@@ -134,22 +134,20 @@ class ProductionEntryResponse(BaseModel):
     production_date: datetime = Field(..., description="Date when production took place")
     shift_date: datetime = Field(..., description="Shift date used for KPI calculations")
     units_produced: int = Field(..., description="Total good units produced")
-    run_time_hours: Decimal = Field(..., description="Actual machine run time in hours")
+    run_time_hours: float = Field(..., description="Actual machine run time in hours")
     employees_assigned: int = Field(..., description="Number of employees scheduled for the shift")
     employees_present: Optional[int] = Field(None, description="Number of employees actually present")
     defect_count: int = Field(..., description="Number of defective units identified")
     scrap_count: int = Field(..., description="Number of units scrapped")
     rework_count: Optional[int] = Field(None, description="Number of units requiring rework")
-    setup_time_hours: Optional[Decimal] = Field(None, description="Machine setup and changeover time in hours")
-    downtime_hours: Optional[Decimal] = Field(None, description="Unplanned downtime during the shift in hours")
-    maintenance_hours: Optional[Decimal] = Field(None, description="Planned maintenance time in hours")
-    ideal_cycle_time: Optional[Decimal] = Field(None, description="Standard hours per unit for performance calculation")
-    actual_cycle_time: Optional[Decimal] = Field(None, description="Measured hours per unit from actual production")
-    efficiency_percentage: Optional[Decimal] = Field(None, description="Production efficiency as a percentage")
-    performance_percentage: Optional[Decimal] = Field(None, description="OEE performance component as a percentage")
-    quality_rate: Optional[Decimal] = Field(
-        None, description="Quality rate: good units divided by total units produced"
-    )
+    setup_time_hours: Optional[float] = Field(None, description="Machine setup and changeover time in hours")
+    downtime_hours: Optional[float] = Field(None, description="Unplanned downtime during the shift in hours")
+    maintenance_hours: Optional[float] = Field(None, description="Planned maintenance time in hours")
+    ideal_cycle_time: Optional[float] = Field(None, description="Standard hours per unit for performance calculation")
+    actual_cycle_time: Optional[float] = Field(None, description="Measured hours per unit from actual production")
+    efficiency_percentage: Optional[float] = Field(None, description="Production efficiency as a percentage")
+    performance_percentage: Optional[float] = Field(None, description="OEE performance component as a percentage")
+    quality_rate: Optional[float] = Field(None, description="Quality rate: good units divided by total units produced")
     notes: Optional[str] = Field(None, description="Operator notes or comments about this entry")
     entered_by: Optional[Union[str, int]] = Field(None, description="User ID of the person who created this entry")
     confirmed_by: Optional[Union[str, int]] = Field(
@@ -175,15 +173,15 @@ class ProductionEntryWithKPIs(ProductionEntryResponse):
 
     product_name: str = Field(..., description="Display name of the product manufactured")
     shift_name: str = Field(..., description="Display name of the production shift")
-    ideal_cycle_time: Optional[Decimal] = Field(None, description="Standard hours per unit used in KPI calculation")
+    ideal_cycle_time: Optional[float] = Field(None, description="Standard hours per unit used in KPI calculation")
     inferred_cycle_time: bool = Field(
         False, description="Whether the cycle time was inferred rather than explicitly set"
     )
 
     # Calculated values
-    total_available_hours: Decimal = Field(..., description="Total available production hours after deducting downtime")
-    quality_rate: Decimal = Field(..., description="Quality rate: good units divided by total units produced")
-    oee: Optional[Decimal] = Field(
+    total_available_hours: float = Field(..., description="Total available production hours after deducting downtime")
+    quality_rate: float = Field(..., description="Quality rate: good units divided by total units produced")
+    oee: Optional[float] = Field(
         None, description="Overall Equipment Effectiveness combining availability, performance, and quality"
     )
 
@@ -212,10 +210,10 @@ class KPICalculationResponse(BaseModel):
     """KPI calculation result with inference metadata"""
 
     entry_id: str = Field(..., description="Production entry ID this calculation applies to")
-    efficiency_percentage: Decimal = Field(..., description="Production efficiency as a percentage")
-    performance_percentage: Decimal = Field(..., description="OEE performance component as a percentage")
-    quality_rate: Decimal = Field(..., description="Quality rate: good units divided by total units produced")
-    ideal_cycle_time_used: Decimal = Field(
+    efficiency_percentage: float = Field(..., description="Production efficiency as a percentage")
+    performance_percentage: float = Field(..., description="OEE performance component as a percentage")
+    quality_rate: float = Field(..., description="Quality rate: good units divided by total units produced")
+    ideal_cycle_time_used: float = Field(
         ..., description="Ideal cycle time value used in this calculation (hours per unit)"
     )
     was_inferred: bool = Field(..., description="Whether the ideal cycle time was inferred rather than explicitly set")

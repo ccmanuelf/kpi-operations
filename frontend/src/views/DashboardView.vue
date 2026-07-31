@@ -237,13 +237,14 @@ import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useProductionDataStore } from '@/stores/productionDataStore'
 import { format } from 'date-fns'
+import { formatLocaleDate } from '@/utils/localeDate'
 import api from '@/services/api'
 import EmailReportsDialog from '@/components/dialogs/EmailReportsDialog.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import TableSkeleton from '@/components/ui/TableSkeleton.vue'
 import CardSkeleton from '@/components/ui/CardSkeleton.vue'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const kpiStore = useProductionDataStore()
 
 // Loading states
@@ -337,7 +338,7 @@ const getShiftName = (shiftId) => {
 }
 
 const formatDate = (date) => {
-  return format(new Date(date), 'MMM dd, yyyy')
+  return formatLocaleDate(date, 'MMM dd, yyyy', locale.value)
 }
 
 const getEfficiencyColor = (value) => {

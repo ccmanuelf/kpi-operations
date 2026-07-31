@@ -11,6 +11,7 @@ import { useKPIStore } from '../kpi'
 vi.mock('@/i18n', () => ({
   default: {
     global: {
+      locale: { value: 'en' },
       t: (key: string, params?: Record<string, unknown>) => {
         const messages: Record<string, string> = {
           'kpi.efficiency': 'Efficiency',

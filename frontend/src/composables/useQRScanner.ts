@@ -3,7 +3,9 @@
  * decode → entity lookup, scan history, form auto-fill.
  */
 import { ref, computed } from 'vue'
+import i18n from '@/i18n'
 import api from '@/services/api'
+import { formatLocaleTimeIntl } from '@/utils/localeDate'
 
 export type EntityType = 'work_order' | 'product' | 'job' | 'employee' | string
 
@@ -30,7 +32,7 @@ export function useQRScanner() {
 
   const lastScanTime = computed<string | null>(() =>
     lastScannedData.value?.scannedAt
-      ? new Date(lastScannedData.value.scannedAt).toLocaleTimeString()
+      ? formatLocaleTimeIntl(lastScannedData.value.scannedAt, i18n.global.locale.value)
       : null,
   )
 

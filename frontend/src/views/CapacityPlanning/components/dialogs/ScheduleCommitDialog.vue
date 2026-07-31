@@ -132,8 +132,9 @@
 <script setup>
 import { ref, reactive, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { formatLocaleDateIntl } from '@/utils/localeDate'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 const props = defineProps({
   modelValue: {
@@ -161,7 +162,7 @@ const kpiCommitments = reactive([
 
 const formatDate = (date) => {
   if (!date) return ''
-  return new Date(date).toLocaleDateString()
+  return formatLocaleDateIntl(new Date(date), locale.value)
 }
 
 const addKPI = () => {

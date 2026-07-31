@@ -10,7 +10,6 @@ from sqlalchemy.orm import Session
 from backend.crud.production_line import (
     count_active_lines,
     create_production_line,
-    list_production_lines,
     get_production_line,
     get_production_line_tree,
     update_production_line,
@@ -32,11 +31,6 @@ def count_active_production_lines(db: Session, client_id: str) -> int:
 def create_line(db: Session, data: ProductionLineCreate) -> ProductionLine:
     """Create a new production line."""
     return create_production_line(db, data)
-
-
-def list_lines(db: Session, client_id: str, include_inactive: bool = False) -> List[ProductionLine]:
-    """List production lines for a client."""
-    return list_production_lines(db, client_id, include_inactive)
 
 
 def get_line(db: Session, line_id: int) -> Optional[ProductionLine]:

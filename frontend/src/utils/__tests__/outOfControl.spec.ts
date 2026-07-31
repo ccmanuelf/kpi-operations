@@ -72,4 +72,26 @@ describe('computeOutOfControl', () => {
     expect((withGap.ucl as number) - (withGap.lcl as number))
       .toBeLessThan((naiveSpliced.ucl as number) - (naiveSpliced.lcl as number))
   })
+
+  describe('domain clamp (ISSUE 004: percentage metric control limits must stay in [0,100])', () => {
+    it('clamps a UCL that overshoots the domain max, leaves an in-range LCL untouched', () => {
+      // mean=86, sd≈20.263 -> raw ucl≈146.79 (clamps to 100), raw lcl≈25.21 (untouched)
+      const r = computeOutOfControl(pts([95, 96, 94, 97, 95, 20, 96, 95]), null, { domain: [0, 100] })
+      expect(r.ucl).toBe(100)
+      expect(r.lcl).toBeCloseTo(25.209726443768993, 9)
+    })
+
+    it('clamps an LCL that undershoots the domain min, leaves an in-range UCL untouched', () => {
+      // mean=15.375, sd≈22.416 -> raw ucl≈82.62 (untouched), raw lcl≈-51.87 (clamps to 0)
+      const r = computeOutOfControl(pts([5, 4, 6, 5, 4, 90, 5, 4]), null, { domain: [0, 100] })
+      expect(r.ucl).toBeCloseTo(82.62424012158056, 9)
+      expect(r.lcl).toBe(0)
+    })
+
+    it('without a domain option, limits are left unclamped (existing behavior)', () => {
+      const r = computeOutOfControl(pts([95, 96, 94, 97, 95, 20, 96, 95]), null)
+      expect(r.ucl).toBeCloseTo(146.790273556231, 6)
+      expect(r.lcl).toBeCloseTo(25.209726443768993, 9)
+    })
+  })
 })

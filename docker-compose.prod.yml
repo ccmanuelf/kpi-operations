@@ -47,7 +47,20 @@ services:
     # slow hardware, so the arbiter would SIGABRT the worker mid-seed — which
     # auto-releases the GET_LOCK and leaves a truncated seed. 600s covers a cold
     # migrate+seed. --graceful-timeout 30 keeps normal-request drain snappy.
-    command: ["gunicorn", "backend.main:app", "-w", "4", "-k", "uvicorn.workers.UvicornWorker", "-b", "0.0.0.0:8000", "--timeout", "600", "--graceful-timeout", "30"]
+    # --forwarded-allow-ips '*': UvicornWorker reads gunicorn's forwarded_allow_ips
+    # and passes it straight through as uvicorn's own trust list for X-Forwarded-*.
+    # Caddy (this stack's only TLS-terminating ingress) sits on kpi-network, a
+    # private per-stack bridge Docker assigns a subnet for dynamically — there's
+    # no static CIDR to pin here, and it can shift between `compose up` runs
+    # (e.g. the CI compose-stack-smoke job, which stands the stack up in a temp
+    # dir each run). backend publishes NO host port (only caddy binds 80/443),
+    # so the only thing that can ever reach gunicorn:8000 is a container already
+    # inside kpi-network — trusting '*' here is exactly "trust kpi-network
+    # members", not "trust the internet". Without this, redirect_slashes Location
+    # headers keep scope["scheme"]="http" (uvicorn ignores X-Forwarded-Proto from
+    # an untrusted peer) even though the browser is on https — scheme-downgraded
+    # redirect, blocked as mixed content (ISSUE-012).
+    command: ["gunicorn", "backend.main:app", "-w", "4", "-k", "uvicorn.workers.UvicornWorker", "-b", "0.0.0.0:8000", "--timeout", "600", "--graceful-timeout", "30", "--forwarded-allow-ips", "*"]
     environment:
       - DATABASE_URL=mysql+pymysql://kpi_user:${DB_PASSWORD}@db:3306/kpi_platform
       - SECRET_KEY=${SECRET_KEY:?SECRET_KEY must be set in production}
@@ -99,11 +112,12 @@ services:
 
   frontend:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: frontend/Dockerfile
       target: production
       args:
         - VITE_API_URL=${VITE_API_URL:-/api}
+        - VITE_DEMO_MODE=${VITE_DEMO_MODE:-false}
     container_name: kpi-frontend
     # No host ports — Caddy fronts it. BACKEND_URL empty selects the
     # entrypoint's static-only branch (no /api proxy, no wake injection);

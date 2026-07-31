@@ -54,6 +54,11 @@ frontend/playwright-report/
 frontend/playwright-report-sqlite/
 frontend/test-results/
 frontend/e2e-results*.json
+frontend/e2e/
+frontend/playwright.config.ts
+frontend/playwright.sqlite.config.ts
+frontend/playwright.render.config.ts
+frontend/vitest.config.ts
 
 # Build outputs (will be created in container)
 dist/
@@ -97,10 +102,16 @@ config/secrets.json
 .claude-flow/
 .claude/
 
-# Documentation (not needed in container)
-docs/
+# Documentation (not needed in container) — except the Help Center content:
+# frontend/src/help/index.ts globs docs/user-guide/*.md at build time, so
+# those files must reach the frontend image's Docker build context (root;
+# see frontend/Dockerfile). `docs/*` (not `docs/`) + a later re-include is
+# required so the negation below can actually walk back into the directory.
+docs/*
+!docs/user-guide
 *.md
 !README.md
+!docs/user-guide/**
 
 # Reference files not needed in container
 reference_not_to_sync/

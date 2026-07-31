@@ -726,6 +726,36 @@ def test_global_defaults_seeded_once(db_session):
     assert db_session.query(MetricAssumptionDependency).count() >= 1
 
 
+def test_global_kpi_thresholds_seeded_once_and_cover_settings_panel_keys(db_session):
+    """Regression for the Admin Settings "KPI Thresholds" panel showing every
+    field as an empty placeholder: the prod-safe seeder never created any
+    client_id=NULL KPIThreshold row, so get_kpi_thresholds's default
+    (no-client) view always returned an empty `thresholds` dict. Every key
+    the frontend's kpiList renders must be present."""
+    from backend.orm.kpi_threshold import KPIThreshold
+
+    seed.seed_global_defaults(db_session)
+    seed.seed_global_defaults(db_session)  # idempotent — no duplicate rows / no error
+    db_session.commit()
+
+    rows = db_session.query(KPIThreshold).filter_by(client_id=None).all()
+    keys = {row.kpi_key for row in rows}
+    expected_keys = {
+        "efficiency",
+        "quality",
+        "availability",
+        "performance",
+        "oee",
+        "ppm",
+        "absenteeism",
+        "otd",
+        "wip_aging",
+        "throughput",
+    }
+    assert keys == expected_keys
+    assert all(row.target_value is not None for row in rows)
+
+
 def test_delivered_history_batch_drives_credible_and_ooc_otd(db_session):
     from collections import defaultdict
     from backend.orm import WorkOrder, ProductionEntry
@@ -825,3 +855,100 @@ def test_seeded_entries_use_shift_start_time_not_midnight(db_session):
     assert pe.shift_date.time() == time(6, 0), f"production shift_date {pe.shift_date} not at shift start"
     assert ae.shift_date.time() == time(6, 0), f"attendance shift_date {ae.shift_date} not at shift start"
     assert pe.shift_date.time() != time(0, 0)
+
+
+def test_window_ends_on_seed_day_no_future_leak(db_session):
+    """ISSUE-009: the seeded window must roll with --anchor and never leak past
+    it. FIXED_ANCHOR is a Monday (a working day), so at least one
+    ProductionEntry must land exactly on it, and no WorkOrder date field
+    (previously able to overshoot the anchor by several days via the
+    delivered/closure_date offsets) may exceed it."""
+    from backend.orm import ProductionEntry, WorkOrder
+
+    _seed_admin(db_session)
+    spec = seed.CLIENT_SPECS["DEMO-PIECE"]
+    seed.seed_client(db_session, spec, days=10, anchor=FIXED_ANCHOR)
+    db_session.commit()
+
+    cid = "DEMO-PIECE"
+    prod_dates = [pe.production_date.date() for pe in db_session.query(ProductionEntry).filter_by(client_id=cid).all()]
+    assert prod_dates, "expected production entries"
+    assert FIXED_ANCHOR in prod_dates, "window must include the seed day itself"
+    assert max(prod_dates) == FIXED_ANCHOR, "no production entry may be dated past the anchor"
+
+    for wo in db_session.query(WorkOrder).filter_by(client_id=cid).all():
+        for field in ("actual_delivery_date", "shipped_date", "closure_date", "dispatch_date", "received_date"):
+            value = getattr(wo, field, None)
+            if value is not None:
+                assert value.date() <= FIXED_ANCHOR, f"{wo.work_order_id}.{field}={value} is past the anchor"
+
+
+def test_efficiency_and_performance_diverge_credibly(db_session):
+    """ISSUE-010: efficiency and performance must no longer be identical —
+    performance measures against run time only; efficiency against the full
+    scheduled window (run time + downtime + setup + maintenance), so it
+    should read lower, within credible (non-degenerate) bounds."""
+    from backend.orm import ProductionEntry
+
+    _seed_admin(db_session)
+    spec = seed.CLIENT_SPECS["DEMO-PIECE"]
+    seed.seed_client(db_session, spec, days=20, anchor=FIXED_ANCHOR)
+    db_session.commit()
+
+    entries = db_session.query(ProductionEntry).filter_by(client_id="DEMO-PIECE").all()
+    assert entries
+
+    differing = 0
+    perf_gte_eff = 0
+    for pe in entries:
+        eff = float(pe.efficiency_percentage)
+        perf = float(pe.performance_percentage)
+        assert 0 < eff <= 100
+        assert 0 < perf <= 100
+        if eff != perf:
+            differing += 1
+        if perf >= eff:
+            perf_gte_eff += 1
+
+    assert differing == len(entries), "expected every entry to have a diversified efficiency vs performance"
+    assert perf_gte_eff == len(entries), "performance should be >= efficiency (efficiency includes availability losses)"
+
+
+def test_shipped_work_orders_have_consistent_actuals(db_session):
+    """Observation: several SHIPPED work orders had actual_quantity=0/0%
+    progress — SHIPPED must imply fully-produced, consistent actuals. Covers
+    both the primary status WO and the delivered-history batch (which never
+    goes through the per-day production true-up)."""
+    from backend.orm import WorkOrder, WorkOrderStatus
+
+    _seed_admin(db_session)
+    spec = seed.CLIENT_SPECS["DEMO-PIECE"]
+    seed.seed_client(db_session, spec, days=10, anchor=FIXED_ANCHOR)
+    db_session.commit()
+
+    shipped = db_session.query(WorkOrder).filter_by(client_id="DEMO-PIECE", status=WorkOrderStatus.SHIPPED).all()
+    assert len(shipped) >= 16  # 1 primary status WO + 15 delivered-history batch
+    for wo in shipped:
+        assert wo.actual_quantity is not None and wo.actual_quantity > 0, f"{wo.work_order_id} has no actuals"
+        assert wo.actual_quantity == wo.planned_quantity, f"{wo.work_order_id} progress incomplete for SHIPPED"
+        progress = wo.actual_quantity / wo.planned_quantity * 100
+        assert progress == 100.0
+
+
+def test_client_contact_fields_populated(db_session):
+    """Observation: Client Management showed empty contact_name/contact_email/
+    location. Every demo client (and SAMPLE_REF) must carry plausible fixed
+    values."""
+    from backend.orm import Client
+
+    for spec in seed.CLIENT_SPECS.values():
+        seed.seed_client_row(db_session, spec)
+    db_session.commit()
+
+    for client_id in seed.CLIENT_SPECS:
+        client = db_session.get(Client, client_id)
+        assert client.client_contact, f"{client_id} missing client_contact"
+        assert client.client_email, f"{client_id} missing client_email"
+        assert client.client_phone, f"{client_id} missing client_phone"
+        assert client.location, f"{client_id} missing location"
+        assert "@" in client.client_email

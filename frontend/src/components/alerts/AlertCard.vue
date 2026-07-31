@@ -65,8 +65,9 @@
 <script setup>
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { formatLocaleDateIntl } from '@/utils/localeDate'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 const props = defineProps({
   alert: {
@@ -122,7 +123,7 @@ const timeAgo = computed(() => {
   if (diffMins < 60) return `${diffMins}m ago`
   if (diffHours < 24) return `${diffHours}h ago`
   if (diffDays < 7) return `${diffDays}d ago`
-  return created.toLocaleDateString()
+  return formatLocaleDateIntl(created, locale.value)
 })
 
 function formatValue(value) {

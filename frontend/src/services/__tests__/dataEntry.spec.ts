@@ -109,25 +109,25 @@ describe('Data Entry API', () => {
   })
 
   describe('Quality Entries', () => {
-    it('createQualityEntry calls POST /quality', async () => {
+    it('createQualityEntry calls POST /quality/ (trailing slash matches backend router)', async () => {
       const data = { work_order_id: 1, inspected_quantity: 100, defect_quantity: 5 }
       const mockResponse = { data: { quality_id: 1, ...data } }
       api.post.mockResolvedValue(mockResponse)
 
       const result = await dataEntryApi.createQualityEntry(data)
 
-      expect(api.post).toHaveBeenCalledWith('/quality', data)
+      expect(api.post).toHaveBeenCalledWith('/quality/', data)
       expect(result).toEqual(mockResponse)
     })
 
-    it('getQualityEntries calls GET /quality with params', async () => {
+    it('getQualityEntries calls GET /quality/ with params (trailing slash matches backend router)', async () => {
       const params = { work_order_id: 1 }
       const mockResponse = { data: [{ quality_id: 1 }] }
       api.get.mockResolvedValue(mockResponse)
 
       const result = await dataEntryApi.getQualityEntries(params)
 
-      expect(api.get).toHaveBeenCalledWith('/quality', { params })
+      expect(api.get).toHaveBeenCalledWith('/quality/', { params })
       expect(result).toEqual(mockResponse)
     })
 

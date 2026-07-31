@@ -41,6 +41,27 @@ _KPI_THRESHOLDS = [
     ("availability", 90.0, 80.0, 70.0, "%", "Y"),
     ("otd", 95.0, 90.0, 80.0, "%", "Y"),
 ]
+# GLOBAL (client_id=None) defaults — one row per KPI key the Admin Settings
+# thresholds panel renders (frontend/src/views/admin/AdminSettings.vue's
+# `kpiList`). Values mirror the same hardcoded fallback targets the KPI
+# Dashboard cards already use (frontend/src/stores/kpi.ts's `allKPIs`
+# getter), so the two screens agree. Without any global row, the
+# get_kpi_thresholds endpoint returns `thresholds: {}` for the
+# panel's default (no-client) view — every field renders as an empty
+# placeholder even though the dashboard cards show real-looking targets
+# sourced from those independent JS fallbacks.
+_GLOBAL_KPI_THRESHOLDS = [
+    ("efficiency", 85.0, 75.0, 60.0, "%", "Y"),
+    ("quality", 99.0, 95.0, 90.0, "%", "Y"),
+    ("availability", 90.0, 80.0, 70.0, "%", "Y"),
+    ("performance", 95.0, 85.0, 70.0, "%", "Y"),
+    ("oee", 85.0, 75.0, 60.0, "%", "Y"),
+    ("ppm", 500.0, 1000.0, 2000.0, "ppm", "N"),
+    ("absenteeism", 5.0, 8.0, 12.0, "%", "N"),
+    ("otd", 95.0, 90.0, 80.0, "%", "Y"),
+    ("wip_aging", 7.0, 14.0, 21.0, "days", "N"),
+    ("throughput", 24.0, 36.0, 48.0, "hrs", "N"),
+]
 _ALERT_CONFIGS = [
     ("efficiency", 75.0, 60.0),
     ("otd", 90.0, 80.0),
@@ -158,9 +179,11 @@ def seed_config_layer(session: Session, client_id: str) -> None:
 
 def seed_global_defaults(session: Session) -> None:
     """Idempotent GLOBAL (no client_id) seeds: dashboard widget defaults by
-    role, and the canonical metric→assumption calculation dependencies. Call
-    once from main(), before the per-client loop."""
+    role, global KPI threshold defaults, and the canonical
+    metric→assumption calculation dependencies. Call once from main(),
+    before the per-client loop."""
     from backend.orm.user_preferences import DashboardWidgetDefaults
+    from backend.orm.kpi_threshold import KPIThreshold
 
     if session.query(DashboardWidgetDefaults).first() is None:
         for role, widget_key, widget_name, w_order, visible, w_config in _WIDGET_DEFAULTS:
@@ -172,6 +195,22 @@ def seed_global_defaults(session: Session) -> None:
                     widget_order=w_order,
                     is_visible=visible,
                     default_config=w_config,
+                )
+            )
+        session.flush()
+
+    if session.query(KPIThreshold).filter_by(client_id=None).first() is None:
+        for kpi_key, target, warning, critical, unit, higher in _GLOBAL_KPI_THRESHOLDS:
+            session.add(
+                KPIThreshold(
+                    threshold_id=f"KPI-TH-GLOBAL-{kpi_key.upper()}",
+                    client_id=None,
+                    kpi_key=kpi_key,
+                    target_value=target,
+                    warning_threshold=warning,
+                    critical_threshold=critical,
+                    unit=unit,
+                    higher_is_better=higher,
                 )
             )
         session.flush()

@@ -148,7 +148,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import axios from 'axios'
+import api from '@/services/api'
 
 const { t } = useI18n()
 
@@ -258,7 +258,7 @@ const fetchData = async () => {
 
   try {
     // Try to fetch Bradford Factor from API
-    const response = await axios.get('/api/kpi/bradford-factor', {
+    const response = await api.get('/kpi/bradford-factor', {
       params: {
         employee_id: props.employeeId,
         start_date: props.startDate,
@@ -283,7 +283,7 @@ const fetchData = async () => {
 const fetchAttendanceAndCalculate = async () => {
   try {
     // Fallback: fetch attendance records and calculate locally
-    const response = await axios.get('/api/attendance', {
+    const response = await api.get('/attendance', {
       params: {
         employee_id: props.employeeId,
         start_date: props.startDate,

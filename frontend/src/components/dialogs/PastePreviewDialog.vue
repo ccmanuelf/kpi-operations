@@ -170,6 +170,10 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { formatLocaleDateIntl } from '@/utils/localeDate'
+
+const { locale } = useI18n()
 
 const props = defineProps({
   modelValue: {
@@ -283,7 +287,7 @@ const formatCellValue = (value, col) => {
     try {
       const date = new Date(value)
       if (!isNaN(date.getTime())) {
-        return date.toLocaleDateString()
+        return formatLocaleDateIntl(date, locale.value)
       }
     } catch {
       // Return original value if parsing fails

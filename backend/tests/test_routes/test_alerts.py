@@ -6,6 +6,8 @@ Phase 10.3: Intelligent Alerting System
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
+import pytest
+
 
 class TestAlertCalculations:
     """Test suite for alert calculation functions"""
@@ -1132,3 +1134,159 @@ class TestAlertResponseValidation:
 
         for field in nullable_fields:
             assert field in nullable_fields
+
+
+# =============================================================================
+# ISSUE-008: Alerts summary/list single-source-of-truth regression test
+# =============================================================================
+
+
+class TestAlertsSummaryListSingleSourceOfTruth:
+    """
+    Integration regression test for ISSUE-008.
+
+    Root cause (verified by reading backend/routes/alerts/crud.py): both the
+    list and summary endpoints already queried the same ALERT table, but
+    `list_alerts` silently applied a 7-day recency window by default
+    (`days=LOOKBACK_WEEKLY_DAYS`) while `get_alert_summary` applied no date
+    filter at all. VM evidence: summary total_active=9 (by_severity
+    warning=6, critical=3) while the "unfiltered" list returned []  —
+    because those alerts were older than 7 days and the list silently
+    dropped them. Fix: both endpoints now share `_build_alerts_query`, and
+    `days` defaults to None (no date filter) on the list endpoint too, so
+    an unfiltered list and the summary can never disagree.
+    """
+
+    @staticmethod
+    def _seed_breach_alerts(test_client, client_id):
+        """
+        Insert active alerts directly into the ALERT table, spanning several
+        ages (including older than the old 7-day default window) and
+        severities — mirroring the VM evidence shape (6 warning + 3 critical
+        = 9 active).
+        """
+        import uuid as uuid_module
+        from datetime import datetime, timedelta, timezone
+
+        from backend.database import get_db
+        from backend.main import app
+        from backend.orm.alert import Alert
+
+        seeded = [
+            ("warning", timedelta(days=1)),
+            ("warning", timedelta(days=2)),
+            ("warning", timedelta(days=3)),
+            ("warning", timedelta(days=10)),  # older than the old default 7-day window
+            ("warning", timedelta(days=20)),
+            ("warning", timedelta(days=30)),
+            ("critical", timedelta(days=15)),
+            ("critical", timedelta(days=25)),
+            ("critical", timedelta(days=45)),
+        ]
+
+        now = datetime.now(tz=timezone.utc)
+
+        db_override = app.dependency_overrides.get(get_db)
+        db_gen = db_override()
+        db = next(db_gen)
+        try:
+            for severity, age in seeded:
+                db.add(
+                    Alert(
+                        alert_id=f"ALT-ISSUE008-{uuid_module.uuid4().hex[:10].upper()}",
+                        category="hold",
+                        severity=severity,
+                        status="active",
+                        title=f"Test {severity} breach",
+                        message="Seeded for ISSUE-008 regression test",
+                        client_id=client_id,
+                        created_at=now - age,
+                    )
+                )
+            db.commit()
+        finally:
+            try:
+                next(db_gen)
+            except StopIteration:
+                pass
+
+        return seeded
+
+    @pytest.fixture
+    def admin_headers(self, test_client):
+        """
+        Admin auth headers, needed so `client_id`-scoped calls succeed (the
+        default self-registered role is 'operator' with no client
+        assignment, per Run 7 C-2, and would be denied by
+        verify_client_access for a synthetic client_id). Same
+        register-then-elevate-then-login pattern as
+        test_db_routes/test_database_config.py::supervisor_headers, with a
+        unique username since the test DB engine is shared across modules.
+        """
+        import uuid as uuid_module
+
+        from backend.database import get_db
+        from backend.main import app
+        from backend.orm.user import User
+
+        test_password = "TestPass123!"  # pragma: allowlist secret
+
+        username = f"alerts_admin_{uuid_module.uuid4().hex[:8]}"
+        register_resp = test_client.post(
+            "/api/auth/register",
+            json={
+                "username": username,
+                "email": f"{username}@test.com",
+                "password": test_password,
+                "full_name": "Alerts Admin",
+            },
+        )
+        assert register_resp.status_code == 201, f"Registration failed: {register_resp.json()}"
+
+        db_override = app.dependency_overrides.get(get_db)
+        db_gen = db_override()
+        db = next(db_gen)
+        try:
+            user = db.query(User).filter(User.username == username).first()
+            assert user is not None
+            user.role = "admin"
+            db.commit()
+        finally:
+            try:
+                next(db_gen)
+            except StopIteration:
+                pass
+
+        login_resp = test_client.post("/api/auth/login", json={"username": username, "password": test_password})
+        assert login_resp.status_code == 200, f"Login failed: {login_resp.json()}"
+        token = login_resp.json()["access_token"]
+
+        return {"Authorization": f"Bearer {token}"}
+
+    def test_summary_and_unfiltered_list_never_disagree(self, test_client, admin_headers):
+        import uuid as uuid_module
+
+        client_id = f"CLIENT-ISSUE008-{uuid_module.uuid4().hex[:8].upper()}"
+        seeded = self._seed_breach_alerts(test_client, client_id)
+
+        summary_resp = test_client.get(f"/api/alerts/summary?client_id={client_id}", headers=admin_headers)
+        assert summary_resp.status_code == 200
+        summary = summary_resp.json()
+
+        # "Unfiltered" = no explicit `days`/category/severity/kpi_key — the
+        # exact request the AlertDashboard.vue frontend issues on mount.
+        list_resp = test_client.get(f"/api/alerts/?client_id={client_id}", headers=admin_headers)
+        assert list_resp.status_code == 200
+        alerts = list_resp.json()
+
+        assert summary["total_active"] == len(seeded) == 9
+        assert summary["total_active"] == len(alerts)
+
+        list_by_severity: dict = {}
+        for alert in alerts:
+            list_by_severity[alert["severity"]] = list_by_severity.get(alert["severity"], 0) + 1
+
+        assert summary["by_severity"] == list_by_severity
+        assert summary["by_severity"]["warning"] == 6
+        assert summary["by_severity"]["critical"] == 3
+        assert summary["critical_count"] == 3

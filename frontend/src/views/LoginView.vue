@@ -81,6 +81,7 @@
                 {{ $t('auth.forgotPassword') }}
               </v-btn>
               <v-btn
+                v-if="showRegisterButton"
                 variant="text"
                 color="primary"
                 size="small"
@@ -229,8 +230,13 @@ import api from '@/services/api'
 import LanguageToggle from '@/components/LanguageToggle.vue'
 import { pingWake } from '@/services/backendWake'
 import { useColdStartLogin } from '@/composables/useColdStartLogin'
+import { isDemoModeEnabled } from '@/config/demoMode'
 
 const { t } = useI18n()
+
+// Self-registration is a demo-only backend endpoint (403 outside DEMO_MODE) —
+// hide the button entirely where it can't succeed (ISSUE-006).
+const showRegisterButton = isDemoModeEnabled()
 
 const router = useRouter()
 const authStore = useAuthStore()

@@ -58,8 +58,11 @@ export interface ListMetricResultsParams {
   limit?: number
 }
 
+// Paths are relative to the `api` client's baseURL (/api/v1, rewritten to
+// /api server-side) — a literal leading `/api/` here double-prefixes the
+// request (e.g. /api/v1/api/metrics/results), which 404s.
 export const listMetricResults = (params?: ListMetricResultsParams) =>
-  api.get<MetricResultBrief[]>('/api/metrics/results', { params })
+  api.get<MetricResultBrief[]>('/metrics/results', { params })
 
 export const getMetricLineage = (resultId: number) =>
-  api.get<MetricLineage>(`/api/metrics/results/${resultId}`)
+  api.get<MetricLineage>(`/metrics/results/${resultId}`)

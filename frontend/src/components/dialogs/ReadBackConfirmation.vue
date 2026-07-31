@@ -94,7 +94,10 @@
 
 <script setup>
 import { computed } from 'vue'
-import { format } from 'date-fns'
+import { useI18n } from 'vue-i18n'
+import { formatLocaleDate } from '@/utils/localeDate'
+
+const { locale } = useI18n()
 
 const props = defineProps({
   modelValue: {
@@ -205,7 +208,7 @@ const formatPercentage = (value) => {
 const formatDate = (value) => {
   if (!value) return '-'
   try {
-    return format(new Date(value), 'MMM dd, yyyy')
+    return formatLocaleDate(value, 'MMM dd, yyyy', locale.value)
   } catch {
     return value
   }
@@ -214,7 +217,7 @@ const formatDate = (value) => {
 const formatDateTime = (value) => {
   if (!value) return '-'
   try {
-    return format(new Date(value), 'MMM dd, yyyy HH:mm')
+    return formatLocaleDate(value, 'MMM dd, yyyy HH:mm', locale.value)
   } catch {
     return value
   }

@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import axios from 'axios'
+import api from '@/services/api'
 import { useNotificationStore } from '@/stores/notificationStore'
 
 export type DatabaseProvider = 'sqlite' | 'mariadb' | 'mysql' | 'postgresql'
@@ -48,7 +48,7 @@ export const useDatabaseConfigStore = defineStore('databaseConfig', () => {
     error.value = null
 
     try {
-      const response = await axios.get('/api/admin/database/status')
+      const response = await api.get('/admin/database/status')
       currentProvider.value = response.data.current_provider as DatabaseProvider
       connectionInfo.value = response.data.connection_info || {}
     } catch (e) {
@@ -63,7 +63,7 @@ export const useDatabaseConfigStore = defineStore('databaseConfig', () => {
 
   async function fetchProviders(): Promise<void> {
     try {
-      const response = await axios.get('/api/admin/database/providers')
+      const response = await api.get('/admin/database/providers')
       availableProviders.value = response.data.providers
     } catch (e) {
       error.value = extractDetail(e, 'Failed to fetch database providers')

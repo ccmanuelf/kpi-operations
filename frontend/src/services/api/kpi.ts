@@ -151,8 +151,13 @@ export const getEfficiency = async (params?: Params) => {
 
 export const getWIPAging = async (params?: Params) => {
   try {
+    // Both requests must be allowed to fail together into the outer catch
+    // (which reports `average_days: null`, not a fabricated 0) — a lone
+    // `.catch` here previously swallowed a failed primary request into an
+    // empty object, silently rendering as "0.0days" indistinguishable from
+    // a real zero-WIP reading.
     const [agingRes, topRes] = await Promise.all([
-      api.get('/kpi/wip-aging', { params }).catch(() => ({ data: {} })),
+      api.get('/kpi/wip-aging', { params }),
       api.get('/kpi/wip-aging/top', { params }).catch(() => ({ data: [] })),
     ])
 
@@ -168,11 +173,15 @@ export const getWIPAging = async (params?: Params) => {
 
     return {
       data: {
+        // Directly consume the backend's `average_aging_days` field (a
+        // real number since the #145 Decimal-as-string fix). No fallback
+        // to `average_age`/`avg_hold_duration` — no backend response has
+        // ever populated those; the dead fallback chain masked mapping
+        // bugs instead of surfacing them.
         average_days:
-          parseFloat(String(data.average_aging_days ?? '')) ||
-          data.average_age ||
-          data.avg_hold_duration ||
-          0,
+          data.average_aging_days === null || data.average_aging_days === undefined
+            ? null
+            : Number(data.average_aging_days),
         total_held: data.total_held_quantity || 0,
         total_units: data.total_held_quantity || 0,
         aging_0_7: data.aging_0_7_days || 0,
@@ -192,7 +201,7 @@ export const getWIPAging = async (params?: Params) => {
     // eslint-disable-next-line no-console
     console.error('WIP Aging fetch error:', error)
     return {
-      data: { average_days: 0, total_held: 0, total_units: 0, max_days: 0, top_aging: [] },
+      data: { average_days: null, total_held: 0, total_units: 0, max_days: 0, top_aging: [] },
     }
   }
 }

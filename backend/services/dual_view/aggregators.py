@@ -58,7 +58,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Optional
 
-from sqlalchemy import and_, func
+from sqlalchemy import and_, func, or_
 from sqlalchemy.orm import Query, Session
 
 from backend.orm.production_entry import ProductionEntry
@@ -254,9 +254,16 @@ def aggregate_otd_inputs(
     Aggregate OTD raw inputs from completed WorkOrder rows.
 
     A work order is included if its `actual_delivery_date` falls within the
-    period, it has both `actual_delivery_date` and `planned_ship_date`, and
-    it has a `planned_start_date` (so we can compute lead-time as the
-    denominator for delay_pct).
+    period and it has both `actual_delivery_date` and `planned_ship_date`.
+    `planned_start_date` anchors the lead-time denominator for delay_pct;
+    when it isn't tracked (most work orders — it's only populated for the
+    subset bridged to a CapacityOrder), fall back to `received_date`, which
+    every work order carries. Without this fallback, the aggregate silently
+    excluded almost every order — the same on-time/late orders the plain
+    OTD KPI (required_date vs. actual_delivery_date, no planned_start_date
+    dependency) counts just fine — starving this tile down to a
+    perpetual 0% while the OEE/FPY tiles (whose aggregators don't depend on
+    this field) stayed populated.
 
     delay_pct = (actual_delivery - planned_ship) / (planned_ship - planned_start)
     Negative = early. Zero = exactly on time.
@@ -269,7 +276,7 @@ def aggregate_otd_inputs(
             WorkOrder.client_id == client_id,
             WorkOrder.actual_delivery_date.isnot(None),
             WorkOrder.planned_ship_date.isnot(None),
-            WorkOrder.planned_start_date.isnot(None),
+            or_(WorkOrder.planned_start_date.isnot(None), WorkOrder.received_date.isnot(None)),
             WorkOrder.actual_delivery_date >= period_start,
             WorkOrder.actual_delivery_date <= period_end,
         )
@@ -281,7 +288,7 @@ def aggregate_otd_inputs(
     for wo in rows:
         actual = wo.actual_delivery_date
         planned_ship = wo.planned_ship_date
-        planned_start = wo.planned_start_date
+        planned_start = wo.planned_start_date or wo.received_date
         if actual is None or planned_ship is None or planned_start is None:
             continue
 

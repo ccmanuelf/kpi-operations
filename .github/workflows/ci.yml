@@ -181,7 +181,7 @@ jobs:
         run: docker build -t kpi-operations-backend .
 
       - name: Build frontend Docker image
-        run: docker build -t kpi-operations-frontend frontend/
+        run: docker build -t kpi-operations-frontend -f frontend/Dockerfile .
 
       - name: Smoke test backend image
         run: |

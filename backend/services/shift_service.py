@@ -10,7 +10,6 @@ from sqlalchemy.orm import Session
 
 from backend.crud.shift import (
     create_shift,
-    list_shifts,
     get_shift,
     update_shift,
     deactivate_shift,
@@ -22,11 +21,6 @@ from backend.orm.shift import Shift
 def create_shift_record(db: Session, data: Any) -> Any:
     """Create a new shift for a client."""
     return create_shift(db, data)
-
-
-def list_client_shifts(db: Session, client_id: str, include_inactive: bool = False) -> List[Shift]:
-    """List shifts for a client."""
-    return list_shifts(db, client_id, include_inactive)
 
 
 def get_shift_by_id(db: Session, shift_id: int) -> Optional[Shift]:

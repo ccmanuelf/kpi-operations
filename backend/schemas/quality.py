@@ -6,7 +6,6 @@ PHASE 4: Detailed quality tracking
 from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional
 from datetime import date, datetime
-from decimal import Decimal
 
 
 class QualityInspectionCreate(BaseModel):
@@ -106,9 +105,9 @@ class QualityInspectionResponse(BaseModel):
     units_scrapped: Optional[int] = None
     units_reworked: Optional[int] = None
     units_requiring_repair: Optional[int] = None
-    ppm: Optional[Decimal] = None
-    dpmo: Optional[Decimal] = None
-    fpy_percentage: Optional[Decimal] = None
+    ppm: Optional[float] = None
+    dpmo: Optional[float] = None
+    fpy_percentage: Optional[float] = None
     inspection_method: Optional[str] = None
     inspector_id: Optional[str] = None
     notes: Optional[str] = None
@@ -147,8 +146,8 @@ class PPMCalculationResponse(BaseModel):
     end_date: date
     total_units_inspected: int
     total_defects: int
-    ppm: Decimal
-    defect_rate_percentage: Decimal  # PPM / 10,000 = percentage
+    ppm: float
+    defect_rate_percentage: float  # PPM / 10,000 = percentage
     calculation_timestamp: datetime
     # ENHANCEMENT: Inference metadata (ESTIMATED flag) per audit requirement
     inference: Optional[InferenceMetadata] = Field(default=None, description="Inference metadata for estimated values")
@@ -164,8 +163,8 @@ class DPMOCalculationResponse(BaseModel):
     total_units: int
     opportunities_per_unit: int
     total_defects: int
-    dpmo: Decimal
-    sigma_level: Decimal
+    dpmo: float
+    sigma_level: float
     calculation_timestamp: datetime
     # ENHANCEMENT: Inference metadata (ESTIMATED flag) per audit requirement
     inference: Optional[InferenceMetadata] = Field(default=None, description="Inference metadata for estimated values")
@@ -180,9 +179,9 @@ class FPYRTYCalculationResponse(BaseModel):
     total_units: int
     first_pass_good: int
     total_scrapped: int = 0
-    fpy_percentage: Decimal
-    rty_percentage: Decimal
-    final_yield_percentage: Decimal = Decimal("0")
+    fpy_percentage: float
+    rty_percentage: float
+    final_yield_percentage: float = 0.0
     total_process_steps: int
     calculation_timestamp: datetime
     # ENHANCEMENT: Inference metadata (ESTIMATED flag) per audit requirement

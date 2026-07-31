@@ -165,8 +165,8 @@ class WorkOrderResponse(BaseModel):
     required_date: Optional[datetime] = None
     actual_delivery_date: Optional[datetime] = None
 
-    ideal_cycle_time: Optional[Decimal] = None
-    calculated_cycle_time: Optional[Decimal] = None
+    ideal_cycle_time: Optional[float] = None
+    calculated_cycle_time: Optional[float] = None
 
     # Status fields (Phase 10)
     status: str
@@ -179,7 +179,7 @@ class WorkOrderResponse(BaseModel):
     rejection_reason: Optional[str] = None
     rejected_by: Optional[str] = Field(None, max_length=50)
     rejected_date: Optional[datetime] = None
-    total_run_time_hours: Optional[Decimal] = None
+    total_run_time_hours: Optional[float] = None
     total_employees_assigned: Optional[int] = None
     notes: Optional[str] = None
     customer_po_number: Optional[str] = None
@@ -201,4 +201,4 @@ class WorkOrderWithMetrics(WorkOrderResponse):
     is_on_time: Optional[bool] = None
     days_early_late: Optional[int] = None
     completion_percentage: Optional[float] = None
-    efficiency_percentage: Optional[Decimal] = None
+    efficiency_percentage: Optional[float] = None

@@ -67,6 +67,11 @@ class JobResponse(JobBase):
     """Job response with all fields"""
 
     job_id: str
+    # Override JobBase's Decimal typing: response fields must serialize as JSON
+    # numbers, not Decimal-as-string (see #145 mechanism). Create/Update keep
+    # Decimal for input-validation precision.
+    planned_hours: Optional[float] = Field(None, description="Planned hours")  # type: ignore[assignment]
+    actual_hours: Optional[float] = Field(None, description="Actual hours")  # type: ignore[assignment]
     created_at: datetime
     updated_at: Optional[datetime] = None
 

@@ -19,6 +19,7 @@ import { useI18n } from 'vue-i18n'
 import api from '@/services/api'
 import { useAuthStore } from '@/stores/authStore'
 import { useKPIStore } from '@/stores/kpi'
+import { formatLocaleDateIntl } from '@/utils/localeDate'
 
 export interface WorkOrderRow {
   work_order_id?: string
@@ -176,7 +177,7 @@ const buildUpdatePayload = (row: WorkOrderRow) => ({
 export default function useWorkOrderGridData(
   options: UseWorkOrderGridDataOptions,
 ): UseWorkOrderGridDataReturn {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const { workOrders, loadWorkOrders, notify, onConfirmDelete, onOpenDetail } = options
   const authStore = useAuthStore()
   const kpiStore = useKPIStore()
@@ -328,7 +329,7 @@ export default function useWorkOrderGridData(
       editable: true,
       cellEditor: 'agDateStringCellEditor',
       cellRenderer: (params) =>
-        renderDateWithOverdueFlag(params.data.planned_ship_date),
+        renderDateWithOverdueFlag(params.data.planned_ship_date, locale.value),
       width: 150,
     },
     {
@@ -435,6 +436,7 @@ const renderPriorityChip = (priority: string | null | undefined): HTMLElement =>
 
 const renderDateWithOverdueFlag = (
   planned_ship_date: string | undefined | null,
+  locale: string | undefined,
 ): HTMLElement => {
   const span = document.createElement('span')
   if (!planned_ship_date) {
@@ -445,7 +447,7 @@ const renderDateWithOverdueFlag = (
   const date = new Date(planned_ship_date)
   const formatted = Number.isNaN(date.getTime())
     ? planned_ship_date
-    : date.toLocaleDateString()
+    : formatLocaleDateIntl(date, locale)
   span.textContent = formatted
   if (isOverdue(planned_ship_date)) {
     span.style.color = 'var(--cds-support-error)'

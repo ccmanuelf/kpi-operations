@@ -79,6 +79,8 @@ vi.mock('@/composables/useShiftDashboardData', () => ({
     assignedWorkOrders: ref([]),
     recentActivity: ref([]),
     myStats: ref({}),
+    hasAssignments: computed(() => false),
+    hasLoadError: computed(() => false),
     currentDate: ref(new Date()),
     currentDateFormatted: computed(() => 'May 07, 2026'),
     workOrderOptions: ref([]),
@@ -88,6 +90,7 @@ vi.mock('@/composables/useShiftDashboardData', () => ({
     getProgressColor: () => 'grey',
     getActivityColor: () => 'grey',
     getActivityIcon: () => 'mdi-clock',
+    getActivityDescription: (activity: { description: string }) => activity.description,
     fetchMyShiftData: vi.fn(() => Promise.resolve()),
     initialize: vi.fn(() => Promise.resolve()),
     cleanup: vi.fn(),
@@ -138,6 +141,7 @@ vi.mock('@/help', () => ({
   getAllDocs: () => [],
   getDocById: () => null,
   getDefaultDocId: () => 'getting-started',
+  computeContentUnavailable: (docs: unknown[]) => docs.length === 0,
 }))
 
 // ---------- child components stubbed ----------

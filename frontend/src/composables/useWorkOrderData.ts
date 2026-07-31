@@ -4,7 +4,8 @@
  */
 import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { format, parseISO, isAfter, startOfDay } from 'date-fns'
+import { parseISO, isAfter, startOfDay } from 'date-fns'
+import { formatLocaleDate } from '@/utils/localeDate'
 import api from '@/services/api'
 import { getClients } from '@/services/api/reference'
 import { useNotificationStore } from '@/stores/notificationStore'
@@ -59,7 +60,7 @@ const debounce = <TArgs extends unknown[]>(
 }
 
 export function useWorkOrderData() {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const notificationStore = useNotificationStore()
   const kpiStore = useKPIStore()
   const authStore = useAuthStore()
@@ -249,7 +250,7 @@ export function useWorkOrderData() {
   const formatDate = (dateStr: string | null | undefined): string => {
     if (!dateStr) return ''
     try {
-      return format(parseISO(dateStr), 'MMM dd, yyyy')
+      return formatLocaleDate(parseISO(dateStr), 'MMM dd, yyyy', locale.value)
     } catch {
       return dateStr
     }
