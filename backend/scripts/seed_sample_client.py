@@ -108,10 +108,32 @@ def resolve_entered_by(session: Session, client_id: str) -> str:
 
 
 def seed_client_row(session: Session, spec: ClientSpec) -> None:
-    """Idempotent CLIENT insert."""
-    if session.get(Client, spec.client_id) is not None:
-        return
+    """Idempotent CLIENT insert — with metadata backfill for existing rows.
+
+    If the client already exists (a prior seed run, or `--reset`, which only
+    clears client-scoped CHILD tables and never touches CLIENT itself), this
+    backfills ONLY the metadata fields that are currently NULL/empty
+    (client_contact, client_email, client_phone, location) from
+    CLIENT_CONTACTS, and ONLY for allowlisted clients. It never overwrites a
+    non-null value (an admin may have set it via the UI/CSV upload), never
+    touches any other CLIENT column, and never touches a non-allowlisted
+    client. All other tables stay strictly INSERT-only — this is the one
+    deliberate, narrowly-scoped exception, needed because CLIENT rows
+    predate this metadata and are never deleted/recreated by `--reset`.
+    """
     contact_name, contact_email, contact_phone, location = CLIENT_CONTACTS.get(spec.client_id, (None, None, None, None))
+    existing = session.get(Client, spec.client_id)
+    if existing is not None:
+        if spec.client_id in ALLOWLIST:
+            if not existing.client_contact:
+                existing.client_contact = contact_name
+            if not existing.client_email:
+                existing.client_email = contact_email
+            if not existing.client_phone:
+                existing.client_phone = contact_phone
+            if not existing.location:
+                existing.location = location
+        return
     session.add(
         Client(
             client_id=spec.client_id,
