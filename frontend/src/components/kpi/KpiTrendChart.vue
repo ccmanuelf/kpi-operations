@@ -288,6 +288,14 @@ const yAxisRange = computed<{ min: number | undefined; max: number | undefined }
   min -= pad
   max += pad
 
+  // No KPI rendered by this chart can legitimately be negative — floor the
+  // padded min at 0 for every metric. Percentage metrics already got this
+  // via PERCENT_DOMAIN[0] below; non-percentage-but-still-non-negative
+  // metrics (e.g. PPM) previously had no floor at all, so heavy
+  // proportional padding on a small series could push the axis well below
+  // zero (live-VM evidence: a PPM chart padded to a min of -687).
+  min = Math.max(min, 0)
+
   if (props.unit === '%') {
     min = Math.max(min, PERCENT_DOMAIN[0])
     max = Math.min(max, PERCENT_DOMAIN[1])

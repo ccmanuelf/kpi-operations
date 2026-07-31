@@ -118,7 +118,13 @@ describe('KPI API', () => {
     it('maps average_aging_days directly, including double-digit real readings', async () => {
       api.get.mockImplementation((url) => {
         if (url === '/kpi/wip-aging') {
-          return Promise.resolve({ data: { average_aging_days: 74.7, aging_over_30_days: 3 } })
+          // total_held_quantity included: a real backend response always
+          // carries it, and it's the signal that gates the null-vs-real-zero
+          // distinction below — omitting it would make this mock
+          // indistinguishable from the "no data" case.
+          return Promise.resolve({
+            data: { average_aging_days: 74.7, total_held_quantity: 3, aging_over_30_days: 3 },
+          })
         }
         return Promise.resolve({ data: [] })
       })
@@ -135,6 +141,46 @@ describe('KPI API', () => {
 
       expect(result.data.average_days).toBeNull()
       expect(result.data.total_held).toBe(0)
+    })
+
+    // e2e-sweep live-VM residual: the request SUCCEEDS but the filtered
+    // window has zero active holds — the backend can't divide by zero, so
+    // it returns `average_aging_days: 0`, not null. Left unmapped, that 0
+    // rendered as a fabricated "0.0days" on the KPI Dashboard card, right
+    // next to the (correctly gray) N/A status badge.
+    it('reports average_days: null (not a fabricated 0) when total_held_quantity is 0', async () => {
+      api.get.mockImplementation((url) => {
+        if (url === '/kpi/wip-aging') {
+          return Promise.resolve({
+            data: { average_aging_days: 0, total_held_quantity: 0 },
+          })
+        }
+        return Promise.resolve({ data: [] })
+      })
+
+      const result = await kpiApi.getWIPAging({})
+
+      expect(result.data.average_days).toBeNull()
+      expect(result.data.total_held).toBe(0)
+    })
+
+    // A genuine zero-days average IS possible when holds exist but were all
+    // opened the same day as the calculation — must NOT be treated as
+    // "no data" just because the average happens to be 0.
+    it('keeps a real average_days: 0 when total_held_quantity is nonzero', async () => {
+      api.get.mockImplementation((url) => {
+        if (url === '/kpi/wip-aging') {
+          return Promise.resolve({
+            data: { average_aging_days: 0, total_held_quantity: 4 },
+          })
+        }
+        return Promise.resolve({ data: [] })
+      })
+
+      const result = await kpiApi.getWIPAging({})
+
+      expect(result.data.average_days).toBe(0)
+      expect(result.data.total_held).toBe(4)
     })
   })
 

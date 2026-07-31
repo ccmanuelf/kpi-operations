@@ -59,6 +59,136 @@ def test_seed_client_row_idempotent(db_session):
     assert rows[0].client_name == spec.client_name
 
 
+def test_seed_client_row_backfills_null_metadata_on_existing_client(db_session):
+    """Live-VM residual: `--reset` only clears client-scoped CHILD tables and
+    never touches CLIENT itself, so a demo client seeded before contact
+    fields existed keeps NULL client_contact/client_email/client_phone/
+    location forever unless seed_client_row backfills on re-run. Simulate
+    that pre-existing row (bypassing seed_client_row's own insert path) and
+    assert a subsequent seed_client_row call fills every NULL field from
+    CLIENT_CONTACTS."""
+    spec = seed.CLIENT_SPECS["DEMO-PIECE"]
+    db_session.add(
+        Client(
+            client_id=spec.client_id,
+            client_name=spec.client_name,
+            client_type=spec.client_type,
+            client_contact=None,
+            client_email=None,
+            client_phone=None,
+            location=None,
+            is_active=1,
+        )
+    )
+    db_session.commit()
+
+    seed.seed_client_row(db_session, spec)
+    db_session.commit()
+
+    row = db_session.get(Client, spec.client_id)
+    expected_contact, expected_email, expected_phone, expected_location = seed.CLIENT_CONTACTS[spec.client_id]
+    assert row.client_contact == expected_contact
+    assert row.client_email == expected_email
+    assert row.client_phone == expected_phone
+    assert row.location == expected_location
+
+
+def test_seed_client_row_never_overwrites_preset_metadata(db_session):
+    """An admin-edited (non-null) contact/location value must survive a
+    re-seed untouched — the backfill only fills gaps, it never clobbers."""
+    spec = seed.CLIENT_SPECS["DEMO-PIECE"]
+    db_session.add(
+        Client(
+            client_id=spec.client_id,
+            client_name=spec.client_name,
+            client_type=spec.client_type,
+            client_contact="Admin-Edited Contact",
+            client_email="admin-edited@real-client.example",
+            client_phone="+1-555-9999",
+            location="Admin-Edited Location",
+            is_active=1,
+        )
+    )
+    db_session.commit()
+
+    seed.seed_client_row(db_session, spec)
+    db_session.commit()
+
+    row = db_session.get(Client, spec.client_id)
+    assert row.client_contact == "Admin-Edited Contact"
+    assert row.client_email == "admin-edited@real-client.example"
+    assert row.client_phone == "+1-555-9999"
+    assert row.location == "Admin-Edited Location"
+
+
+def test_seed_client_row_backfill_is_idempotent(db_session):
+    """Determinism: backfilling a NULL-metadata client twice lands on the
+    exact same final state as backfilling it once (the second call is a
+    true no-op once every field is filled)."""
+    spec = seed.CLIENT_SPECS["DEMO-PIECE"]
+    db_session.add(
+        Client(
+            client_id=spec.client_id,
+            client_name=spec.client_name,
+            client_type=spec.client_type,
+            client_contact=None,
+            client_email=None,
+            client_phone=None,
+            location=None,
+            is_active=1,
+        )
+    )
+    db_session.commit()
+
+    seed.seed_client_row(db_session, spec)
+    db_session.commit()
+    row = db_session.get(Client, spec.client_id)
+    after_first = (row.client_contact, row.client_email, row.client_phone, row.location)
+
+    seed.seed_client_row(db_session, spec)  # run again
+    db_session.commit()
+    row = db_session.get(Client, spec.client_id)
+    after_second = (row.client_contact, row.client_email, row.client_phone, row.location)
+
+    assert after_first == after_second
+    assert all(after_second)  # every field landed non-empty, not just unchanged
+
+
+def test_seed_client_row_backfill_never_touches_non_allowlisted_client(db_session):
+    """A non-allowlisted CLIENT row must never be touched, even if its
+    client_id happens to collide with logic that only checks CLIENT_CONTACTS
+    (which is keyed identically to ALLOWLIST) — the ALLOWLIST membership
+    check is the actual gate."""
+    from backend.orm.client import ClientType as CT
+
+    db_session.add(
+        Client(
+            client_id="REAL-PROD-CLIENT",
+            client_name="Real Production Client",
+            client_type=CT.PIECE_RATE,
+            client_contact=None,
+            client_email=None,
+            client_phone=None,
+            location=None,
+            is_active=1,
+        )
+    )
+    db_session.commit()
+
+    # A spec that isn't on the allowlist — seed_client_row must not backfill it.
+    from backend.scripts._seed_common import ClientSpec
+
+    rogue_spec = ClientSpec("REAL-PROD-CLIENT", "Real Production Client", CT.PIECE_RATE, 8, 8)
+    seed.seed_client_row(db_session, rogue_spec)
+    db_session.commit()
+
+    row = db_session.get(Client, "REAL-PROD-CLIENT")
+    assert row.client_contact is None
+    assert row.client_email is None
+    assert row.client_phone is None
+    assert row.location is None
+
+
 def test_reset_table_order_children_before_parents():
     # (parent_class_name, child_class_name) FK edges within RESET_TABLE_ORDER;
     # each child must be deleted BEFORE its parent (children-first) or MariaDB --reset FK-violates.
