@@ -4364,6 +4364,11 @@
   },
   "myShift": {
     "noWorkOrders": "No hay órdenes de trabajo asignadas a tu turno",
-    "noWorkOrdersGuidance": "Las órdenes de trabajo aparecerán aquí cuando se te asigne a una línea de producción. Contacta a tu supervisor si crees que esto es un error."
+    "noWorkOrdersGuidance": "Las órdenes de trabajo aparecerán aquí cuando se te asigne a una línea de producción. Contacta a tu supervisor si crees que esto es un error.",
+    "activity": {
+      "productionLogged": "Se registraron {units} unidades para {workOrderId}",
+      "downtimeLogged": "{reason}: {minutes} min de inactividad",
+      "qualityChecked": "Inspección de calidad: {inspected} inspeccionadas, {defects} defectos"
+    }
   }
 }

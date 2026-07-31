@@ -4364,6 +4364,11 @@
   },
   "myShift": {
     "noWorkOrders": "No work orders assigned to your shift",
-    "noWorkOrdersGuidance": "Work orders will appear here once you're assigned to a production line. Contact your supervisor if you think this is a mistake."
+    "noWorkOrdersGuidance": "Work orders will appear here once you're assigned to a production line. Contact your supervisor if you think this is a mistake.",
+    "activity": {
+      "productionLogged": "Logged {units} units for {workOrderId}",
+      "downtimeLogged": "{reason}: {minutes} min downtime",
+      "qualityChecked": "Quality check: {inspected} inspected, {defects} defects"
+    }
   }
 }

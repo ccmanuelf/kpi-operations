@@ -144,7 +144,7 @@
                   </template>
 
                   <v-list-item-title class="text-body-2">
-                    {{ activity.description }}
+                    {{ getActivityDescription(activity) }}
                   </v-list-item-title>
                   <v-list-item-subtitle class="text-caption">
                     {{ formatRelativeTime(activity.timestamp) }}
@@ -323,6 +323,7 @@ const {
   getProgressColor,
   getActivityColor,
   getActivityIcon,
+  getActivityDescription,
   fetchMyShiftData,
   initialize,
   cleanup

@@ -22,6 +22,11 @@ export type ActivityType = 'production' | 'downtime' | 'quality' | 'hold' | stri
 export interface ActivityEntry {
   id: string
   type: ActivityType
+  // Stable machine key (e.g. "production_logged") + structured values for
+  // client-side localization; description is the English fallback for
+  // older payloads or an unrecognized activity_type.
+  activity_type?: string
+  params?: Record<string, unknown>
   description: string
   timestamp: string
 }
@@ -127,6 +132,34 @@ export function useShiftDashboardData() {
     return icons[type] || 'mdi-information'
   }
 
+  // Renders a localized sentence from the backend's structured
+  // activity_type/params (en+es keys under myShift.activity.*) instead of
+  // the server's English `description` fallback. Unrecognized/legacy
+  // payloads (no activity_type, or one this build doesn't know) fall back
+  // to the raw description so nothing goes blank.
+  const getActivityDescription = (activity: ActivityEntry): string => {
+    const params = activity.params || {}
+    switch (activity.activity_type) {
+      case 'production_logged':
+        return t('myShift.activity.productionLogged', {
+          units: params.units ?? 0,
+          workOrderId: params.work_order_id ?? '—',
+        })
+      case 'downtime_logged':
+        return t('myShift.activity.downtimeLogged', {
+          reason: params.reason ?? '',
+          minutes: params.minutes ?? 0,
+        })
+      case 'quality_checked':
+        return t('myShift.activity.qualityChecked', {
+          inspected: params.inspected ?? 0,
+          defects: params.defects ?? 0,
+        })
+      default:
+        return activity.description
+    }
+  }
+
   // Whether the shift screen has any real assignment to show. Drives the
   // honest empty state — the screen must never invent records when this
   // is false (e.g. a user with no line/shift mapping for today).
@@ -214,6 +247,7 @@ export function useShiftDashboardData() {
     getProgressColor,
     getActivityColor,
     getActivityIcon,
+    getActivityDescription,
     fetchMyShiftData,
     initialize,
     cleanup,

@@ -75,6 +75,7 @@ vi.mock('@/composables/useShiftDashboardData', () => ({
     getProgressColor: () => 'primary',
     getActivityColor: () => 'primary',
     getActivityIcon: () => 'mdi-package-variant',
+    getActivityDescription: (activity: { description: string }) => activity.description,
     fetchMyShiftData: vi.fn(() => Promise.resolve()),
     initialize: vi.fn(() => Promise.resolve()),
     cleanup: vi.fn(),

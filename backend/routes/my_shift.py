@@ -60,6 +60,12 @@ class ActivityEntry(BaseModel):
 
     id: str
     type: str  # production, downtime, quality
+    # Stable machine key for client-side i18n (e.g. "production_logged") plus
+    # the structured values needed to render a localized sentence. `description`
+    # is kept as an English fallback for any consumer that hasn't adopted
+    # activity_type/params yet (backward compat).
+    activity_type: str
+    params: Dict[str, Any]
     description: str
     timestamp: datetime
 
@@ -215,6 +221,8 @@ def get_my_shift_summary(
             ActivityEntry(
                 id=f"prod-{p.production_entry_id}",
                 type="production",
+                activity_type="production_logged",
+                params={"units": p.units_produced or 0, "work_order_id": p.work_order_id or "—"},
                 description=f"Logged {p.units_produced} units for {p.work_order_id or '—'}",
                 timestamp=p.created_at or p.shift_date,
             )
@@ -225,6 +233,8 @@ def get_my_shift_summary(
             ActivityEntry(
                 id=f"down-{d.downtime_entry_id}",
                 type="downtime",
+                activity_type="downtime_logged",
+                params={"reason": d.downtime_reason, "minutes": d.downtime_duration_minutes or 0},
                 description=f"{d.downtime_reason}: {d.downtime_duration_minutes} min downtime",
                 timestamp=d.created_at or d.shift_date,
             )
@@ -235,6 +245,8 @@ def get_my_shift_summary(
             ActivityEntry(
                 id=f"qual-{q.quality_entry_id}",
                 type="quality",
+                activity_type="quality_checked",
+                params={"inspected": q.units_inspected or 0, "defects": q.units_defective or 0},
                 description=f"Quality check: {q.units_inspected} inspected, {q.units_defective} defects",
                 timestamp=q.created_at or q.shift_date,
             )

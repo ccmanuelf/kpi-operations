@@ -21,7 +21,11 @@ const { mockApi, mockShowError } = vi.hoisted(() => ({
 vi.mock('@/services/api', () => ({ default: mockApi }))
 
 vi.mock('vue-i18n', () => ({
-  useI18n: () => ({ t: (key: string) => key, locale: { value: 'en' } }),
+  useI18n: () => ({
+    t: (key: string, params?: Record<string, unknown>) =>
+      params ? `${key}:${JSON.stringify(params)}` : key,
+    locale: { value: 'en' },
+  }),
 }))
 
 vi.mock('@/stores/notificationStore', () => ({
@@ -236,6 +240,64 @@ describe('useShiftDashboardData', () => {
       expect(mockApi.getMyShiftSummary).toHaveBeenCalledWith(
         expect.objectContaining({ shift_date: expect.any(String) }),
       )
+    })
+  })
+
+  describe('getActivityDescription (F4: localized activity text, not server-side English)', () => {
+    it('renders production_logged via i18n with units/work_order_id params', () => {
+      const { getActivityDescription } = useShiftDashboardData()
+      const text = getActivityDescription({
+        id: 'prod-501',
+        type: 'production',
+        activity_type: 'production_logged',
+        params: { units: 80, work_order_id: 'WO-DEMO-042' },
+        description: 'Logged 80 units for WO-DEMO-042',
+        timestamp: '2026-07-30T08:00:00Z',
+      })
+      expect(text).toBe(
+        'myShift.activity.productionLogged:{"units":80,"workOrderId":"WO-DEMO-042"}',
+      )
+    })
+
+    it('renders downtime_logged via i18n with reason/minutes params', () => {
+      const { getActivityDescription } = useShiftDashboardData()
+      const text = getActivityDescription({
+        id: 'down-1',
+        type: 'downtime',
+        activity_type: 'downtime_logged',
+        params: { reason: 'Machine breakdown', minutes: 20 },
+        description: 'Machine breakdown: 20 min downtime',
+        timestamp: '2026-07-30T08:00:00Z',
+      })
+      expect(text).toBe(
+        'myShift.activity.downtimeLogged:{"reason":"Machine breakdown","minutes":20}',
+      )
+    })
+
+    it('renders quality_checked via i18n with inspected/defects params', () => {
+      const { getActivityDescription } = useShiftDashboardData()
+      const text = getActivityDescription({
+        id: 'qual-1',
+        type: 'quality',
+        activity_type: 'quality_checked',
+        params: { inspected: 10, defects: 2 },
+        description: 'Quality check: 10 inspected, 2 defects',
+        timestamp: '2026-07-30T08:00:00Z',
+      })
+      expect(text).toBe(
+        'myShift.activity.qualityChecked:{"inspected":10,"defects":2}',
+      )
+    })
+
+    it('falls back to the raw description for an unrecognized/missing activity_type', () => {
+      const { getActivityDescription } = useShiftDashboardData()
+      const text = getActivityDescription({
+        id: 'legacy-1',
+        type: 'production',
+        description: 'Legacy English description',
+        timestamp: '2026-07-30T08:00:00Z',
+      })
+      expect(text).toBe('Legacy English description')
     })
   })
 })
