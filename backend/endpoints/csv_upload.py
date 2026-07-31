@@ -108,7 +108,8 @@ async def upload_downtime_csv(
     Optional columns:
     - machine_id (str, max 100)
     - equipment_code (str, max 50)
-    - root_cause_category (str, max 100)
+    - root_cause_category (str) - One of: machine, materials, scheduling, attendance, other, uncategorized
+      (auto-defaulted from downtime_reason when omitted)
     - corrective_action (text)
     - notes (text)
     """

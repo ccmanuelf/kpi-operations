@@ -3,12 +3,16 @@ Downtime tracking models (Pydantic)
 PHASE 2: Machine availability tracking
 """
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 from typing import Optional
 from datetime import date, datetime
 from decimal import Decimal
 
-from backend.orm.downtime_taxonomy import DowntimeCategoryEnum, DowntimeReasonEnum  # noqa: F401  (re-exported)
+from backend.orm.downtime_taxonomy import (  # noqa: F401  (enums re-exported)
+    DEFAULT_CATEGORY_BY_REASON,
+    DowntimeCategoryEnum,
+    DowntimeReasonEnum,
+)
 
 
 class DowntimeEventCreate(BaseModel):
@@ -39,13 +43,19 @@ class DowntimeEventCreate(BaseModel):
     )
 
     # Root cause analysis
-    root_cause_category: Optional[str] = Field(
-        None, max_length=100, description="Classification of the root cause for analysis"
+    root_cause_category: Optional[DowntimeCategoryEnum] = Field(
+        None, description="Management attribution category; auto-defaulted from downtime_reason when omitted"
     )
     corrective_action: Optional[str] = Field(None, description="Description of corrective or preventive action taken")
 
     # Metadata
     notes: Optional[str] = Field(None, description="Additional context or observations about the downtime event")
+
+    @model_validator(mode="after")
+    def _autodefault_root_cause_category(self) -> "DowntimeEventCreate":
+        if self.root_cause_category is None and self.downtime_reason is not None:
+            self.root_cause_category = DowntimeCategoryEnum(DEFAULT_CATEGORY_BY_REASON[self.downtime_reason.value])
+        return self
 
     @classmethod
     def from_legacy_csv(cls, data: dict) -> "DowntimeEventCreate":
@@ -83,7 +93,7 @@ class DowntimeEventCreate(BaseModel):
             downtime_duration_minutes=duration_minutes,
             machine_id=data.get("machine_id"),
             equipment_code=data.get("equipment_code"),
-            root_cause_category=data.get("root_cause_category"),
+            root_cause_category=data.get("root_cause_category") or None,
             corrective_action=data.get("corrective_action"),
             notes=data.get("notes"),
         )
@@ -102,6 +112,9 @@ class DowntimeEventUpdate(BaseModel):
     downtime_reason: Optional[str] = Field(None, max_length=255, description="Updated detailed reason for the downtime")
     duration_hours: Optional[Decimal] = Field(None, gt=0, le=24, description="Updated downtime duration in hours")
     machine_id: Optional[str] = Field(None, max_length=50, description="Updated machine or equipment identifier")
+    root_cause_category: Optional[DowntimeCategoryEnum] = Field(
+        None, description="Updated management attribution category; None means no change (not auto-defaulted)"
+    )
     notes: Optional[str] = Field(None, description="Updated notes about the downtime event")
 
 
