@@ -91,7 +91,7 @@ These nine per-entity exports are the concrete expression of the data-first posi
 | Email config in-memory only | **Defer** — same spec | Deferred |
 | Scheduler daily-only, ignores frequency/recipients | **Defer** — same spec | Deferred |
 | Pivot/summarization layer | **Active lane — Cycle 4** (§5); the remaining-samples blocker was dissolved by the 2026-07-30 management decision | Sequenced (§5) |
-| Downtime cause taxonomy | **Active lane — Cycle 1** (§5) — small, high leverage for Q2 | Sequenced (§5) |
+| Downtime cause taxonomy | **Active lane — Cycle 1** (§5) — small, high leverage for Q2 | **DONE — Cycle 1 PR**: two-level (category, reason) taxonomy, auto-default, backfill migration, availability planned/unplanned fixed |
 | Labor-hours accounting (OT tiers, direct/indirect, billed vs available) | **Active lane — Cycle 3** (§5) — prerequisite for full Q1 | Sequenced (§5) |
 | Workbook replication | **Rejected permanently** — concepts, not layouts | Rejected (permanent, see §1) |
 
@@ -123,8 +123,8 @@ Attribution across **machine / materials / scheduling / attendance / other**.
 | Concept | Readiness | Notes |
 |---|---|---|
 | Downtime capture | **have** | `DowntimeEntry.downtime_reason` (required, indexed), `ProductionEntry.downtime_hours` |
-| Cause taxonomy | **partial** | `root_cause_category` exists but free-form; no controlled vocabulary matching the five management categories |
-| NPT categorization | **partial** | same field; industry NPT buckets would ride on the same taxonomy |
+| Cause taxonomy | **have** | controlled 5-category vocabulary over `root_cause_category` + 8-reason enum, auto-default mapping (Cycle 1) |
+| NPT categorization | **have** | reason enum is the NPT level; (category, reason) pair queryable (Cycle 1) |
 
 ### Q3 — Are we producing to the expected quality bar?
 
@@ -169,7 +169,7 @@ Sequenced per the approved roadmap spec (`docs/superpowers/specs/2026-07-31-repo
 
 ### Active lane (in order)
 
-1. **Cycle 1 — Downtime cause taxonomy** (Q2; smallest, highest leverage): controlled vocabulary — **machine / materials / scheduling / attendance / other**, with NPT sub-buckets — over the existing free-form `root_cause_category` on `DowntimeEntry`; entry UI becomes a select; migration maps confidently-matchable free-form values, everything else defaults to `uncategorized`.
+1. **Cycle 1 — Downtime cause taxonomy** (Q2; smallest, highest leverage): controlled vocabulary — **machine / materials / scheduling / attendance / other**, with NPT sub-buckets — over the existing free-form `root_cause_category` on `DowntimeEntry`; entry UI becomes a select; migration maps confidently-matchable free-form values, everything else defaults to `uncategorized`. **[DONE — this PR]**
 2. **Cycle 2 — Justified-delay flag** (Q3): justified/unjustified classification plus reason on late work orders; delivery performance becomes reportable both gross and net-of-justified (the concept behind PGI's exclusion, never its layout).
 3. **Cycle 3 — Labor-hours accounting** (Q1; the big capture): OT tiers (Normal/Double/Triple — Mexican labor law, structural), direct/indirect classification on `Employee`, billed vs available-for-efficiency hours. Expected 2 PRs — capture model + entry UI, then derived Q1 metrics; the split is decided in that cycle's spec.
 4. **Cycle 4 — Pivot/summarization layer** (largest; built once, over the enriched data): pre-defined time buckets (week/month/quarter/year), pre-defined groupings/categorizations, cross-metric comparison on the common hours basis (units ↔ SAM-earned hours ↔ operators ↔ attendance hours), every summary downloadable as its underlying data. Expected 2–3 PRs; split decided in that cycle's spec.
