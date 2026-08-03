@@ -6,7 +6,7 @@ Availability = (Total Scheduled Time - Downtime) / Total Scheduled Time * 100
 """
 
 from sqlalchemy.orm import Session
-from sqlalchemy import func, and_, cast, Date
+from sqlalchemy import func, and_
 from datetime import date
 from decimal import Decimal
 from typing import Optional
@@ -35,7 +35,7 @@ def calculate_availability(
 
     # Build query for downtime entries
     query = db.query(func.coalesce(func.sum(DowntimeEntry.downtime_duration_minutes), 0)).filter(
-        and_(DowntimeEntry.work_order_id == work_order_id, cast(DowntimeEntry.shift_date, Date) == target_date)
+        and_(DowntimeEntry.work_order_id == work_order_id, func.date(DowntimeEntry.shift_date) == target_date)
     )
 
     if client_id:
@@ -48,7 +48,7 @@ def calculate_availability(
 
     # Count downtime events
     count_query = db.query(func.count(DowntimeEntry.downtime_entry_id)).filter(
-        and_(DowntimeEntry.work_order_id == work_order_id, cast(DowntimeEntry.shift_date, Date) == target_date)
+        and_(DowntimeEntry.work_order_id == work_order_id, func.date(DowntimeEntry.shift_date) == target_date)
     )
 
     if client_id:

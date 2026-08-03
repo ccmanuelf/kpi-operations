@@ -12,9 +12,13 @@ Covers:
 """
 
 import pytest
+from datetime import date, datetime
 from decimal import Decimal
 
 from backend.calculations.dpmo import calculate_sigma_level
+from backend.calculations import ppm as ppm_calc
+from backend.calculations import dpmo as dpmo_calc
+from backend.tests.fixtures.factories import TestDataFactory
 
 
 class TestPPMCalculation:
@@ -376,3 +380,90 @@ class TestRealWorldQualityScenarios:
         sigma1 = calculate_sigma_level(month1_dpmo)
         sigma3 = calculate_sigma_level(month3_dpmo)
         assert float(sigma3) > float(sigma1)
+
+
+class TestPPMShiftDateCastBug:
+    """
+    Real DB-backed coverage for calculate_ppm()'s date-range filter in
+    backend/calculations/ppm.py.
+
+    Before the fix, the filter used cast(QualityEntry.shift_date, Date),
+    which mangles on SQLite: SQLite's numeric column affinity truncates
+    CAST('2026-07-01 06:00:00' AS DATE) to just 2026, so a start_date/
+    end_date of 2026-07-01 never matched, silently returning zero rows.
+    func.date(shift_date) is the portable fix used elsewhere in the codebase.
+    """
+
+    @pytest.mark.integration
+    def test_calculate_ppm_matches_entry_on_exact_shift_date(self, db_session):
+        """calculate_ppm must find the seeded quality entry on the exact
+        shift date, not silently return zero."""
+        TestDataFactory.create_client(db_session, client_id="PPM-CAST-CL")
+        user = TestDataFactory.create_user(db_session, role="admin", client_id="PPM-CAST-CL")
+        work_order = TestDataFactory.create_work_order(db_session, client_id="PPM-CAST-CL")
+        db_session.flush()
+
+        entry = TestDataFactory.create_quality_entry(
+            db_session,
+            work_order_id=work_order.work_order_id,
+            client_id="PPM-CAST-CL",
+            inspector_id=user.user_id,
+            inspection_date=date(2026, 7, 1),
+            units_inspected=1000,
+            units_defective=5,
+        )
+        entry.shift_date = datetime(2026, 7, 1, 6, 0)
+        db_session.commit()
+
+        ppm, total_inspected, total_defects = ppm_calc.calculate_ppm(
+            db_session, work_order.work_order_id, date(2026, 7, 1), date(2026, 7, 1)
+        )
+
+        # Derivation: single seeded entry -> 5 defects / 1000 inspected * 1,000,000 = 5000 PPM.
+        assert ppm == Decimal("5000")
+        assert total_inspected == 1000
+        assert total_defects == 5
+
+
+class TestDPMOShiftDateCastBug:
+    """
+    Real DB-backed coverage for calculate_dpmo()'s date-range filter in
+    backend/calculations/dpmo.py -- the same cast(shift_date, Date) SQLite
+    bug as TestPPMShiftDateCastBug above.
+    """
+
+    @pytest.mark.integration
+    def test_calculate_dpmo_matches_entry_on_exact_shift_date(self, db_session):
+        """calculate_dpmo must find the seeded quality entry on the exact
+        shift date, not silently return zero."""
+        TestDataFactory.create_client(db_session, client_id="DPMO-CAST-CL")
+        user = TestDataFactory.create_user(db_session, role="admin", client_id="DPMO-CAST-CL")
+        work_order = TestDataFactory.create_work_order(db_session, client_id="DPMO-CAST-CL")
+        db_session.flush()
+
+        entry = TestDataFactory.create_quality_entry(
+            db_session,
+            work_order_id=work_order.work_order_id,
+            client_id="DPMO-CAST-CL",
+            inspector_id=user.user_id,
+            inspection_date=date(2026, 7, 1),
+            units_inspected=1000,
+            units_defective=5,
+            total_defects_count=5,
+        )
+        entry.shift_date = datetime(2026, 7, 1, 6, 0)
+        db_session.commit()
+
+        dpmo, sigma_level, total_units, total_defects = dpmo_calc.calculate_dpmo(
+            db_session,
+            work_order.work_order_id,
+            date(2026, 7, 1),
+            date(2026, 7, 1),
+            opportunities_per_unit=10,
+        )
+
+        # Derivation: single seeded entry -> 5 defects / (1000 units * 10
+        # opportunities) * 1,000,000 = 500 DPMO.
+        assert dpmo == Decimal("500")
+        assert total_units == 1000
+        assert total_defects == 5

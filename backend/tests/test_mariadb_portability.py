@@ -245,6 +245,40 @@ def test_no_create_all_outside_alembic():
 
 
 # ---------------------------------------------------------------------------
+# cast(col, Date) SQLite guard (always-on, dialect-agnostic). SQLite's
+# numeric column affinity mangles CAST(<DateTime column> AS DATE) --
+# CAST('2026-01-15 10:00:00' AS DATE) collapses to 2026, silently emptying
+# every date-range/equality filter that uses it. MariaDB's CAST AS DATE
+# works, so this was SQLite-only breakage (Render demo, local dev, the
+# SQLite test suite). func.date(...) is the portable replacement used
+# everywhere else in the codebase (12+ files) -- see
+# calculations/availability.py's calculate_mtbf/calculate_mttr (first fixed)
+# and the downtime-cause-taxonomy cycle's task-4b (remaining sites).
+# ---------------------------------------------------------------------------
+
+
+def test_no_sql_cast_date():
+    """cast(<col>, Date) must not appear in backend app code -- func.date(...) instead."""  # schema-guard: allow
+    import pathlib
+    import re
+
+    backend_root = pathlib.Path(__file__).resolve().parent.parent
+    marker = "# schema-guard: allow"
+    cast_date_re = re.compile(r"cast\([^)]*,\s*Date\s*\)")  # schema-guard: allow
+
+    offenders = []
+    for py in backend_root.rglob("*.py"):
+        if "alembic" in py.parts or ".venv" in py.parts or "tests" in py.parts:
+            continue
+        for lineno, line in enumerate(py.read_text(encoding="utf-8").splitlines(), start=1):
+            if marker in line:
+                continue
+            if cast_date_re.search(line):
+                offenders.append(f"{py.relative_to(backend_root)}:{lineno}")
+    assert sorted(offenders) == []
+
+
+# ---------------------------------------------------------------------------
 # holds.py MariaDB portability: date_diff_days must EXECUTE on real MariaDB.
 # Before the fix, holds.py used func.julianday(), which 500s on MariaDB with
 # (1305, 'FUNCTION kpi_platform.julianday does not exist'). SQLite cannot

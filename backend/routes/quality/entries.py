@@ -109,7 +109,7 @@ def get_quality_statistics(
     Get quality statistics summary for a date range
     SECURITY: Returns only data for user's authorized clients
     """
-    from sqlalchemy import func, cast, Date
+    from sqlalchemy import func
     from backend.orm.quality_entry import QualityEntry
     from backend.utils.date_range import validate_date_range
 
@@ -138,8 +138,8 @@ def get_quality_statistics(
 
     # Apply date filters (shift_date is DateTime, cast to Date for comparison)
     query = query.filter(
-        cast(QualityEntry.shift_date, Date) >= start_date,
-        cast(QualityEntry.shift_date, Date) <= end_date,
+        func.date(QualityEntry.shift_date) >= start_date,
+        func.date(QualityEntry.shift_date) <= end_date,
     )
 
     # Note: QualityEntry doesn't have product_id/shift_id - these filters are ignored

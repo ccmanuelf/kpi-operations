@@ -8,7 +8,7 @@ Phase 1.2: Added pure calculation functions for service layer separation
 """
 
 from sqlalchemy.orm import Session
-from sqlalchemy import func, and_, cast, Date
+from sqlalchemy import func, and_
 from datetime import date
 from decimal import Decimal
 from typing import Any, Dict, List, Optional
@@ -104,8 +104,8 @@ def calculate_ppm(
     ).filter(
         and_(
             QualityEntry.work_order_id == work_order_id,
-            cast(QualityEntry.shift_date, Date) >= start_date,
-            cast(QualityEntry.shift_date, Date) <= end_date,
+            func.date(QualityEntry.shift_date) >= start_date,
+            func.date(QualityEntry.shift_date) <= end_date,
         )
     )
 
@@ -138,8 +138,8 @@ def calculate_ppm_by_category(
     query = db.query(QualityEntry).filter(
         and_(
             QualityEntry.work_order_id == work_order_id,
-            cast(QualityEntry.shift_date, Date) >= start_date,
-            cast(QualityEntry.shift_date, Date) <= end_date,
+            func.date(QualityEntry.shift_date) >= start_date,
+            func.date(QualityEntry.shift_date) <= end_date,
             QualityEntry.inspection_stage.isnot(None),
         )
     )
@@ -193,7 +193,7 @@ def identify_top_defects(
 
     if start_date and end_date:
         query = query.filter(
-            and_(cast(QualityEntry.shift_date, Date) >= start_date, cast(QualityEntry.shift_date, Date) <= end_date)
+            and_(func.date(QualityEntry.shift_date) >= start_date, func.date(QualityEntry.shift_date) <= end_date)
         )
 
     inspections = query.all()
@@ -247,8 +247,8 @@ def calculate_cost_of_quality(
     query = db.query(QualityEntry).filter(
         and_(
             QualityEntry.work_order_id == work_order_id,
-            cast(QualityEntry.shift_date, Date) >= start_date,
-            cast(QualityEntry.shift_date, Date) <= end_date,
+            func.date(QualityEntry.shift_date) >= start_date,
+            func.date(QualityEntry.shift_date) <= end_date,
         )
     )
 

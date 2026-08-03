@@ -236,7 +236,7 @@ def calculate_dpmo(
 
     Returns: (dpmo, sigma_level, total_units, total_defects)
     """
-    from sqlalchemy import cast, Date
+    from sqlalchemy import func
 
     # Determine opportunities per unit
     if opportunities_per_unit is not None:
@@ -253,8 +253,8 @@ def calculate_dpmo(
     query = db.query(QualityEntry).filter(
         and_(
             QualityEntry.work_order_id == work_order_id,
-            cast(QualityEntry.shift_date, Date) >= start_date,
-            cast(QualityEntry.shift_date, Date) <= end_date,
+            func.date(QualityEntry.shift_date) >= start_date,
+            func.date(QualityEntry.shift_date) <= end_date,
         )
     )
 
@@ -457,13 +457,13 @@ def calculate_process_capability(
     Note: This requires actual measurement data (not just pass/fail)
     For MVP, we use defect rates as proxy
     """
-    from sqlalchemy import cast, Date
+    from sqlalchemy import func
 
     query = db.query(QualityEntry).filter(
         and_(
             QualityEntry.work_order_id == work_order_id,
-            cast(QualityEntry.shift_date, Date) >= start_date,
-            cast(QualityEntry.shift_date, Date) <= end_date,
+            func.date(QualityEntry.shift_date) >= start_date,
+            func.date(QualityEntry.shift_date) <= end_date,
         )
     )
 

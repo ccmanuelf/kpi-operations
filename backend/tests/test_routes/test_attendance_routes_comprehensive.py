@@ -5,7 +5,7 @@ Target: Increase routes/attendance.py coverage from 30% to 80%+
 """
 
 import pytest
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from sqlalchemy.orm import sessionmaker
 from fastapi.testclient import TestClient
 from fastapi import FastAPI
@@ -299,6 +299,37 @@ class TestAttendanceStatistics:
         )
 
         assert response.status_code == 200
+
+    def test_get_attendance_statistics_matches_seeded_entry_on_exact_date(self, authenticated_client):
+        """Regression: the statistics/summary date-range filter used
+        cast(shift_date, Date), which mangles on SQLite (numeric column
+        affinity truncates 'YYYY-MM-DD HH:MM:SS' to just the leading year),
+        silently excluding every attendance row. func.date(shift_date) is the
+        portable fix. Seed exactly one present record on 2026-07-01 06:00 and
+        query that exact single day."""
+        client, setup = authenticated_client
+        db = setup["db"]
+        employee = setup["employees"][0]
+
+        entry = TestDataFactory.create_attendance_entry(
+            db,
+            employee_id=employee.employee_id,
+            client_id=setup["client"].client_id,
+            shift_id=setup["shift"].shift_id,
+            shift_date=date(2026, 7, 1),
+            is_absent=0,
+        )
+        entry.shift_date = datetime(2026, 7, 1, 6, 0)
+        db.commit()
+
+        response = client.get("/api/attendance/statistics/summary?start_date=2026-07-01&end_date=2026-07-01")
+
+        assert response.status_code == 200
+        data = response.json()
+        # Derivation: only entry seeded on this exact day is Present, with
+        # the factory's default actual_hours=8.0 (it returned an empty list
+        # before the fix).
+        assert data["statistics"] == [{"status": "Present", "count": 1, "total_hours": 8.0}]
 
 
 class TestAbsenteeismKPI:

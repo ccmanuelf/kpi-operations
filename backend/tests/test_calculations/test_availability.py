@@ -618,3 +618,52 @@ class TestPlannedVsUnplannedDowntimeReasons:
         # planned-inclusive). total_repair_time = 3 * (60min/60) = 3.0hr;
         # repairs = 3 -> mttr = 3.0 / 3 = 1.
         assert result == Decimal("1")
+
+
+class TestCalculateAvailabilityShiftDateCastBug:
+    """
+    Real DB-backed coverage for calculate_availability()'s target_date filter
+    in backend/calculations/availability.py.
+
+    Before the fix, both the downtime-sum query and the event-count query
+    filtered on cast(DowntimeEntry.shift_date, Date), which mangles on
+    SQLite: SQLite's numeric column affinity truncates
+    CAST('2026-07-01 06:00:00' AS DATE) to just 2026, so a target_date of
+    2026-07-01 never matched, silently returning zero downtime and zero
+    events for every real query. func.date(shift_date) is the portable fix
+    used elsewhere in the codebase (12+ files).
+    """
+
+    @pytest.mark.integration
+    def test_calculate_availability_matches_entry_on_exact_shift_date(self, db_session):
+        """calculate_availability must find the seeded downtime entry on the
+        exact target_date, not silently return zero."""
+        target_date = date(2026, 7, 1)
+        shift_dt = datetime(2026, 7, 1, 6, 0, 0)
+
+        TestDataFactory.create_client(db_session, client_id="AVAIL-CAST-CL")
+        user = TestDataFactory.create_user(db_session, role="admin", client_id="AVAIL-CAST-CL")
+        work_order = TestDataFactory.create_work_order(db_session, client_id="AVAIL-CAST-CL")
+        db_session.flush()
+
+        TestDataFactory.create_downtime_entry(
+            db_session,
+            client_id="AVAIL-CAST-CL",
+            reported_by=user.user_id,
+            work_order_id=work_order.work_order_id,
+            downtime_reason="EQUIPMENT_FAILURE",
+            shift_date=shift_dt,
+            duration_minutes=90,
+        )
+        db_session.commit()
+
+        availability_pct, scheduled_hours, downtime_hours, event_count = availability_calc.calculate_availability(
+            db_session, work_order.work_order_id, target_date
+        )
+
+        # Derivation: scheduled_hours is fixed at 8.0; downtime = 90min / 60 = 1.5hr;
+        # availability = (8.0 - 1.5) / 8.0 * 100 = 81.25%; one seeded entry -> event_count = 1.
+        assert availability_pct == Decimal("81.25")
+        assert scheduled_hours == Decimal("8.0")
+        assert downtime_hours == Decimal("1.5")
+        assert event_count == 1
