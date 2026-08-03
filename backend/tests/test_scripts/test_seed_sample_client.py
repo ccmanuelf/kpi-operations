@@ -533,6 +533,36 @@ def test_daily_data_scales_with_days_and_is_credible(db_session):
         assert 0 <= qe.units_defective <= qe.units_inspected
 
 
+def test_seeded_downtime_entries_are_valid_taxonomy_pairs_with_an_override(db_session):
+    """Every seeded DowntimeEntry must carry a valid (reason, category) pair —
+    never NULL/uncategorized — and the deterministic seq % 50 == 1 override rule
+    must produce at least one row whose category disagrees with
+    DEFAULT_CATEGORY_BY_REASON[reason] (proving the operator-correction flow is
+    exercised, not just the default mapping)."""
+    from backend.orm import DowntimeEntry
+    from backend.orm.downtime_taxonomy import DEFAULT_CATEGORY_BY_REASON, DowntimeCategoryEnum, DowntimeReasonEnum
+
+    _seed_admin(db_session)
+    valid_reasons = {r.value for r in DowntimeReasonEnum}
+    valid_categories = {c.value for c in DowntimeCategoryEnum}
+
+    for client_id in seed.DEFAULT_CLIENTS:
+        seed.seed_client(db_session, seed.CLIENT_SPECS[client_id], days=30, anchor=FIXED_ANCHOR)
+    db_session.commit()
+
+    entries = db_session.query(DowntimeEntry).filter(DowntimeEntry.client_id.in_(seed.DEFAULT_CLIENTS)).all()
+    assert entries, "expected at least one seeded DowntimeEntry"
+
+    override_seen = False
+    for entry in entries:
+        assert entry.downtime_reason in valid_reasons
+        assert entry.root_cause_category in valid_categories
+        assert entry.root_cause_category != DowntimeCategoryEnum.UNCATEGORIZED.value
+        if entry.root_cause_category != DEFAULT_CATEGORY_BY_REASON[entry.downtime_reason]:
+            override_seen = True
+    assert override_seen, "expected at least one deterministic scheduling-override row (seq % 50 == 1)"
+
+
 def test_simulation_scenario_seeded(db_session):
     from backend.orm.simulation_scenario import SimulationScenario
 
