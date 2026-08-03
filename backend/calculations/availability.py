@@ -12,6 +12,7 @@ from decimal import Decimal
 from typing import Optional
 
 from backend.orm.downtime_entry import DowntimeEntry
+from backend.orm.downtime_taxonomy import PLANNED_DOWNTIME_REASONS
 
 
 def calculate_availability(
@@ -81,9 +82,9 @@ def calculate_mtbf(
     query = db.query(DowntimeEntry).filter(
         and_(
             DowntimeEntry.machine_id == machine_id,
-            cast(DowntimeEntry.shift_date, Date) >= start_date,
-            cast(DowntimeEntry.shift_date, Date) <= end_date,
-            DowntimeEntry.root_cause_category.in_(["Breakdown", "Failure", "Equipment Failure"]),
+            func.date(DowntimeEntry.shift_date) >= start_date,
+            func.date(DowntimeEntry.shift_date) <= end_date,
+            ~DowntimeEntry.downtime_reason.in_(sorted(PLANNED_DOWNTIME_REASONS)),
         )
     )
 
@@ -124,9 +125,8 @@ def calculate_mttr(
     query = db.query(DowntimeEntry).filter(
         and_(
             DowntimeEntry.machine_id == machine_id,
-            cast(DowntimeEntry.shift_date, Date) >= start_date,
-            cast(DowntimeEntry.shift_date, Date) <= end_date,
-            DowntimeEntry.root_cause_category.in_(["Breakdown", "Failure", "Maintenance", "Equipment Failure"]),
+            func.date(DowntimeEntry.shift_date) >= start_date,
+            func.date(DowntimeEntry.shift_date) <= end_date,
         )
     )
 

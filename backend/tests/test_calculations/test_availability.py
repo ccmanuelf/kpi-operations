@@ -14,7 +14,13 @@ Covers:
 - OEE integration scenarios
 """
 
+from datetime import date, datetime
+from decimal import Decimal
+
 import pytest
+
+from backend.calculations import availability as availability_calc
+from backend.tests.fixtures.factories import TestDataFactory
 
 # ===== Helper Functions for Standalone Calculations =====
 
@@ -532,3 +538,83 @@ class TestAvailabilityCategories:
         # Equipment Failure is biggest contributor (50% of downtime)
         equipment_pct = (downtime_categories["Equipment Failure"] / total_downtime) * 100
         assert equipment_pct == 50.0
+
+
+class TestPlannedVsUnplannedDowntimeReasons:
+    """
+    Real DB-backed coverage for the calculate_mtbf()/calculate_mttr() downtime
+    filters in backend/calculations/availability.py.
+
+    Before this fix, both queries filtered on
+    DowntimeEntry.root_cause_category against literal strings ("Breakdown",
+    "Failure", "Maintenance", "Equipment Failure") that never match any real
+    category value (DowntimeCategoryEnum is "machine"/"materials"/
+    "scheduling"/"attendance"/"other"/"uncategorized") -- both filters were
+    phantom/dead code, so both functions always queried an empty result set
+    and returned None. The fix repoints them at DowntimeEntry.downtime_reason
+    using the canonical PLANNED_DOWNTIME_REASONS set
+    (backend/orm/downtime_taxonomy.py): calculate_mtbf (unplanned-only)
+    excludes planned reasons; calculate_mttr (total, planned-inclusive)
+    applies no reason restriction.
+    """
+
+    @pytest.mark.integration
+    def test_mtbf_counts_only_unplanned_reasons(self, db_session):
+        """calculate_mtbf must exclude MAINTENANCE/SETUP_CHANGEOVER (planned)."""
+        target_date = date(2026, 1, 15)
+        shift_dt = datetime(2026, 1, 15, 10, 0, 0)
+
+        TestDataFactory.create_client(db_session, client_id="MTBF-CL")
+        user = TestDataFactory.create_user(db_session, role="admin", client_id="MTBF-CL")
+        db_session.flush()
+
+        # One unplanned failure + two planned entries, 60 min each, same machine/day.
+        for reason in ("EQUIPMENT_FAILURE", "MAINTENANCE", "SETUP_CHANGEOVER"):
+            TestDataFactory.create_downtime_entry(
+                db_session,
+                client_id="MTBF-CL",
+                reported_by=user.user_id,
+                downtime_reason=reason,
+                machine_id="MACH-MTBF",
+                shift_date=shift_dt,
+                duration_minutes=60,
+            )
+        db_session.commit()
+
+        result = availability_calc.calculate_mtbf(db_session, "MACH-MTBF", target_date, target_date)
+
+        # Derivation: only the EQUIPMENT_FAILURE entry is unplanned (MAINTENANCE
+        # and SETUP_CHANGEOVER are in PLANNED_DOWNTIME_REASONS, so excluded).
+        # total_downtime = 60min / 60 = 1.0hr; days = (target-target).days+1 = 1;
+        # total_scheduled = 1 * 24 = 24hr; operating_time = 24 - 1 = 23hr;
+        # failures = 1 -> mtbf = 23 / 1 = 23.
+        assert result == Decimal("23")
+
+    @pytest.mark.integration
+    def test_mttr_counts_total_planned_inclusive(self, db_session):
+        """calculate_mttr must include planned reasons (total repair time)."""
+        target_date = date(2026, 1, 16)
+        shift_dt = datetime(2026, 1, 16, 10, 0, 0)
+
+        TestDataFactory.create_client(db_session, client_id="MTTR-CL")
+        user = TestDataFactory.create_user(db_session, role="admin", client_id="MTTR-CL")
+        db_session.flush()
+
+        for reason in ("EQUIPMENT_FAILURE", "MAINTENANCE", "SETUP_CHANGEOVER"):
+            TestDataFactory.create_downtime_entry(
+                db_session,
+                client_id="MTTR-CL",
+                reported_by=user.user_id,
+                downtime_reason=reason,
+                machine_id="MACH-MTTR",
+                shift_date=shift_dt,
+                duration_minutes=60,
+            )
+        db_session.commit()
+
+        result = availability_calc.calculate_mttr(db_session, "MACH-MTTR", target_date, target_date)
+
+        # Derivation: no reason restriction -> all 3 entries count (total,
+        # planned-inclusive). total_repair_time = 3 * (60min/60) = 3.0hr;
+        # repairs = 3 -> mttr = 3.0 / 3 = 1.
+        assert result == Decimal("1")
