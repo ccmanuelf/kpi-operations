@@ -677,6 +677,32 @@ class TestReferenceDataEndpoints:
         assert response.status_code == 200
         assert isinstance(response.json(), list)
 
+    def test_downtime_reasons_serves_canonical_taxonomy(self, test_client, admin_auth_headers):
+        """Test the downtime-reasons endpoint serves the canonical two-level taxonomy"""
+        response = test_client.get("/api/downtime-reasons", headers=admin_auth_headers)
+        assert response.status_code == 200
+        body = response.json()
+        assert [c["id"] for c in body["categories"]] == [
+            "machine",
+            "materials",
+            "scheduling",
+            "attendance",
+            "other",
+        ]
+        reasons = {r["id"]: r for r in body["reasons"]}
+        assert set(reasons) == {
+            "EQUIPMENT_FAILURE",
+            "MATERIAL_SHORTAGE",
+            "SETUP_CHANGEOVER",
+            "QUALITY_HOLD",
+            "MAINTENANCE",
+            "POWER_OUTAGE",
+            "OPERATOR_UNAVAILABLE",
+            "OTHER",
+        }
+        assert reasons["OPERATOR_UNAVAILABLE"]["default_category"] == "attendance"
+        assert reasons["EQUIPMENT_FAILURE"]["label_key"] == "taxonomy.reasons.equipmentFailure"
+
 
 # =============================================================================
 # DEFECT MANAGEMENT TESTS
