@@ -30,6 +30,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 
 from backend.database import SessionLocal  # noqa: E402
 from backend.db.factories import TestDataFactory  # noqa: E402
+from backend.orm.downtime_taxonomy import DEFAULT_CATEGORY_BY_REASON, DowntimeReasonEnum  # noqa: E402
 
 # Import all ORM models via centralized registry (backend/orm/__init__.py).
 # This single import registers every model so Alembic's model registry can
@@ -1449,12 +1450,12 @@ def init_database() -> None:
                 # 6 downtime events per client across the last 14 days,
                 # mixed reasons and durations to surface realistic Pareto.
                 reasons_durations = [
-                    ("EQUIPMENT_FAILURE", 45),
-                    ("MATERIAL_SHORTAGE", 120),
-                    ("SETUP_CHANGEOVER", 30),
-                    ("EQUIPMENT_FAILURE", 90),
-                    ("OPERATOR_ABSENT", 60),
-                    ("QUALITY_ISSUE", 75),
+                    (DowntimeReasonEnum.EQUIPMENT_FAILURE.value, 45),
+                    (DowntimeReasonEnum.MATERIAL_SHORTAGE.value, 120),
+                    (DowntimeReasonEnum.SETUP_CHANGEOVER.value, 30),
+                    (DowntimeReasonEnum.EQUIPMENT_FAILURE.value, 90),
+                    (DowntimeReasonEnum.OPERATOR_UNAVAILABLE.value, 60),
+                    (DowntimeReasonEnum.QUALITY_HOLD.value, 75),
                 ]
                 for i, (reason, duration) in enumerate(reasons_durations):
                     wo = active_wos[i % len(active_wos)]
@@ -1466,6 +1467,7 @@ def init_database() -> None:
                         work_order_id=wo.work_order_id,
                         reported_by=operator_user.user_id,
                         downtime_reason=reason,
+                        root_cause_category=DEFAULT_CATEGORY_BY_REASON[reason],
                         duration_minutes=duration,
                         shift_date=datetime.combine(shift_d, datetime.min.time()),
                     )
