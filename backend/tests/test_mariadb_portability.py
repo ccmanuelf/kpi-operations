@@ -254,17 +254,27 @@ def test_no_create_all_outside_alembic():
 # everywhere else in the codebase (12+ files) -- see
 # calculations/availability.py's calculate_mtbf/calculate_mttr (first fixed)
 # and the downtime-cause-taxonomy cycle's task-4b (remaining sites).
+#
+# The second-argument match is deliberately `\w*[Dd]ate\w*`, not a literal
+# `Date`: task 4b independently found routes/downtime.py evading a literal
+# match via aliased imports (`cast as sa_cast, Date as SADate`). A plain
+# `cast(` + literal `Date` regex does not match `sa_cast(x, SADate)` -- the
+# `\w*[Dd]ate\w*` wildcard closes that evasion (verified false-positive-free
+# against the current tree: every typing.cast(...) site in backend/ was
+# checked individually and none has "date" in its type argument).
 # ---------------------------------------------------------------------------
+
+import re  # noqa: E402
+
+CAST_DATE_RE = re.compile(r"cast\([^,)]+,\s*\w*[Dd]ate\w*\s*\)")  # schema-guard: allow
 
 
 def test_no_sql_cast_date():
     """cast(<col>, Date) must not appear in backend app code -- func.date(...) instead."""  # schema-guard: allow
     import pathlib
-    import re
 
     backend_root = pathlib.Path(__file__).resolve().parent.parent
     marker = "# schema-guard: allow"
-    cast_date_re = re.compile(r"cast\([^)]*,\s*Date\s*\)")  # schema-guard: allow
 
     offenders = []
     for py in backend_root.rglob("*.py"):
@@ -273,9 +283,27 @@ def test_no_sql_cast_date():
         for lineno, line in enumerate(py.read_text(encoding="utf-8").splitlines(), start=1):
             if marker in line:
                 continue
-            if cast_date_re.search(line):
+            if CAST_DATE_RE.search(line):
                 offenders.append(f"{py.relative_to(backend_root)}:{lineno}")
     assert sorted(offenders) == []
+
+
+@pytest.mark.parametrize(
+    "snippet,should_match",
+    [
+        ("cast(QualityEntry.shift_date, Date)", True),
+        ("sa_cast(DowntimeEntry.shift_date, SADate)", True),
+        ("cast(x, SomeDateAlias)", True),
+        ("typing.cast(str, value)", False),
+        ("typing.cast(Optional[int], value)", False),
+    ],
+)
+def test_cast_date_regex_catches_aliased_imports(snippet, should_match):
+    """Self-test for CAST_DATE_RE: must catch both the literal `Date` form
+    and the aliased `SADate` form (the exact evasion task 4b found in
+    routes/downtime.py), while staying silent on unrelated typing.cast(...)
+    calls whose type argument doesn't mention "date"."""
+    assert bool(CAST_DATE_RE.search(snippet)) is should_match
 
 
 # ---------------------------------------------------------------------------
