@@ -132,9 +132,61 @@ describe('useShiftForms', () => {
     it('is built from DOWNTIME_REASON_CODES as { value, title } pairs, title resolved via reasonLabelKey', async () => {
       const harness = buildHarness()
       await harness.fetchReferenceData()
-      expect(harness.downtimeReasons).toEqual(
+      expect(harness.downtimeReasons.value).toEqual(
         DOWNTIME_REASON_CODES.map((id) => ({ value: id, title: reasonLabelKey(id) })),
       )
+    })
+
+    // This file mocks vue-i18n as an identity function (`t: (key) => key`) so the
+    // other tests below don't need a real i18n plugin installed. That mock can't
+    // exercise locale *reactivity*, so this test unmocks vue-i18n and re-imports
+    // useShiftForms fresh against a real i18n instance — same es-toggle pattern as
+    // useOrderStatusOptions/useExportSheetOptions in i18n-option-factories.spec.ts.
+    // Guards against downtimeReasons regressing from computed() back to a plain
+    // const array (which would bake in the locale active at composable-creation
+    // time and go stale after a runtime LanguageToggle switch).
+    it('es-toggle: relabels on locale switch (reactive, not baked in at creation time)', async () => {
+      vi.doUnmock('vue-i18n')
+      vi.resetModules()
+      try {
+        const { createI18n } = await import('vue-i18n')
+        const { defineComponent, h } = await import('vue')
+        const { mount } = await import('@vue/test-utils')
+        const en = (await import('@/i18n/locales/en.json')).default
+        const es = (await import('@/i18n/locales/es.json')).default
+        const { useShiftForms: useShiftFormsReal } = await import('../useShiftForms')
+
+        const i18n = createI18n({
+          legacy: false,
+          locale: 'en',
+          fallbackLocale: 'en',
+          messages: { en, es },
+        })
+
+        const C = defineComponent({
+          setup() {
+            const { downtimeReasons } = useShiftFormsReal(
+              () => null,
+              () => '2026-05-01',
+              () => [],
+              async () => {},
+            )
+            return () => h('span', downtimeReasons.value.map((o: { title: string }) => o.title).join(','))
+          },
+        })
+        const w = mount(C, { global: { plugins: [i18n] } })
+        expect(w.text()).toContain('Equipment failure')
+
+        i18n.global.locale.value = 'es'
+        await w.vm.$nextTick()
+
+        expect(w.text()).toContain('Falla de equipo')
+      } finally {
+        vi.doMock('vue-i18n', () => ({
+          useI18n: () => ({ t: (key: string) => key }),
+        }))
+        vi.resetModules()
+      }
     })
   })
 

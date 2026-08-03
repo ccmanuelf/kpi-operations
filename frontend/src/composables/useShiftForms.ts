@@ -11,7 +11,7 @@
  * run_time_hours and employees_assigned match today's UX (operators
  * refine values via the standalone Production Entry grid).
  */
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useNotificationStore } from '@/stores/notificationStore'
 import { useAuthStore } from '@/stores/authStore'
@@ -119,11 +119,14 @@ export function useShiftForms(
 
   const productionPresets: number[] = [10, 25, 50, 100]
   // Canonical DowntimeReasonEnum codes, labeled via the taxonomy i18n keys.
-  const downtimeReasons: Array<{ value: string; title: string }> = DOWNTIME_REASON_CODES.map(
-    (id) => ({
+  // Wrapped in computed() (matches useOrderStatusOptions/useExportSheetOptions)
+  // so labels stay reactive to a runtime LanguageToggle switch instead of
+  // baking in the locale active at composable-creation time.
+  const downtimeReasons = computed<Array<{ value: string; title: string }>>(() =>
+    DOWNTIME_REASON_CODES.map((id) => ({
       value: id,
       title: t(reasonLabelKey(id)),
-    }),
+    })),
   )
   const defectTypes: string[] = [
     'Dimensional',
