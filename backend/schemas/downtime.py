@@ -74,6 +74,8 @@ class DowntimeEventCreate(BaseModel):
             "MAINTENANCE": DowntimeReasonEnum.MAINTENANCE,
             "POWER": DowntimeReasonEnum.POWER_OUTAGE,
             "POWER_OUTAGE": DowntimeReasonEnum.POWER_OUTAGE,
+            "OPERATOR_UNAVAILABLE": DowntimeReasonEnum.OPERATOR_UNAVAILABLE,
+            "OPERATOR": DowntimeReasonEnum.OPERATOR_UNAVAILABLE,
         }
 
         raw_category = (data.get("downtime_category") or data.get("downtime_reason") or "OTHER").upper()
@@ -109,7 +111,7 @@ class DowntimeEventUpdate(BaseModel):
     downtime_category: Optional[str] = Field(
         None, max_length=50, description="Updated downtime classification category"
     )
-    downtime_reason: Optional[str] = Field(None, max_length=255, description="Updated detailed reason for the downtime")
+    downtime_reason: Optional[DowntimeReasonEnum] = Field(None, description="Updated detailed reason for the downtime")
     duration_hours: Optional[Decimal] = Field(None, gt=0, le=24, description="Updated downtime duration in hours")
     machine_id: Optional[str] = Field(None, max_length=50, description="Updated machine or equipment identifier")
     root_cause_category: Optional[DowntimeCategoryEnum] = Field(

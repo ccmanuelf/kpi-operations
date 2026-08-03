@@ -168,3 +168,45 @@ class TestListDowntimeCategoryFilter:
         response = client.get("/api/downtime?category=Breakdown")
 
         assert response.status_code == 422
+
+
+class TestUpdateDowntimeReasonValidation:
+    """Final-review Finding 1: DowntimeEventUpdate.downtime_reason was typed
+    Optional[str], so a bad value rode through crud's setattr straight into
+    the DowntimeEntry ORM @validates hook, which raises a bare ValueError ->
+    uncaught -> 500. Typing it Optional[DowntimeReasonEnum] (mirroring
+    root_cause_category) makes FastAPI/Pydantic reject it at the request
+    boundary instead, well before the ORM is ever touched."""
+
+    def test_put_with_invalid_downtime_reason_returns_422_not_500(self, authenticated_client):
+        client, setup = authenticated_client
+        db = setup["db"]
+
+        entry = TestDataFactory.create_downtime_entry(
+            db,
+            client_id=setup["client"].client_id,
+            reported_by=setup["supervisor"].user_id,
+            downtime_reason="EQUIPMENT_FAILURE",
+        )
+        db.commit()
+
+        response = client.put(f"/api/downtime/{entry.downtime_entry_id}", json={"downtime_reason": "NOT_A_REASON"})
+
+        assert response.status_code == 422
+
+    def test_put_with_valid_downtime_reason_updates_the_record(self, authenticated_client):
+        client, setup = authenticated_client
+        db = setup["db"]
+
+        entry = TestDataFactory.create_downtime_entry(
+            db,
+            client_id=setup["client"].client_id,
+            reported_by=setup["supervisor"].user_id,
+            downtime_reason="EQUIPMENT_FAILURE",
+        )
+        db.commit()
+
+        response = client.put(f"/api/downtime/{entry.downtime_entry_id}", json={"downtime_reason": "MAINTENANCE"})
+
+        assert response.status_code == 200
+        assert response.json()["downtime_reason"] == "MAINTENANCE"

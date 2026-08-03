@@ -20,6 +20,7 @@ LEGACY_ROWS = [
     ("DT-L-5", "MATERIAL_SHORTAGE", None, None),  # NULL -> materials (mapping)
     ("DT-L-6", "QUALITY_HOLD", "other", None),  # already valid -> unchanged
     ("DT-L-7", "TOTALLY_UNKNOWN", None, None),  # unknown reason -> OTHER + notes tag, cat -> other
+    ("DT-L-8", "Maintenance", None, None),  # case-variant of a valid reason -> MAINTENANCE (uppercased), cat -> machine
 ]
 
 
@@ -65,6 +66,14 @@ def _row(conn, rid):
 def test_rogue_reasons_normalized(migrated_db):
     assert _row(migrated_db, "DT-L-1")[0] == "SETUP_CHANGEOVER"
     assert _row(migrated_db, "DT-L-2")[0] == "MAINTENANCE"
+
+
+def test_case_variant_reason_normalized_to_uppercase(migrated_db):
+    """Spec §4: Pass A must be case-insensitive, so 'Maintenance' normalizes
+    to the canonical uppercase enum value instead of demoting to OTHER."""
+    reason, category, _ = _row(migrated_db, "DT-L-8")
+    assert reason == "MAINTENANCE"
+    assert category == "machine"
 
 
 def test_unknown_reason_becomes_other_with_notes_tag(migrated_db):

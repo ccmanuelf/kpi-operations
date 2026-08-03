@@ -161,9 +161,12 @@ class TestDowntimeSheetByCategorySummary:
         machine_row = [c.value for c in ws[4]][:4]
         materials_row = [c.value for c in ws[5]][:4]
 
+        # Finding 4 (final-review): the By-Category column writes a display
+        # label ("Machine" / "Materials"), not the raw enum code — backend
+        # has no i18n, so title-case is the display convention (spec §7).
         assert header_row == ["By Category", "Events", "Total Minutes", "% of Total"]
-        assert machine_row == ["machine", 2, 120.0, 66.7]
-        assert materials_row == ["materials", 1, 60.0, 33.3]
+        assert machine_row == ["Machine", 2, 120.0, 66.7]
+        assert materials_row == ["Materials", 1, 60.0, 33.3]
         assert machine_row[3] + materials_row[3] == 100.0
 
         # Detail table header must be pushed below the summary block + blank

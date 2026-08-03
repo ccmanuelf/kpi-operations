@@ -319,6 +319,13 @@ class ExcelReportGenerator:
         for col in ["A", "B", "C", "D", "E", "F", "G"]:
             ws.column_dimensions[col].width = 18
 
+    @staticmethod
+    def _downtime_category_label(category_code: str) -> str:
+        """Display label for a root_cause_category enum code (spec §7): no
+        backend i18n, so title-case the underscore-free code, e.g.
+        'machine' -> 'Machine', 'uncategorized' -> 'Uncategorized'."""
+        return category_code.replace("_", " ").title()
+
     def _create_downtime_sheet(self, wb: Workbook, client_id: Optional[str], start_date: date, end_date: date) -> None:
         """Create downtime analysis sheet"""
         ws = wb.create_sheet("Downtime Analysis")
@@ -354,7 +361,7 @@ class ExcelReportGenerator:
 
         summary_row = summary_header_row + 1
         for cat in sorted(totals):
-            ws.cell(row=summary_row, column=1, value=cat)
+            ws.cell(row=summary_row, column=1, value=self._downtime_category_label(cat))
             ws.cell(row=summary_row, column=2, value=totals[cat]["events"])
             ws.cell(row=summary_row, column=3, value=round(totals[cat]["minutes"], 1))
             ws.cell(row=summary_row, column=4, value=round(100.0 * totals[cat]["minutes"] / grand, 1))

@@ -83,9 +83,14 @@ def upgrade() -> None:
     for entry_id, reason, category, notes in rows:
         new_notes = notes
 
-        # Pass A — normalize reason
+        # Pass A — normalize reason (case-insensitive; spec §4)
         new_reason = reason
-        if reason not in VALID_REASONS:
+        upper_candidate = (reason or "").strip().upper()
+        if reason in VALID_REASONS:
+            pass
+        elif upper_candidate in VALID_REASONS:
+            new_reason = upper_candidate
+        else:
             normalized = REASON_NORMALIZATION.get((reason or "").strip().lower())
             if normalized:
                 new_reason = normalized

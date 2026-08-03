@@ -35,3 +35,19 @@ def test_create_accepts_uncategorized_for_csv_backcompat():
 def test_update_none_means_no_change_not_autodefault():
     u = DowntimeEventUpdate(downtime_reason="MAINTENANCE")
     assert u.root_cause_category is None
+
+
+def test_from_legacy_csv_maps_operator_unavailable_reason():
+    """Final-review Finding 2: category_mapping lacked the OPERATOR_UNAVAILABLE
+    enum member, so a legacy CSV row with downtime_reason=OPERATOR_UNAVAILABLE
+    silently coerced to OTHER/other instead of OPERATOR_UNAVAILABLE/attendance."""
+    m = DowntimeEventCreate.from_legacy_csv(
+        {
+            "client_id": "C1",
+            "shift_date": "2026-07-01",
+            "downtime_reason": "OPERATOR_UNAVAILABLE",
+            "downtime_duration_minutes": 30,
+        }
+    )
+    assert m.downtime_reason.value == "OPERATOR_UNAVAILABLE"
+    assert m.root_cause_category.value == "attendance"
