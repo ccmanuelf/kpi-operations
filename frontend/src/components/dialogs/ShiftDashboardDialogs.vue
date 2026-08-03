@@ -72,6 +72,8 @@
         <v-select
           v-model="downtimeForm.reason"
           :items="downtimeReasons"
+          item-title="title"
+          item-value="value"
           :label="t('downtime.reason')"
           variant="outlined"
           class="mb-3"

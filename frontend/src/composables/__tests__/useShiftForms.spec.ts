@@ -5,9 +5,9 @@
  * payloads to the canonical backend endpoints (Group A reconciliation pattern).
  *
  * Specifically asserts:
- *   - downtimeReasonToCode maps each UI label to the canonical
- *     DowntimeReasonEnum code (e.g. "Equipment Breakdown" -> EQUIPMENT_FAILURE,
- *     "Quality Issue" -> QUALITY_HOLD).
+ *   - downtimeReasons is built from the canonical DOWNTIME_REASON_CODES
+ *     taxonomy constants ({ value, title } pairs) — the form now submits
+ *     the enum code directly (no UI-label-to-code mapping step).
  *   - submitDowntime payload shape: client_id + shift_date + downtime_reason
  *     (enum) + downtime_duration_minutes; legacy fields (downtime_minutes,
  *     reason as UI string, date) are gone.
@@ -62,46 +62,8 @@ vi.mock('vue-i18n', () => ({
   useI18n: () => ({ t: (key: string) => key }),
 }))
 
-import { useShiftForms, downtimeReasonToCode } from '../useShiftForms'
-
-describe('downtimeReasonToCode', () => {
-  it('Equipment Breakdown -> EQUIPMENT_FAILURE', () => {
-    expect(downtimeReasonToCode('Equipment Breakdown')).toBe('EQUIPMENT_FAILURE')
-  })
-
-  it('Material Shortage -> MATERIAL_SHORTAGE (already canonical)', () => {
-    expect(downtimeReasonToCode('Material Shortage')).toBe('MATERIAL_SHORTAGE')
-  })
-
-  it('Changeover -> SETUP_CHANGEOVER', () => {
-    expect(downtimeReasonToCode('Changeover')).toBe('SETUP_CHANGEOVER')
-  })
-
-  it('Scheduled Maintenance -> MAINTENANCE', () => {
-    expect(downtimeReasonToCode('Scheduled Maintenance')).toBe('MAINTENANCE')
-  })
-
-  it('Quality Issue -> QUALITY_HOLD', () => {
-    expect(downtimeReasonToCode('Quality Issue')).toBe('QUALITY_HOLD')
-  })
-
-  it('Waiting for Inspection -> QUALITY_HOLD', () => {
-    expect(downtimeReasonToCode('Waiting for Inspection')).toBe('QUALITY_HOLD')
-  })
-
-  it('Other -> OTHER', () => {
-    expect(downtimeReasonToCode('Other')).toBe('OTHER')
-  })
-
-  it('null / undefined -> OTHER', () => {
-    expect(downtimeReasonToCode(null)).toBe('OTHER')
-    expect(downtimeReasonToCode(undefined as unknown as string)).toBe('OTHER')
-  })
-
-  it('unrecognised label -> OTHER', () => {
-    expect(downtimeReasonToCode('Lunch break')).toBe('OTHER')
-  })
-})
+import { useShiftForms } from '../useShiftForms'
+import { DOWNTIME_REASON_CODES, reasonLabelKey } from '@/constants/downtimeTaxonomy'
 
 const noopRefresh = async () => {}
 
@@ -166,13 +128,23 @@ describe('useShiftForms', () => {
     })
   })
 
+  describe('downtimeReasons options', () => {
+    it('is built from DOWNTIME_REASON_CODES as { value, title } pairs, title resolved via reasonLabelKey', async () => {
+      const harness = buildHarness()
+      await harness.fetchReferenceData()
+      expect(harness.downtimeReasons).toEqual(
+        DOWNTIME_REASON_CODES.map((id) => ({ value: id, title: reasonLabelKey(id) })),
+      )
+    })
+  })
+
   describe('submitDowntime', () => {
-    it('sends Pydantic-aligned payload', async () => {
+    it('sends Pydantic-aligned payload, submitting the selected reason code as-is', async () => {
       const harness = buildHarness()
       await harness.fetchReferenceData()
       harness.downtimeForm.value = {
         workOrderId: 1,
-        reason: 'Equipment Breakdown',
+        reason: 'EQUIPMENT_FAILURE',
         minutes: 30,
         notes: 'Hydraulic leak',
       }
@@ -188,12 +160,30 @@ describe('useShiftForms', () => {
       })
     })
 
+    it('falls back to OTHER when no reason is selected', async () => {
+      const harness = buildHarness()
+      await harness.fetchReferenceData()
+      harness.downtimeForm.value = {
+        workOrderId: 1,
+        reason: null,
+        minutes: 10,
+        notes: '',
+      }
+      await harness.submitDowntime()
+      await flushPromises()
+      const call = mockApi.createDowntimeEntry.mock.calls[0][0] as Record<
+        string,
+        unknown
+      >
+      expect(call.downtime_reason).toBe('OTHER')
+    })
+
     it('does NOT send legacy fields (downtime_minutes, reason as UI string, date)', async () => {
       const harness = buildHarness()
       await harness.fetchReferenceData()
       harness.downtimeForm.value = {
         workOrderId: 1,
-        reason: 'Material Shortage',
+        reason: 'MATERIAL_SHORTAGE',
         minutes: 10,
         notes: '',
       }
@@ -215,7 +205,7 @@ describe('useShiftForms', () => {
       await harness.fetchReferenceData()
       harness.downtimeForm.value = {
         workOrderId: 1,
-        reason: 'Other',
+        reason: 'OTHER',
         minutes: 5,
         notes: '',
       }

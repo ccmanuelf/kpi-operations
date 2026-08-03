@@ -116,7 +116,6 @@ vi.mock('@/composables/useShiftForms', () => ({
     closeQualityDialog: vi.fn(),
     closeDowntimeDialog: vi.fn(),
   }),
-  downtimeReasonToCode: (r: string) => r,
 }))
 
 vi.mock('@/composables/usePlanVsActual', () => ({
