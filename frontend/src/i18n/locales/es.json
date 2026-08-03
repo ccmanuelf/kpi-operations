@@ -704,6 +704,7 @@
     }
   },
   "downtime": {
+    "uncategorizedCount": "{count} sin categorizar",
     "title": "Tiempo Muerto",
     "entry": "Captura de Tiempo Muerto",
     "reason": "Razón",

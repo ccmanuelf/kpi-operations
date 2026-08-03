@@ -704,6 +704,7 @@
     }
   },
   "downtime": {
+    "uncategorizedCount": "{count} uncategorized",
     "title": "Downtime",
     "entry": "Downtime Entry",
     "reason": "Reason",

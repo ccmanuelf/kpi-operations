@@ -16,6 +16,17 @@ import { useKPIStore } from '@/stores/kpi'
 import { useProductionDataStore } from '@/stores/productionDataStore'
 import { format } from 'date-fns'
 import { formatLocaleDate } from '@/utils/localeDate'
+import {
+  DOWNTIME_REASON_CODES,
+  DOWNTIME_CATEGORY_CODES,
+  DEFAULT_CATEGORY_BY_REASON,
+  categoryLabelKey,
+} from '@/constants/downtimeTaxonomy'
+
+// Re-exported for existing consumers that import the catalog from this
+// composable module (e.g. the composable spec). Source of truth is
+// frontend/src/constants/downtimeTaxonomy.ts (mirrors backend/orm/downtime_taxonomy.py).
+export { DOWNTIME_REASON_CODES }
 
 export interface DowntimeRow {
   downtime_entry_id?: string | number
@@ -32,6 +43,7 @@ export interface DowntimeRow {
   notes?: string | null
   _hasChanges?: boolean
   _isNew?: boolean
+  _categoryOverridden?: boolean
   [key: string]: unknown
 }
 
@@ -57,6 +69,8 @@ interface CellValueChangedEvent {
   data: DowntimeRow
   node: { id: string }
   api: AGGridApi
+  colDef?: { field?: string }
+  newValue?: unknown
 }
 
 interface SnackbarState {
@@ -76,20 +90,39 @@ interface PasteData {
 export interface ConfirmationField {
   key: string
   label: string
-  type: 'date' | 'text' | 'number'
+  type: 'date' | 'text' | 'number' | 'select'
   displayValue?: string | number
+  options?: string[]
 }
 
-// Canonical DowntimeReasonEnum codes (mirrors backend/schemas/downtime.py:13-22).
-export const DOWNTIME_REASON_CODES: string[] = [
-  'EQUIPMENT_FAILURE',
-  'MATERIAL_SHORTAGE',
-  'SETUP_CHANGEOVER',
-  'QUALITY_HOLD',
-  'MAINTENANCE',
-  'POWER_OUTAGE',
-  'OTHER',
-]
+export interface DowntimeRowTaxonomyState {
+  downtime_reason?: string
+  root_cause_category?: string | null
+  _categoryOverridden?: boolean
+}
+
+/**
+ * Pure helper: apply a reason-column edit to a row, auto-filling the
+ * default category unless the user already overrode it on this row.
+ * Exported (not inlined in onCellValueChanged) per the repo's
+ * <script setup>/composable testing convention — VTU's wrapper.vm can't
+ * reach internals, so auto-fill logic must be independently testable.
+ */
+export function applyReasonChange(row: DowntimeRowTaxonomyState, newReason: string): void {
+  row.downtime_reason = newReason
+  if (!row._categoryOverridden) {
+    row.root_cause_category = DEFAULT_CATEGORY_BY_REASON[newReason] ?? row.root_cause_category
+  }
+}
+
+/**
+ * Pure helper: apply a category-column edit to a row, marking it as
+ * user-overridden so a later reason change won't clobber the choice.
+ */
+export function applyCategoryChange(row: DowntimeRowTaxonomyState, newCategory: string): void {
+  row.root_cause_category = newCategory
+  row._categoryOverridden = true
+}
 
 const DEFAULT_REASON = 'OTHER'
 
@@ -150,6 +183,10 @@ export default function useDowntimeGridData() {
 
   const eventCount = computed(() => filteredEntries.value.length)
 
+  const uncategorizedCount = computed(
+    () => filteredEntries.value.filter((r) => r.root_cause_category === 'uncategorized').length,
+  )
+
   const confirmationFieldConfig = computed<ConfirmationField[]>(() => {
     const workOrderNumber =
       workOrders.value.find((w) => w.work_order_id === pendingData.value.work_order_id)
@@ -174,7 +211,8 @@ export default function useDowntimeGridData() {
       {
         key: 'root_cause_category',
         label: t('grids.columns.rootCauseCategory'),
-        type: 'text',
+        type: 'select',
+        options: DOWNTIME_CATEGORY_CODES,
       },
       {
         key: 'corrective_action',
@@ -257,6 +295,7 @@ export default function useDowntimeGridData() {
           QUALITY_HOLD: 'ag-cell-pink',
           MAINTENANCE: 'ag-cell-info',
           POWER_OUTAGE: 'ag-cell-error ag-cell-bold',
+          OPERATOR_UNAVAILABLE: 'ag-cell-warning',
           OTHER: 'ag-cell-purple',
         }
         return classes[params.value || ''] || ''
@@ -296,6 +335,12 @@ export default function useDowntimeGridData() {
       headerName: t('grids.columns.rootCauseCategory'),
       field: 'root_cause_category',
       editable: true,
+      cellEditor: 'agSelectCellEditor',
+      cellEditorParams: { values: DOWNTIME_CATEGORY_CODES },
+      valueFormatter: (params: { value?: string }) =>
+        params.value ? t(categoryLabelKey(params.value)) : '',
+      cellClass: (params: { value?: string }) =>
+        params.value === 'uncategorized' ? 'ag-cell-warning ag-cell-bold' : '',
       width: 160,
     },
     {
@@ -351,6 +396,14 @@ export default function useDowntimeGridData() {
     const rowId = event.data.downtime_entry_id || event.node.id
     if (rowId !== undefined) unsavedChanges.value.add(rowId)
     event.data._hasChanges = true
+
+    const field = event.colDef?.field
+    if (field === 'downtime_reason') {
+      applyReasonChange(event.data, String(event.newValue ?? event.data.downtime_reason ?? ''))
+    } else if (field === 'root_cause_category') {
+      applyCategoryChange(event.data, String(event.newValue ?? event.data.root_cause_category ?? ''))
+    }
+
     event.api.refreshCells({ rowNodes: [event.node], force: true })
   }
 
@@ -602,6 +655,7 @@ export default function useDowntimeGridData() {
     totalHours,
     totalMinutes,
     eventCount,
+    uncategorizedCount,
     onGridReady,
     onCellValueChanged,
     addNewEntry,

@@ -1,4 +1,4 @@
-import { test, expect, Page } from '@playwright/test';
+import { test, expect, Page, Locator } from '@playwright/test';
 import { login } from './helpers';
 
 /**
@@ -51,6 +51,27 @@ function tabSeparated(rows: string[][]): string {
   return rows.map((row) => row.join('\t')).join('\n');
 }
 
+/**
+ * Drive an AG Grid v35 `agSelectCellEditor` cell: click the cell to
+ * start editing (singleClickEdit), then ArrowDown to open the
+ * component's own `ag-select` picker (AG Grid's SelectCellEditor wires
+ * ArrowDown/Enter/Space on the focused combobox to `showPicker()`
+ * unless editing was started by Enter, in which case it auto-opens).
+ * The picker renders `.ag-select-list-item` rows in a body-level
+ * portal; `mousedown` on one commits the value and stops editing.
+ */
+async function setGridSelect(cell: Locator, page: Page, itemMatcher: string | RegExp): Promise<void> {
+  await cell.click();
+  await page.keyboard.press('ArrowDown');
+  const item = page.locator('.ag-select-list-item', { hasText: itemMatcher }).first();
+  await item.waitFor({ state: 'visible', timeout: 5000 });
+  await item.click();
+}
+
+async function expectGridCell(cell: Locator, matcher: RegExp): Promise<void> {
+  await expect(cell).toHaveText(matcher, { timeout: 5000 });
+}
+
 test.describe('Excel Clipboard Paste', () => {
   test.describe('Production grid', () => {
     test.beforeEach(async ({ page }) => {
@@ -98,6 +119,34 @@ test.describe('Excel Clipboard Paste', () => {
     test('grid renders with toolbar', async ({ page }) => {
       await expect(page.locator('[data-testid="downtime-entry-view"]')).toBeVisible({ timeout: 15000 });
       await expect(page.locator('[data-testid="ag-grid-wrapper"]').first()).toBeVisible();
+    });
+
+    test('downtime grid: reason select auto-fills category, override sticks', async ({ page }) => {
+      await expect(page.locator('[data-testid="downtime-entry-view"]')).toBeVisible({ timeout: 15000 });
+
+      await page.locator('[data-testid="downtime-add-row-btn"]').click();
+      // addNewEntry() auto-starts editing the new row's shift_date cell
+      // (useDowntimeGridData.ts) — back out of it before touching the
+      // reason/category cells on the same row.
+      await page.waitForTimeout(300);
+      await page.keyboard.press('Escape');
+
+      const row = page.locator('.ag-center-cols-container .ag-row[row-index="0"]');
+      const reasonCell = row.locator('.ag-cell[col-id="downtime_reason"]');
+      const categoryCell = row.locator('.ag-cell[col-id="root_cause_category"]');
+
+      // Reason codes are unformatted in the grid editor (no
+      // valueFormatter on that column) — the raw taxonomy code is what
+      // renders in the picker list.
+      await setGridSelect(reasonCell, page, 'MATERIAL_SHORTAGE');
+      await expectGridCell(categoryCell, /Materials|Materiales/);
+
+      // Category codes ARE formatted via categoryLabelKey — the
+      // picker shows the translated label, not the raw code.
+      await setGridSelect(categoryCell, page, /Scheduling|Programación/);
+      await setGridSelect(reasonCell, page, 'EQUIPMENT_FAILURE');
+      // The manual override on this row must survive the reason change.
+      await expectGridCell(categoryCell, /Scheduling|Programación/);
     });
   });
 
