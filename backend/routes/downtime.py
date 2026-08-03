@@ -15,6 +15,7 @@ from backend.schemas.downtime import (
     DowntimeEventUpdate,
     DowntimeEventResponse,
 )
+from backend.orm.downtime_taxonomy import DowntimeCategoryEnum
 from backend.services.downtime_service import (
     create_event as create_downtime_event,
     get_event as get_downtime_event,
@@ -68,6 +69,7 @@ def list_downtime(
     client_id: Optional[str] = None,
     work_order_id: Optional[str] = None,
     downtime_reason: Optional[str] = None,
+    category: Optional[DowntimeCategoryEnum] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Any:
@@ -86,6 +88,7 @@ def list_downtime(
         client_id=client_id,
         work_order_id=work_order_id,
         downtime_reason=downtime_reason,
+        category=category.value if category else None,
     )
 
 

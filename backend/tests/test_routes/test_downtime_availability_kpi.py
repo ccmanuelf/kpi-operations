@@ -19,7 +19,7 @@ from fastapi import FastAPI
 
 from backend.database import get_db
 from backend.orm import ClientType
-from backend.routes.downtime import availability_router
+from backend.routes.downtime import availability_router, router as downtime_router
 from backend.tests.fixtures.factories import TestDataFactory
 from backend.tests.conftest import clone_template_engine
 
@@ -28,6 +28,7 @@ def create_test_app(db_session):
     """Create a FastAPI test app with overridden dependencies."""
     app = FastAPI()
     app.include_router(availability_router)
+    app.include_router(downtime_router)
 
     def override_get_db():
         try:
@@ -127,3 +128,43 @@ class TestAvailabilityKpiAggregateShiftDateCastBug:
         assert data["total_scheduled_hours"] == 8.0
         assert data["total_downtime_hours"] == 1.5
         assert data["availability_percentage"] == 81.25
+
+
+class TestListDowntimeCategoryFilter:
+    """Task 8 (downtime-cause-taxonomy): GET /api/downtime?category=<enum>
+    filters the listing by root_cause_category, and rejects unknown values
+    with 422 (FastAPI's enum-typed query-param validation)."""
+
+    def test_list_downtime_filters_by_category(self, authenticated_client):
+        client, setup = authenticated_client
+        db = setup["db"]
+
+        TestDataFactory.create_downtime_entry(
+            db,
+            client_id=setup["client"].client_id,
+            reported_by=setup["supervisor"].user_id,
+            downtime_reason="EQUIPMENT_FAILURE",
+            root_cause_category="machine",
+        )
+        TestDataFactory.create_downtime_entry(
+            db,
+            client_id=setup["client"].client_id,
+            reported_by=setup["supervisor"].user_id,
+            downtime_reason="MATERIAL_SHORTAGE",
+            root_cause_category="materials",
+        )
+        db.commit()
+
+        response = client.get("/api/downtime?category=machine")
+
+        assert response.status_code == 200
+        body = response.json()
+        assert len(body) == 1
+        assert body[0]["root_cause_category"] == "machine"
+
+    def test_list_downtime_rejects_unknown_category(self, authenticated_client):
+        client, _setup = authenticated_client
+
+        response = client.get("/api/downtime?category=Breakdown")
+
+        assert response.status_code == 422

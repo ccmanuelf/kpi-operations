@@ -444,6 +444,7 @@ class TestDataFactory:
             downtime_duration_minutes=duration_minutes,
             machine_id=kwargs.get("machine_id", "MACH-001"),
             equipment_code=kwargs.get("equipment_code"),
+            root_cause_category=kwargs.get("root_cause_category"),
             notes=kwargs.get("notes", "Test downtime event"),
         )
         db.add(entry)

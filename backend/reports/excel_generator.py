@@ -328,10 +328,23 @@ class ExcelReportGenerator:
         ws["A1"].font = Font(size=16, bold=True)
         ws.merge_cells("A1:F1")
 
-        # Column headers
-        headers = ["Date", "Machine/Line", "Category", "Duration (hrs)", "Impact %", "Root Cause"]
-        for idx, header in enumerate(headers, start=1):
-            cell = ws.cell(row=3, column=idx)
+        # Fetch downtime data
+        downtime_data = self._fetch_downtime_data(client_id, start_date, end_date)
+
+        # By-category summary (Cycle 1 minimal rollup)
+        from collections import defaultdict
+
+        totals: dict[str, dict[str, float]] = defaultdict(lambda: {"events": 0, "minutes": 0.0})
+        for entry in downtime_data:
+            cat = entry["category"] if entry["category"] != "—" else "uncategorized"
+            totals[cat]["events"] += 1
+            totals[cat]["minutes"] += entry["duration"] * 60
+        grand = sum(v["minutes"] for v in totals.values()) or 1.0
+
+        summary_header_row = 3
+        summary_headers = ["By Category", "Events", "Total Minutes", "% of Total"]
+        for idx, header in enumerate(summary_headers, start=1):
+            cell = ws.cell(row=summary_header_row, column=idx)
             cell.value = header
             cell.font = Font(bold=True, color="FFFFFF")
             cell.fill = PatternFill(
@@ -339,10 +352,30 @@ class ExcelReportGenerator:
             )
             cell.alignment = Alignment(horizontal="center", vertical="center")
 
-        # Fetch downtime data
-        downtime_data = self._fetch_downtime_data(client_id, start_date, end_date)
+        summary_row = summary_header_row + 1
+        for cat in sorted(totals):
+            ws.cell(row=summary_row, column=1, value=cat)
+            ws.cell(row=summary_row, column=2, value=totals[cat]["events"])
+            ws.cell(row=summary_row, column=3, value=round(totals[cat]["minutes"], 1))
+            ws.cell(row=summary_row, column=4, value=round(100.0 * totals[cat]["minutes"] / grand, 1))
+            summary_row += 1
 
-        row = 4
+        if summary_row > summary_header_row + 1:
+            self._apply_table_borders(ws, f"A{summary_header_row}", f"D{summary_row - 1}")
+
+        # Column headers (detail table) — starts one blank row below the summary block
+        detail_header_row = summary_row + 1
+        headers = ["Date", "Machine/Line", "Category", "Duration (hrs)", "Impact %", "Root Cause"]
+        for idx, header in enumerate(headers, start=1):
+            cell = ws.cell(row=detail_header_row, column=idx)
+            cell.value = header
+            cell.font = Font(bold=True, color="FFFFFF")
+            cell.fill = PatternFill(
+                start_color=self.colors["header"], end_color=self.colors["header"], fill_type="solid"
+            )
+            cell.alignment = Alignment(horizontal="center", vertical="center")
+
+        row = detail_header_row + 1
         for entry in downtime_data:
             ws[f"A{row}"] = entry["date"]
             ws[f"B{row}"] = entry["machine"]
@@ -359,11 +392,11 @@ class ExcelReportGenerator:
         # Add totals
         ws[f"A{row}"] = "TOTAL"
         ws[f"A{row}"].font = Font(bold=True)
-        ws[f"D{row}"] = f"=SUM(D4:D{row-1})"
+        ws[f"D{row}"] = f"=SUM(D{detail_header_row + 1}:D{row - 1})"
         ws[f"D{row}"].font = Font(bold=True)
         ws[f"D{row}"].number_format = "0.00"
 
-        self._apply_table_borders(ws, "A3", f"F{row}")
+        self._apply_table_borders(ws, f"A{detail_header_row}", f"F{row}")
 
         # Adjust column widths
         for col in ["A", "B", "C", "D", "E"]:

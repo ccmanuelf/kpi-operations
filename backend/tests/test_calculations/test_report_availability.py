@@ -5,6 +5,7 @@ from decimal import Decimal
 from pathlib import Path
 
 import pytest
+from openpyxl import Workbook
 
 from backend.reports.excel_generator import ExcelReportGenerator
 from backend.reports.pdf_generator import PDFReportGenerator
@@ -96,6 +97,95 @@ class TestAvailabilityValueEquality:
         assert details["Average (Period)"] == "87.5%"
         assert details["Best Day"] == "87.5%"
         assert details["Worst Day"] == "87.5%"
+
+
+def _seed_downtime_entry(
+    db, *, client, user, category: str, duration_minutes: int, entry_date: date, entry_time: time = time(12, 0)
+):
+    """Insert one DowntimeEntry with a known root_cause_category and duration
+    through the real factory path (Task 8: downtime-cause-taxonomy)."""
+    entry = TestDataFactory.create_downtime_entry(
+        db,
+        client_id=client.client_id,
+        reported_by=user.user_id,
+        downtime_reason="EQUIPMENT_FAILURE",
+        shift_date=datetime.combine(entry_date, entry_time),
+        duration_minutes=duration_minutes,
+        root_cause_category=category,
+    )
+    db.flush()
+    return entry
+
+
+class TestDowntimeSheetByCategorySummary:
+    """Task 8 (downtime-cause-taxonomy): the Downtime Analysis sheet gains a
+    By-Category rollup (events / total minutes / % of total) inserted above
+    the detail table, aggregating the already-fetched _fetch_downtime_data
+    rows (see spec §... in docs/superpowers/specs/2026-07-31-downtime-cause-
+    taxonomy-design.md)."""
+
+    def test_downtime_sheet_has_by_category_summary_with_exact_values(self, transactional_db):
+        entry_date = date(2026, 1, 15)
+        client = TestDataFactory.create_client(transactional_db)
+        user = TestDataFactory.create_user(transactional_db, role="admin", client_id=client.client_id)
+        transactional_db.flush()
+
+        # machine: 90min + 30min = 120min total, 2 events
+        _seed_downtime_entry(
+            transactional_db, client=client, user=user, category="machine", duration_minutes=90, entry_date=entry_date
+        )
+        _seed_downtime_entry(
+            transactional_db, client=client, user=user, category="machine", duration_minutes=30, entry_date=entry_date
+        )
+        # materials: 60min, 1 event
+        _seed_downtime_entry(
+            transactional_db,
+            client=client,
+            user=user,
+            category="materials",
+            duration_minutes=60,
+            entry_date=entry_date,
+        )
+        transactional_db.commit()
+
+        wb = Workbook()
+        ExcelReportGenerator(transactional_db)._create_downtime_sheet(wb, client.client_id, entry_date, entry_date)
+        ws = wb["Downtime Analysis"]
+
+        # Derivation: grand total minutes = 120 (machine) + 60 (materials) = 180.
+        # machine % = 120 / 180 * 100 = 66.666...  -> round(., 1) = 66.7
+        # materials % = 60 / 180 * 100 = 33.333...  -> round(., 1) = 33.3
+        # 66.7 + 33.3 == 100.0 exactly (Cycle 1 minimal rollup, no rounding drift
+        # at this precision).
+        header_row = [c.value for c in ws[3]][:4]
+        machine_row = [c.value for c in ws[4]][:4]
+        materials_row = [c.value for c in ws[5]][:4]
+
+        assert header_row == ["By Category", "Events", "Total Minutes", "% of Total"]
+        assert machine_row == ["machine", 2, 120.0, 66.7]
+        assert materials_row == ["materials", 1, 60.0, 33.3]
+        assert machine_row[3] + materials_row[3] == 100.0
+
+        # Detail table header must be pushed below the summary block + blank
+        # separator row (row 6 blank, row 7 detail header), not overwritten by it.
+        detail_header_row = [c.value for c in ws[7]][:6]
+        assert detail_header_row == ["Date", "Machine/Line", "Category", "Duration (hrs)", "Impact %", "Root Cause"]
+
+    def test_downtime_sheet_by_category_summary_empty_when_no_data(self, transactional_db):
+        """No downtime rows in range -> summary header still renders, no
+        category rows, no divide-by-zero (grand total falls back to 1.0)."""
+        client = TestDataFactory.create_client(transactional_db)
+        transactional_db.commit()
+
+        wb = Workbook()
+        ExcelReportGenerator(transactional_db)._create_downtime_sheet(
+            wb, client.client_id, date(2026, 1, 15), date(2026, 1, 15)
+        )
+        ws = wb["Downtime Analysis"]
+
+        assert [c.value for c in ws[3]][:4] == ["By Category", "Events", "Total Minutes", "% of Total"]
+        # No category present -> row 4 is the blank separator, not a data row.
+        assert [c.value for c in ws[4]][:4] == [None, None, None, None]
 
 
 class TestExcelGeneratorEmptySheetSelectionGuard:
