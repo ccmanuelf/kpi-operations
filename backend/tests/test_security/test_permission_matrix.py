@@ -118,6 +118,13 @@ MATRIX = [
     # Admin tier
     ("POST", "/api/employees/upload/csv", ["operator", "leader", "supervisor"], "admin", 422),
     ("POST", "/api/clients/upload/csv", ["operator", "leader", "supervisor"], "admin", 422),
+    # Work order writes (_check_wo_write_permission, supervisory tier). Empty
+    # body clears the guard for the allowed role and reaches the CRUD lookup,
+    # where work order "1" doesn't exist in this fixture's empty DB => 404.
+    # (Delay-classification's own field-level 403 — supervisory-only even for
+    # a supervisory-gated route — is covered at the CRUD layer by
+    # test_work_order_delay_classification.py; this row pins the route guard.)
+    ("PUT", "/api/work-orders/1", ["operator", "viewer"], "supervisor", 404),
 ]
 
 
