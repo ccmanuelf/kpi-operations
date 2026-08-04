@@ -44,7 +44,7 @@ def test_recent_activity_carries_structured_activity_type_and_params(transaction
         db,
         client_id=CLIENT_ID,
         reported_by=user.user_id,
-        downtime_reason="Machine breakdown",
+        downtime_reason="EQUIPMENT_FAILURE",
         shift_date=datetime.combine(today, time()),
         duration_minutes=20,
     )
@@ -78,7 +78,9 @@ def test_recent_activity_carries_structured_activity_type_and_params(transaction
 
     down = by_type["downtime"]
     assert down.activity_type == "downtime_logged"
-    assert down.params == {"reason": "Machine breakdown", "minutes": 20}
+    # "Machine breakdown" (free text) -> "EQUIPMENT_FAILURE" (canonical enum); the
+    # reason string passes straight through to params, so this is a value swap only.
+    assert down.params == {"reason": "EQUIPMENT_FAILURE", "minutes": 20}
 
     qual = by_type["quality"]
     assert qual.activity_type == "quality_checked"

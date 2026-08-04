@@ -245,6 +245,68 @@ def test_no_create_all_outside_alembic():
 
 
 # ---------------------------------------------------------------------------
+# cast(col, Date) SQLite guard (always-on, dialect-agnostic). SQLite's
+# numeric column affinity mangles CAST(<DateTime column> AS DATE) --
+# CAST('2026-01-15 10:00:00' AS DATE) collapses to 2026, silently emptying
+# every date-range/equality filter that uses it. MariaDB's CAST AS DATE
+# works, so this was SQLite-only breakage (Render demo, local dev, the
+# SQLite test suite). func.date(...) is the portable replacement used
+# everywhere else in the codebase (12+ files) -- see
+# calculations/availability.py's calculate_mtbf/calculate_mttr (first fixed)
+# and the downtime-cause-taxonomy cycle's task-4b (remaining sites).
+#
+# The second-argument match is deliberately `\w*[Dd]ate\w*`, not a literal
+# `Date`: task 4b independently found routes/downtime.py evading a literal
+# match via aliased imports (`cast as sa_cast, Date as SADate`). A plain
+# `cast(` + literal `Date` regex does not match `sa_cast(x, SADate)` -- the
+# `\w*[Dd]ate\w*` wildcard closes that evasion (verified false-positive-free
+# against the current tree: every typing.cast(...) site in backend/ was
+# checked individually and none has "date" in its type argument).
+# ---------------------------------------------------------------------------
+
+import re  # noqa: E402
+
+CAST_DATE_RE = re.compile(r"cast\([^,)]+,\s*\w*[Dd]ate\w*\s*\)")  # schema-guard: allow
+
+
+def test_no_sql_cast_date():
+    """cast(<col>, Date) must not appear in backend app code -- func.date(...) instead."""  # schema-guard: allow
+    import pathlib
+
+    backend_root = pathlib.Path(__file__).resolve().parent.parent
+    marker = "# schema-guard: allow"
+
+    offenders = []
+    for py in backend_root.rglob("*.py"):
+        if "alembic" in py.parts or ".venv" in py.parts or "tests" in py.parts:
+            continue
+        for lineno, line in enumerate(py.read_text(encoding="utf-8").splitlines(), start=1):
+            if marker in line:
+                continue
+            if CAST_DATE_RE.search(line):
+                offenders.append(f"{py.relative_to(backend_root)}:{lineno}")
+    assert sorted(offenders) == []
+
+
+@pytest.mark.parametrize(
+    "snippet,should_match",
+    [
+        ("cast(QualityEntry.shift_date, Date)", True),
+        ("sa_cast(DowntimeEntry.shift_date, SADate)", True),
+        ("cast(x, SomeDateAlias)", True),
+        ("typing.cast(str, value)", False),
+        ("typing.cast(Optional[int], value)", False),
+    ],
+)
+def test_cast_date_regex_catches_aliased_imports(snippet, should_match):
+    """Self-test for CAST_DATE_RE: must catch both the literal `Date` form
+    and the aliased `SADate` form (the exact evasion task 4b found in
+    routes/downtime.py), while staying silent on unrelated typing.cast(...)
+    calls whose type argument doesn't mention "date"."""
+    assert bool(CAST_DATE_RE.search(snippet)) is should_match
+
+
+# ---------------------------------------------------------------------------
 # holds.py MariaDB portability: date_diff_days must EXECUTE on real MariaDB.
 # Before the fix, holds.py used func.julianday(), which 500s on MariaDB with
 # (1305, 'FUNCTION kpi_platform.julianday does not exist'). SQLite cannot

@@ -88,7 +88,7 @@ class TestDowntimeCRUD:
         wo = TestDataFactory.create_work_order(transactional_db, client_id="DTMR-CL")
         transactional_db.flush()
 
-        for reason in ["EQUIPMENT_FAILURE", "MATERIAL_SHORTAGE", "CHANGEOVER"]:
+        for reason in ["EQUIPMENT_FAILURE", "MATERIAL_SHORTAGE", "SETUP_CHANGEOVER"]:
             TestDataFactory.create_downtime_entry(
                 transactional_db,
                 client_id="DTMR-CL",

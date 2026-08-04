@@ -5,7 +5,7 @@ Target: Increase routes/quality.py coverage from 21% to 80%+
 """
 
 import pytest
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 from sqlalchemy.orm import sessionmaker
 from fastapi.testclient import TestClient
@@ -230,6 +230,40 @@ class TestQualityStatistics:
         )
 
         assert response.status_code == 200
+
+    def test_get_quality_statistics_matches_seeded_entry_on_exact_date(self, authenticated_client):
+        """Regression: the statistics/summary date-range filter used
+        cast(shift_date, Date), which mangles on SQLite (numeric column
+        affinity truncates 'YYYY-MM-DD HH:MM:SS' to just the leading year),
+        silently excluding every quality entry. func.date(shift_date) is the
+        portable fix. Seed exactly one inspection on 2026-07-01 06:00 and
+        query that exact single day."""
+        client, setup = authenticated_client
+        db = setup["db"]
+
+        work_order = TestDataFactory.create_work_order(db, client_id=setup["client"].client_id)
+        db.flush()
+
+        entry = TestDataFactory.create_quality_entry(
+            db,
+            work_order_id=work_order.work_order_id,
+            client_id=setup["client"].client_id,
+            inspector_id=setup["supervisor"].user_id,
+            inspection_date=date(2026, 7, 1),
+            units_inspected=250,
+            units_defective=10,
+        )
+        entry.shift_date = datetime(2026, 7, 1, 6, 0)
+        db.commit()
+
+        response = client.get("/api/quality/statistics/summary?start_date=2026-07-01&end_date=2026-07-01")
+
+        assert response.status_code == 200
+        data = response.json()
+        # Derivation: only entry seeded on this exact day has 250 units
+        # inspected; an exact match proves the date filter matched the row
+        # (it returned 0 before the fix).
+        assert data["total_units_inspected"] == 250
 
 
 class TestPPMCalculation:

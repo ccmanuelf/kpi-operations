@@ -52,6 +52,7 @@ def get_downtime_events(
     client_id: Optional[str] = None,
     work_order_id: Optional[str] = None,
     downtime_reason: Optional[str] = None,
+    category: Optional[str] = None,
 ) -> List[DowntimeEntry]:
     """Get downtime events with filters"""
     query = db.query(DowntimeEntry)
@@ -75,6 +76,9 @@ def get_downtime_events(
 
     if downtime_reason:
         query = query.filter(DowntimeEntry.downtime_reason == downtime_reason)
+
+    if category:
+        query = query.filter(DowntimeEntry.root_cause_category == category)
 
     return query.order_by(DowntimeEntry.shift_date.desc()).offset(skip).limit(limit).all()
 

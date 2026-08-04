@@ -38,6 +38,7 @@ def list_events(
     client_id: Optional[str] = None,
     work_order_id: Optional[str] = None,
     downtime_reason: Optional[str] = None,
+    category: Optional[str] = None,
 ) -> Any:
     """List downtime events with filters."""
     return get_downtime_events(
@@ -50,6 +51,7 @@ def list_events(
         client_id=client_id,
         work_order_id=work_order_id,
         downtime_reason=downtime_reason,
+        category=category,
     )
 
 

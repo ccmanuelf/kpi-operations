@@ -237,10 +237,10 @@ class TestAlembicCLI:
     """Integration tests that exercise the Alembic CLI."""
 
     def test_alembic_heads(self):
-        """``alembic heads`` should list the baseline revision."""
+        """``alembic heads`` should list the current head revision."""
         result = _run_alembic("heads")
         assert result.returncode == 0, f"alembic heads failed: {result.stderr}"
-        assert "0001_baseline" in result.stdout, f"0001_baseline not in heads output: {result.stdout}"
+        assert "0002_downtime_taxonomy" in result.stdout, f"0002_downtime_taxonomy not in heads output: {result.stdout}"
 
     def test_alembic_history(self):
         """``alembic history`` should contain the baseline entry."""
@@ -270,10 +270,12 @@ class TestAlembicCLI:
         assert result.returncode == 0, f"alembic stamp head failed:\nstdout: {result.stdout}\nstderr: {result.stderr}"
 
     def test_alembic_current_after_stamp(self, tmp_path):
-        """After stamping, ``alembic current`` should report 0001_baseline."""
+        """After stamping, ``alembic current`` should report the head revision."""
         url = f"sqlite:///{tmp_path}/cli_current_after_stamp.db"
         stamp = _run_alembic("stamp", "head", db_url=url)
         assert stamp.returncode == 0, f"alembic stamp head failed: {stamp.stderr}"
         result = _run_alembic("current", db_url=url)
         assert result.returncode == 0, f"alembic current failed: {result.stderr}"
-        assert "0001_baseline" in result.stdout, f"Expected 0001_baseline in current output: {result.stdout}"
+        assert (
+            "0002_downtime_taxonomy" in result.stdout
+        ), f"Expected 0002_downtime_taxonomy in current output: {result.stdout}"

@@ -704,6 +704,7 @@
     }
   },
   "downtime": {
+    "uncategorizedCount": "{count} sin categorizar",
     "title": "Tiempo Muerto",
     "entry": "Captura de Tiempo Muerto",
     "reason": "Razón",
@@ -4370,6 +4371,26 @@
       "productionLogged": "Se registraron {units} unidades para {workOrderId}",
       "downtimeLogged": "{reason}: {minutes} min de inactividad",
       "qualityChecked": "Inspección de calidad: {inspected} inspeccionadas, {defects} defectos"
+    }
+  },
+  "taxonomy": {
+    "categories": {
+      "machine": "Máquina",
+      "materials": "Materiales",
+      "scheduling": "Programación",
+      "attendance": "Asistencia",
+      "other": "Otro",
+      "uncategorized": "Sin categorizar"
+    },
+    "reasons": {
+      "equipmentFailure": "Falla de equipo",
+      "materialShortage": "Falta de material",
+      "setupChangeover": "Preparación / cambio de modelo",
+      "qualityHold": "Retención de calidad",
+      "maintenance": "Mantenimiento programado",
+      "powerOutage": "Corte de energía",
+      "operatorUnavailable": "Operador no disponible",
+      "other": "Otro"
     }
   }
 }

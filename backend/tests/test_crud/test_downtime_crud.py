@@ -79,7 +79,7 @@ class TestDowntimeCRUD:
         wo = TestDataFactory.create_work_order(transactional_db, client_id="DTM-CL")
         transactional_db.flush()
 
-        for reason in ["EQUIPMENT_FAILURE", "MATERIAL_SHORTAGE", "CHANGEOVER"]:
+        for reason in ["EQUIPMENT_FAILURE", "MATERIAL_SHORTAGE", "SETUP_CHANGEOVER"]:
             TestDataFactory.create_downtime_entry(
                 transactional_db,
                 client_id="DTM-CL",
@@ -113,6 +113,35 @@ class TestDowntimeCRUD:
         result = get_downtime_events(transactional_db, admin, client_id="DT-A")
         assert len(result) == 1
         assert result[0].client_id == "DT-A"
+
+    def test_downtime_filter_by_category(self, transactional_db):
+        """Test filtering downtime by root_cause_category (Task 8: taxonomy listing filter)"""
+        TestDataFactory.create_client(transactional_db, client_id="DT-CAT")
+        admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="DT-CAT")
+        wo = TestDataFactory.create_work_order(transactional_db, client_id="DT-CAT")
+        transactional_db.flush()
+
+        TestDataFactory.create_downtime_entry(
+            transactional_db,
+            client_id="DT-CAT",
+            work_order_id=wo.work_order_id,
+            reported_by=admin.user_id,
+            downtime_reason="EQUIPMENT_FAILURE",
+            root_cause_category="machine",
+        )
+        TestDataFactory.create_downtime_entry(
+            transactional_db,
+            client_id="DT-CAT",
+            work_order_id=wo.work_order_id,
+            reported_by=admin.user_id,
+            downtime_reason="MATERIAL_SHORTAGE",
+            root_cause_category="materials",
+        )
+        transactional_db.commit()
+
+        result = get_downtime_events(transactional_db, admin, category="machine")
+        assert len(result) == 1
+        assert result[0].root_cause_category == "machine"
 
     def test_calculate_mtbf(self):
         """Test Mean Time Between Failures calculation"""

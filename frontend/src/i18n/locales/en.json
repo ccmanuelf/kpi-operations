@@ -704,6 +704,7 @@
     }
   },
   "downtime": {
+    "uncategorizedCount": "{count} uncategorized",
     "title": "Downtime",
     "entry": "Downtime Entry",
     "reason": "Reason",
@@ -4370,6 +4371,26 @@
       "productionLogged": "Logged {units} units for {workOrderId}",
       "downtimeLogged": "{reason}: {minutes} min downtime",
       "qualityChecked": "Quality check: {inspected} inspected, {defects} defects"
+    }
+  },
+  "taxonomy": {
+    "categories": {
+      "machine": "Machine",
+      "materials": "Materials",
+      "scheduling": "Scheduling",
+      "attendance": "Attendance",
+      "other": "Other",
+      "uncategorized": "Uncategorized"
+    },
+    "reasons": {
+      "equipmentFailure": "Equipment failure",
+      "materialShortage": "Material shortage",
+      "setupChangeover": "Setup / changeover",
+      "qualityHold": "Quality hold",
+      "maintenance": "Scheduled maintenance",
+      "powerOutage": "Power outage",
+      "operatorUnavailable": "Operator unavailable",
+      "other": "Other"
     }
   }
 }

@@ -15,6 +15,7 @@ from backend.schemas.downtime import (
     DowntimeEventUpdate,
     DowntimeEventResponse,
 )
+from backend.orm.downtime_taxonomy import DowntimeCategoryEnum
 from backend.services.downtime_service import (
     create_event as create_downtime_event,
     get_event as get_downtime_event,
@@ -68,6 +69,7 @@ def list_downtime(
     client_id: Optional[str] = None,
     work_order_id: Optional[str] = None,
     downtime_reason: Optional[str] = None,
+    category: Optional[DowntimeCategoryEnum] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Any:
@@ -86,6 +88,7 @@ def list_downtime(
         client_id=client_id,
         work_order_id=work_order_id,
         downtime_reason=downtime_reason,
+        category=category.value if category else None,
     )
 
 
@@ -171,7 +174,7 @@ def calculate_availability_kpi(
       keep working.
     """
     from datetime import timedelta
-    from sqlalchemy import func, cast as sa_cast, Date as SADate
+    from sqlalchemy import func
     from decimal import Decimal as _Decimal
     from backend.orm.downtime_entry import DowntimeEntry
     from backend.utils.date_range import validate_date_range
@@ -197,8 +200,8 @@ def calculate_availability_kpi(
             func.coalesce(func.sum(DowntimeEntry.downtime_duration_minutes), 0).label("dt_minutes"),
             func.count(DowntimeEntry.downtime_entry_id).label("event_count"),
         ).filter(
-            sa_cast(DowntimeEntry.shift_date, SADate) >= start_date,
-            sa_cast(DowntimeEntry.shift_date, SADate) <= end_date,
+            func.date(DowntimeEntry.shift_date) >= start_date,
+            func.date(DowntimeEntry.shift_date) <= end_date,
         )
         query = query.filter(scope.filter(DowntimeEntry.client_id))
         row = query.first()

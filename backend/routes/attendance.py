@@ -177,7 +177,7 @@ def get_attendance_statistics(
     Get attendance statistics and summary for a date range
     SECURITY: Returns only data for user's authorized clients
     """
-    from sqlalchemy import func, case, cast, Date
+    from sqlalchemy import func, case
     from backend.orm.attendance_entry import AttendanceEntry
     from backend.utils.date_range import validate_date_range
 
@@ -197,7 +197,7 @@ def get_attendance_statistics(
 
     # Apply date filters (shift_date is DateTime, need to cast to Date for comparison)
     query = query.filter(
-        cast(AttendanceEntry.shift_date, Date) >= start_date, cast(AttendanceEntry.shift_date, Date) <= end_date
+        func.date(AttendanceEntry.shift_date) >= start_date, func.date(AttendanceEntry.shift_date) <= end_date
     )
 
     # Optional shift filter

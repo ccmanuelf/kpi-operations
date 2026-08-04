@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy.orm import Session
 
+from backend.orm.downtime_taxonomy import DEFAULT_CATEGORY_BY_REASON, DowntimeCategoryEnum, DowntimeReasonEnum
 from backend.scripts._seed_common import ClientSpec, rng_for
 from backend.scripts._seed_master import seed_employees, seed_lines, seed_products, seed_shifts
 
@@ -449,21 +450,34 @@ def seed_daily_data(session: Session, spec: ClientSpec, days: int, entered_by: s
                 )
             )
             if seq % 5 == 1:
+                reason = wrng.choice(
+                    [
+                        DowntimeReasonEnum.EQUIPMENT_FAILURE.value,
+                        DowntimeReasonEnum.MATERIAL_SHORTAGE.value,
+                        DowntimeReasonEnum.SETUP_CHANGEOVER.value,
+                        DowntimeReasonEnum.MAINTENANCE.value,
+                        DowntimeReasonEnum.QUALITY_HOLD.value,
+                        DowntimeReasonEnum.OPERATOR_UNAVAILABLE.value,
+                    ]
+                )
+                # ~10% explicit overrides demonstrate the operator-correction flow
+                # (downtime rows are created when seq % 5 == 1, so seq % 50 == 1 hits
+                # one in ten of them): the row is attributed to scheduling even though
+                # the reason's default says otherwise (e.g. a rushed changeover broke
+                # the machine). Skip when the default already IS scheduling, so every
+                # flagged row is a true override.
+                if seq % 50 == 1 and DEFAULT_CATEGORY_BY_REASON[reason] != DowntimeCategoryEnum.SCHEDULING.value:
+                    category = DowntimeCategoryEnum.SCHEDULING.value
+                else:
+                    category = DEFAULT_CATEGORY_BY_REASON[reason]
                 session.add(
                     DowntimeEntry(
                         downtime_entry_id=f"DT-{cid}-{seq:04d}",
                         client_id=cid,
                         work_order_id=wo.work_order_id,
                         reported_by=entered_by,
-                        downtime_reason=wrng.choice(
-                            [
-                                "EQUIPMENT_FAILURE",
-                                "MATERIAL_SHORTAGE",
-                                "CHANGEOVER",
-                                "PLANNED_MAINTENANCE",
-                                "QUALITY_HOLD",
-                            ]
-                        ),
+                        downtime_reason=reason,
+                        root_cause_category=category,
                         shift_date=day_dt,
                         downtime_duration_minutes=int(downtime_h * 60),
                     )

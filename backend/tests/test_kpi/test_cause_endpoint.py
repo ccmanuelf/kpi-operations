@@ -32,7 +32,7 @@ def test_availability_cause_returns_top_downtime(client, db_session):
             downtime_entry_id="DT1",
             client_id="C1",
             shift_date=datetime(2026, 6, 10, 8),
-            downtime_reason="Changeover",
+            downtime_reason="SETUP_CHANGEOVER",
             downtime_duration_minutes=60,
         )
     )
@@ -41,7 +41,8 @@ def test_availability_cause_returns_top_downtime(client, db_session):
     assert r.status_code == 200
     body = r.json()
     assert body["metric"] == "availability" and body["kind"] == "downtime"
-    assert body["factor"] == "Changeover" and body["unit"] == "min"
+    # "Changeover" (free text) -> "SETUP_CHANGEOVER" (canonical enum); sole entry, still top factor.
+    assert body["factor"] == "SETUP_CHANGEOVER" and body["unit"] == "min"
 
 
 def test_fallback_metric_returns_null_cause(client):

@@ -37,7 +37,14 @@ export interface WorkOrder {
 }
 
 export interface DowntimeReason {
-  [key: string]: unknown
+  id: string
+  label_key: string
+  default_category: string
+}
+
+export interface DowntimeCategory {
+  id: string
+  label_key: string
 }
 
 export interface DashboardRow {
@@ -58,6 +65,7 @@ export interface ProductionDataState {
   holdEntries: HoldEntry[]
   workOrders: WorkOrder[]
   downtimeReasons: DowntimeReason[]
+  downtimeCategories: DowntimeCategory[]
   dashboardData: DashboardRow[]
   products: Product[]
   shifts: Shift[]
@@ -83,6 +91,7 @@ export const useProductionDataStore = defineStore('productionData', {
     holdEntries: [],
     workOrders: [],
     downtimeReasons: [],
+    downtimeCategories: [],
     dashboardData: [],
     products: [],
     shifts: [],
@@ -243,7 +252,8 @@ export const useProductionDataStore = defineStore('productionData', {
 
         this.products = productsRes.data
         this.shifts = shiftsRes.data
-        this.downtimeReasons = reasonsRes.data
+        this.downtimeReasons = reasonsRes.data.reasons
+        this.downtimeCategories = reasonsRes.data.categories
 
         // Real work orders (GET /api/work-orders — same list endpoint
         // WorkOrderManagement/useWorkOrderData.ts use, no status filter so

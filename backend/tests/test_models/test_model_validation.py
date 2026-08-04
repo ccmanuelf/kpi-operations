@@ -436,6 +436,7 @@ class TestDowntimeEventPydantic:
             "QUALITY_HOLD",
             "MAINTENANCE",
             "POWER_OUTAGE",
+            "OPERATOR_UNAVAILABLE",
             "OTHER",
         }
         actual = {member.value for member in DowntimeReasonEnum}

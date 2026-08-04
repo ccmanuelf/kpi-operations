@@ -49,6 +49,8 @@ describe('KPI Store', () => {
       expect(store.workOrders).toEqual([])
       expect(store.products).toEqual([])
       expect(store.shifts).toEqual([])
+      expect(store.downtimeReasons).toEqual([])
+      expect(store.downtimeCategories).toEqual([])
       expect(store.loading).toBe(false)
       expect(store.error).toBeNull()
     })
@@ -178,7 +180,12 @@ describe('KPI Store', () => {
     it('fetchReferenceData loads products, shifts, and reasons', async () => {
       api.getProducts.mockResolvedValue({ data: [{ product_id: 1, product_name: 'Widget' }] })
       api.getShifts.mockResolvedValue({ data: [{ shift_id: 1, shift_name: 'Day' }] })
-      api.getDowntimeReasons.mockResolvedValue({ data: [{ reason_id: 1, reason: 'Maintenance' }] })
+      api.getDowntimeReasons.mockResolvedValue({
+        data: {
+          reasons: [{ id: 'MAINTENANCE', label_key: 'taxonomy.reasons.maintenance', default_category: 'machine' }],
+          categories: [{ id: 'machine', label_key: 'taxonomy.categories.machine' }],
+        },
+      })
       api.getWorkOrders.mockResolvedValue({ data: [] })
 
       const store = useProductionDataStore()
@@ -188,12 +195,13 @@ describe('KPI Store', () => {
       expect(store.products).toHaveLength(1)
       expect(store.shifts).toHaveLength(1)
       expect(store.downtimeReasons).toHaveLength(1)
+      expect(store.downtimeCategories).toHaveLength(1)
     })
 
     it('fetchReferenceData loads real work orders from the API and maps work_order_number from work_order_id', async () => {
       api.getProducts.mockResolvedValue({ data: [] })
       api.getShifts.mockResolvedValue({ data: [] })
-      api.getDowntimeReasons.mockResolvedValue({ data: [] })
+      api.getDowntimeReasons.mockResolvedValue({ data: { reasons: [], categories: [] } })
       api.getWorkOrders.mockResolvedValue({
         data: [
           { work_order_id: 'WO-DEMO-001', status: 'IN_PROGRESS', style_model: 'Real Style' },
@@ -225,7 +233,7 @@ describe('KPI Store', () => {
     it('fetchReferenceData excludes closed-out work orders (COMPLETED/SHIPPED/CLOSED)', async () => {
       api.getProducts.mockResolvedValue({ data: [] })
       api.getShifts.mockResolvedValue({ data: [] })
-      api.getDowntimeReasons.mockResolvedValue({ data: [] })
+      api.getDowntimeReasons.mockResolvedValue({ data: { reasons: [], categories: [] } })
       api.getWorkOrders.mockResolvedValue({
         data: [
           { work_order_id: 'WO-DEMO-010', status: 'IN_PROGRESS' },
@@ -244,7 +252,7 @@ describe('KPI Store', () => {
     it('fetchReferenceData never fabricates work orders — empty API result yields an empty dropdown', async () => {
       api.getProducts.mockResolvedValue({ data: [] })
       api.getShifts.mockResolvedValue({ data: [] })
-      api.getDowntimeReasons.mockResolvedValue({ data: [] })
+      api.getDowntimeReasons.mockResolvedValue({ data: { reasons: [], categories: [] } })
       api.getWorkOrders.mockResolvedValue({ data: [] })
 
       const store = useProductionDataStore()
@@ -258,7 +266,7 @@ describe('KPI Store', () => {
     it('fetchReferenceData reports failure (does not fabricate) when getWorkOrders rejects', async () => {
       api.getProducts.mockResolvedValue({ data: [] })
       api.getShifts.mockResolvedValue({ data: [] })
-      api.getDowntimeReasons.mockResolvedValue({ data: [] })
+      api.getDowntimeReasons.mockResolvedValue({ data: { reasons: [], categories: [] } })
       api.getWorkOrders.mockRejectedValue({ response: { data: { detail: 'boom' } } })
 
       const store = useProductionDataStore()

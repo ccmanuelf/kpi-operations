@@ -100,22 +100,30 @@ def get_active_shift(db: Session = Depends(get_db), current_user: User = Depends
     raise HTTPException(status_code=404, detail="No active shift at this time")
 
 
-@router.get("/downtime-reasons", response_model=List[dict])
+@router.get("/downtime-reasons", response_model=dict)
 def list_downtime_reasons(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> Any:
-    """List all downtime reason categories"""
-    # Standard downtime reason categories (can be extended from DB if needed)
-    reasons = [
-        {"id": "mechanical", "name": "Mechanical Failure", "category": "Equipment"},
-        {"id": "electrical", "name": "Electrical Failure", "category": "Equipment"},
-        {"id": "material", "name": "Material Shortage", "category": "Supply"},
-        {"id": "quality", "name": "Quality Issue", "category": "Quality"},
-        {"id": "changeover", "name": "Changeover/Setup", "category": "Planned"},
-        {"id": "maintenance", "name": "Scheduled Maintenance", "category": "Planned"},
-        {"id": "operator", "name": "Operator Unavailable", "category": "Labor"},
-        {"id": "break", "name": "Scheduled Break", "category": "Planned"},
-        {"id": "other", "name": "Other", "category": "Other"},
-    ]
-    return reasons
+    """Canonical downtime taxonomy: categories (level 1) and reasons (level 2) with default mapping."""
+    from backend.orm.downtime_taxonomy import (
+        DEFAULT_CATEGORY_BY_REASON,
+        SELECTABLE_CATEGORIES,
+        DowntimeReasonEnum,
+    )
+
+    def _camel(value: str) -> str:
+        parts = value.lower().split("_")
+        return parts[0] + "".join(p.title() for p in parts[1:])
+
+    return {
+        "categories": [{"id": c, "label_key": f"taxonomy.categories.{c}"} for c in SELECTABLE_CATEGORIES],
+        "reasons": [
+            {
+                "id": r.value,
+                "label_key": f"taxonomy.reasons.{_camel(r.value)}",
+                "default_category": DEFAULT_CATEGORY_BY_REASON[r.value],
+            }
+            for r in DowntimeReasonEnum
+        ],
+    }
 
 
 @router.get("/inference/cycle-time/{product_id}")

@@ -47,21 +47,33 @@ vi.mock('@/stores/productionDataStore', () => ({
 import {
   default as useDowntimeGridData,
   DOWNTIME_REASON_CODES,
+  applyReasonChange,
+  applyCategoryChange,
   type DowntimeRow,
+  type DowntimeRowTaxonomyState,
 } from '../useDowntimeGridData'
 
 interface ColumnDefShape {
   field?: string
   editable?: boolean
   cellEditor?: string
-  cellEditorParams?: { values?: unknown[]; min?: number; max?: number } | (() => unknown)
+  cellEditorParams?:
+    | { values?: unknown[]; min?: number; max?: number }
+    | (() => { values?: unknown[] })
+  cellClass?: (_params: { value?: string }) => string | undefined
 }
 
 const findCol = (cols: unknown[], field: string): ColumnDefShape | undefined =>
   (cols as ColumnDefShape[]).find((c) => c.field === field)
 
+const makeRow = (overrides: Partial<DowntimeRowTaxonomyState> = {}): DowntimeRowTaxonomyState => ({
+  downtime_reason: 'OTHER',
+  root_cause_category: 'other',
+  ...overrides,
+})
+
 describe('DOWNTIME_REASON_CODES catalog', () => {
-  it('contains the 7 backend enum codes', () => {
+  it('contains the 8 backend enum codes, including OPERATOR_UNAVAILABLE', () => {
     expect(DOWNTIME_REASON_CODES).toEqual([
       'EQUIPMENT_FAILURE',
       'MATERIAL_SHORTAGE',
@@ -69,6 +81,7 @@ describe('DOWNTIME_REASON_CODES catalog', () => {
       'QUALITY_HOLD',
       'MAINTENANCE',
       'POWER_OUTAGE',
+      'OPERATOR_UNAVAILABLE',
       'OTHER',
     ])
   })
@@ -136,6 +149,30 @@ describe('useDowntimeGridData', () => {
       expect(findCol(columnDefs.value, 'root_cause_category')).toBeDefined()
     })
 
+    it('offers exactly the 5 selectable categories in the category column editor', () => {
+      const { columnDefs } = withSetup(() => useDowntimeGridData())
+      const col = columnDefs.value.find((c) => c.field === 'root_cause_category')
+      expect(col?.cellEditor).toBe('agSelectCellEditor')
+      const params =
+        typeof col?.cellEditorParams === 'function' ? col.cellEditorParams() : col?.cellEditorParams
+      expect(params.values).toEqual(['machine', 'materials', 'scheduling', 'attendance', 'other'])
+    })
+
+    it('reason list includes OPERATOR_UNAVAILABLE sourced from the shared constants', () => {
+      const { columnDefs } = withSetup(() => useDowntimeGridData())
+      const col = columnDefs.value.find((c) => c.field === 'downtime_reason')
+      const params =
+        typeof col?.cellEditorParams === 'function' ? col.cellEditorParams() : col?.cellEditorParams
+      expect(params.values).toContain('OPERATOR_UNAVAILABLE')
+    })
+
+    it('flags uncategorized cells with the highlight class', () => {
+      const { columnDefs } = withSetup(() => useDowntimeGridData())
+      const col = columnDefs.value.find((c) => c.field === 'root_cause_category')
+      expect(col?.cellClass?.({ value: 'uncategorized' })).toContain('ag-cell-warning')
+      expect(col?.cellClass?.({ value: 'machine' })).toBe('')
+    })
+
     it('exposes corrective_action column with large text editor', () => {
       const { columnDefs } = withSetup(() => useDowntimeGridData())
       const col = findCol(columnDefs.value, 'corrective_action')!
@@ -160,6 +197,69 @@ describe('useDowntimeGridData', () => {
     it('does NOT expose resolution_notes column (renamed to corrective_action)', () => {
       const { columnDefs } = withSetup(() => useDowntimeGridData())
       expect(findCol(columnDefs.value, 'resolution_notes')).toBeUndefined()
+    })
+  })
+
+  describe('applyReasonChange / applyCategoryChange (auto-fill pure helpers)', () => {
+    it('auto-fills default category on reason change unless user already overrode it', () => {
+      const row = makeRow({ downtime_reason: 'OTHER', root_cause_category: 'other' })
+      applyReasonChange(row, 'MATERIAL_SHORTAGE')
+      expect(row.root_cause_category).toBe('materials')
+
+      applyCategoryChange(row, 'scheduling')
+      applyReasonChange(row, 'EQUIPMENT_FAILURE')
+      expect(row.root_cause_category).toBe('scheduling')
+    })
+
+    it('applyCategoryChange marks the row as user-overridden', () => {
+      const row = makeRow()
+      applyCategoryChange(row, 'attendance')
+      expect(row.root_cause_category).toBe('attendance')
+      expect(row._categoryOverridden).toBe(true)
+    })
+
+    it('applyReasonChange falls back to the existing category for an unmapped reason', () => {
+      const row = makeRow({ root_cause_category: 'machine' })
+      applyReasonChange(row, 'SOME_UNKNOWN_REASON')
+      expect(row.root_cause_category).toBe('machine')
+    })
+  })
+
+  describe('uncategorizedCount', () => {
+    it('counts filtered rows with root_cause_category === "uncategorized"', () => {
+      storeState.downtimeEntries = [
+        {
+          root_cause_category: 'uncategorized',
+          shift_date: '2026-01-01',
+          downtime_duration_minutes: 60,
+        } as DowntimeRow,
+        {
+          root_cause_category: 'machine',
+          shift_date: '2026-01-02',
+          downtime_duration_minutes: 30,
+        } as DowntimeRow,
+        {
+          root_cause_category: 'uncategorized',
+          shift_date: '2026-01-03',
+          downtime_duration_minutes: 15,
+        } as DowntimeRow,
+      ]
+      const { uncategorizedCount, applyFilters } = withSetup(() => useDowntimeGridData())
+      applyFilters()
+      expect(uncategorizedCount.value).toBe(2)
+    })
+
+    it('is 0 when no entries are uncategorized', () => {
+      storeState.downtimeEntries = [
+        {
+          root_cause_category: 'machine',
+          shift_date: '2026-01-01',
+          downtime_duration_minutes: 60,
+        } as DowntimeRow,
+      ]
+      const { uncategorizedCount, applyFilters } = withSetup(() => useDowntimeGridData())
+      applyFilters()
+      expect(uncategorizedCount.value).toBe(0)
     })
   })
 

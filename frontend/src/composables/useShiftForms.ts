@@ -11,12 +11,12 @@
  * run_time_hours and employees_assigned match today's UX (operators
  * refine values via the standalone Production Entry grid).
  */
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useNotificationStore } from '@/stores/notificationStore'
 import { useAuthStore } from '@/stores/authStore'
 import { useKPIStore } from '@/stores/kpi'
-import { DOWNTIME_REASON_CODES } from '@/composables/useDowntimeGridData'
+import { DOWNTIME_REASON_CODES, reasonLabelKey } from '@/constants/downtimeTaxonomy'
 import api from '@/services/api'
 
 export interface ShiftWorkOrder {
@@ -72,23 +72,6 @@ const errorDetail = (e: unknown, fallback: string): string => {
   return ax?.response?.data?.detail || ax?.message || fallback
 }
 
-// Map UI reason strings to backend DowntimeReasonEnum codes.
-// Mirrors backend/schemas/downtime.py:65-78 from_legacy_csv mapping.
-export const downtimeReasonToCode = (reason: string | null): string => {
-  if (!reason) return 'OTHER'
-  const code = reason.toUpperCase().replace(/\s+/g, '_')
-  if ((DOWNTIME_REASON_CODES as string[]).includes(code)) return code
-  // Map common UI labels to canonical codes.
-  const aliases: Record<string, string> = {
-    EQUIPMENT_BREAKDOWN: 'EQUIPMENT_FAILURE',
-    SCHEDULED_MAINTENANCE: 'MAINTENANCE',
-    CHANGEOVER: 'SETUP_CHANGEOVER',
-    QUALITY_ISSUE: 'QUALITY_HOLD',
-    WAITING_FOR_INSPECTION: 'QUALITY_HOLD',
-  }
-  return aliases[code] || 'OTHER'
-}
-
 export function useShiftForms(
   getActiveShift: () => ActiveShift | null,
   getCurrentDate: () => string,
@@ -135,16 +118,16 @@ export function useShiftForms(
   })
 
   const productionPresets: number[] = [10, 25, 50, 100]
-  // UI labels mapped to backend DowntimeReasonEnum via downtimeReasonToCode().
-  const downtimeReasons: string[] = [
-    'Equipment Breakdown',
-    'Material Shortage',
-    'Changeover',
-    'Scheduled Maintenance',
-    'Quality Issue',
-    'Waiting for Inspection',
-    'Other',
-  ]
+  // Canonical DowntimeReasonEnum codes, labeled via the taxonomy i18n keys.
+  // Wrapped in computed() (matches useOrderStatusOptions/useExportSheetOptions)
+  // so labels stay reactive to a runtime LanguageToggle switch instead of
+  // baking in the locale active at composable-creation time.
+  const downtimeReasons = computed<Array<{ value: string; title: string }>>(() =>
+    DOWNTIME_REASON_CODES.map((id) => ({
+      value: id,
+      title: t(reasonLabelKey(id)),
+    })),
+  )
   const defectTypes: string[] = [
     'Dimensional',
     'Visual',
@@ -317,7 +300,7 @@ export function useShiftForms(
         client_id: String(clientId),
         work_order_id: String(wo.work_order_id),
         shift_date: getCurrentDate(),
-        downtime_reason: downtimeReasonToCode(downtimeForm.value.reason),
+        downtime_reason: downtimeForm.value.reason || 'OTHER',
         downtime_duration_minutes: downtimeForm.value.minutes,
         notes: downtimeForm.value.notes || undefined,
       })

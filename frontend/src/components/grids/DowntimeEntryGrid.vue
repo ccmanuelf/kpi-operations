@@ -4,6 +4,15 @@
       <div class="d-flex align-center">
         <v-icon class="mr-2">mdi-alert-circle</v-icon>
         <span class="text-h5">{{ $t('grids.downtime.title') }}</span>
+        <v-chip
+          v-if="uncategorizedCount > 0"
+          color="warning"
+          size="small"
+          class="ml-2"
+          data-testid="downtime-uncategorized-chip"
+        >
+          {{ $t('downtime.uncategorizedCount', { count: uncategorizedCount }) }}
+        </v-chip>
       </div>
       <div>
         <v-btn color="white" variant="outlined" @click="addNewEntry" class="mr-2" data-testid="downtime-add-row-btn">
@@ -177,6 +186,7 @@ const {
   columnDefs,
   totalHours,
   totalMinutes,
+  uncategorizedCount,
   onGridReady,
   onCellValueChanged,
   addNewEntry,
