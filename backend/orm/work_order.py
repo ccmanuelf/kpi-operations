@@ -10,7 +10,7 @@ from decimal import Decimal
 from typing import Optional
 
 from sqlalchemy import DateTime, Enum as SQLEnum, ForeignKey, Index, Integer, Numeric, String, Text
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, validates
 from sqlalchemy.sql import func
 
 from backend.database import Base
@@ -109,6 +109,11 @@ class WorkOrder(Base):
     )
     priority: Mapped[Optional[str]] = mapped_column(String(20))  # HIGH, MEDIUM, LOW
 
+    # Justified-delay classification (Cycle 2) — NULL = unclassified
+    delay_classification: Mapped[Optional[str]] = mapped_column(String(20))
+    justified_delay_reason: Mapped[Optional[str]] = mapped_column(String(40))
+    delay_classification_note: Mapped[Optional[str]] = mapped_column(Text)
+
     # Quality gates
     qc_approved: Mapped[Optional[int]] = mapped_column(Integer, default=0)  # Boolean
     # USER.user_id is String(50); FK column type-matched (see closed_by above).
@@ -143,3 +148,25 @@ class WorkOrder(Base):
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
     updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    @validates("delay_classification")
+    def _validate_delay_classification(self, key: str, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return value
+        from backend.orm.delay_taxonomy import DelayClassificationEnum
+
+        valid = {c.value for c in DelayClassificationEnum}
+        if value not in valid:
+            raise ValueError(f"delay_classification must be one of {sorted(valid)} or NULL, got {value!r}")
+        return value
+
+    @validates("justified_delay_reason")
+    def _validate_justified_delay_reason(self, key: str, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return value
+        from backend.orm.delay_taxonomy import JustifiedDelayReasonEnum
+
+        valid = {r.value for r in JustifiedDelayReasonEnum}
+        if value not in valid:
+            raise ValueError(f"justified_delay_reason must be one of {sorted(valid)} or NULL, got {value!r}")
+        return value
