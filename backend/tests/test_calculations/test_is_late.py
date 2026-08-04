@@ -49,3 +49,9 @@ def test_no_inferable_date_is_not_late():
     wo = _wo(planned_ship_date=None, required_date=None, actual_delivery_date=datetime(2026, 7, 20))
     # inference_source == "none" (no calculated fallback inputs either) -> not late
     assert is_late(wo, AS_OF) is False
+
+
+def test_undelivered_due_exactly_today_is_not_late():
+    """Boundary pin: inferred date == midnight of as_of -> NOT late (strict <)."""
+    wo = _wo(planned_ship_date=datetime(2026, 8, 1, 0, 0), actual_delivery_date=None)
+    assert is_late(wo, AS_OF) is False
