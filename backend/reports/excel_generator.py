@@ -486,7 +486,7 @@ class ExcelReportGenerator:
         from backend.orm.client import Client
 
         client = self.db.query(Client).filter(Client.client_id == client_id).first()
-        return client.name if client else "Unknown Client"
+        return client.client_name if client else "Unknown Client"
 
     def _fetch_kpi_summary_data(
         self, client_id: Optional[str], start_date: date, end_date: date

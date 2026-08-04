@@ -800,3 +800,57 @@ class TestAttendanceErrorHandling:
         response = client.get("/api/reports/attendance/excel")
 
         assert response.status_code == 500
+
+
+class TestClientNameResolution:
+    """Regression for the client.name AttributeError class (found by Cycle 1 VM
+    live-validation): Client ORM has `client_name`, not `name` — every report
+    path that resolved a client display name crashed with 500 when a valid
+    client_id was supplied. Three sites: excel_generator._get_client_name,
+    pdf_generator metadata block, email_config send-manual."""
+
+    def test_excel_report_with_client_id_returns_workbook(self, supervisor_client):
+        client, setup = supervisor_client
+        client_id = setup["client"].client_id
+
+        response = client.get(f"/api/reports/production/excel?client_id={client_id}")
+
+        assert response.status_code == 200
+        # xlsx is a zip: PK magic proves a real workbook, not a JSON error body
+        assert response.content[:2] == b"PK"
+
+    def test_pdf_report_with_client_id_returns_pdf(self, supervisor_client):
+        client, setup = supervisor_client
+        client_id = setup["client"].client_id
+
+        response = client.get(f"/api/reports/production/pdf?client_id={client_id}")
+
+        assert response.status_code == 200
+        assert response.content[:5] == b"%PDF-"
+
+    def test_send_manual_report_resolves_client_name(self, supervisor_client, monkeypatch):
+        client, setup = supervisor_client
+        client_id = setup["client"].client_id
+        captured = {}
+
+        from backend.services.email_service import EmailService
+
+        def fake_send(self, to_emails, client_name, **kwargs):
+            captured["client_name"] = client_name
+            return {"success": True, "sent_to": to_emails}
+
+        monkeypatch.setattr(EmailService, "send_kpi_report", fake_send)
+
+        response = client.post(
+            "/api/reports/send-manual",
+            json={
+                "client_id": client_id,
+                "start_date": "2024-01-01",
+                "end_date": "2024-01-31",
+                "recipient_emails": ["test@example.com"],
+            },
+        )
+
+        assert response.status_code == 200
+        # Resolved through Client.client_name, not the client_id fallback
+        assert captured["client_name"] == "Reports Test Client"

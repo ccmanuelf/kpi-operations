@@ -221,7 +221,7 @@ async def send_manual_report(
 
             # Get client name
             client = db.query(Client).filter(Client.client_id == request.client_id).first()
-            client_name = client.name if client else request.client_id
+            client_name = client.client_name if client else request.client_id
 
             result = email_service.send_kpi_report(
                 to_emails=request.recipient_emails,
