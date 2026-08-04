@@ -176,7 +176,7 @@ class PDFReportGenerator:
 
             client = self.db.query(Client).filter(Client.client_id == client_id).first()
             if client:
-                client_name = client.name
+                client_name = client.client_name
 
         meta_data = [
             ["Client:", client_name],
