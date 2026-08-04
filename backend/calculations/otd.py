@@ -90,6 +90,23 @@ def infer_planned_delivery_date(work_order: WorkOrder) -> InferredDate:
     return InferredDate(date=None, is_inferred=False, inference_source="none", confidence_score=0.0)
 
 
+def is_late(work_order: WorkOrder, as_of: date) -> bool:
+    """THE single lateness definition (spec §4) — gates classification
+    eligibility (API + UI) and feeds the gross/net OTD metrics. Do not
+    introduce a second definition anywhere.
+
+    Late iff: delivered after the inferred planned date, OR undelivered and
+    the inferred planned date is before `as_of`. Orders with no inferable
+    planned date (inference_source == "none") are never late.
+    """
+    inferred = infer_planned_delivery_date(work_order)
+    if inferred.date is None:
+        return False
+    if work_order.actual_delivery_date is not None:
+        return work_order.actual_delivery_date > inferred.date
+    return inferred.date < datetime.combine(as_of, datetime.min.time())
+
+
 def calculate_otd(
     db: Session, start_date: date, end_date: date, product_id: Optional[int] = None
 ) -> tuple[Decimal, int, int]:
