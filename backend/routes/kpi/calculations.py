@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import Any, Optional
 from datetime import date, datetime, timedelta, timezone
+from decimal import Decimal
 
 from backend.utils.logging_utils import get_module_logger
 from backend.database import get_db
@@ -17,8 +18,9 @@ from backend.services.production_crud_service import (
     get_daily_production_summary as get_daily_summary,
 )
 from backend.calculations.efficiency import calculate_efficiency
+from backend.calculations.labor_hours import summarize_labor_hours
 from backend.calculations.performance import calculate_performance, calculate_quality_rate
-from backend.auth.jwt import get_current_user
+from backend.auth.jwt import ClientScope, get_current_user, resolve_client_scope
 from backend.orm.user import User
 from backend.orm.product import Product
 
@@ -65,6 +67,7 @@ def get_kpi_dashboard(
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    scope: ClientScope = Depends(resolve_client_scope),
 ) -> Any:
     """
     Get KPI dashboard data.
@@ -73,10 +76,46 @@ def get_kpi_dashboard(
     Defaults to the last 30 days if no dates are provided.
 
     SECURITY: Requires authentication; client access enforced in get_daily_summary.
+    `scope` (additive) is used ONLY to resolve `client_ids` for the
+    `efficiency_available_basis` enrichment below -- it does not alter the
+    pre-existing `get_daily_summary` call or its authorization behavior.
     """
     if not start_date:
         start_date = date.today() - timedelta(days=30)
     if not end_date:
         end_date = date.today()
 
-    return get_daily_summary(db, current_user, start_date, end_date, client_id=client_id)
+    daily_summary = get_daily_summary(db, current_user, start_date, end_date, client_id=client_id)
+
+    # --- Task 3 (Cycle 3 PR-B), additive: efficiency_available_basis ---
+    # `avg_efficiency` above is the average of ProductionEntry.efficiency_percentage,
+    # each of which was computed at write time (backend/calculations/efficiency.py)
+    # as earned_hours / (employees_assigned * scheduled_hours) * 100 -- i.e. on a
+    # SCHEDULED-hours basis. We don't have per-entry earned_hours here (the daily
+    # summary only carries the averaged percentage), so we re-express that SAME
+    # average onto an AVAILABLE-hours basis by rescaling with the ratio of Task 1's
+    # (`summarize_labor_hours`) own "scheduled" and "available_for_efficiency"
+    # totals for the identical window/scope:
+    #   efficiency_available_basis = avg_efficiency * (scheduled / available)
+    # which is algebraically avg_efficiency's implied numerator (earned_hours),
+    # held constant, divided by "available" instead of "scheduled":
+    #   (earned / scheduled * 100) * (scheduled / available) == earned / available * 100
+    # Conservative: zero AttendanceEntry rows in the window -> None (never
+    # fabricate a denominator). Entries with no allocations default `available`
+    # to `actual` (Task 1's `available_for_efficiency_hours`), which collapses
+    # this to the entries' actual-hours-basis efficiency, per the conservative
+    # default documented in Task 1/PR-A.
+    labor_summary = summarize_labor_hours(db, scope.client_ids, start_date, end_date)
+    scheduled_total = labor_summary["totals"]["scheduled"]
+    available_total = labor_summary["totals"]["available_for_efficiency"]
+    has_attendance_data = labor_summary["entry_counts"]["total"] > 0
+
+    for row in daily_summary:
+        if not has_attendance_data or available_total <= 0:
+            row["efficiency_available_basis"] = None
+            continue
+        avg_efficiency_decimal = Decimal(str(row["avg_efficiency"]))
+        available_basis = (avg_efficiency_decimal * scheduled_total / available_total).quantize(Decimal("0.01"))
+        row["efficiency_available_basis"] = float(available_basis)
+
+    return daily_summary

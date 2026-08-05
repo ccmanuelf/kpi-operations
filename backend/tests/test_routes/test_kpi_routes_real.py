@@ -273,6 +273,229 @@ class TestKPIDashboard:
         assert response.status_code == 200
 
 
+class TestKPIDashboardEfficiencyAvailableBasis:
+    """Task 3 (Cycle 3 PR-B): additive `efficiency_available_basis` field on
+    GET /api/kpi/dashboard.
+
+    This is the endpoint the KPI dashboard's efficiency card actually
+    consumes -- traced (not guessed) via frontend/src/stores/kpi.ts
+    (fetchEfficiency -> api.getEfficiency) -> frontend/src/services/api/kpi.ts
+    (getEfficiency composes GET /api/kpi/dashboard + /efficiency/by-shift +
+    /efficiency/by-product; `current` -- the headline number rendered on the
+    card -- comes exclusively from this /dashboard endpoint's avg_efficiency).
+    `/api/kpi/calculate/{entry_id}` and `/api/kpi/dashboard/aggregated` were
+    confirmed UNUSED by the dashboard (grep across frontend/src turned up no
+    callers besides a dead unit test / the aggregated route's own test file),
+    so neither is the target here.
+
+    Each scenario uses its own client_id and a single production_entry/day so
+    `avg_efficiency` is exactly that one entry's efficiency_percentage --
+    keeping the "existing value unchanged" pin exact.
+    """
+
+    def _make_client_and_admin(self, db, client_id):
+        client = TestDataFactory.create_client(db, client_id=client_id)
+        admin = TestDataFactory.create_user(
+            db, user_id=f"{client_id}-admin", username=f"{client_id}_admin".lower(), role="admin", client_id=None
+        )
+        return client, admin
+
+    def _authed_client(self, db, user):
+        from backend.auth.jwt import get_current_user
+
+        app = create_test_app(db)
+        app.dependency_overrides[get_current_user] = lambda: user
+        return TestClient(app)
+
+    def test_available_less_than_scheduled_basis_above_current(self, kpi_db):
+        """One entry with a training allocation: available (6.00) < scheduled
+        (9.00) -> efficiency_available_basis must exceed the UNCHANGED
+        avg_efficiency (the pre-existing scheduled-basis figure).
+
+        avg_efficiency (pinned, unchanged) = 80.0
+        AttendanceEntry: scheduled_hours=9.00, actual_hours=9.00,
+          allocations=[training 3.00] (non-productive)
+          -> available_for_efficiency = actual - nonproductive = 9.00 - 3.00 = 6.00
+        efficiency_available_basis = avg_efficiency * (scheduled / available)
+                                    = 80.0 * (9.00 / 6.00) = 80.0 * 1.5 = 120.00
+        """
+        from backend.orm.attendance_hour_allocation import AttendanceHourAllocation
+        from backend.orm.production_entry import ProductionEntry
+
+        db = kpi_db
+        client, admin = self._make_client_and_admin(db, "KPI-AVB-1")
+        product = TestDataFactory.create_product(db, client_id=client.client_id)
+        shift = TestDataFactory.create_shift(db, client_id=client.client_id)
+        employee = TestDataFactory.create_employee(db, client_id=client.client_id)
+        db.flush()
+
+        entry_date = datetime.combine(date(2026, 8, 1), datetime.min.time())
+        db.add(
+            ProductionEntry(
+                production_entry_id="PE-AVB-1",
+                client_id=client.client_id,
+                product_id=product.product_id,
+                shift_id=shift.shift_id,
+                production_date=entry_date,
+                shift_date=entry_date,
+                units_produced=100,
+                run_time_hours=Decimal("8.0"),
+                entered_by=admin.user_id,
+                defect_count=0,
+                scrap_count=0,
+                employees_assigned=5,
+                efficiency_percentage=Decimal("80.00"),
+                performance_percentage=Decimal("90.00"),
+            )
+        )
+
+        attendance_entry = TestDataFactory.create_attendance_entry(
+            db,
+            employee_id=employee.employee_id,
+            client_id=client.client_id,
+            shift_id=shift.shift_id,
+            shift_date=date(2026, 8, 1),
+            scheduled_hours=Decimal("9.00"),
+            actual_hours=Decimal("9.00"),
+        )
+        attendance_entry.hour_allocations = [
+            AttendanceHourAllocation(category="training", hours=Decimal("3.00")),
+        ]
+        db.commit()
+
+        response = self._authed_client(db, admin).get(
+            "/api/kpi/dashboard",
+            params={"start_date": "2026-08-01", "end_date": "2026-08-01", "client_id": client.client_id},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 1
+        row = data[0]
+
+        # Pre-existing fields byte-identical (pinned exact pre-existing values)
+        assert row["avg_efficiency"] == 80.0
+        assert row["avg_performance"] == 90.0
+        assert row["total_units"] == 100
+        assert row["entry_count"] == 1
+
+        # New additive field
+        assert row["efficiency_available_basis"] == 120.0
+        assert row["efficiency_available_basis"] > row["avg_efficiency"]
+
+    def test_no_allocation_data_uses_actual_hours_basis(self, kpi_db):
+        """No HourAllocation rows at all: Task 1's `available_for_efficiency_hours`
+        conservative default makes available == actual_hours (entries without
+        allocation data contribute full actual hours). With actual != scheduled,
+        this exercises the entries' actual-hours-basis efficiency distinctly from
+        the (unchanged) scheduled-basis avg_efficiency.
+
+        avg_efficiency (pinned, unchanged) = 75.0
+        AttendanceEntry: scheduled_hours=8.00, actual_hours=10.00, no allocations
+          -> available_for_efficiency = actual (conservative default) = 10.00
+        efficiency_available_basis = 75.0 * (8.00 / 10.00) = 75.0 * 0.8 = 60.00
+        """
+        from backend.orm.production_entry import ProductionEntry
+
+        db = kpi_db
+        client, admin = self._make_client_and_admin(db, "KPI-AVB-2")
+        product = TestDataFactory.create_product(db, client_id=client.client_id)
+        shift = TestDataFactory.create_shift(db, client_id=client.client_id)
+        employee = TestDataFactory.create_employee(db, client_id=client.client_id)
+        db.flush()
+
+        entry_date = datetime.combine(date(2026, 8, 1), datetime.min.time())
+        db.add(
+            ProductionEntry(
+                production_entry_id="PE-AVB-2",
+                client_id=client.client_id,
+                product_id=product.product_id,
+                shift_id=shift.shift_id,
+                production_date=entry_date,
+                shift_date=entry_date,
+                units_produced=100,
+                run_time_hours=Decimal("8.0"),
+                entered_by=admin.user_id,
+                defect_count=0,
+                scrap_count=0,
+                employees_assigned=5,
+                efficiency_percentage=Decimal("75.00"),
+                performance_percentage=Decimal("90.00"),
+            )
+        )
+
+        TestDataFactory.create_attendance_entry(
+            db,
+            employee_id=employee.employee_id,
+            client_id=client.client_id,
+            shift_id=shift.shift_id,
+            shift_date=date(2026, 8, 1),
+            scheduled_hours=Decimal("8.00"),
+            actual_hours=Decimal("10.00"),
+        )
+        db.commit()
+
+        response = self._authed_client(db, admin).get(
+            "/api/kpi/dashboard",
+            params={"start_date": "2026-08-01", "end_date": "2026-08-01", "client_id": client.client_id},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 1
+        row = data[0]
+
+        assert row["avg_efficiency"] == 75.0
+        assert row["efficiency_available_basis"] == 60.0
+
+    def test_no_attendance_data_is_none(self, kpi_db):
+        """Zero AttendanceEntry rows anywhere in the window: never fabricate a
+        denominator -> efficiency_available_basis must be None, while the
+        pre-existing avg_efficiency stays exactly its pinned value.
+        """
+        from backend.orm.production_entry import ProductionEntry
+
+        db = kpi_db
+        client, admin = self._make_client_and_admin(db, "KPI-AVB-3")
+        product = TestDataFactory.create_product(db, client_id=client.client_id)
+        shift = TestDataFactory.create_shift(db, client_id=client.client_id)
+        db.flush()
+
+        entry_date = datetime.combine(date(2026, 8, 1), datetime.min.time())
+        db.add(
+            ProductionEntry(
+                production_entry_id="PE-AVB-3",
+                client_id=client.client_id,
+                product_id=product.product_id,
+                shift_id=shift.shift_id,
+                production_date=entry_date,
+                shift_date=entry_date,
+                units_produced=100,
+                run_time_hours=Decimal("8.0"),
+                entered_by=admin.user_id,
+                defect_count=0,
+                scrap_count=0,
+                employees_assigned=5,
+                efficiency_percentage=Decimal("70.00"),
+                performance_percentage=Decimal("90.00"),
+            )
+        )
+        db.commit()
+
+        response = self._authed_client(db, admin).get(
+            "/api/kpi/dashboard",
+            params={"start_date": "2026-08-01", "end_date": "2026-08-01", "client_id": client.client_id},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 1
+        row = data[0]
+
+        assert row["avg_efficiency"] == 70.0
+        assert row["efficiency_available_basis"] is None
+
+
 class TestEfficiencyRoutes:
     """Tests for efficiency KPI routes."""
 
