@@ -627,28 +627,32 @@ class ExcelReportGenerator:
             from backend.calculations.otd import calculate_true_otd
 
             otd_result = calculate_true_otd(self.db, client_id, start_date, end_date)
-            otd_gross = float(otd_result["standard_otd"]["percentage"])
-            otd_net = float(otd_result["standard_otd"]["net_percentage"])
-            kpi_data.append(
-                {
-                    "name": "OTD",
-                    "current": otd_gross,
-                    "target": 95,
-                    "status": "On Target" if otd_gross >= 95 else "At Risk",
-                    "trend": "→",
-                    "format": '0.0"%"',
-                }
-            )
-            kpi_data.append(
-                {
-                    "name": "OTD (Net of Justified)",
-                    "current": otd_net,
-                    "target": 95,
-                    "status": "On Target" if otd_net >= 95 else "At Risk",
-                    "trend": "→",
-                    "format": '0.0"%"',
-                }
-            )
+            # Guard: with zero delivered orders in the window, standard_otd's
+            # percentage/net_percentage are both 0 (no data, not "0% OTD") —
+            # rendering them would show a misleading "0.0% / At Risk" row.
+            if otd_result["standard_otd"]["total"] > 0:
+                otd_gross = float(otd_result["standard_otd"]["percentage"])
+                otd_net = float(otd_result["standard_otd"]["net_percentage"])
+                kpi_data.append(
+                    {
+                        "name": "OTD",
+                        "current": otd_gross,
+                        "target": 95,
+                        "status": "On Target" if otd_gross >= 95 else "At Risk",
+                        "trend": "→",
+                        "format": '0.0"%"',
+                    }
+                )
+                kpi_data.append(
+                    {
+                        "name": "OTD (Net of Justified)",
+                        "current": otd_net,
+                        "target": 95,
+                        "status": "On Target" if otd_net >= 95 else "At Risk",
+                        "trend": "→",
+                        "format": '0.0"%"',
+                    }
+                )
 
         return kpi_data
 

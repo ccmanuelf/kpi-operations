@@ -334,3 +334,42 @@ class TestExcelSummarySheetOTDGrossAndNet:
         assert ws["B8"].value == 40.0
         assert ws["A9"].value == "OTD (Net of Justified)"
         assert ws["B9"].value == 60.0
+
+
+class TestExcelSummarySheetOTDZeroDeliveryGuard:
+    """A window with zero delivered orders must not render "0.0% / At Risk"
+    OTD rows — that's an absence-of-data signal, not a real 0% on-time rate.
+    Guards on calculate_true_otd's standard_otd.total (the delivered-order
+    denominator both percentage/net_percentage divide by)."""
+
+    def test_fetch_kpi_summary_data_omits_otd_when_zero_delivered(self, transactional_db):
+        client = TestDataFactory.create_client(transactional_db)
+        transactional_db.commit()
+        # No work orders seeded at all -> standard_otd.total == 0.
+
+        kpi_data = ExcelReportGenerator(transactional_db)._fetch_kpi_summary_data(
+            client.client_id, date(2026, 1, 1), date(2026, 1, 31)
+        )
+
+        names = [row["name"] for row in kpi_data]
+        assert "OTD" not in names
+        assert "OTD (Net of Justified)" not in names
+
+    def test_summary_sheet_has_no_otd_rows_when_zero_delivered(self, transactional_db):
+        """Full render through _create_summary_sheet: with no production/
+        quality/attendance/work-order data seeded at all, kpi_data is
+        entirely empty, so the table has a header row (7) and no data rows —
+        row 8 (where OTD would have landed) stays blank."""
+        client = TestDataFactory.create_client(transactional_db)
+        transactional_db.commit()
+
+        wb = Workbook()
+        ExcelReportGenerator(transactional_db)._create_summary_sheet(
+            wb, client.client_id, date(2026, 1, 1), date(2026, 1, 31)
+        )
+        ws = wb["Executive Summary"]
+
+        assert ws["A7"].value == "KPI"
+        assert ws["B7"].value == "Current Value"
+        assert ws["A8"].value is None
+        assert ws["B8"].value is None

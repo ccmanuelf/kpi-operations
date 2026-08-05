@@ -509,10 +509,10 @@ class TestOTDRoutes:
 
         assert data["late_counts"] == {"total": 4, "justified": 1, "unjustified": 1, "unclassified": 2}
         assert data["justified_by_reason"] == {"customer_request": 1}
-        assert data["true_otd"]["percentage"] == "40.00"
-        assert data["true_otd"]["net_percentage"] == "60.00"
-        assert data["standard_otd"]["percentage"] == "40.00"
-        assert data["standard_otd"]["net_percentage"] == "60.00"
+        assert data["true_otd"]["percentage"] == 40.0
+        assert data["true_otd"]["net_percentage"] == 60.0
+        assert data["standard_otd"]["percentage"] == 40.0
+        assert data["standard_otd"]["net_percentage"] == 60.0
 
         # Pre-existing top-level keys stay intact (additive change).
         assert "otd_percentage" in data
