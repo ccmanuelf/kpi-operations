@@ -9,6 +9,7 @@
  * so this is a net new spec at +tests for the surface.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { toRaw } from 'vue'
 import { setActivePinia, createPinia } from 'pinia'
 import { withSetup } from '../../test/composable-test-utils'
 
@@ -449,6 +450,163 @@ describe('useAttendanceGridData', () => {
           triple_hours: null,
           labor_class_override: null,
           allocations: [],
+        }),
+      )
+    })
+  })
+
+  // Fix round 1: AG Grid's cellValueChanged event (and the allocations
+  // dialog's `saved` payload) hand back the RAW row object ag-grid-vue3
+  // holds internally — mutating it bypasses Vue's reactive Proxy
+  // set-trap, so a computed that already ran once and cached its result
+  // never gets notified to re-derive. toRaw() here reproduces that exact
+  // shape (mutate the target directly, not through the proxy) to prove
+  // the editTick dirty-signal correctly forces a re-derive regardless.
+  describe('editTick: raw-object mutations still flip reactive state', () => {
+    it('a raw-object cell edit flips hasChanges/changedRowsCount/noSplitCount/statusCounts', () => {
+      const { attendanceData, hasChanges, changedRowsCount, noSplitCount, statusCounts, markRowAsChanged } =
+        withSetup(() => useAttendanceGridData())
+
+      attendanceData.value = [
+        {
+          employee_id: 1,
+          status: 'Present',
+          actual_hours: 8,
+          normal_hours: null,
+          double_hours: null,
+          triple_hours: null,
+          allocations: [],
+        } as AttendanceRow,
+      ]
+
+      // Read once so each computed caches an initial value and
+      // subscribes to its dependencies (matches real render behavior).
+      expect(hasChanges.value).toBe(false)
+      expect(changedRowsCount.value).toBe(0)
+      expect(noSplitCount.value).toBe(1)
+      expect(statusCounts.value.present).toBe(1)
+
+      const rawRow = toRaw(attendanceData.value[0])
+      rawRow.normal_hours = 8
+      rawRow.status = 'Absent'
+      markRowAsChanged({ data: rawRow, colDef: { field: 'normal_hours' } })
+
+      expect(hasChanges.value).toBe(true)
+      expect(changedRowsCount.value).toBe(1)
+      expect(noSplitCount.value).toBe(0)
+      expect(statusCounts.value.present).toBe(0)
+      expect(statusCounts.value.absent).toBe(1)
+    })
+
+    it('a raw-object allocations save flips hasChanges/unallocatedCount', () => {
+      const { attendanceData, hasChanges, unallocatedCount, onAllocationsSaved } = withSetup(() =>
+        useAttendanceGridData(),
+      )
+
+      attendanceData.value = [
+        { employee_id: 1, actual_hours: 8, allocations: [] } as AttendanceRow,
+      ]
+
+      expect(hasChanges.value).toBe(false)
+      expect(unallocatedCount.value).toBe(1)
+
+      const rawRow = toRaw(attendanceData.value[0])
+      onAllocationsSaved({
+        row: rawRow,
+        items: [{ category: 'billed_production', hours: 5 }],
+      })
+
+      expect(hasChanges.value).toBe(true)
+      expect(unallocatedCount.value).toBe(0)
+    })
+  })
+
+  describe('onPasteConfirm carries OT split + labor_class_override', () => {
+    const mockGridApi = () => ({
+      sizeColumnsToFit: vi.fn(),
+      refreshCells: vi.fn(),
+      applyTransaction: vi.fn(),
+      forEachNode: vi.fn(),
+    })
+
+    it('pasted OT split + override values are not dropped', () => {
+      const { gridRef, onPasteConfirm } = withSetup(() => useAttendanceGridData())
+      const gridApi = mockGridApi()
+      gridRef.value = { gridApi }
+
+      onPasteConfirm([
+        {
+          employee_id: 9,
+          employee_name: 'Pasted Employee',
+          shift_date: '2026-08-05',
+          status: 'Present',
+          actual_hours: 8,
+          normal_hours: 8,
+          double_hours: 0,
+          triple_hours: 0,
+          labor_class_override: 'indirect',
+        },
+      ])
+
+      expect(gridApi.applyTransaction).toHaveBeenCalledTimes(1)
+      const preparedRow = gridApi.applyTransaction.mock.calls[0][0].add[0]
+      expect(preparedRow.normal_hours).toBe(8)
+      expect(preparedRow.double_hours).toBe(0)
+      expect(preparedRow.triple_hours).toBe(0)
+      expect(preparedRow.labor_class_override).toBe('indirect')
+    })
+
+    it('defaults OT split + override to null when the pasted row omits them', () => {
+      const { gridRef, onPasteConfirm } = withSetup(() => useAttendanceGridData())
+      const gridApi = mockGridApi()
+      gridRef.value = { gridApi }
+
+      onPasteConfirm([{ employee_id: 10, shift_date: '2026-08-05', status: 'Present' }])
+
+      const preparedRow = gridApi.applyTransaction.mock.calls[0][0].add[0]
+      expect(preparedRow.normal_hours).toBeNull()
+      expect(preparedRow.double_hours).toBeNull()
+      expect(preparedRow.triple_hours).toBeNull()
+      expect(preparedRow.labor_class_override).toBeNull()
+    })
+
+    it('pasted OT split + override values survive into buildPayload on save', async () => {
+      const { attendanceData, gridRef, onPasteConfirm, saveAttendance, onConfirmSave } =
+        withSetup(() => useAttendanceGridData())
+      const gridApi = mockGridApi()
+      gridRef.value = { gridApi }
+
+      onPasteConfirm([
+        {
+          employee_id: 11,
+          shift_date: '2026-08-05',
+          status: 'Present',
+          actual_hours: 8,
+          normal_hours: 8,
+          double_hours: 0,
+          triple_hours: 0,
+          labor_class_override: 'indirect',
+        },
+      ])
+      const preparedRow = gridApi.applyTransaction.mock.calls[0][0].add[0]
+
+      // applyTransaction is mocked (doesn't really insert into AG
+      // Grid) — mirror what a real transaction would do so save can
+      // find the row via forEachNode, same as the grid does for real.
+      attendanceData.value = [preparedRow]
+      gridApi.forEachNode.mockImplementation(
+        (cb: (_n: { data: AttendanceRow }) => void) => cb({ data: preparedRow }),
+      )
+
+      await saveAttendance()
+      await onConfirmSave()
+
+      expect(mockApi.createAttendanceEntry).toHaveBeenCalledWith(
+        expect.objectContaining({
+          normal_hours: 8,
+          double_hours: 0,
+          triple_hours: 0,
+          labor_class_override: 'indirect',
         }),
       )
     })

@@ -5,7 +5,7 @@ SECURITY: Multi-tenant client filtering enabled
 """
 
 from sqlalchemy.orm import Session
-from sqlalchemy import or_
+from sqlalchemy import or_, func
 from typing import Optional, List
 from datetime import date, datetime, timedelta
 from decimal import Decimal
@@ -165,6 +165,7 @@ def get_attendance_records(
     limit: int = 100,
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
+    shift_date: Optional[date] = None,
     employee_id: Optional[int] = None,
     shift_id: Optional[int] = None,
     is_absent: Optional[int] = None,
@@ -190,6 +191,17 @@ def get_attendance_records(
 
     if end_date:
         query = query.filter(AttendanceEntry.shift_date <= datetime.combine(end_date, datetime.max.time()))
+
+    # Exact-day match (as opposed to start_date/end_date's range) — portable
+    # idiom is func.date(...) == shift_date, NEVER a cast-to-Date (structural
+    # guard enforces this; see docs/architecture/date-filtering.md-equivalent
+    # precedent in calculations/efficiency.py, availability.py, ppm.py, dpmo.py).
+    # Was previously accepted as a query param and silently ignored (not a
+    # declared FastAPI param), so the grid's "load today's entries" call was
+    # effectively date-unfiltered — last-wins on the employee_id merge could
+    # hydrate today's grid with a stale, older day's allocations.
+    if shift_date:
+        query = query.filter(func.date(AttendanceEntry.shift_date) == shift_date)
 
     if employee_id:
         query = query.filter(AttendanceEntry.employee_id == employee_id)

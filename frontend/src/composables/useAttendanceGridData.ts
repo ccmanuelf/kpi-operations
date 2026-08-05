@@ -198,6 +198,21 @@ export default function useAttendanceGridData(
   const pendingData = ref<AttendanceRow>({})
   const pendingRows = ref<AttendanceRow[]>([])
 
+  // AG Grid's cellValueChanged event.data (and the row handed into the
+  // allocations dialog) is not reliably the same object instance Vue
+  // tracks inside attendanceData.value — verified empirically in a real
+  // browser session: mutating event.data in place left attendanceData.value's
+  // own copy of that row untouched. markRowAsChanged/onAllocationsSaved
+  // now re-resolve to the actual tracked row by identity before mutating
+  // (see findTrackedRow below), which is the real fix. editTick is a
+  // belt-and-suspenders dirty-signal on top of that: every mutation site
+  // bumps it, and every computed that needs to see the mutation reads it
+  // (a no-op read, purely to register the dependency) before deriving
+  // from attendanceData.value — covers the defensive fallback path where
+  // no tracked row is found and a not-necessarily-identical row object
+  // gets mutated directly instead.
+  const editTick = ref(0)
+
   const showPasteDialog = ref(false)
   const parsedPasteData = ref<unknown | null>(null)
   const convertedPasteRows = ref<AttendanceRow[]>([])
@@ -235,11 +250,30 @@ export default function useAttendanceGridData(
     ]
   })
 
-  const hasChanges = computed(() => attendanceData.value.some((row) => row._hasChanges))
+  const hasChanges = computed(() => {
+    void editTick.value
+    return attendanceData.value.some((row) => row._hasChanges)
+  })
 
-  const changedRowsCount = computed(
-    () => attendanceData.value.filter((row) => row._hasChanges).length,
-  )
+  const changedRowsCount = computed(() => {
+    void editTick.value
+    return attendanceData.value.filter((row) => row._hasChanges).length
+  })
+
+  // AG Grid's cellValueChanged event.data (and the row handed to the
+  // allocations dialog) is NOT reliably the same object instance tracked
+  // in attendanceData.value — verified in the browser: mutating it
+  // in-place does not affect what attendanceData.value holds, even
+  // though editTick forces a re-derive (there's nothing new to derive,
+  // because the tracked row was never touched). Re-resolve to the
+  // actual reactive row by employee_id (unique per grid load — the
+  // same key existingMap merges on) before mutating, so the mutation
+  // lands on the object hasChanges/changedRowsCount/noSplitCount/
+  // unallocatedCount/statusCounts actually iterate. Falls back to the
+  // given row when no match is found (defensive — shouldn't happen for
+  // a row that came from the grid's own rowData).
+  const findTrackedRow = (row: AttendanceRow): AttendanceRow | undefined =>
+    attendanceData.value.find((r) => r.employee_id === row.employee_id)
 
   // Allocation dialog (AllocationEditorDialog.vue) — opened from the grid's
   // allocations button-cell (see columnDefs below).
@@ -247,7 +281,7 @@ export default function useAttendanceGridData(
   const allocationDialogRow = ref<AttendanceRow | null>(null)
 
   const openAllocationDialog = (row: AttendanceRow): void => {
-    allocationDialogRow.value = row
+    allocationDialogRow.value = findTrackedRow(row) ?? row
     showAllocationDialog.value = true
   }
 
@@ -255,32 +289,36 @@ export default function useAttendanceGridData(
     row: AttendanceRow
     items: AllocationItemPayload[]
   }): void => {
-    payload.row.allocations = payload.items
-    payload.row._hasChanges = true
+    const target = findTrackedRow(payload.row) ?? payload.row
+    target.allocations = payload.items
+    target._hasChanges = true
+    editTick.value++
     gridRef.value?.refreshCells?.()
   }
 
   // Completeness chips (host renders both `v-if > 0`): entries with actual
   // hours recorded but no OT split captured yet, and entries with no hour
   // allocations recorded yet.
-  const noSplitCount = computed(
-    () =>
-      attendanceData.value.filter(
-        (row) =>
-          row.actual_hours !== undefined &&
-          row.actual_hours !== null &&
-          row.normal_hours == null &&
-          row.double_hours == null &&
-          row.triple_hours == null,
-      ).length,
-  )
+  const noSplitCount = computed(() => {
+    void editTick.value
+    return attendanceData.value.filter(
+      (row) =>
+        row.actual_hours !== undefined &&
+        row.actual_hours !== null &&
+        row.normal_hours == null &&
+        row.double_hours == null &&
+        row.triple_hours == null,
+    ).length
+  })
 
-  const unallocatedCount = computed(
-    () => attendanceData.value.filter((row) => !row.allocations || row.allocations.length === 0)
-      .length,
-  )
+  const unallocatedCount = computed(() => {
+    void editTick.value
+    return attendanceData.value.filter((row) => !row.allocations || row.allocations.length === 0)
+      .length
+  })
 
   const statusCounts = computed(() => {
+    void editTick.value
     const counts = { present: 0, absent: 0, late: 0, leave: 0, halfDay: 0 }
 
     attendanceData.value.forEach((row) => {
@@ -568,11 +606,26 @@ export default function useAttendanceGridData(
     data: AttendanceRow
     colDef: { field: string }
   }): void => {
-    event.data._hasChanges = true
+    // event.data is not reliably the same object attendanceData.value
+    // tracks (see findTrackedRow's declaration comment) — merge AG
+    // Grid's current field values onto the actual tracked row so the
+    // mutation is visible to attendanceData.value's dependents. Object.assign
+    // (not replacing the array element) preserves the tracked row's
+    // identity for anything else already holding a reference to it
+    // (e.g. an open allocation dialog).
+    const target = findTrackedRow(event.data) ?? event.data
+    Object.assign(target, event.data)
+    target._hasChanges = true
 
-    if (event.colDef.field === 'clock_in' && event.data.clock_in) {
-      event.data.status = 'Late'
+    if (event.colDef.field === 'clock_in' && target.clock_in) {
+      target.status = 'Late'
     }
+
+    // Dirty-signal read by hasChanges/changedRowsCount/noSplitCount/
+    // unallocatedCount/statusCounts — belt-and-suspenders alongside the
+    // identity-resolved mutation above (also covers the fallback path
+    // where no tracked row was found).
+    editTick.value++
 
     gridRef.value?.refreshCells?.()
   }
@@ -752,6 +805,16 @@ export default function useAttendanceGridData(
       actual_hours: row.actual_hours ?? DEFAULT_SCHEDULED_HOURS,
       absence_reason: row.absence_reason || '',
       notes: row.notes || '',
+      // Labor-hours capture (Cycle 3 PR-A, Task 7 fix round 1) — carry
+      // the OT split + override through from the pasted row instead of
+      // dropping them. No client-side split-sum validation here (matches
+      // this whitelist's existing pattern of not cross-validating other
+      // fields on paste); an invalid split surfaces as a 422 on save,
+      // same per-row idiom as every other paste-then-save path.
+      normal_hours: row.normal_hours ?? null,
+      double_hours: row.double_hours ?? null,
+      triple_hours: row.triple_hours ?? null,
+      labor_class_override: row.labor_class_override ?? null,
       _hasChanges: true,
       _isNew: true,
     }))

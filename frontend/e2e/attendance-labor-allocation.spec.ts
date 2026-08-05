@@ -6,26 +6,30 @@ import { login } from './helpers'
  *
  * Covers the OT split columns + AllocationEditorDialog end to end: enter
  * an OT split on a row, open the allocation dialog, add
- * billed_production 5h + training 1h, save, and assert both the local
- * summary-cell update and the actual API round-trip (response
- * assertion on the PUT the dialog fires).
+ * billed_production 5h + training 1h, save the dialog (local summary-cell
+ * update + its own direct PUT round-trip), then drive the grid's real
+ * batch Save Records flow for the OT split and assert THAT PUT's response
+ * body carries the persisted split — the brief's "API round-trip
+ * persisted" requirement for both the allocations and the OT split.
  *
  * Uses a PRE-SEEDED, already-persisted attendance entry (direct API call
- * before navigating) rather than a fresh unsaved grid row. Root cause:
- * AGGridBase's rowData binding doesn't route AG Grid's own cell-edit
- * mutations back through Vue's reactive `attendanceData` ref (verified
- * independently — editing the pre-existing `status` column via the real
- * grid UI *also* never flips the batch Save Records button's disabled
- * state), so the grid's batch-save path can't be driven end-to-end via a
- * real browser session today. That's a pre-existing gap in
- * useAttendanceGridData/AGGridBase's cell-edit wiring, unrelated to this
- * task's diff — flagged in the task report, not fixed here (fixing it
- * safely means auditing every AGGridBase consumer's edit-then-save flow,
- * well past Task 7's remit). AllocationEditorDialog's own save path is
- * unaffected: for an already-persisted row (has attendance_entry_id) it
- * PUTs directly via api.updateAttendanceEntry, bypassing the grid's
- * batch-save/hasChanges chain entirely — which is exactly the
- * "entry-update path" the task brief calls for.
+ * before navigating) rather than a fresh unsaved grid row, so both the
+ * dialog's own save (PUT, requires attendance_entry_id) and the grid's
+ * batch save (PUT, not POST) exercise the update path.
+ *
+ * Fix round 1 note: this guard previously stopped short of driving Save
+ * Records for the OT split — useAttendanceGridData's `hasChanges` (and
+ * both completeness chips) never reacted to a real AG Grid cell edit,
+ * because AG Grid's `cellValueChanged` event.data is not reliably the
+ * same object instance Vue tracks inside attendanceData.value (verified
+ * empirically — mutating event.data in place left attendanceData.value's
+ * own copy of the row untouched). Fixed in useAttendanceGridData.ts by
+ * re-resolving to the actual tracked row by employee_id before mutating
+ * (markRowAsChanged/onAllocationsSaved/openAllocationDialog), plus an
+ * `editTick` dirty-signal read by every affected computed as a
+ * belt-and-suspenders re-derive trigger — this spec's
+ * `attendance-save-btn` enabled-state assertion below is the end-to-end
+ * guard for that fix.
  *
  * Login as 'operator' (not 'admin'): the attendance grid has no client
  * selector of its own — activeClientId() falls back to
@@ -48,14 +52,14 @@ async function navigateToAttendance(page: Page) {
 // Seeds one already-persisted attendance entry for TODAY. The grid's
 // existingMap merge (useAttendanceGridData.ts loadEmployees) keys by
 // employee_id and takes the LAST entry seen while iterating a
-// shift_date-DESC list — GET /api/attendance's shift_date query param is
-// silently ignored (not a declared param on that endpoint), so any older
-// pre-existing entry for the same employee+shift would win the merge over
-// today's freshly-seeded one. Picks the first employee (in the same
-// employee_name order /api/employees returns, which is also the grid's
-// row order) with ZERO existing entries for the target shift, so there's
-// nothing to collide with. Returns the row index that employee will land
-// on, computed from the same ordered list the grid loads.
+// shift_date-DESC list; even with the backend's shift_date filter fixed
+// (fix round 1, item 3) this test still targets a collision-free
+// employee to keep row-index correlation deterministic across repeated
+// runs against an accumulating dev DB. Picks the first employee (in the
+// same employee_name order /api/employees returns, which is also the
+// grid's row order) with ZERO existing entries for the target shift.
+// Returns the row index that employee will land on, computed from the
+// same ordered list the grid loads.
 async function seedExistingAttendanceEntry(page: Page) {
   return page.evaluate(async () => {
     const token = localStorage.getItem('access_token')
@@ -120,7 +124,7 @@ test.describe('Attendance grid — OT split + hour allocation', () => {
     await login(page, 'operator')
   })
 
-  test('OT split + allocation dialog round-trip through the entry-update path', async ({
+  test('OT split (via Save Records) + allocation dialog round-trip through the entry-update path', async ({
     page,
   }) => {
     await navigateToAttendance(page)
@@ -142,16 +146,20 @@ test.describe('Attendance grid — OT split + hour allocation', () => {
     // ~15 rows the 600px-tall viewport renders by default (desktop row
     // height is 38px; see useResponsive.ts::getRowHeight). Scroll it into
     // the render window before locating it.
-    await page
-      .locator('.ag-body-viewport')
-      .first()
-      .evaluate((el, top) => {
-        el.scrollTop = top
-      }, seed!.rowIndex * 38)
-
+    // A couple of rows of buffer above the target keeps it comfortably
+    // inside AG Grid's virtualized render window even if the exact pixel
+    // math (uniform 38px rows, no header/padding offset) is slightly off.
+    const scrollTarget = Math.max(0, (seed!.rowIndex - 2) * 38)
     const rowIndex = String(seed!.rowIndex)
     const row = page.locator(`.ag-center-cols-container .ag-row[row-index="${rowIndex}"]`)
-    await expect(row).toBeVisible({ timeout: 15000 })
+    const viewport = page.locator('.ag-body-viewport').first()
+
+    await expect(async () => {
+      await viewport.evaluate((el, top) => {
+        el.scrollTop = top
+      }, scrollTarget)
+      await expect(row).toBeVisible({ timeout: 2000 })
+    }).toPass({ timeout: 15000 })
     // Correlation check: the seeded employee (from the same unfiltered,
     // employee_name-ordered list the grid loads) must land at this row.
     // employee_id is pinned left, so it renders in a separate container.
@@ -162,15 +170,26 @@ test.describe('Attendance grid — OT split + hour allocation', () => {
       String(seed!.employeeId),
     )
 
-    // Enter an OT split (UI coverage for the new column — normal_hours
-    // = actual_hours(8) is what backend/calculations/labor_hours.py::
-    // validate_ot_split requires if this ever round-trips through the
-    // grid's batch save).
+    // Save Records starts disabled (nothing changed yet).
+    const saveRecordsBtn = page.locator('[data-testid="attendance-save-btn"]')
+    await expect(saveRecordsBtn).toBeDisabled()
+
+    // Enter a full OT split via a real grid cell edit: normal_hours = 8 =
+    // actual_hours satisfies backend/calculations/labor_hours.py::
+    // validate_ot_split's sum-must-equal-actual_hours rule with
+    // double/triple left at their unset default (server defaults missing
+    // tiers to 0 for the sum check, then normalizes them to 0 in the
+    // persisted record).
     const normalCell = row.locator('.ag-cell[col-id="normal_hours"]')
     await normalCell.click()
     await page.keyboard.type('8')
     await page.keyboard.press('Tab')
     await expect(normalCell).toHaveText('8')
+
+    // Fix round 1 guard: a real cell edit must flip hasChanges and
+    // enable Save Records (previously stayed stuck disabled — see the
+    // file-level doc comment).
+    await expect(saveRecordsBtn).toBeEnabled({ timeout: 5000 })
 
     // Open the allocation dialog from the row's allocations button-cell.
     const allocationsBtn = row.locator('[data-testid="attendance-allocations-btn"]')
@@ -200,8 +219,8 @@ test.describe('Attendance grid — OT split + hour allocation', () => {
     await page.locator('[data-testid="allocation-hours-input-1"] input').fill('1')
 
     // Both hours are within actual_hours (6 <= 8) — save should be enabled.
-    const saveBtn = page.locator('[data-testid="allocation-save-btn"]')
-    await expect(saveBtn).toBeEnabled({ timeout: 5000 })
+    const dialogSaveBtn = page.locator('[data-testid="allocation-save-btn"]')
+    await expect(dialogSaveBtn).toBeEnabled({ timeout: 5000 })
 
     // The dialog's own save fires PUT .../attendance/{id} directly (the
     // row is already persisted) — the "entry-update path" the task brief
@@ -210,28 +229,62 @@ test.describe('Attendance grid — OT split + hour allocation', () => {
     // than "/api/attendance/" — the frontend's axios baseURL is
     // "/api/v1", proxied to the backend's unversioned "/api/attendance"
     // routes.)
-    const [response] = await Promise.all([
+    const [dialogPutResponse] = await Promise.all([
       page.waitForResponse(
         (r) => r.url().includes('/attendance/') && r.request().method() === 'PUT',
         { timeout: 15000 },
       ),
-      saveBtn.click(),
+      dialogSaveBtn.click(),
     ])
 
-    expect(response.ok()).toBeTruthy()
-    const body = await response.json()
-    expect(body.allocations).toEqual(
+    expect(dialogPutResponse.ok()).toBeTruthy()
+    const dialogPutBody = await dialogPutResponse.json()
+    expect(dialogPutBody.allocations).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ category: 'billed_production', hours: 5 }),
         expect.objectContaining({ category: 'training', hours: 1 }),
       ]),
     )
-    expect(body.billed_hours).toBe(5)
+    expect(dialogPutBody.billed_hours).toBe(5)
 
     await expect(dialog).toBeHidden({ timeout: 10000 })
 
     // Summary cell reflects the saved allocations (6 / 8 h — the
     // template is locale-invariant, only the numbers substitute).
     await expect(allocationsBtn).toHaveText('6 / 8 h', { timeout: 10000 })
+
+    // Fix round 1 guard, the real path: Save Records is still enabled
+    // (the OT cell edit's _hasChanges survives the dialog round-trip),
+    // click it, confirm the read-back dialog, and assert the resulting
+    // PUT actually carries the persisted OT split — not just a DOM
+    // assertion on the cell text.
+    await expect(saveRecordsBtn).toBeEnabled({ timeout: 5000 })
+    await saveRecordsBtn.click()
+
+    const confirmBtn = page.locator('[data-testid="readback-confirm-btn"]')
+    await expect(confirmBtn).toBeVisible({ timeout: 10000 })
+
+    const [saveRecordsPutResponse] = await Promise.all([
+      page.waitForResponse(
+        (r) => r.url().includes('/attendance/') && r.request().method() === 'PUT',
+        { timeout: 15000 },
+      ),
+      confirmBtn.click(),
+    ])
+
+    expect(saveRecordsPutResponse.ok()).toBeTruthy()
+    const saveRecordsPutBody = await saveRecordsPutResponse.json()
+    expect(saveRecordsPutBody.normal_hours).toBe(8)
+    expect(saveRecordsPutBody.double_hours).toBe(0)
+    expect(saveRecordsPutBody.triple_hours).toBe(0)
+    // The allocations set via the dialog earlier ride along on the same
+    // buildPayload-driven Save Records request (it always sends the
+    // row's current full state, not just the field that changed).
+    expect(saveRecordsPutBody.allocations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ category: 'billed_production', hours: 5 }),
+        expect.objectContaining({ category: 'training', hours: 1 }),
+      ]),
+    )
   })
 })
