@@ -20,6 +20,7 @@ from backend.schemas.production import CSVUploadResponse
 from backend.crud.downtime import create_downtime_event
 from backend.crud.hold import create_wip_hold
 from backend.crud.attendance import create_attendance_record
+from backend.calculations.labor_hours import validate_ot_split
 from backend.crud.coverage import create_shift_coverage
 from backend.crud.quality import create_quality_inspection
 from backend.crud.defect_detail import create_defect_detail
@@ -224,10 +225,29 @@ def _map_attendance_row(row: dict, current_user: User) -> AttendanceRecordCreate
         "coverage_confirmed": row.get("coverage_confirmed", 0),
         "absence_reason": sanitize_csv_value(row.get("absence_reason") or ""),
         "notes": sanitize_csv_value(row.get("notes") or ""),
+        # Labor-hours capture (Cycle 3 PR-A, Task 6): optional OT split + class
+        # override. Allocations are NOT CSV-supported (spec §4) — no column read here.
+        "normal_hours": row.get("normal_hours"),
+        "double_hours": row.get("double_hours"),
+        "triple_hours": row.get("triple_hours"),
+        "labor_class_override": sanitize_csv_value(row.get("labor_class_override") or "") or None,
     }
 
     # Use the from_legacy_csv method for proper field mapping
-    return AttendanceRecordCreate.from_legacy_csv(csv_data)
+    entry = AttendanceRecordCreate.from_legacy_csv(csv_data)
+
+    # OT split invariant (same validate_ot_split Task 4 wired into the crud layer):
+    # enforced here too so a bad-sum row surfaces through the CSV flow's existing
+    # per-row error idiom (ValueError raised from the mapper) instead of the
+    # request-aborting HTTPException create_attendance_record raises on its own.
+    # None when all three tiers are absent (unsplit, back-compat); otherwise the
+    # normalized (missing tiers -> 0) triple, mirroring the crud layer's own
+    # normalization so the mapper's returned entry already reflects it.
+    normalized_split = validate_ot_split(entry.normal_hours, entry.double_hours, entry.triple_hours, entry.actual_hours)
+    if normalized_split is not None:
+        entry.normal_hours, entry.double_hours, entry.triple_hours = normalized_split
+
+    return entry
 
 
 @router.post("/api/attendance/upload/csv", response_model=CSVUploadResponse)
@@ -263,6 +283,15 @@ async def upload_attendance_csv(
     - coverage_confirmed (int: 0 or 1)
     - absence_reason (text)
     - notes (text)
+    - normal_hours, double_hours, triple_hours (decimal) - OT split tiers
+      (Cycle 3 labor-hours capture). All three absent -> unsplit entry
+      (back-compat). Any one supplied -> all three must sum to
+      actual_hours_worked/actual_hours, or the row is rejected.
+    - labor_class_override (str: "direct" or "indirect") - per-entry
+      direct/indirect override; NULL/absent uses the employee's default.
+
+    NOT CSV-supported: intra-day hour allocations (the 8-category ledger) —
+    those are API-only, per spec §4's documented limitation.
     """
     rows = read_upload(await file.read(), file.filename or "", sheet_name)
     return process_csv_upload(

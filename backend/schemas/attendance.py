@@ -133,6 +133,13 @@ class AttendanceRecordCreate(BaseModel):
             is_late=1 if status == "LATE" else 0,
             absence_reason=data.get("absence_reason"),
             notes=data.get("notes"),
+            # Labor-hours capture (Cycle 3 PR-A, Task 6): optional OT split + class
+            # override from CSV. `not in (None, "")` (not a truthy check) so an
+            # explicit "0" tier is preserved rather than treated as absent.
+            normal_hours=Decimal(str(data["normal_hours"])) if data.get("normal_hours") not in (None, "") else None,
+            double_hours=Decimal(str(data["double_hours"])) if data.get("double_hours") not in (None, "") else None,
+            triple_hours=Decimal(str(data["triple_hours"])) if data.get("triple_hours") not in (None, "") else None,
+            labor_class_override=data.get("labor_class_override") or None,
         )
 
 

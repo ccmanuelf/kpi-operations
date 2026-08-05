@@ -5,6 +5,9 @@ happy-path rows need no FK seeding — the real endpoint + mapper + processor st
 """
 
 import io
+from decimal import Decimal
+
+from backend.orm.labor_taxonomy import LaborClassEnum
 
 
 def _csv_bytes(header: str, *rows: str) -> bytes:
@@ -119,6 +122,84 @@ def test_attendance_requires_elevated_role(test_client, auth_headers):
     )
     resp = test_client.post("/api/attendance/upload/csv", files=_files(content), headers=auth_headers)
     assert resp.status_code == 403
+
+
+# ==================== ATTENDANCE — labor-hours capture (Cycle 3 PR-A, Task 6) ====================
+
+
+def test_attendance_csv_ot_split_and_override_persisted(test_client, admin_auth_headers, monkeypatch):
+    """Valid split (triple_hours omitted) + labor_class_override -> mapper threads the
+    fields through AND normalizes the omitted tier to 0, mirroring the crud layer."""
+    captured = {}
+
+    def stub(db, entry, user):
+        captured["entry"] = entry
+        return _Created(attendance_entry_id="A-2")
+
+    monkeypatch.setattr("backend.endpoints.csv_upload.create_attendance_record", stub)
+    content = _csv_bytes(
+        "client_id,employee_id,shift_date,scheduled_hours,actual_hours,"
+        "normal_hours,double_hours,labor_class_override",
+        "CLIENT-A,1,2024-01-15,8,10,8,2,direct",
+    )
+    resp = test_client.post("/api/attendance/upload/csv", files=_files(content), headers=admin_auth_headers)
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["successful"] == 1
+    assert body["failed"] == 0
+    entry = captured["entry"]
+    assert entry.normal_hours == Decimal("8")
+    assert entry.double_hours == Decimal("2")
+    assert entry.triple_hours == Decimal("0")  # omitted column -> normalized to 0
+    assert entry.labor_class_override == LaborClassEnum.DIRECT
+
+
+def test_attendance_csv_ot_split_bad_sum_recorded(test_client, admin_auth_headers, monkeypatch):
+    """Split tiers that don't sum to actual_hours -> mapper's validate_ot_split raises
+    ValueError -> reported as this row's error, not a request-aborting exception."""
+    monkeypatch.setattr(
+        "backend.endpoints.csv_upload.create_attendance_record",
+        lambda db, e, u: _Created(attendance_entry_id="X"),
+    )
+    content = _csv_bytes(
+        "client_id,employee_id,shift_date,scheduled_hours,actual_hours," "normal_hours,double_hours,triple_hours",
+        "CLIENT-A,1,2024-01-15,8,10,8,1,0",  # 8+1+0=9 != actual_hours=10
+    )
+    resp = test_client.post("/api/attendance/upload/csv", files=_files(content), headers=admin_auth_headers)
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["failed"] == 1
+    assert body["successful"] == 0
+    assert body["errors"][0]["row"] == 2
+    assert body["errors"][0]["error"] == "Data parsing error in CSV row"
+
+
+def test_attendance_csv_split_columns_absent_unsplit(test_client, admin_auth_headers, monkeypatch):
+    """No split/override columns at all -> unsplit entry (back-compat)."""
+    captured = {}
+
+    def stub(db, entry, user):
+        captured["entry"] = entry
+        return _Created(attendance_entry_id="A-3")
+
+    monkeypatch.setattr("backend.endpoints.csv_upload.create_attendance_record", stub)
+    content = _csv_bytes(
+        "client_id,employee_id,shift_date,scheduled_hours",
+        "CLIENT-A,1,2024-01-15,8",
+    )
+    resp = test_client.post("/api/attendance/upload/csv", files=_files(content), headers=admin_auth_headers)
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["successful"] == 1
+    assert body["failed"] == 0
+    entry = captured["entry"]
+    assert entry.normal_hours is None
+    assert entry.double_hours is None
+    assert entry.triple_hours is None
+    assert entry.labor_class_override is None
 
 
 # ==================== COVERAGE ====================
