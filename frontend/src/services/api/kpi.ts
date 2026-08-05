@@ -42,6 +42,12 @@ interface OTDPayload {
   percentage?: number
   on_time_count?: number
   total_orders?: number
+  // Only present when /kpi/otd resolves a single-client scope (justified-
+  // delay-flag Cycle 2, Task 5/6) — omitted for multi/all-client requests.
+  standard_otd?: {
+    percentage?: number
+    net_percentage?: number
+  }
 }
 
 interface ProductionRow {
@@ -239,13 +245,24 @@ export const getOnTimeDelivery = async (params?: Params) => {
         total_orders: otdData.total_orders || 0,
         by_client: byClientData,
         late_deliveries: lateDeliveriesData,
+        // Net-of-justified secondary value (justified-delay-flag Cycle 2,
+        // Task 7) — null when the request's scope wasn't single-client
+        // (calculate_true_otd is inherently single-client, see OTDPayload).
+        net_percentage: otdData.standard_otd?.net_percentage ?? null,
       },
     }
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('OTD fetch error:', error)
     return {
-      data: { percentage: 0, on_time_count: 0, total_orders: 0, by_client: [], late_deliveries: [] },
+      data: {
+        percentage: 0,
+        on_time_count: 0,
+        total_orders: 0,
+        by_client: [],
+        late_deliveries: [],
+        net_percentage: null,
+      },
     }
   }
 }

@@ -206,3 +206,131 @@ class TestExcelGeneratorEmptySheetSelectionGuard:
                 end_date=date(2026, 1, 31),
                 sheets=["not-a-real-sheet-key"],
             )
+
+
+def _seed_otd_net_of_justified_scenario(db, client):
+    """Seeds the exact Task 5 scenario (test_true_otd_gross_vs_net_with_
+    derivation): 5 delivered COMPLETED work orders (2 on-time, 1 late+
+    justified/customer_request, 1 late+unjustified, 1 late+unclassified) plus
+    1 undelivered past-due order. gross = 2/5*100 = 40.0, net =
+    (2+1)/5*100 = 60.0. standard_otd mirrors true_otd exactly here (all 5
+    delivered orders are COMPLETED)."""
+    from backend.orm.work_order import WorkOrder, WorkOrderStatus
+
+    wo1 = WorkOrder(
+        work_order_id="WO-XLNET-001",
+        client_id=client.client_id,
+        style_model="XLNET-STYLE",
+        planned_quantity=10,
+        status=WorkOrderStatus.COMPLETED,
+        planned_ship_date=datetime(2026, 1, 10, 12, 0),
+        actual_delivery_date=datetime(2026, 1, 10, 8, 0),  # before planned -> on time
+    )
+    wo2 = WorkOrder(
+        work_order_id="WO-XLNET-002",
+        client_id=client.client_id,
+        style_model="XLNET-STYLE",
+        planned_quantity=10,
+        status=WorkOrderStatus.COMPLETED,
+        planned_ship_date=datetime(2026, 1, 15, 12, 0),
+        actual_delivery_date=datetime(2026, 1, 14, 8, 0),  # before planned -> on time
+    )
+    wo3 = WorkOrder(
+        work_order_id="WO-XLNET-003",
+        client_id=client.client_id,
+        style_model="XLNET-STYLE",
+        planned_quantity=10,
+        status=WorkOrderStatus.COMPLETED,
+        planned_ship_date=datetime(2026, 1, 5, 12, 0),
+        actual_delivery_date=datetime(2026, 1, 8, 8, 0),  # after planned -> late
+        delay_classification="justified",
+        justified_delay_reason="customer_request",
+    )
+    wo4 = WorkOrder(
+        work_order_id="WO-XLNET-004",
+        client_id=client.client_id,
+        style_model="XLNET-STYLE",
+        planned_quantity=10,
+        status=WorkOrderStatus.COMPLETED,
+        planned_ship_date=datetime(2026, 1, 6, 12, 0),
+        actual_delivery_date=datetime(2026, 1, 9, 8, 0),  # after planned -> late
+        delay_classification="unjustified",
+    )
+    wo5 = WorkOrder(
+        work_order_id="WO-XLNET-005",
+        client_id=client.client_id,
+        style_model="XLNET-STYLE",
+        planned_quantity=10,
+        status=WorkOrderStatus.COMPLETED,
+        planned_ship_date=datetime(2026, 1, 7, 12, 0),
+        actual_delivery_date=datetime(2026, 1, 12, 8, 0),  # after planned -> late
+        # delay_classification left NULL -> unclassified
+    )
+    wo6 = WorkOrder(
+        work_order_id="WO-XLNET-006",
+        client_id=client.client_id,
+        style_model="XLNET-STYLE",
+        planned_quantity=10,
+        status=WorkOrderStatus.IN_PROGRESS,
+        planned_ship_date=datetime(2026, 1, 3, 12, 0),  # before `end` -> is_late(wo, end) True
+        actual_delivery_date=None,
+    )
+
+    db.add_all([wo1, wo2, wo3, wo4, wo5, wo6])
+    db.commit()
+
+
+class TestExcelSummarySheetOTDGrossAndNet:
+    """Cycle 2 Task 7: Executive Summary's KPI table gains OTD gross +
+    net-of-justified rows, sourced from calculate_true_otd's standard_otd
+    (spec: "the comprehensive Excel report's OTD row shows gross + net";
+    added as two rows since this table is one-KPI-per-row with no per-KPI
+    secondary-value column). Both rows come from the SAME
+    calculate_true_otd(...) call so gross/net stay internally consistent
+    within the sheet."""
+
+    def test_fetch_kpi_summary_data_otd_gross_and_net_exact(self, transactional_db):
+        client = TestDataFactory.create_client(transactional_db)
+        _seed_otd_net_of_justified_scenario(transactional_db, client)
+
+        kpi_data = ExcelReportGenerator(transactional_db)._fetch_kpi_summary_data(
+            client.client_id, date(2026, 1, 1), date(2026, 1, 31)
+        )
+
+        by_name = {row["name"]: row for row in kpi_data}
+        assert by_name["OTD"]["current"] == 40.0
+        assert by_name["OTD (Net of Justified)"]["current"] == 60.0
+
+    def test_fetch_kpi_summary_data_otd_omitted_without_client_id(self, transactional_db):
+        """All-clients comprehensive report: calculate_true_otd is inherently
+        single-client (mirrors /api/kpi/otd omitting true_otd/standard_otd
+        for multi/all-client scope) — no OTD row is added, not an error."""
+        client = TestDataFactory.create_client(transactional_db)
+        _seed_otd_net_of_justified_scenario(transactional_db, client)
+
+        kpi_data = ExcelReportGenerator(transactional_db)._fetch_kpi_summary_data(
+            None, date(2026, 1, 1), date(2026, 1, 31)
+        )
+
+        names = [row["name"] for row in kpi_data]
+        assert "OTD" not in names
+        assert "OTD (Net of Justified)" not in names
+
+    def test_summary_sheet_renders_otd_gross_and_net_at_exact_cells(self, transactional_db):
+        """Full render through _create_summary_sheet: with no production/
+        quality/attendance data seeded, OTD is the only KPI in the table, so
+        its two rows land at exact, predictable cell positions (header row 7,
+        data starts row 8)."""
+        client = TestDataFactory.create_client(transactional_db)
+        _seed_otd_net_of_justified_scenario(transactional_db, client)
+
+        wb = Workbook()
+        ExcelReportGenerator(transactional_db)._create_summary_sheet(
+            wb, client.client_id, date(2026, 1, 1), date(2026, 1, 31)
+        )
+        ws = wb["Executive Summary"]
+
+        assert ws["A8"].value == "OTD"
+        assert ws["B8"].value == 40.0
+        assert ws["A9"].value == "OTD (Net of Justified)"
+        assert ws["B9"].value == 60.0
