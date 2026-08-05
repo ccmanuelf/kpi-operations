@@ -178,3 +178,118 @@ def test_demo_seeder_classifies_only_late_orders_deterministically(tmp_path):
         f"expected exactly {sorted(expected_reasons)} (the demo dataset's 2-justified-row ceiling — "
         f"see docstring), got {sorted(seeded_reasons)}"
     )
+
+
+def test_demo_seeder_labor_hours_capture_is_deterministic(tmp_path):
+    """Run the real demo seeder end-to-end (subprocess, throwaway sqlite
+    file — same invocation CI uses) and assert its Task 8 (Cycle 3 PR-A)
+    labor-hours capture is sound: employees are fully classified
+    direct/indirect (majority direct), attendance OT splits sum to
+    actual_hours for every split entry, a fixed minority of present entries
+    are left UNSPLIT (completeness chip), sparse per-entry class overrides
+    exist, hour allocations are enum-valid with per-entry sum <=
+    actual_hours, a fixed minority of present entries are left unallocated
+    (completeness chip), and the rotating-minority allocation category
+    reaches the EXACT set of all 8 HourCategoryEnum values.
+
+    Unlike the demo seeder's delay-classification coverage above (capped at
+    2/6 reasons by WO_PLAN's fixed 5-late-WO structure), the attendance
+    counters (`attendance_p` / `attendance_alloc_ct`) are declared BEFORE
+    the per-client loop in init_demo_database.py and accumulate ACROSS all
+    5 clients x 3 employees — a wide enough pool (~90-120 present entries,
+    empirically confirmed) that the demo dataset reaches the full 8-category
+    set too, not just a subset."""
+    from decimal import Decimal
+
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+
+    from backend.orm import AttendanceEntry, AttendanceHourAllocation, Employee
+    from backend.orm.labor_taxonomy import HourCategoryEnum, LaborClassEnum
+
+    db_path = tmp_path / "demo_seed_labor_hours_regression.db"
+    env = os.environ.copy()
+    env["DATABASE_URL"] = f"sqlite:///{db_path}"
+    env["PYTHONPATH"] = "."
+
+    result = subprocess.run(
+        [sys.executable, str(SEEDER_SCRIPT)],
+        cwd=str(REPO_ROOT),
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+    assert result.returncode == 0, (
+        f"demo seeder crashed (exit {result.returncode})\n"
+        f"--- stdout tail ---\n{result.stdout[-2000:]}\n"
+        f"--- stderr tail ---\n{result.stderr[-2000:]}"
+    )
+
+    engine = create_engine(f"sqlite:///{db_path}")
+    session = sessionmaker(bind=engine)()
+    try:
+        employees = session.query(Employee).all()
+        entries = session.query(AttendanceEntry).all()
+        allocations_by_entry: dict = {}
+        for alloc in session.query(AttendanceHourAllocation).all():
+            allocations_by_entry.setdefault(alloc.attendance_entry_id, []).append(alloc)
+    finally:
+        session.close()
+        engine.dispose()
+
+    assert employees, "expected the demo seeder to have written Employee rows"
+    assert entries, "expected the demo seeder to have written ATTENDANCE_ENTRY rows"
+
+    valid_classes = {c.value for c in LaborClassEnum}
+    valid_categories = {c.value for c in HourCategoryEnum}
+
+    classes_seen = set()
+    for emp in employees:
+        assert emp.labor_class is not None, f"unclassified employee {emp.employee_code}"
+        assert emp.labor_class in valid_classes
+        classes_seen.add(emp.labor_class)
+    assert classes_seen == valid_classes, f"expected both labor classes present, got {classes_seen}"
+    assert sum(1 for e in employees if e.labor_class == LaborClassEnum.DIRECT.value) > sum(
+        1 for e in employees if e.labor_class == LaborClassEnum.INDIRECT.value
+    ), "expected direct labor to be the majority classification"
+
+    override_seen = False
+    unsplit_seen = False
+    unallocated_seen = False
+    seeded_categories: set = set()
+
+    for entry in entries:
+        if entry.labor_class_override is not None:
+            assert entry.labor_class_override in valid_classes
+            override_seen = True
+
+        split_fields = (entry.normal_hours, entry.double_hours, entry.triple_hours)
+        if entry.actual_hours and entry.actual_hours > 0 and all(f is None for f in split_fields):
+            unsplit_seen = True
+        elif any(f is not None for f in split_fields):
+            assert all(f is not None for f in split_fields), f"partial OT split on {entry.attendance_entry_id}"
+            assert (
+                entry.normal_hours + entry.double_hours + entry.triple_hours == entry.actual_hours
+            ), f"OT split doesn't sum to actual_hours on {entry.attendance_entry_id}"
+
+        allocations = allocations_by_entry.get(entry.attendance_entry_id, [])
+        if not allocations:
+            if entry.actual_hours and entry.actual_hours > 0:
+                unallocated_seen = True
+            continue
+        total = Decimal("0")
+        for alloc in allocations:
+            assert alloc.category in valid_categories
+            seeded_categories.add(alloc.category)
+            total += alloc.hours
+        assert total <= (
+            entry.actual_hours or Decimal("0")
+        ), f"allocations exceed actual_hours on {entry.attendance_entry_id}"
+
+    assert override_seen, "expected at least one labor_class_override entry"
+    assert unsplit_seen, "expected at least one unsplit (all-NULL) OT entry"
+    assert unallocated_seen, "expected at least one unallocated (but worked) entry"
+    assert (
+        seeded_categories == valid_categories
+    ), f"expected all 8 HourCategoryEnum values across the demo dataset, got {sorted(seeded_categories)}"

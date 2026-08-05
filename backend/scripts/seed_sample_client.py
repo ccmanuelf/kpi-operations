@@ -250,6 +250,22 @@ RESET_TABLE_ORDER = _reset_table_order()
 
 def reset_client_data(session: Session, client_id: str) -> None:
     """Delete ONLY this client's rows, children-first. Leaves CLIENT + other clients intact."""
+    from backend.orm import AttendanceEntry, AttendanceHourAllocation
+
+    # AttendanceHourAllocation (Cycle 3 PR-A, Task 8) has no client_id column
+    # of its own — only a raw FK to ATTENDANCE_ENTRY.attendance_entry_id —
+    # so it can't take a `(cls, col)` slot in RESET_TABLE_ORDER like its
+    # siblings. Its ORM relationship's cascade="all, delete-orphan" only
+    # fires on session.delete(), not this bulk `.delete()` sweep, so without
+    # this it would survive a reset as an orphan and collide with the
+    # deterministic attendance_entry_id/category on re-seed (UNIQUE
+    # violation). Scope the delete via a subquery on this client's
+    # attendance entries, ahead of AttendanceEntry itself below.
+    entry_ids = session.query(AttendanceEntry.attendance_entry_id).filter(AttendanceEntry.client_id == client_id)
+    session.query(AttendanceHourAllocation).filter(AttendanceHourAllocation.attendance_entry_id.in_(entry_ids)).delete(
+        synchronize_session=False
+    )
+
     for cls, col in RESET_TABLE_ORDER:
         session.query(cls).filter(getattr(cls, col) == client_id).delete(synchronize_session=False)
     session.flush()

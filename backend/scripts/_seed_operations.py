@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from backend.orm.delay_taxonomy import DelayClassificationEnum, JustifiedDelayReasonEnum
 from backend.orm.downtime_taxonomy import DEFAULT_CATEGORY_BY_REASON, DowntimeCategoryEnum, DowntimeReasonEnum
+from backend.orm.labor_taxonomy import HourCategoryEnum, LaborClassEnum
 from backend.scripts._seed_common import ClientSpec, rng_for
 from backend.scripts._seed_master import seed_employees, seed_lines, seed_products, seed_shifts
 
@@ -354,6 +355,7 @@ def seed_daily_data(session: Session, spec: ClientSpec, days: int, entered_by: s
         DefectDetail,
         DowntimeEntry,
         AttendanceEntry,
+        AttendanceHourAllocation,
         AbsenceType,
         WorkOrder,
     )
@@ -540,7 +542,21 @@ def seed_daily_data(session: Session, spec: ClientSpec, days: int, entered_by: s
         wo.actual_quantity = running
 
     # --- Attendance: one per employee per working day, independent of the
-    # per-WO production split. ---
+    # per-WO production split. Labor-hours capture (Cycle 3 PR-A, Task 8):
+    # deterministic OT-split / labor-class-override / hour-allocation
+    # coverage over the PRESENT entries only (an absence already implies
+    # unsplit + unallocated by construction — actual_hours=0). `p` counts
+    # present entries only, so the fixed cadences below land regardless of
+    # which days the (rng-seeded) absence draw happens to hit.
+    #
+    # `alloc_ct` is a SEPARATE counter, incremented only on rotating-minority
+    # allocation rows and indexed mod 8 into HourCategoryEnum — mirroring the
+    # justified_ct fix from Task 9/Cycle 2 above: a naive `p % 8` would
+    # collide with the `p % 4 == 0` selection modulus (gcd(4, 8) == 4),
+    # reaching only 2 of 8 categories at any scale.
+    _hour_categories = list(HourCategoryEnum)
+    p = 0
+    alloc_ct = 0
     for day_seq, day in enumerate(working_days, start=1):
         day_dt = datetime.combine(day, shift.start_time)
         for j, emp in enumerate(employees, start=1):
@@ -551,18 +567,55 @@ def seed_daily_data(session: Session, spec: ClientSpec, days: int, entered_by: s
                 if absent
                 else None
             )
-            session.add(
-                AttendanceEntry(
-                    attendance_entry_id=f"ATT-{cid}-{day_seq:04d}-{j:02d}",
-                    employee_id=emp.employee_id,
-                    client_id=cid,
-                    shift_id=shift.shift_id,
-                    shift_date=day_dt,
-                    scheduled_hours=Decimal("8.0"),
-                    actual_hours=Decimal("0") if absent else Decimal("8.0"),
-                    absence_hours=Decimal("8.0") if absent else Decimal("0"),
-                    absence_type=absence_type,
-                    is_absent=1 if absent else 0,
-                )
+            actual = Decimal("0") if absent else Decimal("8.0")
+            normal_hours = double_hours = triple_hours = None
+            labor_class_override = None
+            allocations: list = []
+            if not absent:
+                p += 1
+                if p % 25 == 0:
+                    pass  # fixed minority left UNSPLIT (completeness chip)
+                elif p % 20 == 0:
+                    normal_hours, double_hours, triple_hours = Decimal("7.0"), Decimal("0"), Decimal("1.0")
+                elif p % 5 == 0:
+                    normal_hours, double_hours, triple_hours = Decimal("6.0"), Decimal("2.0"), Decimal("0")
+                else:
+                    normal_hours, double_hours, triple_hours = Decimal("8.0"), Decimal("0"), Decimal("0")
+
+                if p % 15 == 0:
+                    # Sparse per-entry class override, flipping the employee's default.
+                    labor_class_override = (
+                        LaborClassEnum.INDIRECT.value
+                        if emp.labor_class == LaborClassEnum.DIRECT.value
+                        else LaborClassEnum.DIRECT.value
+                    )
+
+                if p % 10 == 0:
+                    pass  # fixed minority left unallocated (completeness chip)
+                elif p % 4 == 0:
+                    category = _hour_categories[alloc_ct % len(_hour_categories)]
+                    alloc_ct += 1
+                    allocations.append((category.value, actual))
+                else:
+                    allocations.append((HourCategoryEnum.BILLED_PRODUCTION.value, actual))
+
+            entry = AttendanceEntry(
+                attendance_entry_id=f"ATT-{cid}-{day_seq:04d}-{j:02d}",
+                employee_id=emp.employee_id,
+                client_id=cid,
+                shift_id=shift.shift_id,
+                shift_date=day_dt,
+                scheduled_hours=Decimal("8.0"),
+                actual_hours=actual,
+                absence_hours=Decimal("8.0") if absent else Decimal("0"),
+                absence_type=absence_type,
+                is_absent=1 if absent else 0,
+                normal_hours=normal_hours,
+                double_hours=double_hours,
+                triple_hours=triple_hours,
+                labor_class_override=labor_class_override,
             )
+            for category_value, hours in allocations:
+                entry.hour_allocations.append(AttendanceHourAllocation(category=category_value, hours=hours))
+            session.add(entry)
     session.flush()

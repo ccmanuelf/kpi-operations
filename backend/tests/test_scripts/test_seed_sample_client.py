@@ -1183,3 +1183,95 @@ def test_client_contact_fields_populated(db_session):
         assert client.client_phone, f"{client_id} missing client_phone"
         assert client.location, f"{client_id} missing location"
         assert "@" in client.client_email
+
+
+def test_seeded_attendance_labor_hours_capture_is_deterministic_and_exhaustive(db_session):
+    """Labor-hours capture (Cycle 3 PR-A, Task 8): employees are fully
+    classified direct/indirect (majority direct — the fixed `n % 4 == 0`
+    pattern in seed_employees), attendance OT splits sum to actual_hours for
+    every split entry (validate_ot_split's invariant, though the seeder
+    constructs directly through the ORM rather than calling it — a bad split
+    here would crash the seeder before this test ever ran), a fixed minority
+    of present entries are left UNSPLIT (all three tiers NULL — the
+    completeness chip), sparse per-entry class overrides exist, hour
+    allocations are enum-valid with per-entry sum <= actual_hours, a fixed
+    minority of present entries are left unallocated (completeness chip),
+    and the rotating-minority allocation category reaches the EXACT set of
+    all 8 HourCategoryEnum values.
+
+    The exact-set (not "at least one") assertion is deliberate — same
+    reasoning as test_seeded_work_orders_classify_only_late_orders_
+    deterministically's reason-coverage check above: seed_daily_data uses a
+    SEPARATE `alloc_ct` counter, incremented only on rotating-minority rows
+    and indexed mod 8, specifically so it can't collide with the `p % 4 ==
+    0` selection modulus the way a naive `p % 8` would (gcd(4, 8) == 4)."""
+    from decimal import Decimal
+
+    from backend.orm import AttendanceEntry, Employee
+    from backend.orm.attendance_hour_allocation import AttendanceHourAllocation
+    from backend.orm.labor_taxonomy import HourCategoryEnum, LaborClassEnum
+
+    _seed_admin(db_session)
+    spec = seed.CLIENT_SPECS["DEMO-PIECE"]
+    seed.seed_client(db_session, spec, days=30, anchor=FIXED_ANCHOR)
+    db_session.commit()
+
+    valid_classes = {c.value for c in LaborClassEnum}
+    valid_categories = {c.value for c in HourCategoryEnum}
+
+    employees = db_session.query(Employee).filter_by(client_id_assigned="DEMO-PIECE").all()
+    assert employees, "expected seeded employees"
+    classes_seen = set()
+    for emp in employees:
+        assert emp.labor_class is not None, f"unclassified employee {emp.employee_code}"
+        assert emp.labor_class in valid_classes
+        classes_seen.add(emp.labor_class)
+    assert classes_seen == valid_classes, f"expected both labor classes present, got {classes_seen}"
+    assert sum(1 for e in employees if e.labor_class == LaborClassEnum.DIRECT.value) > sum(
+        1 for e in employees if e.labor_class == LaborClassEnum.INDIRECT.value
+    ), "expected direct labor to be the majority classification"
+
+    entries = db_session.query(AttendanceEntry).filter_by(client_id="DEMO-PIECE").all()
+    assert entries, "expected seeded attendance entries"
+
+    override_seen = False
+    unsplit_seen = False
+    unallocated_seen = False
+    seeded_categories: set = set()
+
+    for entry in entries:
+        if entry.labor_class_override is not None:
+            assert entry.labor_class_override in valid_classes
+            override_seen = True
+
+        split_fields = (entry.normal_hours, entry.double_hours, entry.triple_hours)
+        if entry.actual_hours and entry.actual_hours > 0 and all(f is None for f in split_fields):
+            unsplit_seen = True
+        elif any(f is not None for f in split_fields):
+            assert all(f is not None for f in split_fields), f"partial OT split on {entry.attendance_entry_id}"
+            assert (
+                entry.normal_hours + entry.double_hours + entry.triple_hours == entry.actual_hours
+            ), f"OT split doesn't sum to actual_hours on {entry.attendance_entry_id}"
+
+        allocations = (
+            db_session.query(AttendanceHourAllocation).filter_by(attendance_entry_id=entry.attendance_entry_id).all()
+        )
+        if not allocations:
+            if entry.actual_hours and entry.actual_hours > 0:
+                unallocated_seen = True
+            continue
+        total = Decimal("0")
+        for alloc in allocations:
+            assert alloc.category in valid_categories
+            seeded_categories.add(alloc.category)
+            total += alloc.hours
+        assert total <= (
+            entry.actual_hours or Decimal("0")
+        ), f"allocations exceed actual_hours on {entry.attendance_entry_id}"
+
+    assert override_seen, "expected at least one labor_class_override entry"
+    assert unsplit_seen, "expected at least one unsplit (all-NULL) OT entry"
+    assert unallocated_seen, "expected at least one unallocated (but worked) entry"
+    assert (
+        seeded_categories == valid_categories
+    ), f"expected all 8 HourCategoryEnum values across the dataset, got {sorted(seeded_categories)}"
