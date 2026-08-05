@@ -226,9 +226,11 @@ describe('useWorkOrderGridData', () => {
       }
       expect(col.editable).toBe(false)
 
-      // Not late -> dash, no badge.
+      // Not late -> empty cell, no badge, no low-contrast placeholder
+      // (a grey dash here failed the WCAG-AA contrast gate — #9e9e9e on
+      // white is 2.68:1, needs 4.5:1).
       const notLate = col.cellRenderer!({ data: { is_late: false } as WorkOrderRow })
-      expect(notLate.textContent).toBe('-')
+      expect(notLate.textContent).toBe('')
 
       // Late + unclassified -> the classification label key (t is identity-mocked).
       const unclassified = col.cellRenderer!({
