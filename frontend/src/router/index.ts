@@ -199,6 +199,12 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true, requiresAdmin: true },
   },
   {
+    path: '/admin/employees',
+    name: 'admin-employees',
+    component: () => import('@/views/admin/AdminEmployees.vue'),
+    meta: { requiresAuth: true, requiresAdmin: true },
+  },
+  {
     path: '/admin/workflow-config',
     name: 'admin-workflow-config',
     component: () => import('@/views/admin/WorkflowConfigView.vue'),

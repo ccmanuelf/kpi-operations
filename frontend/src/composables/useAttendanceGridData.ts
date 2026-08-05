@@ -10,6 +10,12 @@
  * to is_absent + absence_type + is_late on save. clock_in/clock_out
  * (HH:MM strings) are combined with shift_date to produce ISO
  * arrival_time/departure_time datetimes.
+ *
+ * Labor-hours capture (Cycle 3 PR-A, Task 7): normal_hours/double_hours/
+ * triple_hours (OT split, all-null = unsplit), labor_class_override
+ * (direct/indirect/null), and allocations (intra-day hour ledger, edited
+ * via AllocationEditorDialog.vue) ride the same create/update payload —
+ * see backend/schemas/attendance.py AttendanceRecordCreate/Update.
  */
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -17,6 +23,8 @@ import { useAuthStore } from '@/stores/authStore'
 import { useKPIStore } from '@/stores/kpi'
 import api from '@/services/api'
 import { format } from 'date-fns'
+import { LABOR_CLASS_CODES, laborClassLabelKey } from '@/constants/laborTaxonomy'
+import { allocatedTotal, type AllocationItemPayload } from '@/composables/useAllocationEditor'
 
 export interface AttendanceRow {
   attendance_entry_id?: string | number
@@ -32,6 +40,14 @@ export interface AttendanceRow {
   actual_hours?: number
   absence_reason?: string
   notes?: string
+  normal_hours?: number | null
+  double_hours?: number | null
+  triple_hours?: number | null
+  labor_class_override?: string | null
+  allocations?: AllocationItemPayload[]
+  billed_hours?: number
+  available_for_efficiency_hours?: number | null
+  effective_labor_class?: string | null
   _hasChanges?: boolean
   _isNew?: boolean
   _isExisting?: boolean
@@ -124,6 +140,43 @@ export const combineDateTime = (
   return `${date}T${h.padStart(2, '0')}:${m}:00`
 }
 
+// Allocations button-cell (module scope — no per-instance closures needed
+// beyond the params passed in). Empty cell (no button label text) when
+// nothing's allocated yet, per the no-low-contrast-placeholder rule; the
+// button itself always renders so a row can still open the dialog to make
+// its first allocation.
+const renderAllocationsCell = (
+  params: { data: AttendanceRow },
+  ctx: {
+    t: (_key: string, _named?: Record<string, unknown>) => string
+    openAllocationDialog: (_row: AttendanceRow) => void
+  },
+): HTMLElement => {
+  const btn = document.createElement('button')
+  btn.className = 'ag-grid-allocations-btn'
+  btn.type = 'button'
+  btn.setAttribute('data-testid', 'attendance-allocations-btn')
+  btn.title = ctx.t('labor.allocationsTitle')
+  btn.style.cssText =
+    'background: transparent; border: 1px solid currentColor; border-radius: 4px; ' +
+    'padding: 2px 8px; cursor: pointer; font-size: 11px; font-weight: 600; color: inherit;'
+
+  const total = allocatedTotal(params.data.allocations || [])
+  // "+" is an action affordance ("add an allocation"), not a data value —
+  // distinct from a placeholder like "0/8 h" that could be misread as an
+  // actual (zero) allocation.
+  btn.textContent =
+    total > 0
+      ? ctx.t('labor.allocatedSummary', {
+          allocated: total,
+          actual: params.data.actual_hours ?? 0,
+        })
+      : '+'
+
+  btn.addEventListener('click', () => ctx.openAllocationDialog(params.data))
+  return btn
+}
+
 export default function useAttendanceGridData(
   { TimePickerCellEditor }: UseAttendanceGridDataOptions = {},
 ) {
@@ -186,6 +239,45 @@ export default function useAttendanceGridData(
 
   const changedRowsCount = computed(
     () => attendanceData.value.filter((row) => row._hasChanges).length,
+  )
+
+  // Allocation dialog (AllocationEditorDialog.vue) — opened from the grid's
+  // allocations button-cell (see columnDefs below).
+  const showAllocationDialog = ref(false)
+  const allocationDialogRow = ref<AttendanceRow | null>(null)
+
+  const openAllocationDialog = (row: AttendanceRow): void => {
+    allocationDialogRow.value = row
+    showAllocationDialog.value = true
+  }
+
+  const onAllocationsSaved = (payload: {
+    row: AttendanceRow
+    items: AllocationItemPayload[]
+  }): void => {
+    payload.row.allocations = payload.items
+    payload.row._hasChanges = true
+    gridRef.value?.refreshCells?.()
+  }
+
+  // Completeness chips (host renders both `v-if > 0`): entries with actual
+  // hours recorded but no OT split captured yet, and entries with no hour
+  // allocations recorded yet.
+  const noSplitCount = computed(
+    () =>
+      attendanceData.value.filter(
+        (row) =>
+          row.actual_hours !== undefined &&
+          row.actual_hours !== null &&
+          row.normal_hours == null &&
+          row.double_hours == null &&
+          row.triple_hours == null,
+      ).length,
+  )
+
+  const unallocatedCount = computed(
+    () => attendanceData.value.filter((row) => !row.allocations || row.allocations.length === 0)
+      .length,
   )
 
   const statusCounts = computed(() => {
@@ -286,6 +378,71 @@ export default function useAttendanceGridData(
       width: 130,
     },
     {
+      headerName: t('labor.otNormal'),
+      field: 'normal_hours',
+      editable: true,
+      type: 'numericColumn',
+      cellEditor: 'agNumberCellEditor',
+      cellEditorParams: { min: 0, max: 24, precision: 2 },
+      // No placeholder text for a null/unsplit tier — a genuinely empty
+      // cell (not "0.00", which would misrepresent an unsplit entry as
+      // explicitly zero straight-time hours).
+      valueFormatter: (params: { value?: number | null }) =>
+        params.value === null || params.value === undefined ? '' : String(params.value),
+      width: 110,
+    },
+    {
+      headerName: t('labor.otDouble'),
+      field: 'double_hours',
+      editable: true,
+      type: 'numericColumn',
+      cellEditor: 'agNumberCellEditor',
+      cellEditorParams: { min: 0, max: 24, precision: 2 },
+      valueFormatter: (params: { value?: number | null }) =>
+        params.value === null || params.value === undefined ? '' : String(params.value),
+      width: 110,
+    },
+    {
+      headerName: t('labor.otTriple'),
+      field: 'triple_hours',
+      editable: true,
+      type: 'numericColumn',
+      cellEditor: 'agNumberCellEditor',
+      cellEditorParams: { min: 0, max: 24, precision: 2 },
+      valueFormatter: (params: { value?: number | null }) =>
+        params.value === null || params.value === undefined ? '' : String(params.value),
+      width: 110,
+    },
+    {
+      headerName: t('labor.laborClassOverride'),
+      field: 'labor_class_override',
+      editable: true,
+      cellEditor: 'agSelectCellEditor',
+      cellEditorParams: {
+        values: [null, ...LABOR_CLASS_CODES],
+        formatValue: (v: unknown) =>
+          v ? t(laborClassLabelKey(String(v))) : t('labor.unclassified'),
+      },
+      // Resting-value display: EMPTY for null (most rows — override
+      // absent, effective class falls back to the employee default) per
+      // the no-low-contrast-placeholder rule; only a set override renders
+      // text (mirrors useWorkOrderGridData's delay-badge empty-cell
+      // pattern for the non-applicable case).
+      valueFormatter: (params: { value?: string | null }) =>
+        params.value ? t(laborClassLabelKey(params.value)) : '',
+      width: 140,
+    },
+    {
+      headerName: t('labor.allocationsTitle'),
+      field: 'allocations',
+      editable: false,
+      sortable: false,
+      filter: false,
+      cellRenderer: (params: { data: AttendanceRow }) =>
+        renderAllocationsCell(params, { t, openAllocationDialog }),
+      width: 150,
+    },
+    {
       headerName: t('grids.columns.absenceReason'),
       field: 'absence_reason',
       editable: true,
@@ -383,6 +540,11 @@ export default function useAttendanceGridData(
           actual_hours: DEFAULT_SCHEDULED_HOURS,
           absence_reason: '',
           notes: '',
+          normal_hours: null,
+          double_hours: null,
+          triple_hours: null,
+          labor_class_override: null,
+          allocations: [],
           _hasChanges: false,
           _isNew: true,
         }
@@ -455,6 +617,15 @@ export default function useAttendanceGridData(
       is_late: translated.is_late,
       absence_reason: row.absence_reason || undefined,
       notes: row.notes || undefined,
+      // Labor-hours capture (Cycle 3 PR-A, Task 7) — all-null tiers = unsplit
+      // (backend no-ops); explicit null override = use employee default;
+      // allocations always carries the row's current ledger so a save that
+      // doesn't touch allocations resends (not clears) what's already there.
+      normal_hours: row.normal_hours ?? null,
+      double_hours: row.double_hours ?? null,
+      triple_hours: row.triple_hours ?? null,
+      labor_class_override: row.labor_class_override ?? null,
+      allocations: (row.allocations || []).map((a) => ({ category: a.category, hours: a.hours })),
     }
   }
 
@@ -634,6 +805,12 @@ export default function useAttendanceGridData(
     hasChanges,
     changedRowsCount,
     statusCounts,
+    showAllocationDialog,
+    allocationDialogRow,
+    openAllocationDialog,
+    onAllocationsSaved,
+    noSplitCount,
+    unallocatedCount,
     columnDefs,
     onGridReady,
     loadEmployees,

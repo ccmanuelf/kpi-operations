@@ -46,7 +46,14 @@ interface ColumnDefShape {
   field?: string
   editable?: boolean
   cellEditor?: string
-  cellEditorParams?: { values?: unknown[]; min?: number; max?: number }
+  cellEditorParams?: {
+    values?: unknown[]
+    min?: number
+    max?: number
+    formatValue?: (_v: unknown) => string
+  }
+  valueFormatter?: (_params: { value?: unknown }) => string
+  cellRenderer?: (_params: { data: AttendanceRow }) => HTMLElement
 }
 
 const findCol = (cols: unknown[], field: string): ColumnDefShape | undefined =>
@@ -234,6 +241,216 @@ describe('useAttendanceGridData', () => {
       const { attendanceData, statusCounts } = withSetup(() => useAttendanceGridData())
       attendanceData.value = [{ status: 'Half Day' } as AttendanceRow]
       expect(statusCounts.value.halfDay).toBe(1)
+    })
+  })
+
+  describe('labor-hours columns (Cycle 3 PR-A, Task 7)', () => {
+    it('exposes normal_hours/double_hours/triple_hours as numeric editors', () => {
+      const { columnDefs } = withSetup(() => useAttendanceGridData())
+      for (const field of ['normal_hours', 'double_hours', 'triple_hours']) {
+        const col = findCol(columnDefs.value, field)!
+        expect(col.editable).toBe(true)
+        expect(col.cellEditor).toBe('agNumberCellEditor')
+        expect(col.cellEditorParams!.max).toBe(24)
+      }
+    })
+
+    it('OT split columns render EMPTY for null/undefined, not a placeholder', () => {
+      const { columnDefs } = withSetup(() => useAttendanceGridData())
+      for (const field of ['normal_hours', 'double_hours', 'triple_hours']) {
+        const col = findCol(columnDefs.value, field)!
+        expect(col.valueFormatter!({ value: null })).toBe('')
+        expect(col.valueFormatter!({ value: undefined })).toBe('')
+        expect(col.valueFormatter!({ value: 4 })).toBe('4')
+      }
+    })
+
+    it('labor_class_override is a select with a null (clear) option', () => {
+      const { columnDefs } = withSetup(() => useAttendanceGridData())
+      const col = findCol(columnDefs.value, 'labor_class_override')!
+      expect(col.editable).toBe(true)
+      expect(col.cellEditor).toBe('agSelectCellEditor')
+      expect(col.cellEditorParams!.values).toEqual([null, 'direct', 'indirect'])
+    })
+
+    it('labor_class_override editor formats null as Unclassified', () => {
+      const { columnDefs } = withSetup(() => useAttendanceGridData())
+      const col = findCol(columnDefs.value, 'labor_class_override')!
+      expect(col.cellEditorParams!.formatValue!(null)).toBe('labor.unclassified')
+      expect(col.cellEditorParams!.formatValue!('direct')).toBe('labor.classes.direct')
+    })
+
+    it('labor_class_override resting display is EMPTY for null (no placeholder)', () => {
+      const { columnDefs } = withSetup(() => useAttendanceGridData())
+      const col = findCol(columnDefs.value, 'labor_class_override')!
+      expect(col.valueFormatter!({ value: null })).toBe('')
+      expect(col.valueFormatter!({ value: 'indirect' })).toBe('labor.classes.indirect')
+    })
+
+    it('allocations column is read-only with a cellRenderer', () => {
+      const { columnDefs } = withSetup(() => useAttendanceGridData())
+      const col = findCol(columnDefs.value, 'allocations')!
+      expect(col.editable).toBe(false)
+      expect(col.cellRenderer).toBeTypeOf('function')
+    })
+
+    it('allocations cellRenderer shows "+" (no summary text) when nothing allocated', () => {
+      const { columnDefs } = withSetup(() => useAttendanceGridData())
+      const col = findCol(columnDefs.value, 'allocations')!
+      const row = { allocations: [], actual_hours: 8 } as AttendanceRow
+      const el = col.cellRenderer!({ data: row })
+      expect(el.textContent).toBe('+')
+    })
+
+    it('allocations cellRenderer shows the allocated/actual summary once allocated', () => {
+      const { columnDefs } = withSetup(() => useAttendanceGridData())
+      const col = findCol(columnDefs.value, 'allocations')!
+      const row = {
+        allocations: [{ category: 'billed_production', hours: 5 }],
+        actual_hours: 8,
+      } as AttendanceRow
+      const el = col.cellRenderer!({ data: row })
+      expect(el.textContent).toBe('labor.allocatedSummary')
+    })
+
+    it('clicking the allocations cell opens the dialog for that row', () => {
+      const { columnDefs, showAllocationDialog, allocationDialogRow } = withSetup(() =>
+        useAttendanceGridData(),
+      )
+      const col = findCol(columnDefs.value, 'allocations')!
+      const row = { employee_id: 7, allocations: [] } as AttendanceRow
+      const el = col.cellRenderer!({ data: row })
+      el.dispatchEvent(new Event('click'))
+      expect(showAllocationDialog.value).toBe(true)
+      // ref() wraps the assigned row in a reactive Proxy, so compare by
+      // value (deep equal), not by reference.
+      expect(allocationDialogRow.value).toEqual(row)
+    })
+  })
+
+  describe('onAllocationsSaved', () => {
+    it('syncs the row allocations and marks it changed', () => {
+      const { onAllocationsSaved } = withSetup(() => useAttendanceGridData())
+      const row = { employee_id: 1, allocations: [] } as AttendanceRow
+      onAllocationsSaved({ row, items: [{ category: 'training', hours: 2 }] })
+      expect(row.allocations).toEqual([{ category: 'training', hours: 2 }])
+      expect(row._hasChanges).toBe(true)
+    })
+  })
+
+  describe('completeness counts', () => {
+    it('noSplitCount counts rows with actual_hours but no OT split', () => {
+      const { attendanceData, noSplitCount } = withSetup(() => useAttendanceGridData())
+      attendanceData.value = [
+        { actual_hours: 8, normal_hours: null, double_hours: null, triple_hours: null } as AttendanceRow,
+        { actual_hours: 8, normal_hours: 8, double_hours: 0, triple_hours: 0 } as AttendanceRow,
+        { actual_hours: undefined } as AttendanceRow,
+      ]
+      expect(noSplitCount.value).toBe(1)
+    })
+
+    it('unallocatedCount counts rows with no hour allocations', () => {
+      const { attendanceData, unallocatedCount } = withSetup(() => useAttendanceGridData())
+      attendanceData.value = [
+        { allocations: [] } as AttendanceRow,
+        { allocations: undefined } as AttendanceRow,
+        { allocations: [{ category: 'training', hours: 1 }] } as AttendanceRow,
+      ]
+      expect(unallocatedCount.value).toBe(2)
+    })
+
+    it('both counts are 0 for a fully-complete row', () => {
+      const { attendanceData, noSplitCount, unallocatedCount } = withSetup(() =>
+        useAttendanceGridData(),
+      )
+      attendanceData.value = [
+        {
+          actual_hours: 8,
+          normal_hours: 8,
+          double_hours: 0,
+          triple_hours: 0,
+          allocations: [{ category: 'billed_production', hours: 8 }],
+        } as AttendanceRow,
+      ]
+      expect(noSplitCount.value).toBe(0)
+      expect(unallocatedCount.value).toBe(0)
+    })
+  })
+
+  describe('buildPayload carries labor-hours fields', () => {
+    it('includes OT split, labor_class_override, and allocations on save', async () => {
+      const { attendanceData, gridRef, saveAttendance, onConfirmSave } = withSetup(() =>
+        useAttendanceGridData(),
+      )
+      const row = {
+        employee_id: 1,
+        shift_date: '2026-08-05',
+        status: 'Present',
+        actual_hours: 8,
+        normal_hours: 6,
+        double_hours: 2,
+        triple_hours: 0,
+        labor_class_override: 'direct',
+        allocations: [{ category: 'billed_production', hours: 5 }],
+        _hasChanges: true,
+        _isNew: true,
+      } as AttendanceRow
+      attendanceData.value = [row]
+      gridRef.value = {
+        gridApi: {
+          sizeColumnsToFit: vi.fn(),
+          refreshCells: vi.fn(),
+          applyTransaction: vi.fn(),
+          forEachNode: (cb: (_n: { data: AttendanceRow }) => void) => cb({ data: row }),
+        },
+      }
+      await saveAttendance()
+      await onConfirmSave()
+
+      expect(mockApi.createAttendanceEntry).toHaveBeenCalledWith(
+        expect.objectContaining({
+          normal_hours: 6,
+          double_hours: 2,
+          triple_hours: 0,
+          labor_class_override: 'direct',
+          allocations: [{ category: 'billed_production', hours: 5 }],
+        }),
+      )
+    })
+
+    it('defaults OT split/labor_class_override to null and allocations to [] when unset', async () => {
+      const { attendanceData, gridRef, saveAttendance, onConfirmSave } = withSetup(() =>
+        useAttendanceGridData(),
+      )
+      const row = {
+        employee_id: 2,
+        shift_date: '2026-08-05',
+        status: 'Present',
+        actual_hours: 8,
+        _hasChanges: true,
+        _isNew: true,
+      } as AttendanceRow
+      attendanceData.value = [row]
+      gridRef.value = {
+        gridApi: {
+          sizeColumnsToFit: vi.fn(),
+          refreshCells: vi.fn(),
+          applyTransaction: vi.fn(),
+          forEachNode: (cb: (_n: { data: AttendanceRow }) => void) => cb({ data: row }),
+        },
+      }
+      await saveAttendance()
+      await onConfirmSave()
+
+      expect(mockApi.createAttendanceEntry).toHaveBeenCalledWith(
+        expect.objectContaining({
+          normal_hours: null,
+          double_hours: null,
+          triple_hours: null,
+          labor_class_override: null,
+          allocations: [],
+        }),
+      )
     })
   })
 

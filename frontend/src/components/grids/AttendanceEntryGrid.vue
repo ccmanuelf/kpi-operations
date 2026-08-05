@@ -105,6 +105,22 @@
         </v-col>
       </v-row>
 
+      <!-- Labor-hours completeness chips (Cycle 3 PR-A, Task 7) -->
+      <v-row v-if="noSplitCount > 0 || unallocatedCount > 0" class="mb-3">
+        <v-col v-if="noSplitCount > 0" cols="12" md="3">
+          <v-chip color="warning" label data-testid="attendance-no-split-chip">
+            <v-icon left small>mdi-clock-alert-outline</v-icon>
+            {{ $t('labor.noSplitCount', { count: noSplitCount }) }}
+          </v-chip>
+        </v-col>
+        <v-col v-if="unallocatedCount > 0" cols="12" md="3">
+          <v-chip color="warning" label data-testid="attendance-unallocated-chip">
+            <v-icon left small>mdi-format-list-bulleted</v-icon>
+            {{ $t('labor.unallocatedCount', { count: unallocatedCount }) }}
+          </v-chip>
+        </v-col>
+      </v-row>
+
       <!-- Info Alert -->
       <v-alert type="info" variant="tonal" density="compact" class="mb-3">
         <strong>{{ $t('grids.bulkEntryTips') }}:</strong>
@@ -132,6 +148,7 @@
         :disabled="!hasChanges"
         size="large"
         block
+        data-testid="attendance-save-btn"
       >
         <v-icon left>mdi-content-save</v-icon>
         {{ $t('grids.attendance.saveRecords', { count: changedRowsCount }) }}
@@ -163,6 +180,13 @@
       @cancel="onPasteCancel"
     />
 
+    <!-- Allocation Editor Dialog (Cycle 3 PR-A, Task 7) -->
+    <AllocationEditorDialog
+      v-model="showAllocationDialog"
+      :row="allocationDialogRow"
+      @saved="onAllocationsSaved"
+    />
+
     <!-- Snackbar -->
     <v-snackbar v-model="snackbar.show" :color="snackbar.color" :timeout="3000">
       {{ snackbar.message }}
@@ -174,6 +198,7 @@
 import AGGridBase from './AGGridBase.vue'
 import ReadBackConfirmation from '@/components/dialogs/ReadBackConfirmation.vue'
 import PastePreviewDialog from '@/components/dialogs/PastePreviewDialog.vue'
+import AllocationEditorDialog from '@/components/AllocationEditorDialog.vue'
 import TimePickerCellEditor from './editors/TimePickerCellEditor.vue'
 import LineSelector from '@/components/common/LineSelector.vue'
 import useAttendanceGridData from '@/composables/useAttendanceGridData'
@@ -200,6 +225,11 @@ const {
   hasChanges,
   changedRowsCount,
   statusCounts,
+  showAllocationDialog,
+  allocationDialogRow,
+  onAllocationsSaved,
+  noSplitCount,
+  unallocatedCount,
   columnDefs,
   onGridReady,
   loadEmployees,
