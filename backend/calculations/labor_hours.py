@@ -30,9 +30,9 @@ def validate_ot_split(
         raise ValueError("OT split requires actual_hours")
 
     # Default missing tiers to zero
-    norm = normal or Decimal("0")
-    doub = double or Decimal("0")
-    trip = triple or Decimal("0")
+    norm = normal if normal is not None else Decimal("0")
+    doub = double if double is not None else Decimal("0")
+    trip = triple if triple is not None else Decimal("0")
 
     # Verify sum matches actual_hours
     if norm + doub + trip != actual_hours:

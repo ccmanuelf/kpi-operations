@@ -38,6 +38,13 @@ class TestOTSplit:
             Decimal("1.00"),
         )
 
+    def test_explicit_zero_tier_preserves_scale(self):
+        # Decimal("0.00") is falsy — an `or`-based default would collapse it to
+        # Decimal("0"); identity check must preserve the submitted scale.
+        result = validate_ot_split(Decimal("0.00"), Decimal("4.00"), Decimal("4.00"), Decimal("8.00"))
+        assert result == (Decimal("0.00"), Decimal("4.00"), Decimal("4.00"))
+        assert str(result[0]) == "0.00"
+
 
 class TestAllocations:
     def test_duplicate_category_raises(self):
