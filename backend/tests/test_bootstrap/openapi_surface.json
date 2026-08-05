@@ -750,6 +750,10 @@
     ],
     [
       "GET",
+      "/api/kpi/labor-hours"
+    ],
+    [
+      "GET",
       "/api/kpi/late-orders"
     ],
     [
