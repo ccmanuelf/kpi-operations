@@ -558,6 +558,107 @@ class TestUpdateActualHours:
         assert _dec(data["billed_hours"]) == Decimal("9.0")
 
 
+class TestActualHoursOnlyChangeRevalidates:
+    """Regression (fix round 4, Important — introduced by fix round 3's
+    actual_hours fix, live-reproduced by re-review): a PUT changing ONLY
+    actual_hours previously skipped split/allocations validation entirely —
+    those blocks are gated on their OWN keys being in fields_set, not
+    actual_hours's — silently persisting an invariant-violating state: a
+    stored 8/2/0 split against a new actual_hours=3 (200 instead of 422), or
+    stored allocations totalling more than the new actual_hours (same).
+    """
+
+    def test_actual_hours_only_change_breaking_existing_split_422s(self, labor_setup):
+        """Live-reproduced scenario 1: split 8/2/0 (actual=10) -> PUT actual_hours=3
+        alone -> 422, nothing persisted."""
+        s = labor_setup
+        payload = _base_payload(s, actual_hours="10.0", normal_hours="8.0", double_hours="2.0", triple_hours="0.0")
+        create_resp = s["test_client"].post("/api/attendance", json=payload, headers=s["headers"])
+        assert create_resp.status_code == 201
+        attendance_id = create_resp.json()["attendance_entry_id"]
+
+        update_resp = s["test_client"].put(
+            f"/api/attendance/{attendance_id}",
+            json={"actual_hours": "3.0"},
+            headers=s["headers"],
+        )
+
+        assert update_resp.status_code == 422
+        assert "sum" in update_resp.json()["detail"]
+
+        get_resp = s["test_client"].get(f"/api/attendance/{attendance_id}", headers=s["headers"])
+        assert _dec(get_resp.json()["actual_hours"]) == Decimal("10.0")
+        assert _dec(get_resp.json()["normal_hours"]) == Decimal("8.0")
+
+    def test_actual_hours_only_change_breaking_existing_allocations_422s(self, labor_setup):
+        """Live-reproduced scenario 2: allocation 10h against actual=10 -> PUT
+        actual_hours=3 alone -> 422, nothing persisted."""
+        s = labor_setup
+        payload = _base_payload(
+            s, actual_hours="10.0", allocations=[{"category": "billed_production", "hours": "10.0"}]
+        )
+        create_resp = s["test_client"].post("/api/attendance", json=payload, headers=s["headers"])
+        assert create_resp.status_code == 201
+        attendance_id = create_resp.json()["attendance_entry_id"]
+
+        update_resp = s["test_client"].put(
+            f"/api/attendance/{attendance_id}",
+            json={"actual_hours": "3.0"},
+            headers=s["headers"],
+        )
+
+        assert update_resp.status_code == 422
+        assert update_resp.json()["detail"] == "allocations exceed actual_hours"
+
+        get_resp = s["test_client"].get(f"/api/attendance/{attendance_id}", headers=s["headers"])
+        assert _dec(get_resp.json()["actual_hours"]) == Decimal("10.0")
+        assert len(get_resp.json()["allocations"]) == 1
+
+    def test_actual_hours_change_with_matching_split_in_same_request_200(self, labor_setup):
+        """actual_hours change WITH matching split adjustments in the same
+        request -> 200 (the existing split/allocations blocks already
+        re-validate against the NEW value when their own keys are sent too)."""
+        s = labor_setup
+        payload = _base_payload(s, actual_hours="10.0", normal_hours="8.0", double_hours="2.0", triple_hours="0.0")
+        create_resp = s["test_client"].post("/api/attendance", json=payload, headers=s["headers"])
+        assert create_resp.status_code == 201
+        attendance_id = create_resp.json()["attendance_entry_id"]
+
+        update_resp = s["test_client"].put(
+            f"/api/attendance/{attendance_id}",
+            json={
+                "actual_hours": "3.0",
+                "normal_hours": "3.0",
+                "double_hours": "0.0",
+                "triple_hours": "0.0",
+            },
+            headers=s["headers"],
+        )
+
+        assert update_resp.status_code == 200
+        data = update_resp.json()
+        assert _dec(data["actual_hours"]) == Decimal("3.0")
+        assert _dec(data["normal_hours"]) == Decimal("3.0")
+
+    def test_actual_hours_only_change_on_unsplit_unallocated_entry_200(self, labor_setup):
+        """Changing actual_hours alone on an entry with no split/allocations
+        at all -> 200 (nothing to re-validate, the new checks are no-ops)."""
+        s = labor_setup
+        payload = _base_payload(s, actual_hours="8.0")
+        create_resp = s["test_client"].post("/api/attendance", json=payload, headers=s["headers"])
+        assert create_resp.status_code == 201
+        attendance_id = create_resp.json()["attendance_entry_id"]
+
+        update_resp = s["test_client"].put(
+            f"/api/attendance/{attendance_id}",
+            json={"actual_hours": "3.0"},
+            headers=s["headers"],
+        )
+
+        assert update_resp.status_code == 200
+        assert _dec(update_resp.json()["actual_hours"]) == Decimal("3.0")
+
+
 class TestAllocationsRequireActualHoursMessage:
     """Regression (fix round 3, Minor): allocations sent against a 0/unset
     actual_hours previously raised the same "allocations exceed actual_hours"

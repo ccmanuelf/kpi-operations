@@ -12,6 +12,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { toRaw } from 'vue'
 import { setActivePinia, createPinia } from 'pinia'
 import { withSetup } from '../../test/composable-test-utils'
+import {
+  parseClipboardData,
+  mapColumnsToGrid,
+  convertToGridRows,
+  validateRows,
+  entrySchemas,
+} from '../../utils/clipboardParser'
 
 const { mockApi } = vi.hoisted(() => ({
   mockApi: {
@@ -620,6 +627,38 @@ describe('useAttendanceGridData', () => {
           labor_class_override: 'indirect',
         }),
       )
+    })
+  })
+
+  describe('paste pipeline: a shift_date-less row validates and reaches attendanceData (fix round 4, item 2)', () => {
+    it('the real parse -> map -> convert -> validate -> onPasteConfirm pipeline accepts a pasted row with no shift_date column', () => {
+      // Reproduces the original bug end to end: entrySchemas.attendance
+      // used to require shift_date, but the attendance grid has no
+      // shift_date COLUMN (set once globally via the date picker, not
+      // per-row) for mapColumnsToGrid to ever map it onto — every paste
+      // was rejected as invalid before onPasteConfirm was ever reachable.
+      const { columnDefs, onPasteConfirm, attendanceData } = withSetup(() =>
+        useAttendanceGridData(),
+      )
+
+      const tsv = ['employee_id\tstatus\tactual_hours', '7\tPresent\t8'].join('\n')
+      const parsed = parseClipboardData(tsv)
+      expect(parsed.error).toBeFalsy()
+
+      const mapping = mapColumnsToGrid(parsed.headers, columnDefs.value)
+      const converted = convertToGridRows(parsed.rows, mapping.mapping, columnDefs.value)
+      const validation = validateRows(converted, entrySchemas.attendance)
+
+      expect(validation.isValid).toBe(true)
+      expect(validation.validRows).toHaveLength(1)
+
+      onPasteConfirm(validation.validRows as Partial<AttendanceRow>[])
+
+      expect(attendanceData.value).toHaveLength(1)
+      // employee_id isn't a numericColumn in this grid's columnDefs, so
+      // convertToGridRows leaves it as the raw pasted string.
+      expect(String(attendanceData.value[0].employee_id)).toBe('7')
+      expect(attendanceData.value[0].status).toBe('Present')
     })
   })
 

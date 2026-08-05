@@ -346,6 +346,23 @@ describe('Clipboard Parser', () => {
 
         expect(result.isValid).toBe(false)
       })
+
+      it('validates a pasted row with no shift_date column at all (fix round 4, item 2)', () => {
+        // Mirrors what convertToGridRows actually produces for the attendance
+        // grid: no shift_date key on the row, since no grid column maps to
+        // it. onPasteConfirm falls back to selectedDate.value for these.
+        const rows = [{
+          employee_id: 1,
+          status: 'Present',
+          scheduled_hours: 8,
+          actual_hours: 8,
+        }]
+
+        const result = validateRows(rows, schema)
+
+        expect(result.isValid).toBe(true)
+        expect(result.invalidRows).toHaveLength(0)
+      })
     })
 
     it('collects multiple errors per row', () => {
@@ -390,8 +407,12 @@ describe('Clipboard Parser', () => {
     })
 
     it('defines attendance schema', () => {
+      // Fix round 4, item 2: shift_date is NOT required — the attendance
+      // grid has no shift_date COLUMN (set once globally via the date
+      // picker, not per-row), so mapColumnsToGrid can never map a pasted
+      // shift_date header; requiring it meant every paste was rejected.
       expect(entrySchemas.attendance).toBeDefined()
-      expect(entrySchemas.attendance.required).toContain('shift_date')
+      expect(entrySchemas.attendance.required).not.toContain('shift_date')
     })
 
     it('defines downtime schema', () => {

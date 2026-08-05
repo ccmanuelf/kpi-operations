@@ -242,6 +242,36 @@ def update_attendance_record(
         attendance_update.actual_hours if "actual_hours" in fields_set else db_attendance.actual_hours
     )
 
+    # Fix round 4, item 1: the split/allocations blocks below are gated on
+    # THEIR OWN keys being in fields_set, not actual_hours's — so a PUT
+    # changing ONLY actual_hours (leaving an existing split/allocations
+    # untouched) skipped validation entirely and could silently persist an
+    # invariant-violating state (e.g. a stored 8/2/0 split against a new
+    # actual_hours=3, or stored allocations totalling more than the new
+    # actual_hours). When actual_hours changes and the split/allocations
+    # keys are NOT also part of this same request, re-validate the
+    # EFFECTIVE (stored) state against the NEW actual_hours before
+    # persisting anything — a violation here still 422s with nothing
+    # written, same as the "keys explicitly sent" paths below.
+    if "actual_hours" in fields_set:
+        if not ({"normal_hours", "double_hours", "triple_hours"} & fields_set):
+            try:
+                validate_ot_split(
+                    db_attendance.normal_hours,
+                    db_attendance.double_hours,
+                    db_attendance.triple_hours,
+                    effective_actual_hours,
+                )
+            except ValueError as e:
+                raise HTTPException(status_code=422, detail=str(e)) from e
+
+        if "allocations" not in fields_set:
+            stored_items = [(alloc.category, alloc.hours) for alloc in db_attendance.hour_allocations]
+            try:
+                validate_allocations(stored_items, effective_actual_hours or Decimal("0"))
+            except ValueError as e:
+                raise HTTPException(status_code=422, detail=str(e)) from e
+
     # OT split invariant: normalize the 0-defaulted triple when any tier is supplied.
     if {"normal_hours", "double_hours", "triple_hours"} & fields_set:
         try:
