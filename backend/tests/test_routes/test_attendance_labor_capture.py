@@ -253,6 +253,51 @@ class TestAllocationCapture:
         assert data["allocations"][0]["category"] == "training"
         assert _dec(data["allocations"][0]["hours"]) == Decimal("1.0")
 
+    def test_replace_on_write_resubmit_identical_list(self, labor_setup):
+        """Regression (fix round 1, CRITICAL): resubmitting the exact same allocations list
+        must not crash with an IntegrityError on UniqueConstraint(entry, category). Without
+        the clear-then-flush fix, SQLAlchemy could flush the new INSERT before the old row's
+        delete-orphan DELETE, since both rows share the 'training' category.
+        """
+        s = labor_setup
+        payload = _base_payload(s, actual_hours="8.0", allocations=[{"category": "training", "hours": "1.0"}])
+        create_resp = s["test_client"].post("/api/attendance", json=payload, headers=s["headers"])
+        assert create_resp.status_code == 201
+        attendance_id = create_resp.json()["attendance_entry_id"]
+
+        resubmit_resp = s["test_client"].put(
+            f"/api/attendance/{attendance_id}",
+            json={"allocations": [{"category": "training", "hours": "1.0"}]},
+            headers=s["headers"],
+        )
+
+        assert resubmit_resp.status_code == 200
+        data = resubmit_resp.json()
+        assert len(data["allocations"]) == 1
+        assert data["allocations"][0]["category"] == "training"
+        assert _dec(data["allocations"][0]["hours"]) == Decimal("1.0")
+
+    def test_replace_on_write_same_category_new_hours(self, labor_setup):
+        """Regression (fix round 1, CRITICAL): same category, different hours -> 200 with the
+        new hours (not a crash, not the stale value)."""
+        s = labor_setup
+        payload = _base_payload(s, actual_hours="8.0", allocations=[{"category": "training", "hours": "1.0"}])
+        create_resp = s["test_client"].post("/api/attendance", json=payload, headers=s["headers"])
+        assert create_resp.status_code == 201
+        attendance_id = create_resp.json()["attendance_entry_id"]
+
+        update_resp = s["test_client"].put(
+            f"/api/attendance/{attendance_id}",
+            json={"allocations": [{"category": "training", "hours": "3.0"}]},
+            headers=s["headers"],
+        )
+
+        assert update_resp.status_code == 200
+        data = update_resp.json()
+        assert len(data["allocations"]) == 1
+        assert data["allocations"][0]["category"] == "training"
+        assert _dec(data["allocations"][0]["hours"]) == Decimal("3.0")
+
 
 class TestEffectiveLaborClass:
     """POST /api/attendance — effective_labor_class resolution (override vs. employee default)."""
@@ -280,3 +325,76 @@ class TestEffectiveLaborClass:
         data = response.json()
         assert data["labor_class_override"] is None
         assert data["effective_labor_class"] == "direct"
+
+
+class TestListAndGetEnrichment:
+    """Regression (fix round 1, IMPORTANT / Task 7 blocker): GET /api/attendance (the grid's
+    feed) and GET /api/attendance/{id} must return the real derived values, not the response
+    schema's bare defaults (allocations=[], billed_hours=0, available_for_efficiency_hours=None,
+    effective_labor_class=None) that a raw, unenriched ORM object would produce.
+    """
+
+    def _create_seeded_entry(self, s):
+        payload = _base_payload(
+            s,
+            actual_hours="8.0",
+            allocations=[
+                {"category": "billed_production", "hours": "5.0"},
+                {"category": "training", "hours": "1.0"},
+            ],
+        )
+        create_resp = s["test_client"].post("/api/attendance", json=payload, headers=s["headers"])
+        assert create_resp.status_code == 201
+        return create_resp.json()["attendance_entry_id"]
+
+    def test_get_by_id_returns_real_derived_values(self, labor_setup):
+        s = labor_setup
+        attendance_id = self._create_seeded_entry(s)
+
+        get_resp = s["test_client"].get(f"/api/attendance/{attendance_id}", headers=s["headers"])
+
+        assert get_resp.status_code == 200
+        data = get_resp.json()
+        assert len(data["allocations"]) == 2
+        assert _dec(data["billed_hours"]) == Decimal("5.0")
+        assert _dec(data["available_for_efficiency_hours"]) == Decimal("7.0")
+        assert data["effective_labor_class"] == "direct"
+
+    def test_list_returns_real_derived_values(self, labor_setup):
+        s = labor_setup
+        attendance_id = self._create_seeded_entry(s)
+
+        list_resp = s["test_client"].get(
+            "/api/attendance", params={"employee_id": s["employee"].employee_id}, headers=s["headers"]
+        )
+
+        assert list_resp.status_code == 200
+        records = list_resp.json()
+        record = next(r for r in records if r["attendance_entry_id"] == attendance_id)
+        assert len(record["allocations"]) == 2
+        assert _dec(record["billed_hours"]) == Decimal("5.0")
+        assert _dec(record["available_for_efficiency_hours"]) == Decimal("7.0")
+        assert record["effective_labor_class"] == "direct"
+
+
+class TestBulkCreateOTSplitValidation:
+    """Regression (fix round 1, IMPORTANT): POST /api/attendance/bulk must enforce the OT
+    split invariant per-row (a bad split must not persist silently, bypassing validate_ot_split).
+    """
+
+    def test_valid_and_invalid_split_rows_partitioned(self, labor_setup):
+        """One valid-split row + one bad-split row -> the valid one persists, the bad one is
+        reported failed with its own error entry (bulk is per-row, not all-or-nothing)."""
+        s = labor_setup
+        valid_row = _base_payload(s, actual_hours="8.0", normal_hours="8.0", double_hours="0.0", triple_hours="0.0")
+        invalid_row = _base_payload(s, actual_hours="8.0", normal_hours="8.0", double_hours="1.0", triple_hours="0.0")
+
+        response = s["test_client"].post("/api/attendance/bulk", json=[valid_row, invalid_row], headers=s["headers"])
+
+        assert response.status_code == 201
+        data = response.json()
+        assert data["total"] == 2
+        assert data["successful"] == 1
+        assert data["failed"] == 1
+        assert data["errors"][0]["index"] == 1
+        assert len(data["created_ids"]) == 1

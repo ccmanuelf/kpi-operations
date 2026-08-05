@@ -22,10 +22,25 @@ class AbsenceTypeEnum(str, Enum):
 
 
 class AllocationItem(BaseModel):
-    """One intra-day hour-allocation ledger row (Cycle 3 PR-A)."""
+    """One intra-day hour-allocation ledger row (Cycle 3 PR-A).
+
+    Request-side only (Create/Update): ``hours`` is Decimal per this task's interface
+    contract. Never wire this class as a field on a response_model — Pydantic v2
+    serializes Decimal-typed fields as JSON strings, not numbers (see
+    tests/test_models/test_decimal_response_serialization.py). AttendanceRecordResponse
+    uses the float-typed AllocationItemResponse below instead.
+    """
 
     category: HourCategoryEnum
     hours: Decimal = Field(gt=0)
+
+
+class AllocationItemResponse(BaseModel):
+    """Response-side counterpart of AllocationItem — hours as float so it serializes
+    as a JSON number (see AllocationItem's docstring)."""
+
+    category: HourCategoryEnum
+    hours: float
 
 
 class AttendanceRecordCreate(BaseModel):
@@ -169,17 +184,19 @@ class AttendanceRecordResponse(BaseModel):
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
-    # Labor-hours capture (Cycle 3 PR-A) — raw columns
-    normal_hours: Optional[Decimal] = None
-    double_hours: Optional[Decimal] = None
-    triple_hours: Optional[Decimal] = None
+    # Labor-hours capture (Cycle 3 PR-A) — raw columns.
+    # float, not Decimal: response_model fields must serialize as JSON numbers, not
+    # strings (see AllocationItem's docstring / test_decimal_response_serialization.py).
+    normal_hours: Optional[float] = None
+    double_hours: Optional[float] = None
+    triple_hours: Optional[float] = None
     labor_class_override: Optional[str] = None
 
     # Labor-hours capture — derived fields (populated by crud layer; defaults let
     # model_validate(entry) succeed even though entry has no matching attribute)
-    allocations: list[AllocationItem] = Field(default_factory=list)
-    billed_hours: Decimal = Field(default=Decimal("0"))
-    available_for_efficiency_hours: Optional[Decimal] = None
+    allocations: list[AllocationItemResponse] = Field(default_factory=list)
+    billed_hours: float = Field(default=0.0)
+    available_for_efficiency_hours: Optional[float] = None
     effective_labor_class: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)

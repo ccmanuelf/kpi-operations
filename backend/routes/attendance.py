@@ -35,7 +35,6 @@ from backend.auth.jwt import (
     ClientScope,
     resolve_client_scope,
 )
-from backend.orm.attendance_entry import AttendanceEntry
 from backend.orm.user import User
 from backend.middleware.client_auth import build_client_filter_clause, verify_client_access
 
@@ -90,7 +89,7 @@ def list_attendance(
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> List[AttendanceEntry]:
+) -> List[AttendanceRecordResponse]:
     """
     List attendance records with filters
     SECURITY: Returns only attendance for user's authorized clients
@@ -122,7 +121,7 @@ def get_attendance_by_employee(
     limit: int = DEFAULT_PAGE_SIZE,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> List[AttendanceEntry]:
+) -> List[AttendanceRecordResponse]:
     """
     Get all attendance records for a specific employee
     SECURITY: Returns only attendance for user's authorized clients
@@ -150,7 +149,7 @@ def get_attendance_by_date_range(
     limit: int = DEFAULT_PAGE_SIZE,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> List[AttendanceEntry]:
+) -> List[AttendanceRecordResponse]:
     """
     Get attendance records within a date range
     SECURITY: Returns only attendance for user's authorized clients

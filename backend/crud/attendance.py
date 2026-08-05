@@ -17,7 +17,7 @@ from backend.orm.attendance_hour_allocation import AttendanceHourAllocation
 from backend.orm.shift import Shift
 from backend.orm.employee import Employee
 from backend.schemas.attendance import (
-    AllocationItem,
+    AllocationItemResponse,
     AttendanceRecordCreate,
     AttendanceRecordUpdate,
     AttendanceRecordResponse,
@@ -37,28 +37,57 @@ from backend.utils.logging_utils import get_module_logger
 logger = get_module_logger(__name__)
 
 
-def _build_attendance_response(db: Session, entry: AttendanceEntry) -> AttendanceRecordResponse:
-    """Compose the response with Task 3's derived labor-hours fields.
+def _compose_attendance_response(
+    entry: AttendanceEntry, employee_default_class: Optional[str]
+) -> AttendanceRecordResponse:
+    """Compose the response with Task 3's derived labor-hours fields, given an
+    already-resolved employee default labor class (caller's responsibility to fetch it —
+    single-row and batch callers below use different strategies to avoid N+1).
 
-    Joins the employee for the default labor class; billed_hours /
-    available_for_efficiency_hours / effective_labor_class are pure derivations
-    over the entry's persisted split + allocations, never stored themselves.
+    billed_hours / available_for_efficiency_hours / effective_labor_class are pure
+    derivations over the entry's persisted split + allocations, never stored themselves.
+    hour_allocations is lazy="selectin", so accessing it here doesn't add a query per
+    entry when the entries were loaded together by a single Query.
     """
-    employee = db.query(Employee).filter(Employee.employee_id == entry.employee_id).first()
-    employee_default_class = employee.labor_class if employee else None
-
     alloc_tuples = [(alloc.category, alloc.hours) for alloc in entry.hour_allocations]
 
     response = AttendanceRecordResponse.model_validate(entry)
+    # AllocationItemResponse(...) constructor validation coerces Decimal .hours -> float.
     response.allocations = [
-        AllocationItem(category=alloc.category, hours=alloc.hours) for alloc in entry.hour_allocations
+        AllocationItemResponse(category=alloc.category, hours=alloc.hours) for alloc in entry.hour_allocations
     ]
-    response.billed_hours = billed_hours(alloc_tuples)
+    # Direct attribute assignment on an already-constructed model bypasses field
+    # validation/coercion (validate_assignment defaults to False), so cast explicitly —
+    # otherwise a raw Decimal would land on a float-typed field and could re-serialize
+    # as a JSON string (see AllocationItem's docstring in schemas/attendance.py).
+    response.billed_hours = float(billed_hours(alloc_tuples))
     response.available_for_efficiency_hours = (
-        available_for_efficiency_hours(entry.actual_hours, alloc_tuples) if entry.actual_hours is not None else None
+        float(available_for_efficiency_hours(entry.actual_hours, alloc_tuples))
+        if entry.actual_hours is not None
+        else None
     )
     response.effective_labor_class = effective_labor_class(entry.labor_class_override, employee_default_class)
     return response
+
+
+def _build_attendance_response(db: Session, entry: AttendanceEntry) -> AttendanceRecordResponse:
+    """Single-entry enrichment (create/update/get-by-id): one query to join the employee."""
+    employee = db.query(Employee).filter(Employee.employee_id == entry.employee_id).first()
+    employee_default_class = employee.labor_class if employee else None
+    return _compose_attendance_response(entry, employee_default_class)
+
+
+def _build_attendance_responses_batch(db: Session, entries: List[AttendanceEntry]) -> List[AttendanceRecordResponse]:
+    """List enrichment: a single IN query over the page's distinct employee_ids,
+    instead of one Employee lookup per row (N+1 risk on the grid's feed).
+    """
+    employee_ids = {entry.employee_id for entry in entries}
+    class_by_employee_id: dict[int, Optional[str]] = {}
+    if employee_ids:
+        rows = db.query(Employee.employee_id, Employee.labor_class).filter(Employee.employee_id.in_(employee_ids)).all()
+        class_by_employee_id = {row.employee_id: row.labor_class for row in rows}
+
+    return [_compose_attendance_response(entry, class_by_employee_id.get(entry.employee_id)) for entry in entries]
 
 
 def create_attendance_record(
@@ -112,7 +141,7 @@ def create_attendance_record(
     return _build_attendance_response(db, db_attendance)
 
 
-def get_attendance_record(db: Session, attendance_id: str, current_user: User) -> Optional[AttendanceEntry]:
+def get_attendance_record(db: Session, attendance_id: str, current_user: User) -> AttendanceRecordResponse:
     """
     Get attendance record by ID
     SECURITY: Verifies user has access to the record's client
@@ -126,7 +155,7 @@ def get_attendance_record(db: Session, attendance_id: str, current_user: User) -
     if hasattr(db_attendance, "client_id") and db_attendance.client_id:
         verify_client_access(current_user, db_attendance.client_id)
 
-    return db_attendance
+    return _build_attendance_response(db, db_attendance)
 
 
 def get_attendance_records(
@@ -140,7 +169,7 @@ def get_attendance_records(
     shift_id: Optional[int] = None,
     is_absent: Optional[int] = None,
     client_id: Optional[str] = None,
-) -> List[AttendanceEntry]:
+) -> List[AttendanceRecordResponse]:
     """
     Get attendance records with filters
     SECURITY: Automatically filters by user's authorized clients
@@ -171,7 +200,8 @@ def get_attendance_records(
     if is_absent is not None:
         query = query.filter(AttendanceEntry.is_absent == is_absent)
 
-    return query.order_by(AttendanceEntry.shift_date.desc()).offset(skip).limit(limit).all()
+    entries = query.order_by(AttendanceEntry.shift_date.desc()).offset(skip).limit(limit).all()
+    return _build_attendance_responses_batch(db, entries)
 
 
 def update_attendance_record(
@@ -222,6 +252,12 @@ def update_attendance_record(
             validate_allocations(items, db_attendance.actual_hours or Decimal("0"))
         except ValueError as e:
             raise HTTPException(status_code=422, detail=str(e)) from e
+        # Clear-then-flush before assigning the new rows. SQLAlchemy's flush ordering
+        # doesn't guarantee the delete-orphan DELETEs for the removed rows land before the
+        # new rows' INSERTs, so a resubmit that reuses any category (even an identical
+        # resubmit) would otherwise violate UniqueConstraint(attendance_entry_id, category).
+        db_attendance.hour_allocations = []
+        db.flush()
         db_attendance.hour_allocations = [
             AttendanceHourAllocation(category=item.category.value, hours=item.hours) for item in allocations
         ]
@@ -285,12 +321,24 @@ def bulk_create_attendance_records(db: Session, records: List[AttendanceRecordCr
             if record.client_id:
                 verify_client_access(current_user, record.client_id)
 
-            entry_id = uuid4().hex
             # "allocations" has no matching AttendanceEntry column/kwarg (it's a separate
             # child-table relationship); bulk-create doesn't support labor-hours capture yet.
+            data = record.model_dump(exclude={"allocations"})
+
+            # OT split invariant: same as single-record create. This is a per-row bulk
+            # operation (not all-or-nothing), so an invalid split fails only this row
+            # rather than persisting silently — the ValueError below is caught by the
+            # existing per-row except clause and reported in the row's error entry.
+            normalized_split = validate_ot_split(
+                data.get("normal_hours"), data.get("double_hours"), data.get("triple_hours"), data.get("actual_hours")
+            )
+            if normalized_split is not None:
+                data["normal_hours"], data["double_hours"], data["triple_hours"] = normalized_split
+
+            entry_id = uuid4().hex
             db_entry = AttendanceEntry(
                 attendance_entry_id=entry_id,
-                **record.model_dump(exclude={"allocations"}),
+                **data,
                 entered_by=current_user.user_id,
             )
             db.add(db_entry)
