@@ -17,7 +17,7 @@ def upgraded_db(tmp_path):
     db_path = tmp_path / "mig3.db"
     cfg = Config("alembic.ini")
     cfg.set_main_option("sqlalchemy.url", f"sqlite:///{db_path}")
-    command.upgrade(cfg, "head")
+    command.upgrade(cfg, "0003_justified_delay")
     conn = sqlite3.connect(db_path)
     yield conn, cfg, db_path
     conn.close()
