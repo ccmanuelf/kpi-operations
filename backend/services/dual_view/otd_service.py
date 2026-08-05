@@ -21,6 +21,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from backend.orm.calculation_assumption import CalculationAssumption
+from backend.orm.delay_taxonomy import DelayClassificationEnum
 from backend.orm.metric_calculation_result import MetricCalculationResult
 from backend.orm.user import User
 from backend.services.assumption_service import AssumptionService
@@ -39,6 +40,7 @@ class OrderDelay(BaseModel):
     """Per-order delay as a fraction of planned lead time. Negative = early."""
 
     delay_pct: Decimal
+    delay_classification: Optional[str] = None  # "justified" | "unjustified" | None (unclassified)
 
 
 class OTDRawInputs(BaseModel):
@@ -65,6 +67,10 @@ class OTDCalculationService:
     ) -> DualViewResult:
         # Standard: zero buffer.
         standard_value = self._otd_pct(raw_inputs, buffer_pct=Decimal("0"))
+
+        # Net-of-justified (spec §6): justified-late orders count as on-time
+        # regardless of delay_pct. Mirrors standard_value's zero buffer.
+        net_of_justified = self._otd_net_pct(raw_inputs, buffer_pct=Decimal("0"))
 
         # Site-adjusted: read otd_carrier_buffer_pct if active.
         active = self.assumption_svc.get_effective_set(client_id=client_id, as_of=period_end)
@@ -133,6 +139,7 @@ class OTDCalculationService:
             assumptions_snapshot=snapshot,
             calculated_at=datetime.now(tz=timezone.utc),
             result_id=result_id,
+            net_of_justified=net_of_justified,
         )
 
     @staticmethod
@@ -145,6 +152,26 @@ class OTDCalculationService:
 
         threshold = buffer_pct / Decimal("100")
         on_time = sum(1 for o in raw.orders if o.delay_pct <= threshold)
+
+        result = calculate_otd(OTDInputs(on_time_orders=on_time, total_orders=total), mode="standard")
+        return result.value
+
+    @staticmethod
+    def _otd_net_pct(raw: OTDRawInputs, buffer_pct: Decimal) -> Decimal:
+        """Pure helper: mirrors `_otd_pct`, except orders classified
+        "justified" also count as on-time regardless of delay_pct (spec §6
+        net-of-justified: justified-late orders are treated as on-time)."""
+
+        total = len(raw.orders)
+        if total == 0:
+            return Decimal("0.00")
+
+        threshold = buffer_pct / Decimal("100")
+        on_time = sum(
+            1
+            for o in raw.orders
+            if o.delay_pct <= threshold or o.delay_classification == DelayClassificationEnum.JUSTIFIED.value
+        )
 
         result = calculate_otd(OTDInputs(on_time_orders=on_time, total_orders=total), mode="standard")
         return result.value

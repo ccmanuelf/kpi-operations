@@ -297,7 +297,7 @@ def aggregate_otd_inputs(
             continue
         delay_seconds = (actual - planned_ship).total_seconds()
         delay_pct = Decimal(str(round(delay_seconds / lead_seconds, 4)))
-        delays.append(OrderDelay(delay_pct=delay_pct))
+        delays.append(OrderDelay(delay_pct=delay_pct, delay_classification=wo.delay_classification))
 
     return OTDRawInputs(orders=delays)
 

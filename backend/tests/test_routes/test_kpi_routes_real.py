@@ -405,6 +405,139 @@ class TestOTDRoutes:
         data = response.json()
         assert data["client_id"] == client_id
 
+    def test_calculate_otd_surfaces_justified_delay_metrics(self, supervisor_client):
+        """GET /api/kpi/otd surfaces calculate_true_otd's Task 5 keys
+        (late_counts, justified_by_reason, true_otd/standard_otd incl.
+        net_percentage) verbatim, additive to the route's own pre-existing
+        keys.
+
+        Reuses the exact WO-NET-00{1..6} scenario from
+        TestCalculateTrueOTDNetOfJustified.test_true_otd_gross_vs_net_with_derivation
+        in test_otd_comprehensive.py, so the expected values below are
+        pinned by that test's own derivation:
+          - WO-NET-001, WO-NET-002: delivered on time (COMPLETED)
+          - WO-NET-003: delivered late, justified/customer_request
+          - WO-NET-004: delivered late, unjustified
+          - WO-NET-005: delivered late, unclassified (NULL)
+          - WO-NET-006: undelivered, planned_ship_date before `end` -> past-due
+            (unclassified); has no actual_delivery_date so it never enters
+            true_otd/standard_otd counts, only late_counts (carried context:
+            the undelivered arm has no start_date bound by design).
+
+        late_counts.total = 3 delivered-late (WO3,WO4,WO5) + 1 undelivered
+        past-due (WO6) = 4; justified=1 (WO3); unjustified=1 (WO4);
+        unclassified=2 (WO5, WO6).
+        justified_by_reason = {"customer_request": 1} (WO3 only).
+        gross true-OTD = 2 on_time / 5 delivered = 40.00.
+        net true-OTD = (2 on_time + 1 justified-late) / 5 delivered = 60.00.
+        standard_otd mirrors true_otd here (all 5 delivered orders are
+        COMPLETED).
+        """
+        client, setup = supervisor_client
+        db = setup["db"]
+        client_obj = setup["client"]
+
+        from backend.orm.work_order import WorkOrder
+        from backend.orm import WorkOrderStatus
+
+        wo1 = WorkOrder(
+            work_order_id="WO-NET-001",
+            client_id=client_obj.client_id,
+            style_model="NET-STYLE",
+            planned_quantity=10,
+            status=WorkOrderStatus.COMPLETED,
+            planned_ship_date=datetime(2026, 1, 10, 12, 0),
+            actual_delivery_date=datetime(2026, 1, 10, 8, 0),  # before planned -> on time
+        )
+        wo2 = WorkOrder(
+            work_order_id="WO-NET-002",
+            client_id=client_obj.client_id,
+            style_model="NET-STYLE",
+            planned_quantity=10,
+            status=WorkOrderStatus.COMPLETED,
+            planned_ship_date=datetime(2026, 1, 15, 12, 0),
+            actual_delivery_date=datetime(2026, 1, 14, 8, 0),  # before planned -> on time
+        )
+        wo3 = WorkOrder(
+            work_order_id="WO-NET-003",
+            client_id=client_obj.client_id,
+            style_model="NET-STYLE",
+            planned_quantity=10,
+            status=WorkOrderStatus.COMPLETED,
+            planned_ship_date=datetime(2026, 1, 5, 12, 0),
+            actual_delivery_date=datetime(2026, 1, 8, 8, 0),  # after planned -> late
+            delay_classification="justified",
+            justified_delay_reason="customer_request",
+        )
+        wo4 = WorkOrder(
+            work_order_id="WO-NET-004",
+            client_id=client_obj.client_id,
+            style_model="NET-STYLE",
+            planned_quantity=10,
+            status=WorkOrderStatus.COMPLETED,
+            planned_ship_date=datetime(2026, 1, 6, 12, 0),
+            actual_delivery_date=datetime(2026, 1, 9, 8, 0),  # after planned -> late
+            delay_classification="unjustified",
+        )
+        wo5 = WorkOrder(
+            work_order_id="WO-NET-005",
+            client_id=client_obj.client_id,
+            style_model="NET-STYLE",
+            planned_quantity=10,
+            status=WorkOrderStatus.COMPLETED,
+            planned_ship_date=datetime(2026, 1, 7, 12, 0),
+            actual_delivery_date=datetime(2026, 1, 12, 8, 0),  # after planned -> late
+            # delay_classification left NULL -> unclassified
+        )
+        wo6 = WorkOrder(
+            work_order_id="WO-NET-006",
+            client_id=client_obj.client_id,
+            style_model="NET-STYLE",
+            planned_quantity=10,
+            status=WorkOrderStatus.IN_PROGRESS,
+            planned_ship_date=datetime(2026, 1, 3, 12, 0),  # before `end` -> is_late(wo, end) True
+            actual_delivery_date=None,
+        )
+
+        db.add_all([wo1, wo2, wo3, wo4, wo5, wo6])
+        db.commit()
+
+        response = client.get("/api/kpi/otd?start_date=2026-01-01&end_date=2026-01-31")
+
+        assert response.status_code == 200
+        data = response.json()
+
+        assert data["late_counts"] == {"total": 4, "justified": 1, "unjustified": 1, "unclassified": 2}
+        assert data["justified_by_reason"] == {"customer_request": 1}
+        assert data["true_otd"]["percentage"] == "40.00"
+        assert data["true_otd"]["net_percentage"] == "60.00"
+        assert data["standard_otd"]["percentage"] == "40.00"
+        assert data["standard_otd"]["net_percentage"] == "60.00"
+
+        # Pre-existing top-level keys stay intact (additive change).
+        assert "otd_percentage" in data
+        assert "on_time_count" in data
+        assert "total_orders" in data
+
+    def test_calculate_otd_admin_no_client_id_omits_justified_delay_metrics(self, admin_client):
+        """calculate_true_otd requires a single client_id; an admin request
+        with no client_id resolves to an all-clients scope (scope.as_single()
+        returns None). The additive keys are then simply omitted rather than
+        erroring — the pre-existing (non-Task-5) response shape is untouched."""
+        client, setup = admin_client
+        start = date.today() - timedelta(days=30)
+        end = date.today() + timedelta(days=30)
+
+        response = client.get(f"/api/kpi/otd?start_date={start}&end_date={end}")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert "late_counts" not in data
+        assert "justified_by_reason" not in data
+        assert "true_otd" not in data
+        assert "standard_otd" not in data
+        assert "otd_percentage" in data
+
     def test_get_late_orders(self, supervisor_client):
         """Test getting late orders."""
         client, setup = supervisor_client
