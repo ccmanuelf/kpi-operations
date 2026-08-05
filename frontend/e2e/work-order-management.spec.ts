@@ -92,3 +92,107 @@ test.describe('Work Order Management — inline AG Grid', () => {
     expect(isVisible !== undefined).toBeTruthy()
   })
 })
+
+/**
+ * Delay classification (Cycle 2, justified-delay-flag) — guards the
+ * WorkOrderDetailDrawer classification section + the grid's delayBadge
+ * column end to end.
+ *
+ * The e2e-sqlite DB seed doesn't guarantee a deterministically-late work
+ * order (lateness is a moving target relative to "today"), so this test
+ * creates its own via a direct API call (past planned_ship_date,
+ * undelivered — satisfies backend.calculations.otd.is_late) rather than
+ * searching the seed for one. A unique style_model doubles as the grid
+ * filter that gets the row down to exactly one, sidestepping AG Grid
+ * pagination/virtualization when locating it.
+ */
+test.describe('Delay classification (Cycle 2)', () => {
+  test.beforeEach(async ({ page }) => {
+    await login(page, 'admin')
+  })
+
+  test('classify a late work order as justified; the grid badge switches', async ({ page }) => {
+    await navigateToWorkOrders(page)
+
+    const uniqueStyle = `E2EDelayGuard-${Date.now()}`
+    const workOrderId = await page.evaluate(async (style) => {
+      const token = localStorage.getItem('access_token')
+      const headers = { Authorization: `Bearer ${token}` }
+      const clientsRes = await fetch('/api/clients/active/list', { headers })
+      const clients = clientsRes.ok ? await clientsRes.json() : []
+      if (!Array.isArray(clients) || clients.length === 0) return null
+
+      const id = `E2E-DELAY-${Date.now()}`
+      // 3 days back, not 1 — backend.calculations.otd.is_late compares
+      // against the server's LOCAL date.today(), which can be a
+      // different calendar day than this UTC-ISO timestamp's date part
+      // depending on server timezone; a 3-day margin is safe under any
+      // realistic offset.
+      const wellInThePast = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString()
+      const createRes = await fetch('/api/work-orders', {
+        method: 'POST',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          work_order_id: id,
+          client_id: clients[0].client_id,
+          style_model: style,
+          planned_quantity: 10,
+          actual_quantity: 0,
+          status: 'ACTIVE',
+          planned_ship_date: wellInThePast,
+        }),
+      })
+      return createRes.ok ? id : null
+    }, uniqueStyle)
+
+    expect(workOrderId, 'setup: need an active client to create a late work order').toBeTruthy()
+
+    // Filter the grid down to the one row (style_model is a substring
+    // filter server-side — see crud/work_order.py::list_orders). The
+    // field's accessible name resolves from its floating label (Search /
+    // Buscar), not the aria-label prop Vuetify's v-text-field ignores here.
+    const searchInput = page
+      .locator('[role="search"]')
+      .getByRole('textbox', { name: /^Search$|^Buscar$/i })
+    await searchInput.fill(uniqueStyle)
+    await page.waitForTimeout(500) // debouncedSearch
+    await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {})
+
+    const detailBtn = page.locator('.ag-grid-detail-btn').first()
+    await expect(detailBtn).toBeVisible({ timeout: 10000 })
+    await detailBtn.click({ force: true })
+
+    const delaySection = page.locator('[data-testid="delay-classification-section"]')
+    await expect(delaySection).toBeVisible({ timeout: 10000 })
+
+    // Pick "Justified".
+    await page.locator('[data-testid="delay-classification-select"]').click()
+    const justifiedOption = page
+      .locator('.v-list-item')
+      .filter({ hasText: /^Justified$|^Justificado$/i })
+      .first()
+    await justifiedOption.waitFor({ state: 'visible', timeout: 5000 })
+    await justifiedOption.click()
+
+    // Reason select appears once classification === 'justified'.
+    const reasonSelect = page.locator('[data-testid="delay-reason-select"]')
+    await expect(reasonSelect).toBeVisible({ timeout: 5000 })
+    await reasonSelect.click()
+    const reasonOption = page
+      .locator('.v-list-item')
+      .filter({ hasText: /Customer request|Solicitud del cliente/i })
+      .first()
+    await reasonOption.waitFor({ state: 'visible', timeout: 5000 })
+    await reasonOption.click()
+
+    const saveBtn = page.locator('[data-testid="delay-classification-save-btn"]')
+    await expect(saveBtn).toBeEnabled({ timeout: 5000 })
+    await saveBtn.click()
+
+    // Grid reloads (component emits 'update') with the same filter still
+    // applied — the badge cell for our one row should now read Justified.
+    await expect(
+      page.locator('.ag-cell').filter({ hasText: /Justified|Justificado/i }).first(),
+    ).toBeVisible({ timeout: 10000 })
+  })
+})

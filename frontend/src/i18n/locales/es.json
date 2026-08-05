@@ -221,7 +221,23 @@
     "changePasswordSuccess": "Contraseña cambiada exitosamente"
   },
   "delay": {
-    "netOfJustified": "Neto de justificados"
+    "sectionTitle": "Clasificación del retraso",
+    "classificationLabel": "Clasificación",
+    "reasonLabel": "Motivo de justificación",
+    "netOfJustified": "Neto de justificados",
+    "classifications": {
+      "unclassified": "Sin clasificar",
+      "justified": "Justificado",
+      "unjustified": "No justificado"
+    },
+    "reasons": {
+      "customerRequest": "Solicitud del cliente",
+      "customerChangeOrder": "Cambio de orden del cliente",
+      "materialSupplierDelay": "Retraso de material/proveedor",
+      "forceMajeure": "Fuerza mayor",
+      "upstreamHold": "Retención previa",
+      "other": "Otro"
+    }
   },
   "kpi": {
     "title": "Indicadores Clave de Desempeño",

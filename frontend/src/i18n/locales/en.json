@@ -221,7 +221,23 @@
     "changePasswordSuccess": "Password changed successfully"
   },
   "delay": {
-    "netOfJustified": "Net of justified"
+    "sectionTitle": "Delay classification",
+    "classificationLabel": "Classification",
+    "reasonLabel": "Justification reason",
+    "netOfJustified": "Net of justified",
+    "classifications": {
+      "unclassified": "Unclassified",
+      "justified": "Justified",
+      "unjustified": "Unjustified"
+    },
+    "reasons": {
+      "customerRequest": "Customer request",
+      "customerChangeOrder": "Customer change order",
+      "materialSupplierDelay": "Material/supplier delay",
+      "forceMajeure": "Force majeure",
+      "upstreamHold": "Upstream hold",
+      "other": "Other"
+    }
   },
   "kpi": {
     "title": "Key Performance Indicators",

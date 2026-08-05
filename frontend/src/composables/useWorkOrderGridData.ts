@@ -20,6 +20,7 @@ import api from '@/services/api'
 import { useAuthStore } from '@/stores/authStore'
 import { useKPIStore } from '@/stores/kpi'
 import { formatLocaleDateIntl } from '@/utils/localeDate'
+import { delayBadge, classificationLabelKey, type DelayBadgeRow } from '@/constants/delayTaxonomy'
 
 export interface WorkOrderRow {
   work_order_id?: string
@@ -34,6 +35,10 @@ export interface WorkOrderRow {
   customer_po_number?: string
   ideal_cycle_time?: number | null
   notes?: string
+  is_late?: boolean
+  delay_classification?: string | null
+  justified_delay_reason?: string | null
+  delay_classification_note?: string | null
   _isNew?: boolean
   _isSaving?: boolean
   [key: string]: unknown
@@ -333,6 +338,15 @@ export default function useWorkOrderGridData(
       width: 150,
     },
     {
+      headerName: t('delay.sectionTitle'),
+      field: '_delay',
+      editable: false,
+      sortable: false,
+      filter: false,
+      cellRenderer: (params) => renderDelayBadge(params.data, t),
+      width: 150,
+    },
+    {
       headerName: t('production.cycleTime'),
       field: 'ideal_cycle_time',
       editable: true,
@@ -454,6 +468,28 @@ const renderDateWithOverdueFlag = (
     span.style.fontWeight = '600'
     span.textContent = `⚠ ${formatted}`
   }
+  return span
+}
+
+// warning/info/error mapped to the same hexes as STATUS_COLORS' ON_HOLD /
+// ACTIVE / REJECTED so the delay badge reads consistently with the rest
+// of this grid's tag palette.
+const DELAY_BADGE_COLORS: Record<string, string> = {
+  warning: '#b45309',
+  info: '#1976d2',
+  error: '#c62828',
+}
+
+const renderDelayBadge = (row: DelayBadgeRow, t: (_key: string) => string): HTMLElement => {
+  const span = document.createElement('span')
+  const badge = delayBadge(row)
+  if (!badge) {
+    span.textContent = '-'
+    span.style.color = '#9e9e9e'
+    return span
+  }
+  span.textContent = t(classificationLabelKey(badge.key))
+  span.style.cssText = tagStyle(DELAY_BADGE_COLORS[badge.color])
   return span
 }
 
