@@ -205,3 +205,32 @@ describe('toAllocationItems / allocationRowsFromItems round trip', () => {
     expect(allocationRowsFromItems(items)).toEqual(rows)
   })
 })
+
+describe('toAllocationItems rounds hours to 2 decimal places', () => {
+  // The hours <input type="number"> has no browser-enforced precision, but storage
+  // is Numeric(5,2) and the backend schema rejects >2dp payloads (decimal_places=2).
+  // Rounding here on submit avoids a preventable 422 for imprecise typed/pasted input.
+  it('rounds a 3dp value down', () => {
+    expect(toAllocationItems([{ category: 'training', hours: 0.336 }])).toEqual([
+      { category: 'training', hours: 0.34 },
+    ])
+  })
+
+  it('rounds a 3dp value up', () => {
+    expect(toAllocationItems([{ category: 'training', hours: 0.328 }])).toEqual([
+      { category: 'training', hours: 0.33 },
+    ])
+  })
+
+  it('leaves an already-2dp value unchanged', () => {
+    expect(toAllocationItems([{ category: 'training', hours: 1.25 }])).toEqual([
+      { category: 'training', hours: 1.25 },
+    ])
+  })
+
+  it('leaves an integer value unchanged', () => {
+    expect(toAllocationItems([{ category: 'training', hours: 3 }])).toEqual([
+      { category: 'training', hours: 3 },
+    ])
+  })
+})

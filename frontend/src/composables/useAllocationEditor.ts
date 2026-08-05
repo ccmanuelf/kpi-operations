@@ -93,11 +93,17 @@ export interface AllocationItemPayload {
   hours: number
 }
 
+// Storage is Numeric(5,2) and the backend schema now rejects >2dp payloads
+// (decimal_places=2). The hours input here is a free-typed <input type="number">
+// with no browser-enforced precision, so round to 2dp on the way out — matching
+// what the server will accept — rather than letting a >2dp value 422 at submit.
+const roundToTwoDp = (value: number): number => Math.round(value * 100) / 100
+
 // Rows ready to submit: category selected + hours > 0 (drops blank/incomplete rows).
 export const toAllocationItems = (rows: AllocationRow[]): AllocationItemPayload[] =>
   rows
     .filter((r) => Boolean(r.category) && typeof r.hours === 'number' && (r.hours as number) > 0)
-    .map((r) => ({ category: r.category as string, hours: r.hours as number }))
+    .map((r) => ({ category: r.category as string, hours: roundToTwoDp(r.hours as number) }))
 
 // Seeds the editor's rows from a saved allocations list (or a single blank
 // row when there's nothing saved yet, so the dialog always has an editable row).

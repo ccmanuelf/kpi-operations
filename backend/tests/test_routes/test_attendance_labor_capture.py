@@ -674,3 +674,97 @@ class TestAllocationsRequireActualHoursMessage:
 
         assert response.status_code == 422
         assert response.json()["detail"] == "allocations require actual_hours"
+
+
+class TestDecimalPlacesConstraint:
+    """Regression (cross-review finding, Cycle 3 PR-A): storage is Numeric(5,2), but
+    none of the Decimal hour inputs constrained decimal places — a >2dp payload could
+    validate against UNROUNDED values (e.g. an allocation sum-vs-actual check) and then
+    get stored ROUNDED, silently breaking the on-disk invariant. AllocationItem.hours
+    and the three OT-split tier fields now carry decimal_places=2 on both
+    AttendanceRecordCreate and AttendanceRecordUpdate, so a >2dp payload is rejected by
+    Pydantic before it ever reaches the sum/invariant checks.
+    """
+
+    def test_allocation_hours_3dp_rejected(self, labor_setup):
+        """0.336 + 0.336 + 0.328 = 1.00 exactly (would validate against the unrounded
+        actual_hours=1.00 sum check) but each individual value has 3dp -> 422 before
+        the sum is ever evaluated."""
+        s = labor_setup
+        payload = _base_payload(
+            s,
+            actual_hours="1.00",
+            allocations=[
+                {"category": "billed_production", "hours": "0.336"},
+                {"category": "training", "hours": "0.336"},
+                {"category": "meeting", "hours": "0.328"},
+            ],
+        )
+
+        response = s["test_client"].post("/api/attendance", json=payload, headers=s["headers"])
+
+        assert response.status_code == 422
+
+    def test_allocation_hours_2dp_still_passes(self, labor_setup):
+        """Sanity check: the fix doesn't reject legitimate 2dp allocation hours."""
+        s = labor_setup
+        payload = _base_payload(
+            s,
+            actual_hours="1.00",
+            allocations=[{"category": "billed_production", "hours": "0.99"}],
+        )
+
+        response = s["test_client"].post("/api/attendance", json=payload, headers=s["headers"])
+
+        assert response.status_code == 201
+
+    def test_normal_hours_3dp_rejected(self, labor_setup):
+        """normal_hours with 3 decimal places -> 422, even though double/triple are
+        unset (0) and the sum would otherwise equal actual_hours)."""
+        s = labor_setup
+        payload = _base_payload(s, actual_hours="8.001", normal_hours="8.001", double_hours="0.0", triple_hours="0.0")
+
+        response = s["test_client"].post("/api/attendance", json=payload, headers=s["headers"])
+
+        assert response.status_code == 422
+
+    def test_normal_hours_2dp_still_passes(self, labor_setup):
+        """Sanity check: the fix doesn't reject legitimate 2dp OT-split values."""
+        s = labor_setup
+        payload = _base_payload(s, actual_hours="8.25", normal_hours="8.25", double_hours="0.0", triple_hours="0.0")
+
+        response = s["test_client"].post("/api/attendance", json=payload, headers=s["headers"])
+
+        assert response.status_code == 201
+
+    def test_update_allocation_hours_3dp_rejected(self, labor_setup):
+        """Same constraint on the PUT/Update path (AttendanceRecordUpdate.allocations)."""
+        s = labor_setup
+        payload = _base_payload(s, actual_hours="8.0", allocations=[{"category": "training", "hours": "1.0"}])
+        create_resp = s["test_client"].post("/api/attendance", json=payload, headers=s["headers"])
+        assert create_resp.status_code == 201
+        attendance_id = create_resp.json()["attendance_entry_id"]
+
+        update_resp = s["test_client"].put(
+            f"/api/attendance/{attendance_id}",
+            json={"allocations": [{"category": "training", "hours": "1.001"}]},
+            headers=s["headers"],
+        )
+
+        assert update_resp.status_code == 422
+
+    def test_update_triple_hours_3dp_rejected(self, labor_setup):
+        """Same constraint on the PUT/Update path (AttendanceRecordUpdate.triple_hours)."""
+        s = labor_setup
+        payload = _base_payload(s, actual_hours="8.0", normal_hours="8.0", double_hours="0.0", triple_hours="0.0")
+        create_resp = s["test_client"].post("/api/attendance", json=payload, headers=s["headers"])
+        assert create_resp.status_code == 201
+        attendance_id = create_resp.json()["attendance_entry_id"]
+
+        update_resp = s["test_client"].put(
+            f"/api/attendance/{attendance_id}",
+            json={"triple_hours": "0.001"},
+            headers=s["headers"],
+        )
+
+        assert update_resp.status_code == 422

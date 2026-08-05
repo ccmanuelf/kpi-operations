@@ -176,6 +176,29 @@ def test_attendance_csv_ot_split_bad_sum_recorded(test_client, admin_auth_header
     assert body["errors"][0]["error"] == "Data parsing error in CSV row"
 
 
+def test_attendance_csv_normal_hours_3dp_rejected(test_client, admin_auth_headers, monkeypatch):
+    """normal_hours with 3 decimal places -> AttendanceRecordCreate's decimal_places=2
+    constraint rejects it inside from_legacy_csv's cls(...) construction (a pydantic
+    ValidationError, not the mapper's own ValueError) -> still surfaces as this row's
+    error via the CSV per-row idiom, not a request-aborting exception."""
+    monkeypatch.setattr(
+        "backend.endpoints.csv_upload.create_attendance_record",
+        lambda db, e, u: _Created(attendance_entry_id="X"),
+    )
+    content = _csv_bytes(
+        "client_id,employee_id,shift_date,scheduled_hours,actual_hours,normal_hours",
+        "CLIENT-A,1,2024-01-15,8,8,8.001",
+    )
+    resp = test_client.post("/api/attendance/upload/csv", files=_files(content), headers=admin_auth_headers)
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["failed"] == 1
+    assert body["successful"] == 0
+    assert body["errors"][0]["row"] == 2
+    assert body["errors"][0]["error"] == "Validation error in CSV row data"
+
+
 def test_attendance_csv_split_columns_absent_unsplit(test_client, admin_auth_headers, monkeypatch):
     """No split/override columns at all -> unsplit entry (back-compat)."""
     captured = {}

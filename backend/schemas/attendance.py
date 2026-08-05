@@ -32,7 +32,7 @@ class AllocationItem(BaseModel):
     """
 
     category: HourCategoryEnum
-    hours: Decimal = Field(gt=0)
+    hours: Decimal = Field(gt=0, decimal_places=2)
 
 
 class AllocationItemResponse(BaseModel):
@@ -58,9 +58,11 @@ class AttendanceRecordCreate(BaseModel):
     shift_id: Optional[int] = Field(None, gt=0, description="Shift ID")
 
     # Hours tracking - REQUIRED for Absenteeism calculation
-    scheduled_hours: Decimal = Field(..., gt=0, le=24)
-    actual_hours: Decimal = Field(default=Decimal("0"), ge=0, le=24)
-    absence_hours: Decimal = Field(default=Decimal("0"), ge=0, le=24, description="scheduled - actual")
+    scheduled_hours: Decimal = Field(..., gt=0, le=24, decimal_places=2)
+    actual_hours: Decimal = Field(default=Decimal("0"), ge=0, le=24, decimal_places=2)
+    absence_hours: Decimal = Field(
+        default=Decimal("0"), ge=0, le=24, decimal_places=2, description="scheduled - actual"
+    )
 
     # Absence tracking
     is_absent: int = Field(default=0, ge=0, le=1, description="Boolean: 0=present, 1=absent")
@@ -81,9 +83,15 @@ class AttendanceRecordCreate(BaseModel):
     notes: Optional[str] = None
 
     # Labor-hours capture (Cycle 3 PR-A) — OT split (all-None = unsplit) + class override + allocations
-    normal_hours: Optional[Decimal] = Field(None, ge=0, le=24, description="Straight-time hours (OT split tier)")
-    double_hours: Optional[Decimal] = Field(None, ge=0, le=24, description="Double-time hours (OT split tier)")
-    triple_hours: Optional[Decimal] = Field(None, ge=0, le=24, description="Triple-time hours (OT split tier)")
+    normal_hours: Optional[Decimal] = Field(
+        None, ge=0, le=24, decimal_places=2, description="Straight-time hours (OT split tier)"
+    )
+    double_hours: Optional[Decimal] = Field(
+        None, ge=0, le=24, decimal_places=2, description="Double-time hours (OT split tier)"
+    )
+    triple_hours: Optional[Decimal] = Field(
+        None, ge=0, le=24, decimal_places=2, description="Triple-time hours (OT split tier)"
+    )
     labor_class_override: Optional[LaborClassEnum] = Field(
         None, description="Per-entry direct/indirect override (NULL = use employee default)"
     )
@@ -148,22 +156,30 @@ class AttendanceRecordUpdate(BaseModel):
 
     line_id: Optional[int] = Field(None, description="Updated production line ID")
     status: Optional[str] = Field(None, max_length=20)
-    actual_hours_worked: Optional[Decimal] = Field(None, ge=0, le=24)
+    actual_hours_worked: Optional[Decimal] = Field(None, ge=0, le=24, decimal_places=2)
     # Grid-style edits (useAttendanceGridData.ts buildPayload) send `actual_hours`,
     # matching AttendanceRecordCreate's field name and the ORM column name directly
     # (fix round 3, item 4 — actual_hours_worked above has never actually mapped
     # onto the ORM's `actual_hours` attribute; the update loop is a blind
     # hasattr-gated setattr, so a field name mismatch silently no-ops).
-    actual_hours: Optional[Decimal] = Field(None, ge=0, le=24, description="Updated actual hours worked")
+    actual_hours: Optional[Decimal] = Field(
+        None, ge=0, le=24, decimal_places=2, description="Updated actual hours worked"
+    )
     absence_reason: Optional[str] = Field(None, max_length=100)
     covered_by_employee_id: Optional[int] = Field(None, gt=0)
     coverage_confirmed: Optional[int] = Field(None, ge=0, le=1)
     notes: Optional[str] = None
 
     # Labor-hours capture (Cycle 3 PR-A) — OT split + class override + allocations (replace-on-write)
-    normal_hours: Optional[Decimal] = Field(None, ge=0, le=24, description="Straight-time hours (OT split tier)")
-    double_hours: Optional[Decimal] = Field(None, ge=0, le=24, description="Double-time hours (OT split tier)")
-    triple_hours: Optional[Decimal] = Field(None, ge=0, le=24, description="Triple-time hours (OT split tier)")
+    normal_hours: Optional[Decimal] = Field(
+        None, ge=0, le=24, decimal_places=2, description="Straight-time hours (OT split tier)"
+    )
+    double_hours: Optional[Decimal] = Field(
+        None, ge=0, le=24, decimal_places=2, description="Double-time hours (OT split tier)"
+    )
+    triple_hours: Optional[Decimal] = Field(
+        None, ge=0, le=24, decimal_places=2, description="Triple-time hours (OT split tier)"
+    )
     labor_class_override: Optional[LaborClassEnum] = Field(
         None, description="Per-entry direct/indirect override (NULL = use employee default)"
     )
