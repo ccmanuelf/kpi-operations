@@ -18,6 +18,7 @@ from decimal import Decimal
 from typing import Any, Optional, Dict, List, Sequence
 from dataclasses import dataclass
 
+from backend.orm.delay_taxonomy import DelayClassificationEnum
 from backend.orm.production_entry import ProductionEntry
 from backend.orm.work_order import WorkOrder, WorkOrderStatus
 
@@ -330,6 +331,7 @@ def calculate_true_otd(db: Session, client_id: str, start_date: date, end_date: 
     true_otd_on_time = 0
     true_otd_late = 0
     true_otd_early = 0
+    true_otd_justified_late = 0  # subset of true_otd_late with delay_classification == "justified"
     true_otd_inferred_count = 0
     true_otd_skipped = 0  # Orders without any inferable date
 
@@ -360,11 +362,20 @@ def calculate_true_otd(db: Session, client_id: str, start_date: date, end_date: 
                 true_otd_early += 1
         else:
             true_otd_late += 1
+            if wo.delay_classification == DelayClassificationEnum.JUSTIFIED.value:
+                true_otd_justified_late += 1
 
     true_otd_total = len(complete_orders) - true_otd_skipped
     true_otd_pct = Decimal("0")
     if true_otd_total > 0:
         true_otd_pct = (Decimal(str(true_otd_on_time)) / Decimal(str(true_otd_total))) * 100
+
+    # Net-of-justified: late orders classified "justified" count toward the
+    # numerator (spec §6). Denominator unchanged.
+    true_otd_net_on_time = true_otd_on_time + true_otd_justified_late
+    true_otd_net_pct = Decimal("0")
+    if true_otd_total > 0:
+        true_otd_net_pct = (Decimal(str(true_otd_net_on_time)) / Decimal(str(true_otd_total))) * 100
 
     # Standard OTD: All orders with delivery dates (any status)
     # ENHANCED: Removed planned_ship_date requirement - use inference chain
@@ -382,6 +393,9 @@ def calculate_true_otd(db: Session, client_id: str, start_date: date, end_date: 
     )
 
     standard_on_time = 0
+    standard_justified_late = (
+        0  # subset of (standard_total - standard_on_time) with delay_classification == "justified"
+    )
     standard_inferred_count = 0
     standard_skipped = 0
 
@@ -403,16 +417,62 @@ def calculate_true_otd(db: Session, client_id: str, start_date: date, end_date: 
 
         if actual_delivery <= inferred.date:
             standard_on_time += 1
+        elif wo.delay_classification == DelayClassificationEnum.JUSTIFIED.value:
+            standard_justified_late += 1
 
     standard_total = len(standard_orders) - standard_skipped
     standard_pct = Decimal("0")
     if standard_total > 0:
         standard_pct = (Decimal(str(standard_on_time)) / Decimal(str(standard_total))) * 100
 
+    # Net-of-justified (standard mode) — same formula as true_otd above.
+    standard_net_on_time = standard_on_time + standard_justified_late
+    standard_net_pct = Decimal("0")
+    if standard_total > 0:
+        standard_net_pct = (Decimal(str(standard_net_on_time)) / Decimal(str(standard_total))) * 100
+
     # Calculate inference rate
     total_processed = true_otd_total + standard_total
     total_inferred = true_otd_inferred_count + standard_inferred_count
     inference_rate = (total_inferred / total_processed * 100) if total_processed > 0 else 0
+
+    # Late-order counts + justification breakdown (spec §6). Built from:
+    # (a) standard_orders — the superset of delivered orders in scope
+    #     (complete_orders is always a subset: same client/date-range/
+    #     actual_delivery_date-not-null predicate plus a status filter), so
+    #     iterating it once here doesn't double-count the true-otd loop's orders.
+    # (b) undelivered past-due orders, found via a client_id + actual_delivery_date
+    #     IS NULL query only — no date-window predicate on planned dates. Lateness
+    #     is decided in Python by the ONE definition (is_late), per spec §4.
+    undelivered_orders = (
+        db.query(WorkOrder)
+        .filter(
+            and_(
+                WorkOrder.client_id == client_id,
+                WorkOrder.actual_delivery_date.is_(None),
+            )
+        )
+        .all()
+    )
+    late_orders_all = [wo for wo in standard_orders if is_late(wo, end_date)] + [
+        wo for wo in undelivered_orders if is_late(wo, end_date)
+    ]
+
+    late_justified = 0
+    late_unjustified = 0
+    late_unclassified = 0
+    justified_by_reason: Dict[str, int] = {}
+    for wo in late_orders_all:
+        classification = wo.delay_classification
+        if classification == DelayClassificationEnum.JUSTIFIED.value:
+            late_justified += 1
+            reason = wo.justified_delay_reason
+            if reason is not None:
+                justified_by_reason[reason] = justified_by_reason.get(reason, 0) + 1
+        elif classification == DelayClassificationEnum.UNJUSTIFIED.value:
+            late_unjustified += 1
+        else:
+            late_unclassified += 1
 
     return {
         "true_otd": {
@@ -421,6 +481,7 @@ def calculate_true_otd(db: Session, client_id: str, start_date: date, end_date: 
             "early": true_otd_early,
             "total": true_otd_total,
             "percentage": true_otd_pct.quantize(Decimal("0.01")),
+            "net_percentage": true_otd_net_pct.quantize(Decimal("0.01")),
             "description": "COMPLETE orders only",
             "inferred_dates_count": true_otd_inferred_count,
             "skipped_no_date": true_otd_skipped,
@@ -429,6 +490,7 @@ def calculate_true_otd(db: Session, client_id: str, start_date: date, end_date: 
             "on_time": standard_on_time,
             "total": standard_total,
             "percentage": standard_pct.quantize(Decimal("0.01")),
+            "net_percentage": standard_net_pct.quantize(Decimal("0.01")),
             "description": "All orders with delivery dates",
             "inferred_dates_count": standard_inferred_count,
             "skipped_no_date": standard_skipped,
@@ -445,6 +507,13 @@ def calculate_true_otd(db: Session, client_id: str, start_date: date, end_date: 
                 "Dates inferred via: planned_ship_date → required_date → calculated" if total_inferred > 0 else None
             ),
         },
+        "late_counts": {
+            "total": len(late_orders_all),
+            "justified": late_justified,
+            "unjustified": late_unjustified,
+            "unclassified": late_unclassified,
+        },
+        "justified_by_reason": justified_by_reason,
         "date_range": {"start": start_date.isoformat(), "end": end_date.isoformat()},
         "client_id": client_id,
     }
