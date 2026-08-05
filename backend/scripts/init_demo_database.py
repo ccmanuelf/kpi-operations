@@ -30,6 +30,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 
 from backend.database import SessionLocal  # noqa: E402
 from backend.db.factories import TestDataFactory  # noqa: E402
+from backend.orm.delay_taxonomy import DelayClassificationEnum, JustifiedDelayReasonEnum  # noqa: E402
 from backend.orm.downtime_taxonomy import DEFAULT_CATEGORY_BY_REASON, DowntimeReasonEnum  # noqa: E402
 
 # Import all ORM models via centralized registry (backend/orm/__init__.py).
@@ -1193,6 +1194,18 @@ def init_database() -> None:
         # seeder can stay consistent without requiring a second pass.
         wo_expected_production: Dict[str, int] = {}
 
+        # Deterministic delay-classification mix (Task 9, Cycle 2). WO_PLAN's
+        # only late row is "shipped_late" (req_off=-8, ship_off=-3: delivered
+        # after required by construction — guaranteed late, so is_late() is
+        # NOT called here to decide eligibility; the seeder test asserts that
+        # guarantee via is_late() instead). Each client contributes exactly
+        # one such row, so `late_ct` below counts across the client loop and
+        # drives a fixed i % 3 pattern: 0=justified (reason rotates through
+        # all 6 JustifiedDelayReasonEnum members via late_ct % 6),
+        # 1=unjustified, 2=unclassified (left NULL).
+        _delay_reasons = list(JustifiedDelayReasonEnum)
+        late_ct = 0
+
         for client_id, client in clients.items():
             client_work_orders = []
             for idx, planned, wo_status, recv_off, req_off, ship_off, completion_pct, wo_scenario in WO_PLAN:
@@ -1213,6 +1226,16 @@ def init_database() -> None:
                 # capacity OTD panel shows 0% even for delivered orders.
                 wo.planned_start_date = datetime.combine(today_d + timedelta(days=recv_off), datetime.min.time())
                 wo.priority = "URGENT" if wo_scenario == "shipped_late" else ("HIGH" if idx <= 1 else "MEDIUM")
+
+                if wo_scenario == "shipped_late":
+                    pattern = late_ct % 3
+                    if pattern == 0:
+                        wo.delay_classification = DelayClassificationEnum.JUSTIFIED.value
+                        wo.justified_delay_reason = _delay_reasons[late_ct % len(_delay_reasons)].value
+                    elif pattern == 1:
+                        wo.delay_classification = DelayClassificationEnum.UNJUSTIFIED.value
+                    # pattern == 2: leave both NULL (unclassified)
+                    late_ct += 1
 
                 expected_units = int(planned * completion_pct)
                 wo_expected_production[wo.work_order_id] = expected_units

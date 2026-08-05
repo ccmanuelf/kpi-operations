@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy.orm import Session
 
+from backend.orm.delay_taxonomy import DelayClassificationEnum, JustifiedDelayReasonEnum
 from backend.orm.downtime_taxonomy import DEFAULT_CATEGORY_BY_REASON, DowntimeCategoryEnum, DowntimeReasonEnum
 from backend.scripts._seed_common import ClientSpec, rng_for
 from backend.scripts._seed_master import seed_employees, seed_lines, seed_products, seed_shifts
@@ -169,6 +170,18 @@ def seed_work_orders(session: Session, spec: ClientSpec, entered_by: str, anchor
     # dip below the 80% critical threshold so the diagnostic OOC tooltip demos.
     HISTORY_N = 15
     hrng = rng_for(cid, "otd_history")
+    # Deterministic delay-classification mix (Task 9, Cycle 2) over the late
+    # subset of this batch only. `late_ct` increments once per late row (n %
+    # 3 == 0, below) and drives a fixed i % 3 pattern: 0=justified (reason
+    # rotates through all 6 JustifiedDelayReasonEnum members via
+    # late_ct % 6), 1=unjustified, 2=unclassified (left NULL). is_late() is
+    # deliberately NOT called here to decide eligibility — this block already
+    # guarantees lateness by construction (delivered = req + [2,6]d, always
+    # after req, whenever `late` is True); the seeder tests assert that
+    # guarantee via is_late() instead, per the spec's "assert, don't
+    # reimplement" split.
+    _delay_reasons = list(JustifiedDelayReasonEnum)
+    late_ct = 0
     for n in range(1, HISTORY_N + 1):
         days_ago = 2 + (n - 1) * 6  # distinct days: 2, 8, 14, ... 86 (within last 90d)
         req = now - timedelta(days=days_ago)
@@ -195,6 +208,15 @@ def seed_work_orders(session: Session, spec: ClientSpec, entered_by: str, anchor
         # incoherent for a terminal, delivered status. SHIPPED implies fully
         # produced, so true it up to the full planned quantity directly.
         hwo.actual_quantity = hwo.planned_quantity
+        if late:
+            pattern = late_ct % 3
+            if pattern == 0:
+                hwo.delay_classification = DelayClassificationEnum.JUSTIFIED.value
+                hwo.justified_delay_reason = _delay_reasons[late_ct % len(_delay_reasons)].value
+            elif pattern == 1:
+                hwo.delay_classification = DelayClassificationEnum.UNJUSTIFIED.value
+            # pattern == 2: leave both NULL (unclassified)
+            late_ct += 1
         wos.append(hwo)
 
     session.flush()
