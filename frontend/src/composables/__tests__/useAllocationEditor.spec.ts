@@ -233,4 +233,10 @@ describe('toAllocationItems rounds hours to 2 decimal places', () => {
       { category: 'training', hours: 3 },
     ])
   })
+
+  it('rounds an exact half-cent value up, not down (JS float classic: 1.005*100 === 100.4999...)', () => {
+    expect(toAllocationItems([{ category: 'training', hours: 1.005 }])).toEqual([
+      { category: 'training', hours: 1.01 },
+    ])
+  })
 })

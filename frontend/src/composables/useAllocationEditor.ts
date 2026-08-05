@@ -97,7 +97,7 @@ export interface AllocationItemPayload {
 // (decimal_places=2). The hours input here is a free-typed <input type="number">
 // with no browser-enforced precision, so round to 2dp on the way out — matching
 // what the server will accept — rather than letting a >2dp value 422 at submit.
-const roundToTwoDp = (value: number): number => Math.round(value * 100) / 100
+const roundToTwoDp = (value: number): number => Math.round((value + Number.EPSILON) * 100) / 100
 
 // Rows ready to submit: category selected + hours > 0 (drops blank/incomplete rows).
 export const toAllocationItems = (rows: AllocationRow[]): AllocationItemPayload[] =>
