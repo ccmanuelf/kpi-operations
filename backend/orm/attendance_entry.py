@@ -11,10 +11,11 @@ from decimal import Decimal
 from typing import Optional
 
 from sqlalchemy import DateTime, Enum as SQLEnum, ForeignKey, Index, Integer, Numeric, String, Text
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 from sqlalchemy.sql import func
 
 from backend.database import Base
+from backend.orm.attendance_hour_allocation import AttendanceHourAllocation
 
 
 class AbsenceType(str, enum.Enum):
@@ -86,3 +87,24 @@ class AttendanceEntry(Base):
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
     updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    # Labor-hours capture (Cycle 3 PR-A) — OT split (all NULL = unsplit) + class override
+    normal_hours: Mapped[Optional[Decimal]] = mapped_column(Numeric(5, 2))
+    double_hours: Mapped[Optional[Decimal]] = mapped_column(Numeric(5, 2))
+    triple_hours: Mapped[Optional[Decimal]] = mapped_column(Numeric(5, 2))
+    labor_class_override: Mapped[Optional[str]] = mapped_column(String(10))
+
+    hour_allocations: Mapped[list["AttendanceHourAllocation"]] = relationship(
+        "AttendanceHourAllocation", cascade="all, delete-orphan", lazy="selectin"
+    )
+
+    @validates("labor_class_override")
+    def _validate_labor_class_override(self, key: str, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return value
+        from backend.orm.labor_taxonomy import LaborClassEnum
+
+        valid = {c.value for c in LaborClassEnum}
+        if value not in valid:
+            raise ValueError(f"labor_class_override must be one of {sorted(valid)} or NULL, got {value!r}")
+        return value
