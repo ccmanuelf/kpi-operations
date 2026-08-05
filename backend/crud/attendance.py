@@ -235,20 +235,42 @@ def update_attendance_record(
     fields_set = attendance_update.model_fields_set
     update_data = attendance_update.model_dump(exclude_unset=True, exclude={"allocations", "labor_class_override"})
 
+    # actual_hours is PUT-updatable (grid-style edits send it alongside a new
+    # split) — validate the split/allocations against the NEW value when this
+    # same request changes it, not the stale stored one (fix round 3, item 4).
+    effective_actual_hours = (
+        attendance_update.actual_hours if "actual_hours" in fields_set else db_attendance.actual_hours
+    )
+
     # OT split invariant: normalize the 0-defaulted triple when any tier is supplied.
-    # actual_hours is not PUT-updatable on this schema, so validate against the entry's current value.
     if {"normal_hours", "double_hours", "triple_hours"} & fields_set:
         try:
             normalized_split = validate_ot_split(
                 attendance_update.normal_hours,
                 attendance_update.double_hours,
                 attendance_update.triple_hours,
-                db_attendance.actual_hours,
+                effective_actual_hours,
             )
         except ValueError as e:
             raise HTTPException(status_code=422, detail=str(e)) from e
         if normalized_split is not None:
             update_data["normal_hours"], update_data["double_hours"], update_data["triple_hours"] = normalized_split
+        else:
+            # At least one tier key was explicitly sent (fields_set matched
+            # above), but the resolved trio came back all-None: unset tier
+            # keys default to None too, so validate_ot_split can't tell
+            # "caller means to clear everything" apart from "caller only
+            # touched one tier and meant to leave the others alone" — the
+            # sum invariant is all-or-nothing, so there IS no valid partial
+            # reading. Without this, `update_data` (built from
+            # exclude_unset) would only carry the tier(s) actually in the
+            # request body, leaving the untouched tiers at their stale DB
+            # values (fix round 3, item 1 — e.g. PUT {"normal_hours": null}
+            # on a split entry left double/triple at their old nonzero
+            # values instead of clearing the whole split).
+            update_data["normal_hours"] = None
+            update_data["double_hours"] = None
+            update_data["triple_hours"] = None
 
     if "labor_class_override" in fields_set:
         update_data["labor_class_override"] = (
@@ -261,7 +283,7 @@ def update_attendance_record(
         allocations = attendance_update.allocations or []
         items = [(item.category.value, item.hours) for item in allocations]
         try:
-            validate_allocations(items, db_attendance.actual_hours or Decimal("0"))
+            validate_allocations(items, effective_actual_hours or Decimal("0"))
         except ValueError as e:
             raise HTTPException(status_code=422, detail=str(e)) from e
         # Clear-then-flush before assigning the new rows. SQLAlchemy's flush ordering
@@ -335,6 +357,12 @@ def bulk_create_attendance_records(db: Session, records: List[AttendanceRecordCr
 
             # "allocations" has no matching AttendanceEntry column/kwarg (it's a separate
             # child-table relationship); bulk-create doesn't support labor-hours capture yet.
+            # Previously silently dropped (excluded below with no error) — fail this row
+            # explicitly instead, same per-row idiom as an invalid OT split, rather than
+            # quietly persisting the row without the allocations the caller asked for.
+            if record.allocations is not None:
+                raise ValueError("allocations are not supported on the bulk endpoint — use single create/update")
+
             data = record.model_dump(exclude={"allocations"})
 
             # OT split invariant: same as single-record create. This is a per-row bulk

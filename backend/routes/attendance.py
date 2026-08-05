@@ -593,6 +593,12 @@ def bulk_create_attendance(
 
     SECURITY: Validates client access for each record individually.
 
+    Per-row, not all-or-nothing: an invalid OT split fails only that row.
+    `allocations` is NOT supported on this endpoint (no bulk-create path for
+    the hour-allocation ledger yet) — a row that sends allocations fails
+    with its own per-row error rather than silently persisting without them;
+    use single create/update (POST/PUT /api/attendance) for allocations.
+
     Returns summary with total, successful, failed counts, errors, and created IDs.
     """
     try:

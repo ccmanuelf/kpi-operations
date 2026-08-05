@@ -47,6 +47,9 @@ def validate_allocations(items: list[tuple[str, Decimal]], actual_hours: Decimal
     Raises ValueError on:
     - Duplicate category
     - Hours <= 0
+    - Allocations present but actual_hours is 0/unset ("allocations require
+      actual_hours" — distinct from the sum-exceeds case below, which
+      assumes a real actual_hours was actually available to exceed)
     - Sum of hours > actual_hours
     """
     categories_seen = set()
@@ -63,6 +66,12 @@ def validate_allocations(items: list[tuple[str, Decimal]], actual_hours: Decimal
             raise ValueError("allocation hours must be > 0")
 
         total_hours += hours
+
+    # Allocations against a 0/unset actual_hours is a distinct, more specific
+    # problem than "exceeds" — callers pass Decimal("0") as the not-provided
+    # sentinel (see crud/attendance.py's `data.get("actual_hours") or Decimal("0")`).
+    if items and actual_hours <= 0:
+        raise ValueError("allocations require actual_hours")
 
     # Check total doesn't exceed actual
     if total_hours > actual_hours:

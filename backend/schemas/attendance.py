@@ -149,6 +149,12 @@ class AttendanceRecordUpdate(BaseModel):
     line_id: Optional[int] = Field(None, description="Updated production line ID")
     status: Optional[str] = Field(None, max_length=20)
     actual_hours_worked: Optional[Decimal] = Field(None, ge=0, le=24)
+    # Grid-style edits (useAttendanceGridData.ts buildPayload) send `actual_hours`,
+    # matching AttendanceRecordCreate's field name and the ORM column name directly
+    # (fix round 3, item 4 — actual_hours_worked above has never actually mapped
+    # onto the ORM's `actual_hours` attribute; the update loop is a blind
+    # hasattr-gated setattr, so a field name mismatch silently no-ops).
+    actual_hours: Optional[Decimal] = Field(None, ge=0, le=24, description="Updated actual hours worked")
     absence_reason: Optional[str] = Field(None, max_length=100)
     covered_by_employee_id: Optional[int] = Field(None, gt=0)
     coverage_confirmed: Optional[int] = Field(None, ge=0, le=1)

@@ -398,3 +398,178 @@ class TestBulkCreateOTSplitValidation:
         assert data["failed"] == 1
         assert data["errors"][0]["index"] == 1
         assert len(data["created_ids"]) == 1
+
+
+class TestUpdatePartialNullSplit:
+    """Regression (fix round 3, IMPORTANT): PUT with one OT-split tier explicitly
+    nulled and the other two omitted must clear the WHOLE split, not leave the
+    omitted tiers at their stale DB values. update_data is built from
+    exclude_unset, so only the tier(s) actually in the request body would land
+    in it; validate_ot_split resolves the omitted tiers to None too and returns
+    None (its "unsplit, nothing to do" signal) — without the fix, that just
+    means the omitted tiers' stale values pass through untouched.
+    """
+
+    def test_partial_null_forces_full_clear(self, labor_setup):
+        """Entry starts fully split (10 = 8 + 2 + 0); PUT {"normal_hours": null}
+        alone must null out ALL three columns, not just normal_hours."""
+        s = labor_setup
+        payload = _base_payload(s, actual_hours="10.0", normal_hours="8.0", double_hours="2.0", triple_hours="0.0")
+        create_resp = s["test_client"].post("/api/attendance", json=payload, headers=s["headers"])
+        assert create_resp.status_code == 201
+        attendance_id = create_resp.json()["attendance_entry_id"]
+
+        update_resp = s["test_client"].put(
+            f"/api/attendance/{attendance_id}",
+            json={"normal_hours": None},
+            headers=s["headers"],
+        )
+
+        assert update_resp.status_code == 200
+        data = update_resp.json()
+        assert data["normal_hours"] is None
+        assert data["double_hours"] is None
+        assert data["triple_hours"] is None
+
+    def test_explicit_null_one_tier_with_values_on_others_normalizes(self, labor_setup):
+        """All three keys sent, one explicit null: normal=null defaults to 0,
+        double=3 + triple=5 sums to actual_hours(8) -> 200, normalized split."""
+        s = labor_setup
+        payload = _base_payload(s, actual_hours="8.0", normal_hours="8.0", double_hours="0.0", triple_hours="0.0")
+        create_resp = s["test_client"].post("/api/attendance", json=payload, headers=s["headers"])
+        assert create_resp.status_code == 201
+        attendance_id = create_resp.json()["attendance_entry_id"]
+
+        update_resp = s["test_client"].put(
+            f"/api/attendance/{attendance_id}",
+            json={"normal_hours": None, "double_hours": "3.0", "triple_hours": "5.0"},
+            headers=s["headers"],
+        )
+
+        assert update_resp.status_code == 200
+        data = update_resp.json()
+        assert _dec(data["normal_hours"]) == Decimal("0")
+        assert _dec(data["double_hours"]) == Decimal("3.0")
+        assert _dec(data["triple_hours"]) == Decimal("5.0")
+
+    def test_explicit_null_one_tier_with_values_mismatch_422(self, labor_setup):
+        """Same shape as above, but double+triple no longer sum to actual_hours(8)
+        once normal defaults to 0 -> 422 (validate_ot_split invariant), not a
+        silently-accepted partial update."""
+        s = labor_setup
+        payload = _base_payload(s, actual_hours="8.0", normal_hours="8.0", double_hours="0.0", triple_hours="0.0")
+        create_resp = s["test_client"].post("/api/attendance", json=payload, headers=s["headers"])
+        assert create_resp.status_code == 201
+        attendance_id = create_resp.json()["attendance_entry_id"]
+
+        update_resp = s["test_client"].put(
+            f"/api/attendance/{attendance_id}",
+            json={"normal_hours": None, "double_hours": "3.0", "triple_hours": "10.0"},
+            headers=s["headers"],
+        )
+
+        assert update_resp.status_code == 422
+
+
+class TestBulkCreateRejectsAllocations:
+    """Regression (fix round 3, IMPORTANT): POST /api/attendance/bulk previously
+    silently dropped `allocations` (excluded from model_dump with no error) —
+    a row that asked for allocations would persist without them and report
+    success. Now fails that row explicitly, per-row (bulk is not all-or-nothing).
+    """
+
+    def test_row_with_allocations_fails_sibling_persists(self, labor_setup):
+        s = labor_setup
+        row_with_allocations = _base_payload(
+            s, actual_hours="8.0", allocations=[{"category": "training", "hours": "1.0"}]
+        )
+        clean_row = _base_payload(s, actual_hours="8.0")
+
+        response = s["test_client"].post(
+            "/api/attendance/bulk", json=[row_with_allocations, clean_row], headers=s["headers"]
+        )
+
+        assert response.status_code == 201
+        data = response.json()
+        assert data["total"] == 2
+        assert data["successful"] == 1
+        assert data["failed"] == 1
+        assert data["errors"][0]["index"] == 0
+        assert data["errors"][0]["error"] == (
+            "allocations are not supported on the bulk endpoint — use single create/update"
+        )
+        assert len(data["created_ids"]) == 1
+
+
+class TestUpdateActualHours:
+    """Regression (fix round 3, IMPORTANT): AttendanceRecordUpdate previously had
+    no working actual_hours field (`actual_hours_worked` never mapped onto the
+    ORM's `actual_hours` attribute — the update loop is a blind hasattr-gated
+    setattr, so the name mismatch silently no-opped), and the OT split/
+    allocations invariants validated against the STALE stored actual_hours even
+    when the same PUT changed it — a grid-style edit sending a consistent new
+    actual_hours + split together would 422 against the old value.
+    """
+
+    def test_actual_hours_change_with_matching_split_persists_both(self, labor_setup):
+        s = labor_setup
+        payload = _base_payload(s, actual_hours="8.0", normal_hours="8.0", double_hours="0.0", triple_hours="0.0")
+        create_resp = s["test_client"].post("/api/attendance", json=payload, headers=s["headers"])
+        assert create_resp.status_code == 201
+        attendance_id = create_resp.json()["attendance_entry_id"]
+
+        update_resp = s["test_client"].put(
+            f"/api/attendance/{attendance_id}",
+            json={
+                "actual_hours": "9.0",
+                "normal_hours": "9.0",
+                "double_hours": "0.0",
+                "triple_hours": "0.0",
+            },
+            headers=s["headers"],
+        )
+
+        assert update_resp.status_code == 200
+        data = update_resp.json()
+        assert _dec(data["actual_hours"]) == Decimal("9.0")
+        assert _dec(data["normal_hours"]) == Decimal("9.0")
+
+    def test_actual_hours_change_with_matching_allocations_persists_both(self, labor_setup):
+        """Same fix, allocations side: allocations validate against the NEW
+        actual_hours in the same request, not the stale stored value."""
+        s = labor_setup
+        payload = _base_payload(s, actual_hours="8.0")
+        create_resp = s["test_client"].post("/api/attendance", json=payload, headers=s["headers"])
+        assert create_resp.status_code == 201
+        attendance_id = create_resp.json()["attendance_entry_id"]
+
+        update_resp = s["test_client"].put(
+            f"/api/attendance/{attendance_id}",
+            json={
+                "actual_hours": "9.0",
+                "allocations": [{"category": "billed_production", "hours": "9.0"}],
+            },
+            headers=s["headers"],
+        )
+
+        assert update_resp.status_code == 200
+        data = update_resp.json()
+        assert _dec(data["actual_hours"]) == Decimal("9.0")
+        assert _dec(data["billed_hours"]) == Decimal("9.0")
+
+
+class TestAllocationsRequireActualHoursMessage:
+    """Regression (fix round 3, Minor): allocations sent against a 0/unset
+    actual_hours previously raised the same "allocations exceed actual_hours"
+    message as a genuine over-actual case, which misleads the caller into
+    thinking a real actual_hours value was exceeded rather than never provided.
+    """
+
+    def test_message_is_require_not_exceed(self, labor_setup):
+        s = labor_setup
+        payload = _base_payload(s, actual_hours="0", allocations=[{"category": "training", "hours": "1.0"}])
+
+        response = s["test_client"].post("/api/attendance", json=payload, headers=s["headers"])
+
+        assert response.status_code == 422
+        assert response.json()["detail"] == "allocations require actual_hours"

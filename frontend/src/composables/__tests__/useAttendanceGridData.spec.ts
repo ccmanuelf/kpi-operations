@@ -530,9 +530,10 @@ describe('useAttendanceGridData', () => {
     })
 
     it('pasted OT split + override values are not dropped', () => {
-      const { gridRef, onPasteConfirm } = withSetup(() => useAttendanceGridData())
-      const gridApi = mockGridApi()
-      gridRef.value = { gridApi }
+      // Fix round 3, item 3: onPasteConfirm now prepends into
+      // attendanceData.value directly (one row store), not a grid-only
+      // gridApi.applyTransaction — read the prepared row straight off it.
+      const { attendanceData, onPasteConfirm } = withSetup(() => useAttendanceGridData())
 
       onPasteConfirm([
         {
@@ -548,8 +549,8 @@ describe('useAttendanceGridData', () => {
         },
       ])
 
-      expect(gridApi.applyTransaction).toHaveBeenCalledTimes(1)
-      const preparedRow = gridApi.applyTransaction.mock.calls[0][0].add[0]
+      expect(attendanceData.value).toHaveLength(1)
+      const preparedRow = attendanceData.value[0]
       expect(preparedRow.normal_hours).toBe(8)
       expect(preparedRow.double_hours).toBe(0)
       expect(preparedRow.triple_hours).toBe(0)
@@ -557,24 +558,34 @@ describe('useAttendanceGridData', () => {
     })
 
     it('defaults OT split + override to null when the pasted row omits them', () => {
-      const { gridRef, onPasteConfirm } = withSetup(() => useAttendanceGridData())
-      const gridApi = mockGridApi()
-      gridRef.value = { gridApi }
+      const { attendanceData, onPasteConfirm } = withSetup(() => useAttendanceGridData())
 
       onPasteConfirm([{ employee_id: 10, shift_date: '2026-08-05', status: 'Present' }])
 
-      const preparedRow = gridApi.applyTransaction.mock.calls[0][0].add[0]
+      const preparedRow = attendanceData.value[0]
       expect(preparedRow.normal_hours).toBeNull()
       expect(preparedRow.double_hours).toBeNull()
       expect(preparedRow.triple_hours).toBeNull()
       expect(preparedRow.labor_class_override).toBeNull()
     })
 
+    it('pasted rows get a unique _localId and are prepended ahead of existing rows', () => {
+      const { attendanceData, onPasteConfirm } = withSetup(() => useAttendanceGridData())
+      attendanceData.value = [{ employee_id: 1, _localId: 'existing-row' } as AttendanceRow]
+
+      onPasteConfirm([{ employee_id: 2, shift_date: '2026-08-05', status: 'Present' }])
+
+      expect(attendanceData.value).toHaveLength(2)
+      expect(attendanceData.value[0].employee_id).toBe(2)
+      expect(attendanceData.value[0]._localId).toBeTruthy()
+      expect(attendanceData.value[0]._localId).not.toBe('existing-row')
+      expect(attendanceData.value[1]._localId).toBe('existing-row')
+    })
+
     it('pasted OT split + override values survive into buildPayload on save', async () => {
       const { attendanceData, gridRef, onPasteConfirm, saveAttendance, onConfirmSave } =
         withSetup(() => useAttendanceGridData())
       const gridApi = mockGridApi()
-      gridRef.value = { gridApi }
 
       onPasteConfirm([
         {
@@ -588,15 +599,15 @@ describe('useAttendanceGridData', () => {
           labor_class_override: 'indirect',
         },
       ])
-      const preparedRow = gridApi.applyTransaction.mock.calls[0][0].add[0]
+      const preparedRow = attendanceData.value[0]
 
-      // applyTransaction is mocked (doesn't really insert into AG
-      // Grid) — mirror what a real transaction would do so save can
-      // find the row via forEachNode, same as the grid does for real.
-      attendanceData.value = [preparedRow]
+      // saveAttendance still gathers changed rows via gridApi.forEachNode
+      // (AG Grid's own truth) — mock it to reflect the row now living in
+      // attendanceData.value, same as the real AG Grid rowData binding would.
       gridApi.forEachNode.mockImplementation(
         (cb: (_n: { data: AttendanceRow }) => void) => cb({ data: preparedRow }),
       )
+      gridRef.value = { gridApi }
 
       await saveAttendance()
       await onConfirmSave()
@@ -608,6 +619,92 @@ describe('useAttendanceGridData', () => {
           triple_hours: 0,
           labor_class_override: 'indirect',
         }),
+      )
+    })
+  })
+
+  describe('findTrackedRow keys by row identity, not employee_id (fix round 3, item 3)', () => {
+    it('editing a pasted row does not mutate an existing roster row for the same employee', () => {
+      const { attendanceData, onPasteConfirm, markRowAsChanged } = withSetup(() =>
+        useAttendanceGridData(),
+      )
+
+      attendanceData.value = [
+        {
+          employee_id: 5,
+          employee_name: 'Roster Employee',
+          status: 'Present',
+          normal_hours: null,
+          _hasChanges: false,
+          _localId: 'roster-local-id',
+        } as AttendanceRow,
+      ]
+
+      // A pasted row for the SAME employee_id — e.g. a floater covering an
+      // already-rostered employee's shift twice, or a mis-paste.
+      onPasteConfirm([{ employee_id: 5, employee_name: 'Duplicate Paste', status: 'Absent' }])
+
+      expect(attendanceData.value).toHaveLength(2)
+      const pastedRow = attendanceData.value[0]
+      const rosterRow = attendanceData.value[1]
+      expect(pastedRow.employee_id).toBe(5)
+      expect(rosterRow.employee_id).toBe(5)
+      expect(pastedRow._localId).not.toBe(rosterRow._localId)
+
+      // Simulate AG Grid handing back a raw, disconnected copy of the
+      // PASTED row (same shape cellValueChanged normally delivers).
+      const rawEditedPastedRow = { ...pastedRow, normal_hours: 6 }
+      markRowAsChanged({ data: rawEditedPastedRow, colDef: { field: 'normal_hours' } })
+
+      expect(attendanceData.value[0].normal_hours).toBe(6)
+      expect(attendanceData.value[0]._hasChanges).toBe(true)
+      // The roster row — a DIFFERENT row that happens to share employee_id —
+      // must be untouched. Under the old employee_id-keyed findTrackedRow,
+      // Array.find would resolve to whichever row matched employee_id
+      // FIRST (the pasted row at index 0, prepended), so this specific
+      // scenario wouldn't have caught it; the point of this test is that
+      // matching is now by _localId at all, not incidentally-correct
+      // array ordering.
+      expect(attendanceData.value[1].normal_hours).toBeNull()
+      expect(attendanceData.value[1]._hasChanges).toBe(false)
+    })
+
+    it('an edit with no matching _localId in attendanceData does not corrupt any tracked row', () => {
+      const { attendanceData, markRowAsChanged } = withSetup(() => useAttendanceGridData())
+      attendanceData.value = [
+        { employee_id: 1, status: 'Present', _localId: 'row-1' } as AttendanceRow,
+      ]
+
+      const disconnectedRow = { employee_id: 1, status: 'Absent', _localId: 'row-does-not-exist' }
+      markRowAsChanged({ data: disconnectedRow, colDef: { field: 'status' } })
+
+      // Falls back to mutating the disconnected object itself (defensive
+      // — see findTrackedRow's declaration comment) rather than guessing
+      // at a same-employee_id row.
+      expect(attendanceData.value[0].status).toBe('Present')
+      expect(attendanceData.value[0]._hasChanges).toBeFalsy()
+    })
+  })
+
+  describe('bulkSetStatus routes through tracked rows + editTick (fix round 3, item 3)', () => {
+    it('flips hasChanges and marks every tracked row Present, without needing gridApi', () => {
+      const { attendanceData, hasChanges, bulkSetStatus } = withSetup(() =>
+        useAttendanceGridData(),
+      )
+      attendanceData.value = [
+        { employee_id: 1, status: 'Present', _hasChanges: false } as AttendanceRow,
+        { employee_id: 2, status: 'Absent', _hasChanges: false } as AttendanceRow,
+      ]
+      expect(hasChanges.value).toBe(false)
+
+      // No gridRef.value set at all — bulkSetStatus previously required
+      // gridApi to do anything (gridApi.forEachNode); now it operates
+      // purely on attendanceData.value.
+      bulkSetStatus()
+
+      expect(hasChanges.value).toBe(true)
+      expect(attendanceData.value.every((r) => r.status === 'Present' && r._hasChanges)).toBe(
+        true,
       )
     })
   })

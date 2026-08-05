@@ -51,6 +51,13 @@ export interface AttendanceRow {
   _hasChanges?: boolean
   _isNew?: boolean
   _isExisting?: boolean
+  // Row-identity key for findTrackedRow — NOT employee_id (fix round 3,
+  // item 3): a pasted row for an already-rostered employee shares that
+  // employee's employee_id with their existing roster row, so
+  // employee_id can't disambiguate "which row is this" once more than
+  // one row exists per employee. Assigned once per row at creation time
+  // (loadEmployees, onPasteConfirm) and never changes.
+  _localId?: string
   [key: string]: unknown
 }
 
@@ -139,6 +146,9 @@ export const combineDateTime = (
   const [h, m] = trimmed.split(':')
   return `${date}T${h.padStart(2, '0')}:${m}:00`
 }
+
+// Row-identity key generator — see AttendanceRow._localId's declaration comment.
+const genLocalId = (): string => `local_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`
 
 // Allocations button-cell (module scope — no per-instance closures needed
 // beyond the params passed in). Empty cell (no button label text) when
@@ -266,14 +276,22 @@ export default function useAttendanceGridData(
   // in-place does not affect what attendanceData.value holds, even
   // though editTick forces a re-derive (there's nothing new to derive,
   // because the tracked row was never touched). Re-resolve to the
-  // actual reactive row by employee_id (unique per grid load — the
-  // same key existingMap merges on) before mutating, so the mutation
-  // lands on the object hasChanges/changedRowsCount/noSplitCount/
-  // unallocatedCount/statusCounts actually iterate. Falls back to the
-  // given row when no match is found (defensive — shouldn't happen for
-  // a row that came from the grid's own rowData).
+  // actual reactive row before mutating, so the mutation lands on the
+  // object hasChanges/changedRowsCount/noSplitCount/unallocatedCount/
+  // statusCounts actually iterate.
+  //
+  // Keyed by _localId, NOT employee_id (fix round 3, item 3): once
+  // pasted rows live in attendanceData.value alongside roster rows (see
+  // onPasteConfirm below), more than one row can share an employee_id —
+  // a pasted row for an already-rostered employee. employee_id can't
+  // disambiguate which of those rows is which; _localId is assigned
+  // once per row at creation and never collides. No employee_id
+  // fallback: a wrong-row match is worse than no match (falls through
+  // to each call site's `?? row`/`?? event.data` defensive default,
+  // which mutates a locally-scoped, not-necessarily-tracked object
+  // instead of silently corrupting an unrelated row).
   const findTrackedRow = (row: AttendanceRow): AttendanceRow | undefined =>
-    attendanceData.value.find((r) => r.employee_id === row.employee_id)
+    row._localId ? attendanceData.value.find((r) => r._localId === row._localId) : undefined
 
   // Allocation dialog (AllocationEditorDialog.vue) — opened from the grid's
   // allocations button-cell (see columnDefs below).
@@ -562,6 +580,7 @@ export default function useAttendanceGridData(
             employee_name: emp.employee_name || (emp as { name?: string }).name,
             department: emp.department,
             _isExisting: true,
+            _localId: genLocalId(),
           }
         }
 
@@ -585,6 +604,7 @@ export default function useAttendanceGridData(
           allocations: [],
           _hasChanges: false,
           _isNew: true,
+          _localId: genLocalId(),
         }
       })
 
@@ -630,16 +650,20 @@ export default function useAttendanceGridData(
     gridRef.value?.refreshCells?.()
   }
 
+  // Routed through attendanceData.value (the tracked row store), not
+  // gridApi.forEachNode (fix round 3, item 3) — same class of bug as
+  // markRowAsChanged: mutating AG Grid's own node.data left hasChanges
+  // permanently stale (verified in the browser — Save Records stayed
+  // disabled after Mark All Present), since node.data isn't reliably
+  // the object hasChanges/changedRowsCount actually iterate.
   const bulkSetStatus = (): void => {
-    const gridApi = gridRef.value?.gridApi
-    if (!gridApi) return
-
-    gridApi.forEachNode((node) => {
-      node.data.status = 'Present'
-      node.data._hasChanges = true
+    attendanceData.value.forEach((row) => {
+      row.status = 'Present'
+      row._hasChanges = true
     })
 
-    gridApi.refreshCells()
+    editTick.value++
+    gridRef.value?.refreshCells?.()
     showSnackbar(t('grids.attendance.markedPresent'), 'success')
   }
 
@@ -788,11 +812,9 @@ export default function useAttendanceGridData(
   }
 
   const onPasteConfirm = (rowsToAdd: Partial<AttendanceRow>[]): void => {
-    const gridApi = gridRef.value?.gridApi
-    if (!gridApi) return
-
     const preparedRows: AttendanceRow[] = rowsToAdd.map((row) => ({
       attendance_entry_id: `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      _localId: genLocalId(),
       employee_id: row.employee_id || '',
       employee_name: row.employee_name || '',
       department: row.department || '',
@@ -819,7 +841,15 @@ export default function useAttendanceGridData(
       _isNew: true,
     }))
 
-    gridApi.applyTransaction({ add: preparedRows, addIndex: 0 })
+    // Prepend into attendanceData.value (the SAME reactive array AG Grid's
+    // rowData prop binds to) instead of a grid-only gridApi.applyTransaction
+    // (fix round 3, item 3) — that left pasted rows with no counterpart in
+    // attendanceData.value at all, so hasChanges/both completeness chips
+    // could never see them, and (before the _localId fix above)
+    // findTrackedRow's employee_id key could resolve a pasted row's edits
+    // onto an existing roster row for the same employee. One row store now:
+    // attendanceData.value is the only place rows live.
+    attendanceData.value = [...preparedRows, ...attendanceData.value]
     showPasteDialog.value = false
     showSnackbar(t('paste.rowsAdded', { count: preparedRows.length }), 'success')
   }

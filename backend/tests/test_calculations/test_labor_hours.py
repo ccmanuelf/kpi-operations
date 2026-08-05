@@ -62,6 +62,17 @@ class TestAllocations:
     def test_partial_allocation_ok(self):
         validate_allocations([("billed_production", Decimal("5.00"))], Decimal("8.00"))
 
+    def test_allocations_without_actual_hours_raises_dedicated_message(self):
+        """Fix round 3, Minor: distinct from the "exceed" message — a 0/unset
+        actual_hours means there was never a real value to exceed."""
+        with pytest.raises(ValueError, match="^allocations require actual_hours$"):
+            validate_allocations([("training", Decimal("1.00"))], Decimal("0"))
+
+    def test_empty_allocations_against_zero_actual_hours_ok(self):
+        """Clearing the ledger (empty list) must not trip the new require-actual_hours
+        check — there's nothing to require actual_hours for."""
+        validate_allocations([], Decimal("0"))
+
 
 class TestDerived:
     def test_billed_hours_sums_billable_only(self):
