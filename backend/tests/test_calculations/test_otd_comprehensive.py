@@ -777,6 +777,126 @@ class TestCalculateTrueOTDWithData:
         assert result["true_otd"]["total"] >= 0
 
 
+class TestCalculateTrueOTDNetOfJustified:
+    """Tests for calculate_true_otd's net-of-justified metrics (Cycle 2 Task 5:
+    otd_net_of_justified, late_counts, justified_by_reason)."""
+
+    def test_true_otd_gross_vs_net_with_derivation(self, otd_setup):
+        """Seed 5 delivered COMPLETED orders for one client:
+        - WO-NET-001, WO-NET-002: delivered on time
+        - WO-NET-003: delivered late, delay_classification=justified/customer_request
+        - WO-NET-004: delivered late, delay_classification=unjustified
+        - WO-NET-005: delivered late, delay_classification=None (unclassified)
+        Plus WO-NET-006: undelivered, planned_ship_date before `end` (past-due),
+        delay_classification=None. It has no actual_delivery_date, so it never
+        enters the true_otd/standard_otd COUNTS or PERCENTAGES — it only shows
+        up via the separate is_late()-filtered late_counts query.
+
+        All 5 delivered orders are status=COMPLETED, so standard_otd's order
+        set (all statuses) is identical to true_otd's (COMPLETED-only) here —
+        both modes must produce the same gross/net percentages.
+
+        Derivations:
+          gross true-OTD = on_time / total = 2 / 5 * 100         = 40.0
+          net   true-OTD = (on_time + justified_late) / total
+                         = (2 + 1) / 5 * 100                      = 60.0
+          (standard_otd: identical inputs -> identical 40.0 / 60.0)
+
+          late_counts:
+            total        = 3 delivered-late (WO3,WO4,WO5) + 1 undelivered-past-due (WO6) = 4
+            justified    = 1  (WO3)
+            unjustified  = 1  (WO4)
+            unclassified = 2  (WO5 delivered-late w/ NULL classification,
+                                WO6 undelivered-past-due w/ NULL classification)
+
+          justified_by_reason = {"customer_request": 1}   # WO3 only
+        """
+        from backend.calculations.otd import calculate_true_otd
+        from backend.orm.work_order import WorkOrder
+
+        db = otd_setup["db"]
+        client = otd_setup["client"]
+
+        start = date(2026, 1, 1)
+        end = date(2026, 1, 31)
+
+        wo1 = WorkOrder(
+            work_order_id="WO-NET-001",
+            client_id=client.client_id,
+            style_model="NET-STYLE",
+            planned_quantity=10,
+            status=WorkOrderStatus.COMPLETED,
+            planned_ship_date=datetime(2026, 1, 10, 12, 0),
+            actual_delivery_date=datetime(2026, 1, 10, 8, 0),  # before planned -> on time
+        )
+        wo2 = WorkOrder(
+            work_order_id="WO-NET-002",
+            client_id=client.client_id,
+            style_model="NET-STYLE",
+            planned_quantity=10,
+            status=WorkOrderStatus.COMPLETED,
+            planned_ship_date=datetime(2026, 1, 15, 12, 0),
+            actual_delivery_date=datetime(2026, 1, 14, 8, 0),  # before planned -> on time
+        )
+        wo3 = WorkOrder(
+            work_order_id="WO-NET-003",
+            client_id=client.client_id,
+            style_model="NET-STYLE",
+            planned_quantity=10,
+            status=WorkOrderStatus.COMPLETED,
+            planned_ship_date=datetime(2026, 1, 5, 12, 0),
+            actual_delivery_date=datetime(2026, 1, 8, 8, 0),  # after planned -> late
+            delay_classification="justified",
+            justified_delay_reason="customer_request",
+        )
+        wo4 = WorkOrder(
+            work_order_id="WO-NET-004",
+            client_id=client.client_id,
+            style_model="NET-STYLE",
+            planned_quantity=10,
+            status=WorkOrderStatus.COMPLETED,
+            planned_ship_date=datetime(2026, 1, 6, 12, 0),
+            actual_delivery_date=datetime(2026, 1, 9, 8, 0),  # after planned -> late
+            delay_classification="unjustified",
+        )
+        wo5 = WorkOrder(
+            work_order_id="WO-NET-005",
+            client_id=client.client_id,
+            style_model="NET-STYLE",
+            planned_quantity=10,
+            status=WorkOrderStatus.COMPLETED,
+            planned_ship_date=datetime(2026, 1, 7, 12, 0),
+            actual_delivery_date=datetime(2026, 1, 12, 8, 0),  # after planned -> late
+            # delay_classification left NULL -> unclassified
+        )
+        wo6 = WorkOrder(
+            work_order_id="WO-NET-006",
+            client_id=client.client_id,
+            style_model="NET-STYLE",
+            planned_quantity=10,
+            status=WorkOrderStatus.IN_PROGRESS,
+            planned_ship_date=datetime(2026, 1, 3, 12, 0),  # before `end` -> is_late(wo, end) True
+            actual_delivery_date=None,
+        )
+
+        db.add_all([wo1, wo2, wo3, wo4, wo5, wo6])
+        db.commit()
+
+        result = calculate_true_otd(db, client.client_id, start, end)
+
+        # gross true-OTD = 2 on_time / 5 delivered = 40.0
+        assert result["true_otd"]["percentage"] == Decimal("40.0")
+        # net true-OTD = (2 on_time + 1 justified-late) / 5 delivered = 60.0
+        assert result["true_otd"]["net_percentage"] == Decimal("60.0")
+        # standard_otd mirrors true_otd: all 5 delivered orders are COMPLETED
+        assert result["standard_otd"]["percentage"] == Decimal("40.0")
+        assert result["standard_otd"]["net_percentage"] == Decimal("60.0")
+        # late_counts: 3 delivered-late (WO3,WO4,WO5) + 1 undelivered-past-due (WO6) = 4
+        assert result["late_counts"] == {"total": 4, "justified": 1, "unjustified": 1, "unclassified": 2}
+        # justified_by_reason: only WO3 is justified
+        assert result["justified_by_reason"] == {"customer_request": 1}
+
+
 class TestCalculateOTDByProductWithData:
     """Tests for calculate_otd_by_product with actual work orders."""
 

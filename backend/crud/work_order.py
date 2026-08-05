@@ -190,6 +190,47 @@ def update_work_order(
     if hasattr(db_work_order, "client_id") and db_work_order.client_id:
         verify_client_access(current_user, db_work_order.client_id)
 
+    # Justified-delay classification invariants (spec §5, Cycle 2).
+    # touched fields => supervisory-only; classification only on late orders;
+    # justified_delay_reason required iff classification == "justified";
+    # clearing/un-justifying always drops a stale reason (and clearing drops
+    # the note too, since a note without a classification is meaningless).
+    CLASSIFICATION_FIELDS = {"delay_classification", "justified_delay_reason", "delay_classification_note"}
+    touched = CLASSIFICATION_FIELDS & set(work_order_update)
+    if touched:
+        from datetime import date as _date
+        from enum import Enum as _Enum
+
+        from backend.calculations.otd import is_late
+        from backend.orm.user import SUPERVISORY_ROLES
+
+        if current_user.role not in SUPERVISORY_ROLES:
+            raise HTTPException(status_code=403, detail="Delay classification requires a supervisory role")
+
+        # model_dump(exclude_unset=True) yields Enum instances (not raw
+        # strings) for enum-typed fields — coerce to plain str so the ORM
+        # column stores/compares consistently.
+        for _field in touched:
+            _value = work_order_update[_field]
+            if isinstance(_value, _Enum):
+                work_order_update[_field] = _value.value
+
+        new_classification = work_order_update.get("delay_classification", db_work_order.delay_classification)
+        if new_classification is not None and not is_late(db_work_order, _date.today()):
+            raise HTTPException(status_code=422, detail="Delay classification is only allowed on late work orders")
+        if new_classification == "justified":
+            reason = work_order_update.get("justified_delay_reason", db_work_order.justified_delay_reason)
+            if reason is None:
+                raise HTTPException(
+                    status_code=422,
+                    detail="justified_delay_reason is required when classification is 'justified'",
+                )
+        else:
+            # unjustified or cleared: never store a stale reason; clearing also drops the note
+            work_order_update["justified_delay_reason"] = None
+            if new_classification is None:
+                work_order_update["delay_classification_note"] = None
+
     # Phase 10: Validate status transition if status is being changed
     new_status = work_order_update.get("status")
     if new_status and new_status != db_work_order.status and validate_status_transition:

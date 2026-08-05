@@ -100,7 +100,7 @@
                   <span class="text-body-2 font-weight-medium">{{ category.name }}</span>
                 </div>
                 <div class="d-flex align-center">
-                  <span class="text-caption text-grey mr-2">
+                  <span class="text-caption text-medium-emphasis mr-2">
                     {{ category.entered }}/{{ category.expected }}
                   </span>
                   <v-chip

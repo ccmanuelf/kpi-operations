@@ -60,6 +60,7 @@ export interface KPIPayload {
   rate?: number | null
   ppm?: number | null
   defect_rate_percentage?: number | null
+  net_percentage?: number | null
   fpy?: number | null
   average_days?: number | null
   average_hours?: number | null
@@ -318,6 +319,10 @@ export const useKPIStore = defineStore('kpi', {
         higherBetter: true,
         icon: 'mdi-truck-delivery',
         route: '/kpi/on-time-delivery',
+        subtitle:
+          state.onTimeDelivery?.net_percentage != null
+            ? `${state.onTimeDelivery.net_percentage}% ${i18n.global.t('delay.netOfJustified')}`
+            : null,
         inference: state.inference.onTimeDelivery,
       },
       {

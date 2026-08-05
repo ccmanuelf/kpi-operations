@@ -153,6 +153,71 @@
 
         <v-divider />
 
+        <!-- Delay Classification (Cycle 2, renders only for late orders) -->
+        <template v-if="isDelaySectionVisible(workOrder)">
+          <div class="px-6 py-4" data-testid="delay-classification-section">
+            <div class="text-subtitle-2 font-weight-bold mb-3">{{ t('delay.sectionTitle') }}</div>
+
+            <v-select
+              v-model="delayForm.classification"
+              :items="classificationOptions"
+              item-title="title"
+              item-value="value"
+              :label="t('delay.classificationLabel')"
+              variant="outlined"
+              density="compact"
+              hide-details="auto"
+              class="mb-3"
+              :disabled="!canEditDelay"
+              data-testid="delay-classification-select"
+            />
+
+            <v-select
+              v-if="delayForm.classification === 'justified'"
+              v-model="delayForm.reason"
+              :items="reasonOptions"
+              item-title="title"
+              item-value="value"
+              :label="t('delay.reasonLabel')"
+              variant="outlined"
+              density="compact"
+              hide-details="auto"
+              class="mb-3"
+              required
+              :rules="[(v) => !!v || t('common.required')]"
+              :disabled="!canEditDelay"
+              data-testid="delay-reason-select"
+            />
+
+            <v-textarea
+              v-model="delayForm.note"
+              :label="t('common.notes')"
+              variant="outlined"
+              density="compact"
+              rows="2"
+              hide-details="auto"
+              class="mb-3"
+              :disabled="!canEditDelay"
+              data-testid="delay-note-textarea"
+            />
+
+            <v-btn
+              v-if="canEditDelay"
+              color="primary"
+              variant="tonal"
+              size="small"
+              :loading="savingDelay"
+              :disabled="delayForm.classification === 'justified' && !delayForm.reason"
+              data-testid="delay-classification-save-btn"
+              @click="saveDelayClassification"
+            >
+              {{ t('common.save') }}
+            </v-btn>
+          </div>
+
+          <v-divider />
+        </template>
+
         <!-- QC Status -->
         <div class="px-6 py-4">
           <div class="text-subtitle-2 font-weight-bold mb-3">{{ t('workOrderDrawer.qualityControl') }}</div>
@@ -284,16 +349,28 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { parseISO, isAfter, startOfDay } from 'date-fns'
 import { formatLocaleDate } from '@/utils/localeDate'
 import api from '@/services/api'
 import { useNotificationStore } from '@/stores/notificationStore'
+import { useAuthStore } from '@/stores/authStore'
 import JobLineItems from '@/components/JobLineItems.vue'
 import WorkOrderStatusChip from '@/components/workflow/WorkOrderStatusChip.vue'
 import WorkOrderTransitionHistory from '@/components/workflow/WorkOrderTransitionHistory.vue'
 import WorkOrderElapsedTime from '@/components/workflow/WorkOrderElapsedTime.vue'
+import {
+  DELAY_CLASSIFICATION_CODES,
+  JUSTIFIED_DELAY_REASON_CODES,
+  classificationLabelKey,
+  delayReasonLabelKey,
+} from '@/constants/delayTaxonomy'
+import {
+  canEditDelayClassification,
+  isDelaySectionVisible,
+  buildDelayClassificationPayload,
+} from '@/composables/useDelayClassification'
 
 const props = defineProps({
   modelValue: {
@@ -310,8 +387,62 @@ const emit = defineEmits(['update:modelValue', 'update', 'edit'])
 
 const { t, locale } = useI18n()
 const notificationStore = useNotificationStore()
+const authStore = useAuthStore()
 const workOrderRty = ref(null)
 const transitionHistoryRef = ref(null)
+
+// Delay classification (Cycle 2) — section visibility/role-gating/payload
+// logic lives in useDelayClassification.ts (pure, unit-tested); this SFC
+// only wires it to local form state and the update API call.
+const delayForm = ref({ classification: null, reason: null, note: '' })
+const savingDelay = ref(false)
+
+watch(
+  () => props.workOrder,
+  (wo) => {
+    delayForm.value = {
+      classification: wo?.delay_classification ?? null,
+      reason: wo?.justified_delay_reason ?? null,
+      note: wo?.delay_classification_note ?? '',
+    }
+  },
+  { immediate: true },
+)
+
+const canEditDelay = computed(() => canEditDelayClassification(authStore.user?.role))
+
+const classificationOptions = computed(() => [
+  { title: t(classificationLabelKey('unclassified')), value: null },
+  ...DELAY_CLASSIFICATION_CODES.map((code) => ({
+    title: t(classificationLabelKey(code)),
+    value: code,
+  })),
+])
+
+const reasonOptions = computed(() =>
+  JUSTIFIED_DELAY_REASON_CODES.map((code) => ({
+    title: t(delayReasonLabelKey(code)),
+    value: code,
+  })),
+)
+
+const saveDelayClassification = async () => {
+  if (!props.workOrder) return
+  savingDelay.value = true
+  try {
+    const payload = buildDelayClassificationPayload(delayForm.value)
+    await api.updateWorkOrder(props.workOrder.work_order_id, payload)
+    // delayForm already reflects the saved values (it IS the form the
+    // user just submitted) — no need to mutate the workOrder prop.
+    // Tell the parent to reload so the grid's badge picks up the change.
+    notificationStore.showSuccess(t('workOrders.updated'))
+    emit('update')
+  } catch (error) {
+    notificationStore.showError(error.response?.data?.detail || t('errors.general'))
+  } finally {
+    savingDelay.value = false
+  }
+}
 
 // Handle RTY data loaded from JobLineItems
 const onRtyLoaded = (rtyData) => {

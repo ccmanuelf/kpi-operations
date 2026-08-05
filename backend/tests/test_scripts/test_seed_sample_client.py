@@ -563,6 +563,77 @@ def test_seeded_downtime_entries_are_valid_taxonomy_pairs_with_an_override(db_se
     assert override_seen, "expected at least one deterministic scheduling-override row (seq % 50 == 1)"
 
 
+def test_seeded_work_orders_classify_only_late_orders_deterministically(db_session):
+    """Delay classification (Task 9, Cycle 2) must only ever land on WOs that
+    are genuinely late per the single is_late() definition — asserted here,
+    not reimplemented in the seeder — and the fixed i % 3 pattern over the
+    late subset must produce all three outcomes: justified (with a valid
+    reason), unjustified (no reason), and unclassified-late (left NULL).
+
+    Also (round-1 review, Minor): the reason rotation must actually reach all
+    6 JustifiedDelayReasonEnum members across the dataset — an exact-set
+    assertion, so the round-1 modular-arithmetic bug (late_ct % 6 collapsing
+    to {0, 3} because gcd(3, 6) == 3) can't regress silently. Achieving this
+    requires staggering each client's justified_reason_offset (mirroring
+    what main() does for a real multi-client seed run — see
+    JUSTIFIED_REASONS_PER_CLIENT in _seed_operations.py): 3 DEFAULT_CLIENTS ×
+    2 justified rows/client = 6, covering reason indices 0-5 exactly once
+    when the offsets don't overlap.
+    """
+    from backend.orm import WorkOrder
+    from backend.orm.delay_taxonomy import DelayClassificationEnum, JustifiedDelayReasonEnum
+    from backend.calculations.otd import is_late
+    from backend.scripts._seed_operations import JUSTIFIED_REASONS_PER_CLIENT
+
+    _seed_admin(db_session)
+    valid_classifications = {c.value for c in DelayClassificationEnum}
+    valid_reasons = {r.value for r in JustifiedDelayReasonEnum}
+
+    for i, client_id in enumerate(seed.DEFAULT_CLIENTS):
+        seed.seed_client(
+            db_session,
+            seed.CLIENT_SPECS[client_id],
+            days=30,
+            anchor=FIXED_ANCHOR,
+            justified_reason_offset=i * JUSTIFIED_REASONS_PER_CLIENT,
+        )
+    db_session.commit()
+
+    wos = db_session.query(WorkOrder).filter(WorkOrder.client_id.in_(seed.DEFAULT_CLIENTS)).all()
+    assert wos, "expected at least one seeded WorkOrder"
+
+    late_wos = [wo for wo in wos if is_late(wo, FIXED_ANCHOR)]
+    justified_seen = False
+    unjustified_seen = False
+    unclassified_late_seen = False
+    seeded_reasons: set = set()
+
+    for wo in wos:
+        if wo.delay_classification is not None:
+            # Every classified order must be late — classification never
+            # applies to on-time/undelivered-not-yet-due orders.
+            assert is_late(wo, FIXED_ANCHOR), f"{wo.work_order_id} classified but not late"
+            assert wo.delay_classification in valid_classifications
+            if wo.delay_classification == DelayClassificationEnum.JUSTIFIED.value:
+                justified_seen = True
+                assert wo.justified_delay_reason in valid_reasons
+                seeded_reasons.add(wo.justified_delay_reason)
+            else:
+                unjustified_seen = True
+                assert wo.justified_delay_reason is None
+
+    for wo in late_wos:
+        if wo.delay_classification is None:
+            unclassified_late_seen = True
+
+    assert justified_seen, "expected at least one justified late WO"
+    assert unjustified_seen, "expected at least one unjustified late WO"
+    assert unclassified_late_seen, "expected at least one unclassified (NULL) late WO"
+    assert (
+        seeded_reasons == valid_reasons
+    ), f"expected all 6 JustifiedDelayReasonEnum values across the dataset, got {sorted(seeded_reasons)}"
+
+
 def test_simulation_scenario_seeded(db_session):
     from backend.orm.simulation_scenario import SimulationScenario
 

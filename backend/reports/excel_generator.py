@@ -609,6 +609,51 @@ class ExcelReportGenerator:
                 }
             )
 
+        # On-Time Delivery (justified-delay-flag Cycle 2, Task 7): gross +
+        # net-of-justified, as two rows (this table has one KPI per row, no
+        # per-KPI secondary column). Sourced from calculate_true_otd's
+        # standard_otd mode — "all orders with delivery dates", the closest
+        # analog to this table's other broad averages (true_otd restricts to
+        # COMPLETED-only orders, a narrower definition than the rest of this
+        # sheet). Both rows come from the SAME calculate_true_otd(...) call so
+        # gross and net stay internally consistent.
+        #
+        # Only rendered for a single-client report: calculate_true_otd is
+        # inherently single-client (mirrors /api/kpi/otd's true_otd/
+        # standard_otd keys, which are likewise omitted for multi/all-client
+        # scope) — an "all clients" comprehensive report has no single-client
+        # rollup to compute here.
+        if client_id:
+            from backend.calculations.otd import calculate_true_otd
+
+            otd_result = calculate_true_otd(self.db, client_id, start_date, end_date)
+            # Guard: with zero delivered orders in the window, standard_otd's
+            # percentage/net_percentage are both 0 (no data, not "0% OTD") —
+            # rendering them would show a misleading "0.0% / At Risk" row.
+            if otd_result["standard_otd"]["total"] > 0:
+                otd_gross = float(otd_result["standard_otd"]["percentage"])
+                otd_net = float(otd_result["standard_otd"]["net_percentage"])
+                kpi_data.append(
+                    {
+                        "name": "OTD",
+                        "current": otd_gross,
+                        "target": 95,
+                        "status": "On Target" if otd_gross >= 95 else "At Risk",
+                        "trend": "→",
+                        "format": '0.0"%"',
+                    }
+                )
+                kpi_data.append(
+                    {
+                        "name": "OTD (Net of Justified)",
+                        "current": otd_net,
+                        "target": 95,
+                        "status": "On Target" if otd_net >= 95 else "At Risk",
+                        "trend": "→",
+                        "format": '0.0"%"',
+                    }
+                )
+
         return kpi_data
 
     def _fetch_production_data(

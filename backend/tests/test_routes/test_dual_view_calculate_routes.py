@@ -149,6 +149,25 @@ class TestOTDEndpoint:
         assert body["site_adjusted_value"] == "75.00"
         assert body["standard_value"] == "50.00"
 
+    def test_otd_response_surfaces_net_of_justified(self, seeded):
+        """spec §6 otd_net_of_justified: a justified-late order counts as
+        on-time in net_of_justified but not in standard_value.
+
+        Orders: 2 on-time (delay_pct=0), 1 late-but-justified (delay_pct=
+        0.03, classification="justified"), 1 late-unclassified (delay_pct=
+        0.10). standard_value = 2/4 on-time = 50.00. net_of_justified additionally
+        counts the justified-late order as on-time = 3/4 = 75.00.
+        """
+        body = _otd_body()
+        body["raw_inputs"]["orders"][2]["delay_classification"] = "justified"
+
+        client = TestClient(_build_app(seeded["db"], seeded["admin"]))
+        resp = client.post("/api/metrics/calculate/otd", json=body)
+        assert resp.status_code == 201, resp.text
+        data = resp.json()
+        assert data["standard_value"] == "50.00"
+        assert data["net_of_justified"] == "75.00"
+
 
 class TestFPYEndpoint:
     def test_fpy_returns_result(self, seeded):

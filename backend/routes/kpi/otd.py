@@ -4,6 +4,7 @@ KPI On-Time Delivery (OTD) Routes
 OTD calculation, late order identification, and client-level OTD aggregation.
 """
 
+from decimal import Decimal
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import func, case
@@ -12,7 +13,7 @@ from datetime import date, datetime, timedelta, timezone
 
 from backend.utils.logging_utils import get_module_logger
 from backend.database import get_db
-from backend.calculations.otd import identify_late_orders
+from backend.calculations.otd import calculate_true_otd, identify_late_orders
 from backend.auth.jwt import get_current_user, ClientScope, resolve_client_scope
 from backend.orm.user import User
 
@@ -81,7 +82,7 @@ def calculate_otd_kpi(
 
     otd_percentage = (on_time_count / total_orders * 100) if total_orders > 0 else 0
 
-    return {
+    result: dict[str, Any] = {
         "start_date": start_date,
         "end_date": end_date,
         "client_id": client_id,
@@ -90,6 +91,36 @@ def calculate_otd_kpi(
         "total_orders": total_orders,
         "calculation_timestamp": datetime.now(tz=timezone.utc),
     }
+
+    # Additive: surface calculate_true_otd's gross+net/late_counts/
+    # justified_by_reason keys verbatim (spec §6) whenever the request's
+    # scope resolves to a single client — calculate_true_otd is inherently
+    # single-client. Scope covering zero/multiple/all clients (e.g. an
+    # admin request with no client_id, or a leader assigned 2+ clients)
+    # keeps the response as-is; there is no single-client rollup to
+    # compute, so nothing is added (not an error). Deliberately NOT
+    # `scope.as_single()` bare — that raises HTTPException 400 when
+    # client_ids has >1 entries (the PR #144 footgun: a multi-client
+    # leader would get a 400 where this endpoint previously returned 200).
+    resolved_client_id: Optional[str] = None
+    if scope.client_ids is not None and len(scope.client_ids) == 1:
+        resolved_client_id = scope.client_ids[0]
+    if resolved_client_id is not None:
+        true_otd_result = calculate_true_otd(db, resolved_client_id, start_date, end_date)
+        result["true_otd"] = _coerce_decimal_leaves(true_otd_result["true_otd"])
+        result["standard_otd"] = _coerce_decimal_leaves(true_otd_result["standard_otd"])
+        result["late_counts"] = true_otd_result["late_counts"]
+        result["justified_by_reason"] = true_otd_result["justified_by_reason"]
+
+    return result
+
+
+def _coerce_decimal_leaves(block: dict[str, Any]) -> dict[str, Any]:
+    """Coerce Decimal leaves (percentage/net_percentage) to float so FastAPI's
+    JSON encoder emits numbers, not strings — regression of the formally-
+    eradicated #145 Decimal-as-string class (see calculate_true_otd's
+    `.quantize(Decimal("0.01"))` percentage/net_percentage fields)."""
+    return {key: (float(value) if isinstance(value, Decimal) else value) for key, value in block.items()}
 
 
 @otd_router.get("/late-orders")

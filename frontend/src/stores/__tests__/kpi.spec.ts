@@ -25,6 +25,7 @@ vi.mock('@/i18n', () => ({
           'kpi.ppm': 'PPM',
           'kpi.throughputTime': 'Throughput Time',
           'kpi.defectRatePercent': '{value}% defect rate',
+          'delay.netOfJustified': 'Net of justified',
         }
         const tpl = messages[key] ?? key
         if (params && typeof tpl === 'string') {
@@ -217,6 +218,27 @@ describe('KPI Store', () => {
       const absenteeism = kpis.find(k => k.key === 'absenteeism')
 
       expect(absenteeism.higherBetter).toBe(false)
+    })
+
+    it('includes onTimeDelivery net-of-justified subtitle when the payload carries net_percentage', () => {
+      const store = useKPIStore()
+      store.onTimeDelivery = { percentage: 40.0, net_percentage: 60.0 }
+
+      const kpis = store.allKPIs
+      const otd = kpis.find(k => k.key === 'onTimeDelivery')
+
+      expect(otd.value).toBe(40.0)
+      expect(otd.subtitle).toBe('60% Net of justified')
+    })
+
+    it('omits onTimeDelivery subtitle when net_percentage is absent (multi/all-client scope)', () => {
+      const store = useKPIStore()
+      store.onTimeDelivery = { percentage: 40.0 }
+
+      const kpis = store.allKPIs
+      const otd = kpis.find(k => k.key === 'onTimeDelivery')
+
+      expect(otd.subtitle).toBeNull()
     })
   })
 

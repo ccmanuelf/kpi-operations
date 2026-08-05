@@ -7,10 +7,11 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 from typing import List, Optional, Dict, Any
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 from backend.utils.logging_utils import get_module_logger
 from backend.database import get_db
+from backend.calculations.otd import is_late as _is_late
 from backend.schemas.work_order import WorkOrderCreate, WorkOrderUpdate, WorkOrderResponse
 from backend.services.work_order_service import (
     create_order as create_work_order,
@@ -51,6 +52,19 @@ def _check_wo_write_permission(user: User) -> None:
         )
 
 
+def _with_is_late(wo: Any) -> WorkOrderResponse:
+    """Build a WorkOrderResponse with `is_late` populated.
+
+    is_late is derived (backend.calculations.otd.is_late), never a stored
+    column, so plain ORM-attribute response_model conversion always leaves
+    it at its schema default (False). Call this at every return site that
+    hands a WorkOrder row back to a client.
+    """
+    resp = WorkOrderResponse.model_validate(wo, from_attributes=True)
+    resp.is_late = _is_late(wo, date.today())
+    return resp
+
+
 router = APIRouter(prefix="/api/work-orders", tags=["Work Orders"])
 
 
@@ -83,7 +97,8 @@ def list_work_orders(
     List work orders with filters
     SECURITY: Returns only work orders for user's authorized clients
     """
-    return get_work_orders(db, current_user, skip, limit, client_id, status_filter, style_model)
+    orders = get_work_orders(db, current_user, skip, limit, client_id, status_filter, style_model)
+    return [_with_is_late(wo) for wo in orders]
 
 
 @router.get("/status/{status}", response_model=List[WorkOrderResponse])
@@ -131,7 +146,7 @@ def get_work_order_endpoint(
     work_order = get_work_order(db, work_order_id, current_user)
     if not work_order:
         raise HTTPException(status_code=404, detail="Work order not found or access denied")
-    return work_order
+    return _with_is_late(work_order)
 
 
 @router.get("/{work_order_id}/progress")
@@ -442,7 +457,7 @@ def update_work_order_endpoint(
     if not updated:
         raise HTTPException(status_code=404, detail="Work order not found or access denied")
     db.commit()
-    return updated
+    return _with_is_late(updated)
 
 
 @router.patch("/{work_order_id}/status", response_model=WorkOrderResponse)

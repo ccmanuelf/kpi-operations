@@ -30,6 +30,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 
 from backend.database import SessionLocal  # noqa: E402
 from backend.db.factories import TestDataFactory  # noqa: E402
+from backend.orm.delay_taxonomy import DelayClassificationEnum, JustifiedDelayReasonEnum  # noqa: E402
 from backend.orm.downtime_taxonomy import DEFAULT_CATEGORY_BY_REASON, DowntimeReasonEnum  # noqa: E402
 
 # Import all ORM models via centralized registry (backend/orm/__init__.py).
@@ -1193,6 +1194,35 @@ def init_database() -> None:
         # seeder can stay consistent without requiring a second pass.
         wo_expected_production: Dict[str, int] = {}
 
+        # Deterministic delay-classification mix (Task 9, Cycle 2). WO_PLAN's
+        # only late row is "shipped_late" (req_off=-8, ship_off=-3: delivered
+        # after required by construction — guaranteed late, so is_late() is
+        # NOT called here to decide eligibility; the seeder test asserts that
+        # guarantee via is_late() instead). Each of the 5 demo clients
+        # contributes exactly one such row (5 late WOs total), so `late_ct`
+        # below counts across the client loop and drives a fixed i % 3 state
+        # pattern: 0=justified, 1=unjustified, 2=unclassified (left NULL).
+        #
+        # Reason rotation uses a SEPARATE `justified_ct` counter, incremented
+        # only on justified rows, indexed mod 6 into JustifiedDelayReasonEnum
+        # — NOT `late_ct % 6`: late_ct only hits the justified branch when
+        # late_ct % 3 == 0, and gcd(3, 6) == 3 means late_ct % 6 would then
+        # only ever land on {0, 3}, making 4 of the 6 reasons unreachable at
+        # any scale (round-1 review finding).
+        #
+        # Ceiling: with only 5 late WOs total (1/client × 5 clients) and the
+        # 1-in-3 pattern, exactly 2 rows land justified (late_ct 0 and 3) —
+        # so at most 2 distinct reasons can ever appear here, not all 6. Full
+        # 6-reason coverage is only achievable in the sample seeder
+        # (_seed_operations.py / seed_sample_client.py), which has enough
+        # late rows per client (see JUSTIFIED_REASONS_PER_CLIENT) for a
+        # 3-client run to cover all 6 exactly. Reaching 6 here would require
+        # WO_PLAN to carry more late rows than the current 5 fixed,
+        # MASTER_PRODUCTS-indexed slots support — out of scope for this fix.
+        _delay_reasons = list(JustifiedDelayReasonEnum)
+        late_ct = 0
+        justified_ct = 0
+
         for client_id, client in clients.items():
             client_work_orders = []
             for idx, planned, wo_status, recv_off, req_off, ship_off, completion_pct, wo_scenario in WO_PLAN:
@@ -1213,6 +1243,17 @@ def init_database() -> None:
                 # capacity OTD panel shows 0% even for delivered orders.
                 wo.planned_start_date = datetime.combine(today_d + timedelta(days=recv_off), datetime.min.time())
                 wo.priority = "URGENT" if wo_scenario == "shipped_late" else ("HIGH" if idx <= 1 else "MEDIUM")
+
+                if wo_scenario == "shipped_late":
+                    pattern = late_ct % 3
+                    if pattern == 0:
+                        wo.delay_classification = DelayClassificationEnum.JUSTIFIED.value
+                        wo.justified_delay_reason = _delay_reasons[justified_ct % len(_delay_reasons)].value
+                        justified_ct += 1
+                    elif pattern == 1:
+                        wo.delay_classification = DelayClassificationEnum.UNJUSTIFIED.value
+                    # pattern == 2: leave both NULL (unclassified)
+                    late_ct += 1
 
                 expected_units = int(planned * completion_pct)
                 wo_expected_production[wo.work_order_id] = expected_units

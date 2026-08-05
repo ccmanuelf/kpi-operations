@@ -9,6 +9,8 @@ from datetime import datetime
 from decimal import Decimal
 from enum import Enum
 
+from backend.orm.delay_taxonomy import DelayClassificationEnum, JustifiedDelayReasonEnum
+
 
 class WorkOrderStatusEnum(str, Enum):
     """Work order status options for validation"""
@@ -139,6 +141,12 @@ class WorkOrderUpdate(BaseModel):
         description="PLANNED (from Capacity Planning) or AD_HOC (from Operations)",
     )
 
+    # Justified-delay classification (Cycle 2) — NULL = unclassified/clear.
+    # Invariants (spec §5) enforced in crud/work_order.py::update_work_order.
+    delay_classification: Optional[DelayClassificationEnum] = None
+    justified_delay_reason: Optional[JustifiedDelayReasonEnum] = None
+    delay_classification_note: Optional[str] = None
+
 
 class WorkOrderResponse(BaseModel):
     """Work order response model"""
@@ -188,6 +196,15 @@ class WorkOrderResponse(BaseModel):
     # Bridge to Capacity Planning
     capacity_order_id: Optional[int] = None
     origin: Optional[str] = None
+
+    # Justified-delay classification (Cycle 2). is_late is derived
+    # (backend.calculations.otd.is_late) — never a stored column — so it is
+    # NOT populated by plain ORM attribute mapping; routes must set it
+    # explicitly (see routes/work_orders.py::_with_is_late).
+    delay_classification: Optional[str] = None
+    justified_delay_reason: Optional[str] = None
+    delay_classification_note: Optional[str] = None
+    is_late: bool = False
 
     created_at: datetime
     updated_at: Optional[datetime] = None

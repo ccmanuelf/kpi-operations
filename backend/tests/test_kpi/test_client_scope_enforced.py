@@ -265,6 +265,34 @@ def test_leader_multi_client_chronic_holds_not_400_sees_both_clients(_bind, lead
         app.dependency_overrides.pop(get_current_user, None)
 
 
+def test_leader_multi_client_otd_not_400_omits_justified_delay_metrics(_bind, leader_user_multi_client):
+    """Regression (Task 6 review fix-round 1): calculate_otd_kpi's additive
+    merge of calculate_true_otd's keys used to call scope.as_single() bare,
+    which raises HTTPException(400) for any multi-client leader (client_ids
+    has >1 entry) — the PR #144 footgun (same bug class as the chronic-holds
+    regression above). A leader assigned to CLIENT-A and CLIENT-B calling
+    GET /api/kpi/otd with no client_id must get 200 with the PRE-EXISTING
+    response shape — calculate_true_otd has no multi-client rollup to
+    compute, so the additive keys are simply omitted, not an error."""
+    db = _bind
+    TestDataFactory.create_client(db, client_id="CLIENT-A")
+    TestDataFactory.create_client(db, client_id="CLIENT-B")
+    db.commit()
+
+    c = _as(leader_user_multi_client)
+    try:
+        r = c.get("/api/kpi/otd")
+        assert r.status_code == 200
+        data = r.json()
+        assert "late_counts" not in data
+        assert "justified_by_reason" not in data
+        assert "true_otd" not in data
+        assert "standard_otd" not in data
+        assert "otd_percentage" in data
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+
+
 def test_operator_quality_score_blocked_for_other_client(_bind, operator_user_client_a):
     """/api/quality/kpi/quality-score is product-keyed with no tenant check
     at all — any authenticated user could pass any product_id. Confirm a

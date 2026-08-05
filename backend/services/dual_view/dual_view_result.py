@@ -1,6 +1,7 @@
 """DualViewResult — what every Phase 3 service returns."""
 
 from datetime import datetime
+from decimal import Decimal
 from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict
@@ -28,6 +29,9 @@ class DualViewResult(BaseModel):
     site_adjusted_value: Any
     delta: Optional[float] = None
     delta_pct: Optional[float] = None
+    # OTD-specific (spec §6 `otd_net_of_justified`): justified-late orders
+    # treated as on-time. None for every other dual-view metric.
+    net_of_justified: Optional[Decimal] = None
     assumptions_applied: list[AssumptionApplied]
     assumptions_snapshot: dict[str, Any]  # what got persisted to DB
     calculated_at: datetime

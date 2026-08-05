@@ -135,6 +135,41 @@ class TestSnapshotPersistence:
         assert snapshot["otd_carrier_buffer_pct"]["assumption_id"] == approved.assumption_id
 
 
+def _justified_net_inputs() -> OTDRawInputs:
+    """10 orders: 5 on-time (delay=0), 2 early (-5%), 2 late 3% classified
+    "justified", 1 late 10% left unclassified."""
+    delays = (
+        [OrderDelay(delay_pct=Decimal("0.0")) for _ in range(5)]
+        + [OrderDelay(delay_pct=Decimal("-0.05")) for _ in range(2)]
+        + [OrderDelay(delay_pct=Decimal("0.03"), delay_classification="justified") for _ in range(2)]
+        + [OrderDelay(delay_pct=Decimal("0.10"))]
+    )
+    return OTDRawInputs(orders=delays)
+
+
+class TestNetOfJustified:
+    def test_buffer_zero_justified_late_orders_count_as_on_time(self, transactional_db):
+        client, admin, _ = _make_users(transactional_db)
+        svc = OTDCalculationService(transactional_db, admin)
+        result = svc.calculate(
+            client_id=client.client_id,
+            period_start=PERIOD_START,
+            period_end=PERIOD_END,
+            raw_inputs=_justified_net_inputs(),
+            persist=False,
+        )
+        # gross (standard_value, buffer=0): 5 zero-delay + 2 early(-5%) = 7
+        # on-time out of 10 -> 70%. The 2 orders late by 3% (justified) and
+        # the 1 late by 10% (unclassified) are NOT on-time for gross.
+        assert result.standard_value == Decimal("70.00")
+        # net (net_of_justified, buffer=0): gross 7 + 2 justified-late (3%,
+        # still >0 delay_pct but delay_classification == "justified") = 9
+        # on-time out of 10 -> 90%. The unclassified 10%-late order stays
+        # excluded, proving the net rule is classification-gated, not a
+        # blanket buffer widening.
+        assert result.net_of_justified == Decimal("90.00")
+
+
 class TestEmptyInputs:
     def test_no_orders_returns_zero(self, transactional_db):
         client, admin, _ = _make_users(transactional_db)

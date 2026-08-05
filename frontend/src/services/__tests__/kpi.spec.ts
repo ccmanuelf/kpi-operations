@@ -209,6 +209,33 @@ describe('KPI API', () => {
       expect(result.data.on_time_count).toBe(185)
       expect(result.data.total_orders).toBe(200)
       expect(result.data.by_client).toHaveLength(1)
+      // No `standard_otd` block (multi/all-client scope) -> null, not undefined/0.
+      expect(result.data.net_percentage).toBeNull()
+    })
+
+    it('passes through net_percentage from standard_otd.net_percentage (single-client scope)', async () => {
+      api.get.mockImplementation((url) => {
+        if (url === '/kpi/otd') {
+          return Promise.resolve({ data: {
+            otd_percentage: 40.0,
+            on_time_count: 2,
+            total_orders: 5,
+            standard_otd: { percentage: 40.0, net_percentage: 60.0 }
+          }})
+        }
+        if (url === '/kpi/otd/by-client') {
+          return Promise.resolve({ data: [] })
+        }
+        if (url === '/kpi/otd/late-deliveries') {
+          return Promise.resolve({ data: [] })
+        }
+        return Promise.resolve({ data: {} })
+      })
+
+      const result = await kpiApi.getOnTimeDelivery({})
+
+      expect(result.data.percentage).toBe(40.0)
+      expect(result.data.net_percentage).toBe(60.0)
     })
 
     it('returns defaults on error', async () => {
@@ -217,6 +244,7 @@ describe('KPI API', () => {
       const result = await kpiApi.getOnTimeDelivery({})
 
       expect(result.data.percentage).toBe(0)
+      expect(result.data.net_percentage).toBeNull()
     })
   })
 

@@ -20,6 +20,7 @@ import api from '@/services/api'
 import { useAuthStore } from '@/stores/authStore'
 import { useKPIStore } from '@/stores/kpi'
 import { formatLocaleDateIntl } from '@/utils/localeDate'
+import { delayBadge, classificationLabelKey, type DelayBadgeRow } from '@/constants/delayTaxonomy'
 
 export interface WorkOrderRow {
   work_order_id?: string
@@ -34,6 +35,10 @@ export interface WorkOrderRow {
   customer_po_number?: string
   ideal_cycle_time?: number | null
   notes?: string
+  is_late?: boolean
+  delay_classification?: string | null
+  justified_delay_reason?: string | null
+  delay_classification_note?: string | null
   _isNew?: boolean
   _isSaving?: boolean
   [key: string]: unknown
@@ -333,6 +338,15 @@ export default function useWorkOrderGridData(
       width: 150,
     },
     {
+      headerName: t('delay.sectionTitle'),
+      field: '_delay',
+      editable: false,
+      sortable: false,
+      filter: false,
+      cellRenderer: (params) => renderDelayBadge(params.data, t),
+      width: 150,
+    },
+    {
       headerName: t('production.cycleTime'),
       field: 'ideal_cycle_time',
       editable: true,
@@ -408,11 +422,13 @@ const renderProgressBar = (pct: number): HTMLElement => {
   return wrap
 }
 
+// #9e9e9e (Vuetify grey-500) on white is 2.68:1 — fails WCAG-AA (needs
+// 4.5:1); found while fixing the delay-badge column's own copy of this
+// pattern (fix round 2, Task 8). An empty cell is AA-safe by construction
+// and has no low-contrast text to fail against either theme's background.
 const renderStatusChip = (status: string): HTMLElement => {
   const span = document.createElement('span')
   if (!status) {
-    span.textContent = '--'
-    span.style.color = '#9e9e9e'
     return span
   }
   const color = STATUS_COLORS[status] || STATUS_COLORS.RECEIVED
@@ -424,8 +440,6 @@ const renderStatusChip = (status: string): HTMLElement => {
 const renderPriorityChip = (priority: string | null | undefined): HTMLElement => {
   const span = document.createElement('span')
   if (!priority) {
-    span.textContent = '-'
-    span.style.color = '#9e9e9e'
     return span
   }
   const color = PRIORITY_COLORS[priority] || '#757575'
@@ -440,8 +454,6 @@ const renderDateWithOverdueFlag = (
 ): HTMLElement => {
   const span = document.createElement('span')
   if (!planned_ship_date) {
-    span.textContent = '-'
-    span.style.color = '#9e9e9e'
     return span
   }
   const date = new Date(planned_ship_date)
@@ -454,6 +466,31 @@ const renderDateWithOverdueFlag = (
     span.style.fontWeight = '600'
     span.textContent = `⚠ ${formatted}`
   }
+  return span
+}
+
+// warning/info/error mapped to the same hexes as STATUS_COLORS' ON_HOLD /
+// ACTIVE / REJECTED so the delay badge reads consistently with the rest
+// of this grid's tag palette.
+const DELAY_BADGE_COLORS: Record<string, string> = {
+  warning: '#b45309',
+  info: '#1976d2',
+  error: '#c62828',
+}
+
+const renderDelayBadge = (row: DelayBadgeRow, t: (_key: string) => string): HTMLElement => {
+  const span = document.createElement('span')
+  const badge = delayBadge(row)
+  if (!badge) {
+    // Non-late rows: nothing to classify. A muted-grey dash placeholder
+    // (#9e9e9e on white, 2.68:1) failed the WCAG-AA contrast gate
+    // (needs 4.5:1) in both themes — leave the cell empty instead.
+    // AA-safe by construction; no color/text to fail against either
+    // theme's background.
+    return span
+  }
+  span.textContent = t(classificationLabelKey(badge.key))
+  span.style.cssText = tagStyle(DELAY_BADGE_COLORS[badge.color])
   return span
 }
 

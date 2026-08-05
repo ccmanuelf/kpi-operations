@@ -68,6 +68,10 @@ class CalculateResponse(BaseModel):
     site_adjusted_value: str
     delta: float | None
     delta_pct: float | None
+    # OTD-specific (spec §6 `otd_net_of_justified`), mirrors DualViewResult.
+    # None for every other dual-view metric. Stringified to match
+    # standard_value/site_adjusted_value's existing str-of-Decimal idiom.
+    net_of_justified: Optional[str] = None
     assumptions_applied_count: int
 
 
@@ -103,6 +107,7 @@ def calculate_oee_endpoint(
         site_adjusted_value=str(result.site_adjusted_value),
         delta=result.delta,
         delta_pct=result.delta_pct,
+        net_of_justified=str(result.net_of_justified) if result.net_of_justified is not None else None,
         assumptions_applied_count=len(result.assumptions_applied),
     )
 
@@ -131,6 +136,7 @@ def calculate_otd_endpoint(
         site_adjusted_value=str(result.site_adjusted_value),
         delta=result.delta,
         delta_pct=result.delta_pct,
+        net_of_justified=str(result.net_of_justified) if result.net_of_justified is not None else None,
         assumptions_applied_count=len(result.assumptions_applied),
     )
 
@@ -159,6 +165,7 @@ def calculate_fpy_endpoint(
         site_adjusted_value=str(result.site_adjusted_value),
         delta=result.delta,
         delta_pct=result.delta_pct,
+        net_of_justified=str(result.net_of_justified) if result.net_of_justified is not None else None,
         assumptions_applied_count=len(result.assumptions_applied),
     )
 
@@ -221,6 +228,7 @@ def calculate_oee_from_period(
         site_adjusted_value=str(result.site_adjusted_value),
         delta=result.delta,
         delta_pct=result.delta_pct,
+        net_of_justified=str(result.net_of_justified) if result.net_of_justified is not None else None,
         assumptions_applied_count=len(result.assumptions_applied),
     )
 
@@ -256,6 +264,7 @@ def calculate_otd_from_period(
         site_adjusted_value=str(result.site_adjusted_value),
         delta=result.delta,
         delta_pct=result.delta_pct,
+        net_of_justified=str(result.net_of_justified) if result.net_of_justified is not None else None,
         assumptions_applied_count=len(result.assumptions_applied),
     )
 
@@ -291,6 +300,7 @@ def calculate_fpy_from_period(
         site_adjusted_value=str(result.site_adjusted_value),
         delta=result.delta,
         delta_pct=result.delta_pct,
+        net_of_justified=str(result.net_of_justified) if result.net_of_justified is not None else None,
         assumptions_applied_count=len(result.assumptions_applied),
     )
 

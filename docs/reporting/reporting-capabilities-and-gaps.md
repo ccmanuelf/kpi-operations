@@ -133,7 +133,7 @@ Attribution across **machine / materials / scheduling / attendance / other**.
 | Units subject to rework | **have**/**partial** | `rework_count` per entry (have); "as a function of the entire order" needs per-work-order rollup (partial) |
 | Units started to meet order requirement (cut-to-ship ratio) | **missing** | model records output units, not started/issued units |
 | Shipping late (OTD) | **have** | `planned_ship_date` vs `actual_delivery_date`; OTD KPI live |
-| Justified vs unjustified lateness | **missing** | no classification field; PGI's Delivery Performance excludes justified delays |
+| Justified vs unjustified lateness | **have** | 3-state delay_classification + 6-reason enum on WorkOrder; OTD reports gross + net-of-justified (Cycle 2) |
 | Skipping priorities | **partial** | `priority` + `DEMOTED` state exist; no priority-adherence metric |
 | DHU (Defects per Hundred Units) | **partial** | `defect_count` stored; DHU computable but not reported |
 | Estimated AQL from actuals | **missing** | not modeled; DHU is its computable precursor |
@@ -170,7 +170,7 @@ Sequenced per the approved roadmap spec (`docs/superpowers/specs/2026-07-31-repo
 ### Active lane (in order)
 
 1. **Cycle 1 — Downtime cause taxonomy** (Q2; smallest, highest leverage): controlled vocabulary — **machine / materials / scheduling / attendance / other**, with NPT sub-buckets — over the existing free-form `root_cause_category` on `DowntimeEntry`; entry UI becomes a select; migration maps confidently-matchable free-form values, everything else defaults to `uncategorized`. **[DONE — this PR]**
-2. **Cycle 2 — Justified-delay flag** (Q3): justified/unjustified classification plus reason on late work orders; delivery performance becomes reportable both gross and net-of-justified (the concept behind PGI's exclusion, never its layout).
+2. **Cycle 2 — Justified-delay flag** (Q3): justified/unjustified classification plus reason on late work orders; delivery performance becomes reportable both gross and net-of-justified (the concept behind PGI's exclusion, never its layout). **[DONE — this PR]**
 3. **Cycle 3 — Labor-hours accounting** (Q1; the big capture): OT tiers (Normal/Double/Triple — Mexican labor law, structural), direct/indirect classification on `Employee`, billed vs available-for-efficiency hours. Expected 2 PRs — capture model + entry UI, then derived Q1 metrics; the split is decided in that cycle's spec.
 4. **Cycle 4 — Pivot/summarization layer** (largest; built once, over the enriched data): pre-defined time buckets (week/month/quarter/year), pre-defined groupings/categorizations, cross-metric comparison on the common hours basis (units ↔ SAM-earned hours ↔ operators ↔ attendance hours), every summary downloadable as its underlying data. Expected 2–3 PRs; split decided in that cycle's spec.
 
