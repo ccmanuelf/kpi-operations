@@ -38,7 +38,12 @@ from backend.scripts._seed_master import (  # noqa: E402
     seed_alerts,
 )
 from backend.scripts._seed_capacity import seed_capacity_graph  # noqa: E402
-from backend.scripts._seed_operations import seed_work_orders, seed_holds, seed_daily_data  # noqa: E402
+from backend.scripts._seed_operations import (  # noqa: E402
+    seed_work_orders,
+    seed_holds,
+    seed_daily_data,
+    JUSTIFIED_REASONS_PER_CLIENT,
+)
 from backend.scripts._seed_simulation import seed_simulation  # noqa: E402
 
 if TYPE_CHECKING:
@@ -250,9 +255,14 @@ def reset_client_data(session: Session, client_id: str) -> None:
     session.flush()
 
 
-def seed_client(session: Session, spec: ClientSpec, days: int, anchor: date) -> None:
+def seed_client(session: Session, spec: ClientSpec, days: int, anchor: date, justified_reason_offset: int = 0) -> None:
     """Orchestrator — seed one client in FK order: catalogs/config → master
-    data → capacity → work orders → holds → daily data → simulation."""
+    data → capacity → work orders → holds → daily data → simulation.
+
+    `justified_reason_offset` is forwarded to seed_work_orders — see its
+    docstring and JUSTIFIED_REASONS_PER_CLIENT (_seed_operations.py) for why
+    a multi-client caller (main(), below) staggers this per client.
+    """
     seed_client_row(session, spec)
     seed_catalogs(session, spec.client_id)
     seed_config_layer(session, spec.client_id)
@@ -265,7 +275,7 @@ def seed_client(session: Session, spec: ClientSpec, days: int, anchor: date) -> 
     seed_alerts(session, spec.client_id)
     seed_capacity_graph(session, spec.client_id, days, anchor)
     entered_by = resolve_entered_by(session, spec.client_id)
-    work_orders = seed_work_orders(session, spec, entered_by, anchor)
+    work_orders = seed_work_orders(session, spec, entered_by, anchor, justified_reason_offset)
     seed_holds(session, spec.client_id, work_orders, entered_by, anchor)
     seed_daily_data(session, spec, days, entered_by, anchor)
     seed_simulation(session, spec.client_id)
@@ -320,11 +330,16 @@ def main(argv: Optional[list] = None) -> int:
         with Session(engine) as session:
             seed_global_defaults(session)
             session.commit()
-            for client_id in targets:
+            for i, client_id in enumerate(targets):
                 spec = CLIENT_SPECS[client_id]
                 if args.reset:
                     reset_client_data(session, client_id)
-                seed_client(session, spec, args.days, anchor)
+                # Stagger each client's justified-delay-reason rotation so
+                # seeding the default 3 clients together covers all 6
+                # JustifiedDelayReasonEnum members exactly once (see
+                # JUSTIFIED_REASONS_PER_CLIENT). A single-client run (--client)
+                # just starts at offset 0.
+                seed_client(session, spec, args.days, anchor, justified_reason_offset=i * JUSTIFIED_REASONS_PER_CLIENT)
                 session.commit()
                 print(f"Seeded {client_id} ({args.days} days).")
     except SeedError as exc:

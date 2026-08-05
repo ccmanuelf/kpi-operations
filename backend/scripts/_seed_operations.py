@@ -35,11 +35,29 @@ def _production_target_fraction(status: "WorkOrderStatus") -> float:
     }.get(status, 0.0)
 
 
-def seed_work_orders(session: Session, spec: ClientSpec, entered_by: str, anchor: date) -> list:
+# The delivered-history batch's late subset always contains exactly this many
+# justified rows per client (late_ct in {0, 3} out of HISTORY_N=15's 5 late
+# rows — see the `late_ct % 3` pattern below). Callers that seed multiple
+# clients in one run (seed_client / main()) use this to space each client's
+# `justified_reason_offset` so the union of justified reasons across clients
+# covers all 6 JustifiedDelayReasonEnum members without overlap or gaps —
+# e.g. offsets 0, 2, 4 for 3 clients cover reason indices 0-5 exactly once.
+JUSTIFIED_REASONS_PER_CLIENT = 2
+
+
+def seed_work_orders(
+    session: Session, spec: ClientSpec, entered_by: str, anchor: date, justified_reason_offset: int = 0
+) -> list:
     """Idempotent per-client work orders spanning every WorkOrderStatus, each
     with a credible WorkflowTransitionLog chain, status-coherent milestone
     dates, and (for mainline RELEASED..CLOSED statuses) a bridge to a seeded
-    CapacityOrder — plus a few Jobs."""
+    CapacityOrder — plus a few Jobs.
+
+    `justified_reason_offset` starts this client's justified-reason rotation
+    at that index into JustifiedDelayReasonEnum (mod 6) instead of 0, so a
+    caller seeding several clients in one run can make each client's 2
+    justified rows land on different reasons — see JUSTIFIED_REASONS_PER_CLIENT.
+    """
     from datetime import datetime, timedelta, timezone
     from backend.orm import WorkOrder, WorkOrderStatus
     from backend.orm.capacity import CapacityOrder, OrderStatus
@@ -172,16 +190,25 @@ def seed_work_orders(session: Session, spec: ClientSpec, entered_by: str, anchor
     hrng = rng_for(cid, "otd_history")
     # Deterministic delay-classification mix (Task 9, Cycle 2) over the late
     # subset of this batch only. `late_ct` increments once per late row (n %
-    # 3 == 0, below) and drives a fixed i % 3 pattern: 0=justified (reason
-    # rotates through all 6 JustifiedDelayReasonEnum members via
-    # late_ct % 6), 1=unjustified, 2=unclassified (left NULL). is_late() is
-    # deliberately NOT called here to decide eligibility — this block already
-    # guarantees lateness by construction (delivered = req + [2,6]d, always
-    # after req, whenever `late` is True); the seeder tests assert that
-    # guarantee via is_late() instead, per the spec's "assert, don't
-    # reimplement" split.
+    # 3 == 0, below) and drives a fixed i % 3 state pattern: 0=justified,
+    # 1=unjustified, 2=unclassified (left NULL). is_late() is deliberately
+    # NOT called here to decide eligibility — this block already guarantees
+    # lateness by construction (delivered = req + [2,6]d, always after req,
+    # whenever `late` is True); the seeder tests assert that guarantee via
+    # is_late() instead, per the spec's "assert, don't reimplement" split.
+    #
+    # Reason rotation uses a SEPARATE `justified_ct` counter, incremented only
+    # on justified rows, indexed mod 6 into JustifiedDelayReasonEnum. This
+    # must NOT be `late_ct % 6`: late_ct only hits the justified branch when
+    # late_ct % 3 == 0, and gcd(3, 6) == 3 means late_ct % 6 would then only
+    # ever land on {0, 3} — CUSTOMER_REQUEST/FORCE_MAJEURE — making the other
+    # 4 reasons unreachable at any scale (round-1 review finding). `justified_ct`
+    # starts at `justified_reason_offset` so a caller seeding multiple clients
+    # can advance each client's rotation past the previous one's — see
+    # JUSTIFIED_REASONS_PER_CLIENT and seed_sample_client.py's main().
     _delay_reasons = list(JustifiedDelayReasonEnum)
     late_ct = 0
+    justified_ct = justified_reason_offset
     for n in range(1, HISTORY_N + 1):
         days_ago = 2 + (n - 1) * 6  # distinct days: 2, 8, 14, ... 86 (within last 90d)
         req = now - timedelta(days=days_ago)
@@ -212,7 +239,8 @@ def seed_work_orders(session: Session, spec: ClientSpec, entered_by: str, anchor
             pattern = late_ct % 3
             if pattern == 0:
                 hwo.delay_classification = DelayClassificationEnum.JUSTIFIED.value
-                hwo.justified_delay_reason = _delay_reasons[late_ct % len(_delay_reasons)].value
+                hwo.justified_delay_reason = _delay_reasons[justified_ct % len(_delay_reasons)].value
+                justified_ct += 1
             elif pattern == 1:
                 hwo.delay_classification = DelayClassificationEnum.UNJUSTIFIED.value
             # pattern == 2: leave both NULL (unclassified)

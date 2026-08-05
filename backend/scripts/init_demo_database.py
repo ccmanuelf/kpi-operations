@@ -1198,13 +1198,30 @@ def init_database() -> None:
         # only late row is "shipped_late" (req_off=-8, ship_off=-3: delivered
         # after required by construction — guaranteed late, so is_late() is
         # NOT called here to decide eligibility; the seeder test asserts that
-        # guarantee via is_late() instead). Each client contributes exactly
-        # one such row, so `late_ct` below counts across the client loop and
-        # drives a fixed i % 3 pattern: 0=justified (reason rotates through
-        # all 6 JustifiedDelayReasonEnum members via late_ct % 6),
-        # 1=unjustified, 2=unclassified (left NULL).
+        # guarantee via is_late() instead). Each of the 5 demo clients
+        # contributes exactly one such row (5 late WOs total), so `late_ct`
+        # below counts across the client loop and drives a fixed i % 3 state
+        # pattern: 0=justified, 1=unjustified, 2=unclassified (left NULL).
+        #
+        # Reason rotation uses a SEPARATE `justified_ct` counter, incremented
+        # only on justified rows, indexed mod 6 into JustifiedDelayReasonEnum
+        # — NOT `late_ct % 6`: late_ct only hits the justified branch when
+        # late_ct % 3 == 0, and gcd(3, 6) == 3 means late_ct % 6 would then
+        # only ever land on {0, 3}, making 4 of the 6 reasons unreachable at
+        # any scale (round-1 review finding).
+        #
+        # Ceiling: with only 5 late WOs total (1/client × 5 clients) and the
+        # 1-in-3 pattern, exactly 2 rows land justified (late_ct 0 and 3) —
+        # so at most 2 distinct reasons can ever appear here, not all 6. Full
+        # 6-reason coverage is only achievable in the sample seeder
+        # (_seed_operations.py / seed_sample_client.py), which has enough
+        # late rows per client (see JUSTIFIED_REASONS_PER_CLIENT) for a
+        # 3-client run to cover all 6 exactly. Reaching 6 here would require
+        # WO_PLAN to carry more late rows than the current 5 fixed,
+        # MASTER_PRODUCTS-indexed slots support — out of scope for this fix.
         _delay_reasons = list(JustifiedDelayReasonEnum)
         late_ct = 0
+        justified_ct = 0
 
         for client_id, client in clients.items():
             client_work_orders = []
@@ -1231,7 +1248,8 @@ def init_database() -> None:
                     pattern = late_ct % 3
                     if pattern == 0:
                         wo.delay_classification = DelayClassificationEnum.JUSTIFIED.value
-                        wo.justified_delay_reason = _delay_reasons[late_ct % len(_delay_reasons)].value
+                        wo.justified_delay_reason = _delay_reasons[justified_ct % len(_delay_reasons)].value
+                        justified_ct += 1
                     elif pattern == 1:
                         wo.delay_classification = DelayClassificationEnum.UNJUSTIFIED.value
                     # pattern == 2: leave both NULL (unclassified)
