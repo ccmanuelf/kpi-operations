@@ -94,8 +94,8 @@
 
             <div v-else class="pa-6 text-center">
               <v-icon size="48" color="grey-lighten-1" class="mb-3">mdi-clipboard-text-off-outline</v-icon>
-              <p class="text-body-1 text-grey mb-1">{{ t('myShift.noWorkOrders') }}</p>
-              <p class="text-caption text-grey mb-2">{{ t('myShift.noWorkOrdersGuidance') }}</p>
+              <p class="text-body-1 text-medium-emphasis mb-1">{{ t('myShift.noWorkOrders') }}</p>
+              <p class="text-caption text-medium-emphasis mb-2">{{ t('myShift.noWorkOrdersGuidance') }}</p>
               <v-btn color="primary" variant="outlined" class="mt-2" @click="goToWorkOrders">
                 {{ t('navigation.workOrders') }}
               </v-btn>
@@ -105,7 +105,7 @@
 
         <!-- My Stats Panel -->
         <v-card v-if="hasAssignments" class="mb-4" elevation="2">
-          <v-card-title class="d-flex align-center bg-grey-darken-3 text-white py-3">
+          <v-card-title class="d-flex align-center bg-grey-darken-3 text-white py-3" style="color: #fff !important">
             <v-icon class="mr-2">mdi-chart-bar</v-icon>
             {{ t('dashboard.todaySummary') }}
           </v-card-title>
@@ -115,7 +115,7 @@
                 <div class="stat-card text-center pa-3">
                   <v-icon :color="stat.color" size="32" class="mb-2">{{ stat.icon }}</v-icon>
                   <div class="text-h4 font-weight-bold" :class="`text-${stat.color}`">{{ stat.value }}{{ stat.suffix || '' }}</div>
-                  <div class="text-caption text-grey">{{ t(stat.labelKey) }}</div>
+                  <div class="text-caption text-medium-emphasis">{{ t(stat.labelKey) }}</div>
                 </div>
               </v-col>
             </v-row>
@@ -124,7 +124,7 @@
 
         <!-- Recent Activity -->
         <v-card elevation="2">
-          <v-card-title class="d-flex align-center bg-grey-darken-3 text-white py-3">
+          <v-card-title class="d-flex align-center bg-grey-darken-3 text-white py-3" style="color: #fff !important">
             <v-icon class="mr-2">mdi-history</v-icon>
             {{ t('common.recentActivity') }}
             <v-spacer />
@@ -161,7 +161,7 @@
 
             <div v-else class="pa-6 text-center">
               <v-icon size="40" color="grey-lighten-1" class="mb-2">mdi-history</v-icon>
-              <p class="text-body-2 text-grey">{{ t('common.noData') }}</p>
+              <p class="text-body-2 text-medium-emphasis">{{ t('common.noData') }}</p>
             </div>
           </v-card-text>
         </v-card>
@@ -213,7 +213,7 @@
 
             <!-- Quick Production Presets -->
             <v-divider class="my-4" />
-            <div class="text-subtitle-2 text-grey mb-3">{{ t('common.units') }}</div>
+            <div class="text-subtitle-2 text-medium-emphasis mb-3">{{ t('common.units') }}</div>
             <div class="d-flex gap-2 flex-wrap justify-center">
               <v-btn
                 v-for="preset in productionPresets"
@@ -228,14 +228,14 @@
                 +{{ preset }}
               </v-btn>
             </div>
-            <p v-if="!selectedWorkOrder" class="text-caption text-grey text-center mt-2">
+            <p v-if="!selectedWorkOrder" class="text-caption text-medium-emphasis text-center mt-2">
               {{ t('shifts.selectWorkOrderForQuickLog') }}
             </p>
           </v-card-text>
           <v-card-text v-else class="pa-6 text-center">
             <v-icon size="40" color="grey-lighten-1" class="mb-2">mdi-hand-wave-outline</v-icon>
-            <p class="text-body-2 text-grey mb-1">{{ t('myShift.noWorkOrders') }}</p>
-            <p class="text-caption text-grey">{{ t('myShift.noWorkOrdersGuidance') }}</p>
+            <p class="text-body-2 text-medium-emphasis mb-1">{{ t('myShift.noWorkOrders') }}</p>
+            <p class="text-caption text-medium-emphasis">{{ t('myShift.noWorkOrdersGuidance') }}</p>
           </v-card-text>
         </v-card>
       </v-col>
