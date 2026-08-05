@@ -55,3 +55,15 @@ def test_undelivered_due_exactly_today_is_not_late():
     """Boundary pin: inferred date == midnight of as_of -> NOT late (strict <)."""
     wo = _wo(planned_ship_date=datetime(2026, 8, 1, 0, 0), actual_delivery_date=None)
     assert is_late(wo, AS_OF) is False
+
+
+def test_single_lateness_definition_guard():
+    """Spec §4: is_late in calculations/otd.py is the ONLY lateness definition.
+    Both the update-path invariants and the metrics must import it."""
+    import pathlib
+
+    backend_root = pathlib.Path(__file__).resolve().parents[2]
+    crud_src = (backend_root / "crud" / "work_order.py").read_text(encoding="utf-8")
+    assert "from backend.calculations.otd import is_late" in crud_src
+    otd_src = (backend_root / "calculations" / "otd.py").read_text(encoding="utf-8")
+    assert otd_src.count("def is_late(") == 1
