@@ -55,7 +55,7 @@ If no planned date can be inferred (`inference_source == "none"`), the order is 
 `WorkOrderUpdate` gains `delay_classification: Optional[DelayClassificationEnum]`, `justified_delay_reason: Optional[JustifiedDelayReasonEnum]`, `delay_classification_note: Optional[str]`. Invariants enforced in the work-order update path (service/crud layer, with exact 4xx codes):
 
 1. **Late-only:** any attempt to set/change `delay_classification` (or reason/note) on an order where `is_late(...)` is false → **422** naming the rule. Clearing (explicit `null`) is always allowed.
-2. **Reason iff justified:** classification `justified` without a valid reason → **422**; classification `unjustified` or cleared → reason and note are cleared server-side (never stored inconsistently).
+2. **Reason iff justified:** classification `justified` without a valid reason → **422**; switching to `unjustified` clears the reason (never stored inconsistently) but PRESERVES the note (§3.2: the note is classification-agnostic); clearing classification (explicit null) clears both reason and note.
 3. **Supervisory-tier fields:** if the payload touches any of the three fields and the caller is not in the supervisory tier (admin/poweruser/leader/supervisor) → **403**; other `WorkOrderUpdate` fields keep the route's existing guard untouched.
 4. `WorkOrderResponse` gains the three fields plus computed `is_late: bool` (server-evaluated with `as_of = today`), so the UI never re-implements the lateness rule.
 

@@ -181,6 +181,32 @@ class TestDelayClassificationInvariants:
         assert r.status_code == 200
         assert r.json()["justified_delay_reason"] is None
 
+    def test_unjustified_transition_preserves_note(self, supervisor_client_with_wos):
+        """USER RULING (Task 4 fix round 1): the note is classification-agnostic
+        (spec §3.2) — switching justified -> unjustified clears the now-invalid
+        reason but must PRESERVE the note, even though the original §5 rule 2
+        text said "reason and note are cleared". Spec amended to match this
+        (already-correct) behavior rather than the code being changed."""
+        client, late_wo, _ = supervisor_client_with_wos
+        setup = client.put(
+            f"/api/work-orders/{late_wo.work_order_id}",
+            json={
+                "delay_classification": "justified",
+                "justified_delay_reason": "force_majeure",
+                "delay_classification_note": "flood",
+            },
+        )
+        assert setup.status_code == 200
+
+        r = client.put(
+            f"/api/work-orders/{late_wo.work_order_id}",
+            json={"delay_classification": "unjustified"},
+        )
+        assert r.status_code == 200
+        body = r.json()
+        assert body["justified_delay_reason"] is None
+        assert body["delay_classification_note"] == "flood"
+
     def test_operator_touching_classification_fields_returns_403(self, operator_client_with_wos):
         client, late_wo, _ = operator_client_with_wos
         r = client.put(
