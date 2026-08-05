@@ -130,6 +130,7 @@
           </template>
           <v-list-item prepend-icon="mdi-cog" :title="$t('navigation.settings')" value="settings" to="/admin/settings" />
           <v-list-item prepend-icon="mdi-account-multiple" :title="$t('navigation.users')" value="users" to="/admin/users" />
+          <v-list-item prepend-icon="mdi-card-account-details-outline" :title="$t('navigation.employees')" value="employees" to="/admin/employees" />
           <v-list-item prepend-icon="mdi-domain" :title="$t('navigation.clients')" value="clients" to="/admin/clients" />
           <v-list-item prepend-icon="mdi-alert-circle-outline" :title="$t('navigation.defectTypes')" value="defect-types" to="/admin/defect-types" />
           <v-list-item prepend-icon="mdi-tune-variant" :title="$t('navigation.clientConfig')" value="client-config" to="/admin/client-config" />

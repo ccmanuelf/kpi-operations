@@ -1986,6 +1986,18 @@
         "noPoolId": "Cannot edit a row without a pool entry"
       }
     },
+    "employees": {
+      "title": "Employees",
+      "employeeId": "Employee ID",
+      "employeeCode": "Code",
+      "employeeName": "Name",
+      "department": "Department",
+      "updateSuccess": "Employee updated",
+      "errors": {
+        "loadFailed": "Failed to load employees",
+        "updateFailed": "Failed to update employee"
+      }
+    },
     "workflowConfig": {
       "title": "Workflow Configuration",
       "description": "Configure work order workflow statuses, transitions, and closure triggers per client.",
@@ -4411,5 +4423,38 @@
       "operatorUnavailable": "Operator unavailable",
       "other": "Other"
     }
+  },
+  "labor": {
+    "classes": {
+      "direct": "Direct",
+      "indirect": "Indirect"
+    },
+    "unclassified": "Unclassified",
+    "categories": {
+      "billedProduction": "Billed production",
+      "unbilledProduction": "Unbilled production",
+      "training": "Training",
+      "meeting": "Meeting",
+      "idleWait": "Idle / waiting",
+      "otherNonproductive": "Other non-productive",
+      "paidLeave": "Paid leave",
+      "medical": "Medical"
+    },
+    "allocationsTitle": "Hour allocation",
+    "allocatedSummary": "{allocated} / {actual} h",
+    "noSplitCount": "{count} without OT split",
+    "unallocatedCount": "{count} unallocated",
+    "otNormal": "Normal",
+    "otDouble": "Double",
+    "otTriple": "Triple",
+    "laborClassOverride": "Labor class",
+    "laborClass": "Labor class",
+    "addRow": "Add row",
+    "removeRow": "Remove row",
+    "category": "Category",
+    "hours": "Hours",
+    "duplicateCategory": "Duplicate category",
+    "exceedsActualHours": "Allocated hours exceed actual hours",
+    "invalidHours": "Hours must be greater than 0"
   }
 }

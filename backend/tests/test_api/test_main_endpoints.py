@@ -404,6 +404,92 @@ class TestEmployeeEndpoints:
         assert response.status_code == 200
 
 
+class TestEmployeeLaborClass:
+    """Tests for labor_class on the employee admin surface (Cycle 3 PR-A, Task 5)."""
+
+    def test_create_employee_with_labor_class_direct(self, test_client, admin_auth_headers):
+        """labor_class="direct" is accepted on create and echoed back."""
+        payload = {
+            "employee_code": f"LC-{uuid.uuid4().hex[:8]}",
+            "employee_name": "Direct Labor Employee",
+            "labor_class": "direct",
+        }
+        response = test_client.post("/api/employees", json=payload, headers=admin_auth_headers)
+        assert response.status_code == 201
+        assert response.json()["labor_class"] == "direct"
+
+    def test_create_employee_with_invalid_labor_class(self, test_client, admin_auth_headers):
+        """An out-of-enum labor_class value is rejected by request validation."""
+        payload = {
+            "employee_code": f"LC-{uuid.uuid4().hex[:8]}",
+            "employee_name": "Bad Labor Class Employee",
+            "labor_class": "bogus",
+        }
+        response = test_client.post("/api/employees", json=payload, headers=admin_auth_headers)
+        assert response.status_code == 422
+
+    def test_update_employee_labor_class_to_indirect(self, test_client, admin_auth_headers):
+        """Updating labor_class to "indirect" succeeds and is echoed back."""
+        create_payload = {
+            "employee_code": f"LC-{uuid.uuid4().hex[:8]}",
+            "employee_name": "Update Labor Class Employee",
+            "labor_class": "direct",
+        }
+        created = test_client.post("/api/employees", json=create_payload, headers=admin_auth_headers).json()
+
+        response = test_client.put(
+            f"/api/employees/{created['employee_id']}",
+            json={"labor_class": "indirect"},
+            headers=admin_auth_headers,
+        )
+        assert response.status_code == 200
+        assert response.json()["labor_class"] == "indirect"
+
+    def test_update_employee_labor_class_omitted_is_unchanged(self, test_client, admin_auth_headers):
+        """Omitting labor_class from an update body leaves the existing value untouched."""
+        create_payload = {
+            "employee_code": f"LC-{uuid.uuid4().hex[:8]}",
+            "employee_name": "Unchanged Labor Class Employee",
+            "labor_class": "direct",
+        }
+        created = test_client.post("/api/employees", json=create_payload, headers=admin_auth_headers).json()
+
+        response = test_client.put(
+            f"/api/employees/{created['employee_id']}",
+            json={"employee_name": "Renamed, Labor Class Untouched"},
+            headers=admin_auth_headers,
+        )
+        assert response.status_code == 200
+        assert response.json()["labor_class"] == "direct"
+
+    def test_update_employee_labor_class_explicit_null_clears(self, test_client, admin_auth_headers):
+        """Sending labor_class: null explicitly clears a previously-set value."""
+        create_payload = {
+            "employee_code": f"LC-{uuid.uuid4().hex[:8]}",
+            "employee_name": "Cleared Labor Class Employee",
+            "labor_class": "direct",
+        }
+        created = test_client.post("/api/employees", json=create_payload, headers=admin_auth_headers).json()
+
+        response = test_client.put(
+            f"/api/employees/{created['employee_id']}",
+            json={"labor_class": None},
+            headers=admin_auth_headers,
+        )
+        assert response.status_code == 200
+        assert response.json()["labor_class"] is None
+
+    def test_create_employee_denied_for_non_supervisory_caller(self, test_client, auth_headers):
+        """The route's existing supervisory guard still rejects an operator caller."""
+        payload = {
+            "employee_code": f"LC-{uuid.uuid4().hex[:8]}",
+            "employee_name": "Denied Employee",
+            "labor_class": "direct",
+        }
+        response = test_client.post("/api/employees", json=payload, headers=auth_headers)
+        assert response.status_code == 403
+
+
 # =============================================================================
 # WORK ORDER TESTS
 # =============================================================================

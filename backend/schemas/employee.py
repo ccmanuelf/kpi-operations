@@ -6,6 +6,8 @@ from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional
 from datetime import datetime
 
+from backend.orm.labor_taxonomy import LaborClassEnum
+
 
 class EmployeeCreate(BaseModel):
     """Employee creation model"""
@@ -16,6 +18,9 @@ class EmployeeCreate(BaseModel):
     is_floating_pool: Optional[int] = Field(default=0, ge=0, le=1, description="Boolean: 0=regular, 1=floating pool")
     is_active: Optional[int] = Field(default=1, ge=0, le=1, description="Boolean: 1=active, 0=inactive (soft delete)")
     department: Optional[str] = Field(None, max_length=50, description="Department classification")
+    labor_class: Optional[LaborClassEnum] = Field(
+        None, description="Direct/indirect labor classification default (NULL = unclassified)"
+    )
     contact_phone: Optional[str] = Field(None, max_length=50, description="Employee phone number for contact")
     contact_email: Optional[str] = Field(None, max_length=255, description="Employee email address for notifications")
     position: Optional[str] = Field(None, max_length=100, description="Job title or position within the organization")
@@ -33,6 +38,9 @@ class EmployeeUpdate(BaseModel):
     )
     is_active: Optional[int] = Field(None, ge=0, le=1, description="Updated active status: 1=active, 0=inactive")
     department: Optional[str] = Field(None, max_length=50, description="Updated department classification")
+    labor_class: Optional[LaborClassEnum] = Field(
+        None, description="Updated direct/indirect labor classification (explicit null clears it)"
+    )
     contact_phone: Optional[str] = Field(None, max_length=50, description="Updated employee phone number")
     contact_email: Optional[str] = Field(None, max_length=255, description="Updated employee email address")
     position: Optional[str] = Field(None, max_length=100, description="Updated job title or position")
@@ -51,6 +59,9 @@ class EmployeeResponse(BaseModel):
     is_floating_pool: int = Field(..., description="Floating pool flag: 0=regular assignment, 1=floating pool")
     is_active: Optional[int] = Field(1, description="Active status: 1=active, 0=inactive (soft deleted)")
     department: Optional[str] = Field(None, description="Department the employee belongs to")
+    labor_class: Optional[LaborClassEnum] = Field(
+        None, description="Direct/indirect labor classification default (NULL = unclassified)"
+    )
     contact_phone: Optional[str] = Field(None, description="Employee phone number")
     contact_email: Optional[str] = Field(None, description="Employee email address")
     position: Optional[str] = Field(None, description="Job title or position within the organization")

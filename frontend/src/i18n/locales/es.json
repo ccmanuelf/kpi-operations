@@ -1986,6 +1986,18 @@
         "noPoolId": "No se puede editar una fila sin entrada de pool"
       }
     },
+    "employees": {
+      "title": "Empleados",
+      "employeeId": "ID de empleado",
+      "employeeCode": "Código",
+      "employeeName": "Nombre",
+      "department": "Departamento",
+      "updateSuccess": "Empleado actualizado",
+      "errors": {
+        "loadFailed": "No se pudieron cargar los empleados",
+        "updateFailed": "No se pudo actualizar el empleado"
+      }
+    },
     "workflowConfig": {
       "title": "Configuración de Flujo de Trabajo",
       "description": "Configure estados del flujo de trabajo, transiciones y disparadores de cierre por cliente.",
@@ -4411,5 +4423,38 @@
       "operatorUnavailable": "Operador no disponible",
       "other": "Otro"
     }
+  },
+  "labor": {
+    "classes": {
+      "direct": "Directo",
+      "indirect": "Indirecto"
+    },
+    "unclassified": "Sin clasificar",
+    "categories": {
+      "billedProduction": "Producción facturada",
+      "unbilledProduction": "Producción no facturada",
+      "training": "Capacitación",
+      "meeting": "Junta",
+      "idleWait": "Espera / inactivo",
+      "otherNonproductive": "Otro no productivo",
+      "paidLeave": "Permiso con goce",
+      "medical": "Médico"
+    },
+    "allocationsTitle": "Asignación de horas",
+    "allocatedSummary": "{allocated} / {actual} h",
+    "noSplitCount": "{count} sin desglose de TE",
+    "unallocatedCount": "{count} sin asignar",
+    "otNormal": "Normales",
+    "otDouble": "Dobles",
+    "otTriple": "Triples",
+    "laborClassOverride": "Clase de mano de obra",
+    "laborClass": "Clase de mano de obra",
+    "addRow": "Agregar fila",
+    "removeRow": "Eliminar fila",
+    "category": "Categoría",
+    "hours": "Horas",
+    "duplicateCategory": "Categoría duplicada",
+    "exceedsActualHours": "Las horas asignadas superan las horas reales",
+    "invalidHours": "Las horas deben ser mayores que 0"
   }
 }

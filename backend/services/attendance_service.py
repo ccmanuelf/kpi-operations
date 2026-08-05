@@ -18,7 +18,6 @@ from backend.crud.attendance import (
     mark_all_present,
     update_attendance_record,
 )
-from backend.orm.attendance_entry import AttendanceEntry
 from backend.orm.user import User
 from backend.schemas.attendance import (
     AttendanceRecordCreate,
@@ -32,7 +31,7 @@ def create_record(db: Session, data: AttendanceRecordCreate, current_user: User)
     return create_attendance_record(db, data, current_user)
 
 
-def get_record(db: Session, attendance_id: str, current_user: User) -> Optional[AttendanceEntry]:
+def get_record(db: Session, attendance_id: str, current_user: User) -> AttendanceRecordResponse:
     """Get an attendance record by ID."""
     return get_attendance_record(db, attendance_id, current_user)
 
@@ -44,11 +43,12 @@ def list_records(
     limit: int = 100,
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
+    shift_date: Optional[date] = None,
     employee_id: Optional[int] = None,
     shift_id: Optional[int] = None,
     is_absent: Optional[int] = None,
     client_id: Optional[str] = None,
-) -> List[AttendanceEntry]:
+) -> List[AttendanceRecordResponse]:
     """List attendance records with filters."""
     return get_attendance_records(
         db,
@@ -57,6 +57,7 @@ def list_records(
         limit=limit,
         start_date=start_date,
         end_date=end_date,
+        shift_date=shift_date,
         employee_id=employee_id,
         shift_id=shift_id,
         is_absent=is_absent,

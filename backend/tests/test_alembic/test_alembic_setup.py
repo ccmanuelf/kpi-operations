@@ -125,14 +125,15 @@ class TestModelMetadata:
 
         Hardcoded rather than a floor: update when adding a migration that
         creates/drops tables (backend/alembic/versions/0001_real_baseline.py
-        has 57 `op.create_table(` calls).
+        has 57 `op.create_table(` calls; 0004_labor_hours_columns.py adds
+        ATTENDANCE_HOUR_ALLOCATION, bringing the total to 58).
         """
         from backend.database import Base
 
         import backend.orm  # noqa: F401
         import backend.orm.capacity  # noqa: F401
 
-        assert len(Base.metadata.tables) == 57, f"Expected == 57 tables, got {len(Base.metadata.tables)}"
+        assert len(Base.metadata.tables) == 58, f"Expected == 58 tables, got {len(Base.metadata.tables)}"
 
 
 # ---------------------------------------------------------------------------
@@ -240,7 +241,7 @@ class TestAlembicCLI:
         """``alembic heads`` should list the current head revision."""
         result = _run_alembic("heads")
         assert result.returncode == 0, f"alembic heads failed: {result.stderr}"
-        assert "0003_justified_delay" in result.stdout, f"0003_justified_delay not in heads output: {result.stdout}"
+        assert "0004_labor_hours" in result.stdout, f"0004_labor_hours not in heads output: {result.stdout}"
 
     def test_alembic_history(self):
         """``alembic history`` should contain the baseline entry."""
@@ -276,6 +277,4 @@ class TestAlembicCLI:
         assert stamp.returncode == 0, f"alembic stamp head failed: {stamp.stderr}"
         result = _run_alembic("current", db_url=url)
         assert result.returncode == 0, f"alembic current failed: {result.stderr}"
-        assert (
-            "0003_justified_delay" in result.stdout
-        ), f"Expected 0003_justified_delay in current output: {result.stdout}"
+        assert "0004_labor_hours" in result.stdout, f"Expected 0004_labor_hours in current output: {result.stdout}"

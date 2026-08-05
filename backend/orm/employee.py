@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Optional
 
 from sqlalchemy import DateTime, Integer, String, Text
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, validates
 from sqlalchemy.sql import func
 
 from backend.database import Base
@@ -38,6 +38,9 @@ class Employee(Base):
     is_active: Mapped[int] = mapped_column(Integer, nullable=False, default=1, index=True)  # Soft delete: 1/0
     department: Mapped[Optional[str]] = mapped_column(String(50))  # Department classification
 
+    # direct/indirect labor classification (Cycle 3 PR-A) — NULL = unclassified
+    labor_class: Mapped[Optional[str]] = mapped_column(String(10))
+
     # Additional info
     contact_phone: Mapped[Optional[str]] = mapped_column(String(50))
     contact_email: Mapped[Optional[str]] = mapped_column(String(255))
@@ -47,3 +50,14 @@ class Employee(Base):
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
     updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    @validates("labor_class")
+    def _validate_labor_class(self, key: str, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return value
+        from backend.orm.labor_taxonomy import LaborClassEnum
+
+        valid = {c.value for c in LaborClassEnum}
+        if value not in valid:
+            raise ValueError(f"labor_class must be one of {sorted(valid)} or NULL, got {value!r}")
+        return value

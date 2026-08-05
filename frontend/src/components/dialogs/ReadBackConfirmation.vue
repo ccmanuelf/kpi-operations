@@ -83,6 +83,7 @@
           variant="elevated"
           @click="handleConfirm"
           :loading="loading"
+          data-testid="readback-confirm-btn"
         >
           <v-icon left>mdi-check</v-icon>
           {{ $t('readBack.confirmAndSave') }}

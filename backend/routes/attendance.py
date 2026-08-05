@@ -35,7 +35,6 @@ from backend.auth.jwt import (
     ClientScope,
     resolve_client_scope,
 )
-from backend.orm.attendance_entry import AttendanceEntry
 from backend.orm.user import User
 from backend.middleware.client_auth import build_client_filter_clause, verify_client_access
 
@@ -84,13 +83,14 @@ def list_attendance(
     limit: int = DEFAULT_PAGE_SIZE,
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
+    shift_date: Optional[date] = None,
     employee_id: Optional[int] = None,
     shift_id: Optional[int] = None,
     is_absent: Optional[int] = None,
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> List[AttendanceEntry]:
+) -> List[AttendanceRecordResponse]:
     """
     List attendance records with filters
     SECURITY: Returns only attendance for user's authorized clients
@@ -106,6 +106,7 @@ def list_attendance(
         limit=limit,
         start_date=start_date,
         end_date=end_date,
+        shift_date=shift_date,
         employee_id=employee_id,
         shift_id=shift_id,
         is_absent=is_absent,
@@ -122,7 +123,7 @@ def get_attendance_by_employee(
     limit: int = DEFAULT_PAGE_SIZE,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> List[AttendanceEntry]:
+) -> List[AttendanceRecordResponse]:
     """
     Get all attendance records for a specific employee
     SECURITY: Returns only attendance for user's authorized clients
@@ -150,7 +151,7 @@ def get_attendance_by_date_range(
     limit: int = DEFAULT_PAGE_SIZE,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> List[AttendanceEntry]:
+) -> List[AttendanceRecordResponse]:
     """
     Get attendance records within a date range
     SECURITY: Returns only attendance for user's authorized clients
@@ -591,6 +592,12 @@ def bulk_create_attendance(
     Bulk create attendance records in a single transaction.
 
     SECURITY: Validates client access for each record individually.
+
+    Per-row, not all-or-nothing: an invalid OT split fails only that row.
+    `allocations` is NOT supported on this endpoint (no bulk-create path for
+    the hour-allocation ledger yet) — a row that sends allocations fails
+    with its own per-row error rather than silently persisting without them;
+    use single create/update (POST/PUT /api/attendance) for allocations.
 
     Returns summary with total, successful, failed counts, errors, and created IDs.
     """

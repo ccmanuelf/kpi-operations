@@ -9,6 +9,8 @@ from datetime import date, datetime
 from decimal import Decimal
 from enum import Enum
 
+from backend.orm.labor_taxonomy import HourCategoryEnum, LaborClassEnum  # noqa: F401  (enums re-exported)
+
 
 class AbsenceTypeEnum(str, Enum):
     """Absence classification for absenteeism tracking - matches DB enum"""
@@ -17,6 +19,28 @@ class AbsenceTypeEnum(str, Enum):
     VACATION = "VACATION"  # Scheduled, doesn't count
     MEDICAL_LEAVE = "MEDICAL_LEAVE"  # Counts toward absenteeism
     PERSONAL_LEAVE = "PERSONAL_LEAVE"  # Counts toward absenteeism
+
+
+class AllocationItem(BaseModel):
+    """One intra-day hour-allocation ledger row (Cycle 3 PR-A).
+
+    Request-side only (Create/Update): ``hours`` is Decimal per this task's interface
+    contract. Never wire this class as a field on a response_model — Pydantic v2
+    serializes Decimal-typed fields as JSON strings, not numbers (see
+    tests/test_models/test_decimal_response_serialization.py). AttendanceRecordResponse
+    uses the float-typed AllocationItemResponse below instead.
+    """
+
+    category: HourCategoryEnum
+    hours: Decimal = Field(gt=0, decimal_places=2)
+
+
+class AllocationItemResponse(BaseModel):
+    """Response-side counterpart of AllocationItem — hours as float so it serializes
+    as a JSON number (see AllocationItem's docstring)."""
+
+    category: HourCategoryEnum
+    hours: float
 
 
 class AttendanceRecordCreate(BaseModel):
@@ -34,9 +58,11 @@ class AttendanceRecordCreate(BaseModel):
     shift_id: Optional[int] = Field(None, gt=0, description="Shift ID")
 
     # Hours tracking - REQUIRED for Absenteeism calculation
-    scheduled_hours: Decimal = Field(..., gt=0, le=24)
-    actual_hours: Decimal = Field(default=Decimal("0"), ge=0, le=24)
-    absence_hours: Decimal = Field(default=Decimal("0"), ge=0, le=24, description="scheduled - actual")
+    scheduled_hours: Decimal = Field(..., gt=0, le=24, decimal_places=2)
+    actual_hours: Decimal = Field(default=Decimal("0"), ge=0, le=24, decimal_places=2)
+    absence_hours: Decimal = Field(
+        default=Decimal("0"), ge=0, le=24, decimal_places=2, description="scheduled - actual"
+    )
 
     # Absence tracking
     is_absent: int = Field(default=0, ge=0, le=1, description="Boolean: 0=present, 1=absent")
@@ -55,6 +81,23 @@ class AttendanceRecordCreate(BaseModel):
     # Metadata
     absence_reason: Optional[str] = None
     notes: Optional[str] = None
+
+    # Labor-hours capture (Cycle 3 PR-A) — OT split (all-None = unsplit) + class override + allocations
+    normal_hours: Optional[Decimal] = Field(
+        None, ge=0, le=24, decimal_places=2, description="Straight-time hours (OT split tier)"
+    )
+    double_hours: Optional[Decimal] = Field(
+        None, ge=0, le=24, decimal_places=2, description="Double-time hours (OT split tier)"
+    )
+    triple_hours: Optional[Decimal] = Field(
+        None, ge=0, le=24, decimal_places=2, description="Triple-time hours (OT split tier)"
+    )
+    labor_class_override: Optional[LaborClassEnum] = Field(
+        None, description="Per-entry direct/indirect override (NULL = use employee default)"
+    )
+    allocations: Optional[list[AllocationItem]] = Field(
+        None, description="Intra-day hour-allocation ledger (replace-on-write)"
+    )
 
     @classmethod
     def from_legacy_csv(cls, data: dict) -> "AttendanceRecordCreate":
@@ -98,6 +141,13 @@ class AttendanceRecordCreate(BaseModel):
             is_late=1 if status == "LATE" else 0,
             absence_reason=data.get("absence_reason"),
             notes=data.get("notes"),
+            # Labor-hours capture (Cycle 3 PR-A, Task 6): optional OT split + class
+            # override from CSV. `not in (None, "")` (not a truthy check) so an
+            # explicit "0" tier is preserved rather than treated as absent.
+            normal_hours=Decimal(str(data["normal_hours"])) if data.get("normal_hours") not in (None, "") else None,
+            double_hours=Decimal(str(data["double_hours"])) if data.get("double_hours") not in (None, "") else None,
+            triple_hours=Decimal(str(data["triple_hours"])) if data.get("triple_hours") not in (None, "") else None,
+            labor_class_override=data.get("labor_class_override") or None,
         )
 
 
@@ -106,11 +156,36 @@ class AttendanceRecordUpdate(BaseModel):
 
     line_id: Optional[int] = Field(None, description="Updated production line ID")
     status: Optional[str] = Field(None, max_length=20)
-    actual_hours_worked: Optional[Decimal] = Field(None, ge=0, le=24)
+    actual_hours_worked: Optional[Decimal] = Field(None, ge=0, le=24, decimal_places=2)
+    # Grid-style edits (useAttendanceGridData.ts buildPayload) send `actual_hours`,
+    # matching AttendanceRecordCreate's field name and the ORM column name directly
+    # (fix round 3, item 4 — actual_hours_worked above has never actually mapped
+    # onto the ORM's `actual_hours` attribute; the update loop is a blind
+    # hasattr-gated setattr, so a field name mismatch silently no-ops).
+    actual_hours: Optional[Decimal] = Field(
+        None, ge=0, le=24, decimal_places=2, description="Updated actual hours worked"
+    )
     absence_reason: Optional[str] = Field(None, max_length=100)
     covered_by_employee_id: Optional[int] = Field(None, gt=0)
     coverage_confirmed: Optional[int] = Field(None, ge=0, le=1)
     notes: Optional[str] = None
+
+    # Labor-hours capture (Cycle 3 PR-A) — OT split + class override + allocations (replace-on-write)
+    normal_hours: Optional[Decimal] = Field(
+        None, ge=0, le=24, decimal_places=2, description="Straight-time hours (OT split tier)"
+    )
+    double_hours: Optional[Decimal] = Field(
+        None, ge=0, le=24, decimal_places=2, description="Double-time hours (OT split tier)"
+    )
+    triple_hours: Optional[Decimal] = Field(
+        None, ge=0, le=24, decimal_places=2, description="Triple-time hours (OT split tier)"
+    )
+    labor_class_override: Optional[LaborClassEnum] = Field(
+        None, description="Per-entry direct/indirect override (NULL = use employee default)"
+    )
+    allocations: Optional[list[AllocationItem]] = Field(
+        None, description="Intra-day hour-allocation ledger; presence replaces the full list"
+    )
 
 
 class AttendanceRecordResponse(BaseModel):
@@ -137,6 +212,21 @@ class AttendanceRecordResponse(BaseModel):
     notes: Optional[str] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
+
+    # Labor-hours capture (Cycle 3 PR-A) — raw columns.
+    # float, not Decimal: response_model fields must serialize as JSON numbers, not
+    # strings (see AllocationItem's docstring / test_decimal_response_serialization.py).
+    normal_hours: Optional[float] = None
+    double_hours: Optional[float] = None
+    triple_hours: Optional[float] = None
+    labor_class_override: Optional[str] = None
+
+    # Labor-hours capture — derived fields (populated by crud layer; defaults let
+    # model_validate(entry) succeed even though entry has no matching attribute)
+    allocations: list[AllocationItemResponse] = Field(default_factory=list)
+    billed_hours: float = Field(default=0.0)
+    available_for_efficiency_hours: Optional[float] = None
+    effective_labor_class: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 

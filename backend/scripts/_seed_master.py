@@ -100,10 +100,16 @@ def seed_employees(session: Session, spec: ClientSpec) -> list:
     """Idempotent per-client employees, single-client-assigned, with client +
     line assignments. The last (up to 2) employees are floating-pool:
     is_floating_pool=1, a FLOATING (rather than DEDICATED)
-    EmployeeClientAssignment, and a FloatingPool availability row."""
+    EmployeeClientAssignment, and a FloatingPool availability row.
+
+    Labor-hours capture (Cycle 3 PR-A, Task 8): every seeded employee gets a
+    deterministic direct/indirect classification (majority direct, fixed
+    `n % 4 == 0` -> indirect pattern) so demo data is fully classified —
+    no NULL labor_class in the seeds."""
     from backend.orm.employee import Employee
     from backend.orm.employee_client_assignment import assign_employee_to_client, AssignmentType
     from backend.orm.employee_line_assignment import EmployeeLineAssignment
+    from backend.orm.labor_taxonomy import LaborClassEnum
     from datetime import date
     from decimal import Decimal
     from backend.db.factories import TestDataFactory
@@ -124,6 +130,7 @@ def seed_employees(session: Session, spec: ClientSpec) -> list:
             employee_name=f"{spec.client_name} Operator {n}",
             is_floating_pool=is_floating,
         )
+        emp.labor_class = LaborClassEnum.INDIRECT.value if n % 4 == 0 else LaborClassEnum.DIRECT.value
         assignment_type = AssignmentType.FLOATING_POOL.value if is_floating else AssignmentType.DEDICATED.value
         assign_employee_to_client(
             session,

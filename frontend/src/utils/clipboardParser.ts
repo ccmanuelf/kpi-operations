@@ -330,7 +330,13 @@ export const entrySchemas: Record<string, EntrySchema> = {
     },
   },
   attendance: {
-    required: ['shift_date'],
+    // shift_date is NOT required (fix round 4, item 2): the attendance grid
+    // has no shift_date COLUMN (it's set once globally via the date picker,
+    // not per-row), so mapColumnsToGrid can never map a pasted shift_date
+    // header and this field would always be missing on the converted row —
+    // every paste was rejected as invalid. onPasteConfirm already falls back
+    // to selectedDate.value when a row has no shift_date.
+    required: [],
     fields: {
       shift_date: { type: 'date' },
       scheduled_hours: { type: 'number', min: 0, max: 24 },

@@ -10,6 +10,12 @@
  * to is_absent + absence_type + is_late on save. clock_in/clock_out
  * (HH:MM strings) are combined with shift_date to produce ISO
  * arrival_time/departure_time datetimes.
+ *
+ * Labor-hours capture (Cycle 3 PR-A, Task 7): normal_hours/double_hours/
+ * triple_hours (OT split, all-null = unsplit), labor_class_override
+ * (direct/indirect/null), and allocations (intra-day hour ledger, edited
+ * via AllocationEditorDialog.vue) ride the same create/update payload —
+ * see backend/schemas/attendance.py AttendanceRecordCreate/Update.
  */
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -17,6 +23,8 @@ import { useAuthStore } from '@/stores/authStore'
 import { useKPIStore } from '@/stores/kpi'
 import api from '@/services/api'
 import { format } from 'date-fns'
+import { LABOR_CLASS_CODES, laborClassLabelKey } from '@/constants/laborTaxonomy'
+import { allocatedTotal, type AllocationItemPayload } from '@/composables/useAllocationEditor'
 
 export interface AttendanceRow {
   attendance_entry_id?: string | number
@@ -32,9 +40,24 @@ export interface AttendanceRow {
   actual_hours?: number
   absence_reason?: string
   notes?: string
+  normal_hours?: number | null
+  double_hours?: number | null
+  triple_hours?: number | null
+  labor_class_override?: string | null
+  allocations?: AllocationItemPayload[]
+  billed_hours?: number
+  available_for_efficiency_hours?: number | null
+  effective_labor_class?: string | null
   _hasChanges?: boolean
   _isNew?: boolean
   _isExisting?: boolean
+  // Row-identity key for findTrackedRow — NOT employee_id (fix round 3,
+  // item 3): a pasted row for an already-rostered employee shares that
+  // employee's employee_id with their existing roster row, so
+  // employee_id can't disambiguate "which row is this" once more than
+  // one row exists per employee. Assigned once per row at creation time
+  // (loadEmployees, onPasteConfirm) and never changes.
+  _localId?: string
   [key: string]: unknown
 }
 
@@ -124,6 +147,46 @@ export const combineDateTime = (
   return `${date}T${h.padStart(2, '0')}:${m}:00`
 }
 
+// Row-identity key generator — see AttendanceRow._localId's declaration comment.
+const genLocalId = (): string => `local_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`
+
+// Allocations button-cell (module scope — no per-instance closures needed
+// beyond the params passed in). Empty cell (no button label text) when
+// nothing's allocated yet, per the no-low-contrast-placeholder rule; the
+// button itself always renders so a row can still open the dialog to make
+// its first allocation.
+const renderAllocationsCell = (
+  params: { data: AttendanceRow },
+  ctx: {
+    t: (_key: string, _named?: Record<string, unknown>) => string
+    openAllocationDialog: (_row: AttendanceRow) => void
+  },
+): HTMLElement => {
+  const btn = document.createElement('button')
+  btn.className = 'ag-grid-allocations-btn'
+  btn.type = 'button'
+  btn.setAttribute('data-testid', 'attendance-allocations-btn')
+  btn.title = ctx.t('labor.allocationsTitle')
+  btn.style.cssText =
+    'background: transparent; border: 1px solid currentColor; border-radius: 4px; ' +
+    'padding: 2px 8px; cursor: pointer; font-size: 11px; font-weight: 600; color: inherit;'
+
+  const total = allocatedTotal(params.data.allocations || [])
+  // "+" is an action affordance ("add an allocation"), not a data value —
+  // distinct from a placeholder like "0/8 h" that could be misread as an
+  // actual (zero) allocation.
+  btn.textContent =
+    total > 0
+      ? ctx.t('labor.allocatedSummary', {
+          allocated: total,
+          actual: params.data.actual_hours ?? 0,
+        })
+      : '+'
+
+  btn.addEventListener('click', () => ctx.openAllocationDialog(params.data))
+  return btn
+}
+
 export default function useAttendanceGridData(
   { TimePickerCellEditor }: UseAttendanceGridDataOptions = {},
 ) {
@@ -144,6 +207,21 @@ export default function useAttendanceGridData(
   const showConfirmDialog = ref(false)
   const pendingData = ref<AttendanceRow>({})
   const pendingRows = ref<AttendanceRow[]>([])
+
+  // AG Grid's cellValueChanged event.data (and the row handed into the
+  // allocations dialog) is not reliably the same object instance Vue
+  // tracks inside attendanceData.value — verified empirically in a real
+  // browser session: mutating event.data in place left attendanceData.value's
+  // own copy of that row untouched. markRowAsChanged/onAllocationsSaved
+  // now re-resolve to the actual tracked row by identity before mutating
+  // (see findTrackedRow below), which is the real fix. editTick is a
+  // belt-and-suspenders dirty-signal on top of that: every mutation site
+  // bumps it, and every computed that needs to see the mutation reads it
+  // (a no-op read, purely to register the dependency) before deriving
+  // from attendanceData.value — covers the defensive fallback path where
+  // no tracked row is found and a not-necessarily-identical row object
+  // gets mutated directly instead.
+  const editTick = ref(0)
 
   const showPasteDialog = ref(false)
   const parsedPasteData = ref<unknown | null>(null)
@@ -182,13 +260,83 @@ export default function useAttendanceGridData(
     ]
   })
 
-  const hasChanges = computed(() => attendanceData.value.some((row) => row._hasChanges))
+  const hasChanges = computed(() => {
+    void editTick.value
+    return attendanceData.value.some((row) => row._hasChanges)
+  })
 
-  const changedRowsCount = computed(
-    () => attendanceData.value.filter((row) => row._hasChanges).length,
-  )
+  const changedRowsCount = computed(() => {
+    void editTick.value
+    return attendanceData.value.filter((row) => row._hasChanges).length
+  })
+
+  // AG Grid's cellValueChanged event.data (and the row handed to the
+  // allocations dialog) is NOT reliably the same object instance tracked
+  // in attendanceData.value — verified in the browser: mutating it
+  // in-place does not affect what attendanceData.value holds, even
+  // though editTick forces a re-derive (there's nothing new to derive,
+  // because the tracked row was never touched). Re-resolve to the
+  // actual reactive row before mutating, so the mutation lands on the
+  // object hasChanges/changedRowsCount/noSplitCount/unallocatedCount/
+  // statusCounts actually iterate.
+  //
+  // Keyed by _localId, NOT employee_id (fix round 3, item 3): once
+  // pasted rows live in attendanceData.value alongside roster rows (see
+  // onPasteConfirm below), more than one row can share an employee_id —
+  // a pasted row for an already-rostered employee. employee_id can't
+  // disambiguate which of those rows is which; _localId is assigned
+  // once per row at creation and never collides. No employee_id
+  // fallback: a wrong-row match is worse than no match (falls through
+  // to each call site's `?? row`/`?? event.data` defensive default,
+  // which mutates a locally-scoped, not-necessarily-tracked object
+  // instead of silently corrupting an unrelated row).
+  const findTrackedRow = (row: AttendanceRow): AttendanceRow | undefined =>
+    row._localId ? attendanceData.value.find((r) => r._localId === row._localId) : undefined
+
+  // Allocation dialog (AllocationEditorDialog.vue) — opened from the grid's
+  // allocations button-cell (see columnDefs below).
+  const showAllocationDialog = ref(false)
+  const allocationDialogRow = ref<AttendanceRow | null>(null)
+
+  const openAllocationDialog = (row: AttendanceRow): void => {
+    allocationDialogRow.value = findTrackedRow(row) ?? row
+    showAllocationDialog.value = true
+  }
+
+  const onAllocationsSaved = (payload: {
+    row: AttendanceRow
+    items: AllocationItemPayload[]
+  }): void => {
+    const target = findTrackedRow(payload.row) ?? payload.row
+    target.allocations = payload.items
+    target._hasChanges = true
+    editTick.value++
+    gridRef.value?.refreshCells?.()
+  }
+
+  // Completeness chips (host renders both `v-if > 0`): entries with actual
+  // hours recorded but no OT split captured yet, and entries with no hour
+  // allocations recorded yet.
+  const noSplitCount = computed(() => {
+    void editTick.value
+    return attendanceData.value.filter(
+      (row) =>
+        row.actual_hours !== undefined &&
+        row.actual_hours !== null &&
+        row.normal_hours == null &&
+        row.double_hours == null &&
+        row.triple_hours == null,
+    ).length
+  })
+
+  const unallocatedCount = computed(() => {
+    void editTick.value
+    return attendanceData.value.filter((row) => !row.allocations || row.allocations.length === 0)
+      .length
+  })
 
   const statusCounts = computed(() => {
+    void editTick.value
     const counts = { present: 0, absent: 0, late: 0, leave: 0, halfDay: 0 }
 
     attendanceData.value.forEach((row) => {
@@ -286,6 +434,71 @@ export default function useAttendanceGridData(
       width: 130,
     },
     {
+      headerName: t('labor.otNormal'),
+      field: 'normal_hours',
+      editable: true,
+      type: 'numericColumn',
+      cellEditor: 'agNumberCellEditor',
+      cellEditorParams: { min: 0, max: 24, precision: 2 },
+      // No placeholder text for a null/unsplit tier — a genuinely empty
+      // cell (not "0.00", which would misrepresent an unsplit entry as
+      // explicitly zero straight-time hours).
+      valueFormatter: (params: { value?: number | null }) =>
+        params.value === null || params.value === undefined ? '' : String(params.value),
+      width: 110,
+    },
+    {
+      headerName: t('labor.otDouble'),
+      field: 'double_hours',
+      editable: true,
+      type: 'numericColumn',
+      cellEditor: 'agNumberCellEditor',
+      cellEditorParams: { min: 0, max: 24, precision: 2 },
+      valueFormatter: (params: { value?: number | null }) =>
+        params.value === null || params.value === undefined ? '' : String(params.value),
+      width: 110,
+    },
+    {
+      headerName: t('labor.otTriple'),
+      field: 'triple_hours',
+      editable: true,
+      type: 'numericColumn',
+      cellEditor: 'agNumberCellEditor',
+      cellEditorParams: { min: 0, max: 24, precision: 2 },
+      valueFormatter: (params: { value?: number | null }) =>
+        params.value === null || params.value === undefined ? '' : String(params.value),
+      width: 110,
+    },
+    {
+      headerName: t('labor.laborClassOverride'),
+      field: 'labor_class_override',
+      editable: true,
+      cellEditor: 'agSelectCellEditor',
+      cellEditorParams: {
+        values: [null, ...LABOR_CLASS_CODES],
+        formatValue: (v: unknown) =>
+          v ? t(laborClassLabelKey(String(v))) : t('labor.unclassified'),
+      },
+      // Resting-value display: EMPTY for null (most rows — override
+      // absent, effective class falls back to the employee default) per
+      // the no-low-contrast-placeholder rule; only a set override renders
+      // text (mirrors useWorkOrderGridData's delay-badge empty-cell
+      // pattern for the non-applicable case).
+      valueFormatter: (params: { value?: string | null }) =>
+        params.value ? t(laborClassLabelKey(params.value)) : '',
+      width: 140,
+    },
+    {
+      headerName: t('labor.allocationsTitle'),
+      field: 'allocations',
+      editable: false,
+      sortable: false,
+      filter: false,
+      cellRenderer: (params: { data: AttendanceRow }) =>
+        renderAllocationsCell(params, { t, openAllocationDialog }),
+      width: 150,
+    },
+    {
       headerName: t('grids.columns.absenceReason'),
       field: 'absence_reason',
       editable: true,
@@ -367,6 +580,7 @@ export default function useAttendanceGridData(
             employee_name: emp.employee_name || (emp as { name?: string }).name,
             department: emp.department,
             _isExisting: true,
+            _localId: genLocalId(),
           }
         }
 
@@ -383,8 +597,14 @@ export default function useAttendanceGridData(
           actual_hours: DEFAULT_SCHEDULED_HOURS,
           absence_reason: '',
           notes: '',
+          normal_hours: null,
+          double_hours: null,
+          triple_hours: null,
+          labor_class_override: null,
+          allocations: [],
           _hasChanges: false,
           _isNew: true,
+          _localId: genLocalId(),
         }
       })
 
@@ -406,25 +626,44 @@ export default function useAttendanceGridData(
     data: AttendanceRow
     colDef: { field: string }
   }): void => {
-    event.data._hasChanges = true
+    // event.data is not reliably the same object attendanceData.value
+    // tracks (see findTrackedRow's declaration comment) — merge AG
+    // Grid's current field values onto the actual tracked row so the
+    // mutation is visible to attendanceData.value's dependents. Object.assign
+    // (not replacing the array element) preserves the tracked row's
+    // identity for anything else already holding a reference to it
+    // (e.g. an open allocation dialog).
+    const target = findTrackedRow(event.data) ?? event.data
+    Object.assign(target, event.data)
+    target._hasChanges = true
 
-    if (event.colDef.field === 'clock_in' && event.data.clock_in) {
-      event.data.status = 'Late'
+    if (event.colDef.field === 'clock_in' && target.clock_in) {
+      target.status = 'Late'
     }
+
+    // Dirty-signal read by hasChanges/changedRowsCount/noSplitCount/
+    // unallocatedCount/statusCounts — belt-and-suspenders alongside the
+    // identity-resolved mutation above (also covers the fallback path
+    // where no tracked row was found).
+    editTick.value++
 
     gridRef.value?.refreshCells?.()
   }
 
+  // Routed through attendanceData.value (the tracked row store), not
+  // gridApi.forEachNode (fix round 3, item 3) — same class of bug as
+  // markRowAsChanged: mutating AG Grid's own node.data left hasChanges
+  // permanently stale (verified in the browser — Save Records stayed
+  // disabled after Mark All Present), since node.data isn't reliably
+  // the object hasChanges/changedRowsCount actually iterate.
   const bulkSetStatus = (): void => {
-    const gridApi = gridRef.value?.gridApi
-    if (!gridApi) return
-
-    gridApi.forEachNode((node) => {
-      node.data.status = 'Present'
-      node.data._hasChanges = true
+    attendanceData.value.forEach((row) => {
+      row.status = 'Present'
+      row._hasChanges = true
     })
 
-    gridApi.refreshCells()
+    editTick.value++
+    gridRef.value?.refreshCells?.()
     showSnackbar(t('grids.attendance.markedPresent'), 'success')
   }
 
@@ -455,6 +694,15 @@ export default function useAttendanceGridData(
       is_late: translated.is_late,
       absence_reason: row.absence_reason || undefined,
       notes: row.notes || undefined,
+      // Labor-hours capture (Cycle 3 PR-A, Task 7) — all-null tiers = unsplit
+      // (backend no-ops); explicit null override = use employee default;
+      // allocations always carries the row's current ledger so a save that
+      // doesn't touch allocations resends (not clears) what's already there.
+      normal_hours: row.normal_hours ?? null,
+      double_hours: row.double_hours ?? null,
+      triple_hours: row.triple_hours ?? null,
+      labor_class_override: row.labor_class_override ?? null,
+      allocations: (row.allocations || []).map((a) => ({ category: a.category, hours: a.hours })),
     }
   }
 
@@ -564,11 +812,9 @@ export default function useAttendanceGridData(
   }
 
   const onPasteConfirm = (rowsToAdd: Partial<AttendanceRow>[]): void => {
-    const gridApi = gridRef.value?.gridApi
-    if (!gridApi) return
-
     const preparedRows: AttendanceRow[] = rowsToAdd.map((row) => ({
       attendance_entry_id: `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      _localId: genLocalId(),
       employee_id: row.employee_id || '',
       employee_name: row.employee_name || '',
       department: row.department || '',
@@ -581,11 +827,29 @@ export default function useAttendanceGridData(
       actual_hours: row.actual_hours ?? DEFAULT_SCHEDULED_HOURS,
       absence_reason: row.absence_reason || '',
       notes: row.notes || '',
+      // Labor-hours capture (Cycle 3 PR-A, Task 7 fix round 1) — carry
+      // the OT split + override through from the pasted row instead of
+      // dropping them. No client-side split-sum validation here (matches
+      // this whitelist's existing pattern of not cross-validating other
+      // fields on paste); an invalid split surfaces as a 422 on save,
+      // same per-row idiom as every other paste-then-save path.
+      normal_hours: row.normal_hours ?? null,
+      double_hours: row.double_hours ?? null,
+      triple_hours: row.triple_hours ?? null,
+      labor_class_override: row.labor_class_override ?? null,
       _hasChanges: true,
       _isNew: true,
     }))
 
-    gridApi.applyTransaction({ add: preparedRows, addIndex: 0 })
+    // Prepend into attendanceData.value (the SAME reactive array AG Grid's
+    // rowData prop binds to) instead of a grid-only gridApi.applyTransaction
+    // (fix round 3, item 3) — that left pasted rows with no counterpart in
+    // attendanceData.value at all, so hasChanges/both completeness chips
+    // could never see them, and (before the _localId fix above)
+    // findTrackedRow's employee_id key could resolve a pasted row's edits
+    // onto an existing roster row for the same employee. One row store now:
+    // attendanceData.value is the only place rows live.
+    attendanceData.value = [...preparedRows, ...attendanceData.value]
     showPasteDialog.value = false
     showSnackbar(t('paste.rowsAdded', { count: preparedRows.length }), 'success')
   }
@@ -634,6 +898,12 @@ export default function useAttendanceGridData(
     hasChanges,
     changedRowsCount,
     statusCounts,
+    showAllocationDialog,
+    allocationDialogRow,
+    openAllocationDialog,
+    onAllocationsSaved,
+    noSplitCount,
+    unallocatedCount,
     columnDefs,
     onGridReady,
     loadEmployees,

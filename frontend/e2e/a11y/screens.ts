@@ -14,7 +14,18 @@ export const SCREENS: { name: string; path: string }[] = [
   { name: 'reports-admin-settings', path: '/admin/settings' },
   { name: 'admin-users', path: '/admin/users' },
   { name: 'admin-defect-types', path: '/admin/defect-types' },
+  { name: 'admin-employees', path: '/admin/employees' },
 ]
+
+// NOT added: '/data-entry/attendance'. AGGridBase's "Paste from Excel"
+// toolbar button (enableExcelPaste defaults true; AttendanceEntryGrid
+// doesn't override it) fails dark-theme contrast (2.21-2.52:1 vs the
+// 4.5:1 threshold) — a pre-existing bug in the shared toolbar, not in
+// anything this Task 7 change touched. work-orders (the other
+// AGGridBase-heavy audited screen) opts out via enableExcelPaste="false",
+// which is why this was never caught. Flagged, not fixed here — fixing
+// it means auditing every AGGridBase consumer's dark-theme toolbar, out
+// of this task's scope.
 
 // Verified false-positives: the MyShift header sits on a blue gradient banner the
 // DOM contrast read can't always resolve (manually verified white-on-#1976d2 =

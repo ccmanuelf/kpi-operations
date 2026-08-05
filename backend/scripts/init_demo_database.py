@@ -32,6 +32,7 @@ from backend.database import SessionLocal  # noqa: E402
 from backend.db.factories import TestDataFactory  # noqa: E402
 from backend.orm.delay_taxonomy import DelayClassificationEnum, JustifiedDelayReasonEnum  # noqa: E402
 from backend.orm.downtime_taxonomy import DEFAULT_CATEGORY_BY_REASON, DowntimeReasonEnum  # noqa: E402
+from backend.orm.labor_taxonomy import HourCategoryEnum, LaborClassEnum  # noqa: E402
 
 # Import all ORM models via centralized registry (backend/orm/__init__.py).
 # This single import registers every model so Alembic's model registry can
@@ -57,6 +58,8 @@ from backend.orm import (  # noqa: E402 — sys.path setup above is required for
     ProductionEntry,
     QualityEntry,
     AttendanceEntry,
+    AttendanceHourAllocation,
+    AbsenceType,
     DowntimeEntry,
     HoldEntry,
     DefectTypeCatalog,
@@ -424,7 +427,10 @@ def init_database() -> None:
             users[username] = user
         db.flush()
 
-        # Employees (8 per client, last 2 floating pool)
+        # Employees (8 per client, last 2 floating pool). Labor-hours capture
+        # (Cycle 3 PR-A, Task 8): deterministic direct/indirect classification
+        # (majority direct, fixed i % 4 == 3 -> indirect pattern) so demo
+        # data is fully classified — no NULL labor_class in the seeds.
         all_employees = {}
         for client_id in clients.keys():
             client_employees = []
@@ -436,6 +442,7 @@ def init_database() -> None:
                     employee_code=f"EMP-{client_id[:4]}-{i+1:03d}",
                     is_floating_pool=(i >= 6),
                 )
+                emp.labor_class = LaborClassEnum.INDIRECT.value if i % 4 == 3 else LaborClassEnum.DIRECT.value
                 client_employees.append(emp)
             all_employees[client_id] = client_employees
 
@@ -1324,6 +1331,22 @@ def init_database() -> None:
         # ==============================================================
         print("\n[7/10] Creating execution data (production, quality, attendance, downtime, holds)...")
 
+        # Labor-hours capture (Cycle 3 PR-A, Task 8) counters for the
+        # Attendance-entries block below. Declared here (before the
+        # per-client loop) so they accumulate ACROSS all 5 clients x 3
+        # employees — the demo dataset's smaller per-client sample (3
+        # employees x ~10 days) needs the wider pool to reliably reach every
+        # fixed cadence, including the full HourCategoryEnum set. `alloc_ct`
+        # is a SEPARATE counter from `attendance_p`, incremented only on
+        # rotating-minority allocation rows and indexed mod 8 — mirroring
+        # the justified_ct fix from the delay-classification block below (a
+        # naive `attendance_p % 8` would collide with the `% 4 == 0`
+        # selection modulus, since gcd(4, 8) == 4).
+        _hour_categories = list(HourCategoryEnum)
+        attendance_presence_idx = 0
+        attendance_p = 0
+        attendance_alloc_ct = 0
+
         for client_id, client in clients.items():
             client_work_orders = all_work_orders[client_id]
 
@@ -1462,16 +1485,69 @@ def init_database() -> None:
                     defect_rate=0.005,
                 )
 
-            # Attendance entries
+            # Attendance entries. Labor-hours capture (Cycle 3 PR-A, Task 8):
+            # deterministic (not random-draw) presence + OT-split /
+            # labor-class-override / hour-allocation coverage, mirroring
+            # _seed_operations.py's seed_daily_data — see the counter
+            # declarations above the per-client loop.
+            attendance_base_date = date.today() - timedelta(days=10)
             for emp in all_employees[client_id][:3]:
-                TestDataFactory.create_attendance_entries_batch(
-                    db,
-                    employee_id=emp.employee_id,
-                    client_id=client_id,
-                    shift_id=client_shifts[0].shift_id,
-                    count=10,
-                    attendance_rate=0.92,
-                )
+                for day_offset in range(10):
+                    current_date = attendance_base_date + timedelta(days=day_offset)
+                    if current_date.weekday() >= 5:
+                        continue
+                    attendance_presence_idx += 1
+                    absent = attendance_presence_idx % 13 == 0
+                    actual = Decimal("0") if absent else Decimal("8.0")
+                    normal_hours = double_hours = triple_hours = None
+                    labor_class_override = None
+                    allocations: list = []
+                    if not absent:
+                        attendance_p += 1
+                        if attendance_p % 25 == 0:
+                            pass  # fixed minority left UNSPLIT (completeness chip)
+                        elif attendance_p % 20 == 0:
+                            normal_hours, double_hours, triple_hours = Decimal("7.0"), Decimal("0"), Decimal("1.0")
+                        elif attendance_p % 5 == 0:
+                            normal_hours, double_hours, triple_hours = Decimal("6.0"), Decimal("2.0"), Decimal("0")
+                        else:
+                            normal_hours, double_hours, triple_hours = Decimal("8.0"), Decimal("0"), Decimal("0")
+
+                        if attendance_p % 15 == 0:
+                            labor_class_override = (
+                                LaborClassEnum.INDIRECT.value
+                                if emp.labor_class == LaborClassEnum.DIRECT.value
+                                else LaborClassEnum.DIRECT.value
+                            )
+
+                        if attendance_p % 10 == 0:
+                            pass  # fixed minority left unallocated (completeness chip)
+                        elif attendance_p % 4 == 0:
+                            alloc_category = _hour_categories[attendance_alloc_ct % len(_hour_categories)]
+                            attendance_alloc_ct += 1
+                            allocations.append((alloc_category.value, actual))
+                        else:
+                            allocations.append((HourCategoryEnum.BILLED_PRODUCTION.value, actual))
+
+                    entry = AttendanceEntry(
+                        attendance_entry_id=TestDataFactory._next_id("ATT"),
+                        employee_id=emp.employee_id,
+                        client_id=client_id,
+                        shift_id=client_shifts[0].shift_id,
+                        shift_date=datetime.combine(current_date, datetime.min.time()),
+                        scheduled_hours=Decimal("8.0"),
+                        actual_hours=actual,
+                        absence_hours=Decimal("8.0") if absent else Decimal("0"),
+                        absence_type=AbsenceType.UNSCHEDULED_ABSENCE if absent else None,
+                        is_absent=1 if absent else 0,
+                        normal_hours=normal_hours,
+                        double_hours=double_hours,
+                        triple_hours=triple_hours,
+                        labor_class_override=labor_class_override,
+                    )
+                    for category_value, hours in allocations:
+                        entry.hour_allocations.append(AttendanceHourAllocation(category=category_value, hours=hours))
+                    db.add(entry)
 
             # Downtime entries — varied durations across production days,
             # attributed to actively-running work orders (IN_PROGRESS or

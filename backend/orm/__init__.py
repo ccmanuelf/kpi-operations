@@ -37,6 +37,7 @@ from .downtime_entry import DowntimeEntry
 
 # Phase 3: Attendance
 from .attendance_entry import AttendanceEntry, AbsenceType
+from .attendance_hour_allocation import AttendanceHourAllocation
 from .coverage_entry import CoverageEntry
 from .coverage import ShiftCoverage
 
@@ -159,6 +160,7 @@ __all__ = [
     # Phase 3
     "AttendanceEntry",
     "AbsenceType",
+    "AttendanceHourAllocation",
     "CoverageEntry",
     "ShiftCoverage",
     # Phase 4

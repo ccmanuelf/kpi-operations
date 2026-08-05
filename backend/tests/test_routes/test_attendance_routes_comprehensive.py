@@ -190,6 +190,75 @@ class TestListAttendance:
         assert response.status_code == 200
 
 
+class TestListAttendanceShiftDateFilter:
+    """GET /api/attendance?shift_date= — exact-day filter (labor-hours-capture
+    Task 7 fix round 1, item 3).
+
+    shift_date was previously silently ignored — not a declared FastAPI
+    param on this route — so the attendance grid's "load today's entries"
+    call (which sends shift_date + shift_id) was effectively
+    date-unfiltered: only shift_id filtered anything. Combined with the
+    frontend's employee_id-keyed last-wins merge over a shift_date-DESC
+    list, an older entry for the same employee+shift could win over
+    today's real entry, hydrating the grid with stale allocations.
+    """
+
+    def _create_entry(self, client, setup, shift_date):
+        employee = setup["employees"][0]
+        payload = {
+            "client_id": setup["client"].client_id,
+            "employee_id": employee.employee_id,
+            "shift_date": shift_date.isoformat(),
+            "shift_id": setup["shift"].shift_id,
+            "scheduled_hours": "8.0",
+            "actual_hours": "8.0",
+            "is_absent": 0,
+        }
+        response = client.post("/api/attendance", json=payload)
+        assert response.status_code == 201, response.text
+        return response.json()["attendance_entry_id"]
+
+    def test_shift_date_returns_only_the_matching_days_entry(self, authenticated_client):
+        client, setup = authenticated_client
+        employee = setup["employees"][0]
+        shift = setup["shift"]
+
+        today = date.today()
+        yesterday = today - timedelta(days=1)
+
+        today_id = self._create_entry(client, setup, today)
+        yesterday_id = self._create_entry(client, setup, yesterday)
+
+        response = client.get(
+            f"/api/attendance?employee_id={employee.employee_id}"
+            f"&shift_id={shift.shift_id}&shift_date={today.isoformat()}"
+        )
+
+        assert response.status_code == 200
+        ids = [entry["attendance_entry_id"] for entry in response.json()]
+        assert today_id in ids
+        assert yesterday_id not in ids
+
+    def test_without_shift_date_both_days_are_returned(self, authenticated_client):
+        """Control: omitting shift_date keeps the pre-existing (shift_id-only) behavior."""
+        client, setup = authenticated_client
+        employee = setup["employees"][0]
+        shift = setup["shift"]
+
+        today = date.today()
+        yesterday = today - timedelta(days=1)
+
+        today_id = self._create_entry(client, setup, today)
+        yesterday_id = self._create_entry(client, setup, yesterday)
+
+        response = client.get(f"/api/attendance?employee_id={employee.employee_id}&shift_id={shift.shift_id}")
+
+        assert response.status_code == 200
+        ids = [entry["attendance_entry_id"] for entry in response.json()]
+        assert today_id in ids
+        assert yesterday_id in ids
+
+
 class TestGetAttendance:
     """Tests for GET /api/attendance/{attendance_id} endpoint."""
 
