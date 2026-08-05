@@ -13,15 +13,52 @@ from uuid import uuid4
 from fastapi import HTTPException
 
 from backend.orm.attendance_entry import AttendanceEntry
+from backend.orm.attendance_hour_allocation import AttendanceHourAllocation
 from backend.orm.shift import Shift
 from backend.orm.employee import Employee
-from backend.schemas.attendance import AttendanceRecordCreate, AttendanceRecordUpdate, AttendanceRecordResponse
+from backend.schemas.attendance import (
+    AllocationItem,
+    AttendanceRecordCreate,
+    AttendanceRecordUpdate,
+    AttendanceRecordResponse,
+)
+from backend.calculations.labor_hours import (
+    available_for_efficiency_hours,
+    billed_hours,
+    effective_labor_class,
+    validate_allocations,
+    validate_ot_split,
+)
 from backend.middleware.client_auth import verify_client_access, build_client_filter_clause
 from backend.orm.user import User
 from backend.utils.soft_delete import soft_delete
 from backend.utils.logging_utils import get_module_logger
 
 logger = get_module_logger(__name__)
+
+
+def _build_attendance_response(db: Session, entry: AttendanceEntry) -> AttendanceRecordResponse:
+    """Compose the response with Task 3's derived labor-hours fields.
+
+    Joins the employee for the default labor class; billed_hours /
+    available_for_efficiency_hours / effective_labor_class are pure derivations
+    over the entry's persisted split + allocations, never stored themselves.
+    """
+    employee = db.query(Employee).filter(Employee.employee_id == entry.employee_id).first()
+    employee_default_class = employee.labor_class if employee else None
+
+    alloc_tuples = [(alloc.category, alloc.hours) for alloc in entry.hour_allocations]
+
+    response = AttendanceRecordResponse.model_validate(entry)
+    response.allocations = [
+        AllocationItem(category=alloc.category, hours=alloc.hours) for alloc in entry.hour_allocations
+    ]
+    response.billed_hours = billed_hours(alloc_tuples)
+    response.available_for_efficiency_hours = (
+        available_for_efficiency_hours(entry.actual_hours, alloc_tuples) if entry.actual_hours is not None else None
+    )
+    response.effective_labor_class = effective_labor_class(entry.labor_class_override, employee_default_class)
+    return response
 
 
 def create_attendance_record(
@@ -35,13 +72,44 @@ def create_attendance_record(
     if hasattr(attendance, "client_id") and attendance.client_id:
         verify_client_access(current_user, attendance.client_id)
 
-    db_attendance = AttendanceEntry(**attendance.model_dump(), entered_by=current_user.user_id)
+    data = attendance.model_dump(exclude={"allocations"})
+
+    # OT split invariant: normalize the 0-defaulted triple when any tier is supplied.
+    try:
+        normalized_split = validate_ot_split(
+            data.get("normal_hours"), data.get("double_hours"), data.get("triple_hours"), data.get("actual_hours")
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
+    if normalized_split is not None:
+        data["normal_hours"], data["double_hours"], data["triple_hours"] = normalized_split
+
+    data["labor_class_override"] = (
+        attendance.labor_class_override.value if attendance.labor_class_override is not None else None
+    )
+
+    allocations = attendance.allocations
+    if allocations is not None:
+        items = [(item.category.value, item.hours) for item in allocations]
+        try:
+            validate_allocations(items, data.get("actual_hours") or Decimal("0"))
+        except ValueError as e:
+            raise HTTPException(status_code=422, detail=str(e)) from e
+
+    # Pre-existing gap: this path never set the String PK (no ORM/DB default),
+    # so every insert would violate NOT NULL. Same uuid4().hex pattern as
+    # bulk_create_attendance_records / mark_all_present below.
+    db_attendance = AttendanceEntry(attendance_entry_id=uuid4().hex, **data, entered_by=current_user.user_id)
+    if allocations is not None:
+        db_attendance.hour_allocations = [
+            AttendanceHourAllocation(category=item.category.value, hours=item.hours) for item in allocations
+        ]
 
     db.add(db_attendance)
     db.commit()
     db.refresh(db_attendance)
 
-    return AttendanceRecordResponse.model_validate(db_attendance)
+    return _build_attendance_response(db, db_attendance)
 
 
 def get_attendance_record(db: Session, attendance_id: str, current_user: User) -> Optional[AttendanceEntry]:
@@ -122,7 +190,41 @@ def update_attendance_record(
     if hasattr(db_attendance, "client_id") and db_attendance.client_id:
         verify_client_access(current_user, db_attendance.client_id)
 
-    update_data = attendance_update.model_dump(exclude_unset=True)
+    fields_set = attendance_update.model_fields_set
+    update_data = attendance_update.model_dump(exclude_unset=True, exclude={"allocations", "labor_class_override"})
+
+    # OT split invariant: normalize the 0-defaulted triple when any tier is supplied.
+    # actual_hours is not PUT-updatable on this schema, so validate against the entry's current value.
+    if {"normal_hours", "double_hours", "triple_hours"} & fields_set:
+        try:
+            normalized_split = validate_ot_split(
+                attendance_update.normal_hours,
+                attendance_update.double_hours,
+                attendance_update.triple_hours,
+                db_attendance.actual_hours,
+            )
+        except ValueError as e:
+            raise HTTPException(status_code=422, detail=str(e)) from e
+        if normalized_split is not None:
+            update_data["normal_hours"], update_data["double_hours"], update_data["triple_hours"] = normalized_split
+
+    if "labor_class_override" in fields_set:
+        update_data["labor_class_override"] = (
+            attendance_update.labor_class_override.value if attendance_update.labor_class_override is not None else None
+        )
+
+    # Replace-on-write: only touch the ledger when the key was actually sent (omitted -> untouched,
+    # empty list -> cleared via the delete-orphan cascade).
+    if "allocations" in fields_set:
+        allocations = attendance_update.allocations or []
+        items = [(item.category.value, item.hours) for item in allocations]
+        try:
+            validate_allocations(items, db_attendance.actual_hours or Decimal("0"))
+        except ValueError as e:
+            raise HTTPException(status_code=422, detail=str(e)) from e
+        db_attendance.hour_allocations = [
+            AttendanceHourAllocation(category=item.category.value, hours=item.hours) for item in allocations
+        ]
 
     for field, value in update_data.items():
         if hasattr(db_attendance, field):
@@ -131,7 +233,7 @@ def update_attendance_record(
     db.commit()
     db.refresh(db_attendance)
 
-    return AttendanceRecordResponse.model_validate(db_attendance)
+    return _build_attendance_response(db, db_attendance)
 
 
 def delete_attendance_record(db: Session, attendance_id: str, current_user: User) -> bool:
@@ -184,9 +286,11 @@ def bulk_create_attendance_records(db: Session, records: List[AttendanceRecordCr
                 verify_client_access(current_user, record.client_id)
 
             entry_id = uuid4().hex
+            # "allocations" has no matching AttendanceEntry column/kwarg (it's a separate
+            # child-table relationship); bulk-create doesn't support labor-hours capture yet.
             db_entry = AttendanceEntry(
                 attendance_entry_id=entry_id,
-                **record.model_dump(),
+                **record.model_dump(exclude={"allocations"}),
                 entered_by=current_user.user_id,
             )
             db.add(db_entry)

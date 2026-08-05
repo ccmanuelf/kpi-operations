@@ -9,6 +9,8 @@ from datetime import date, datetime
 from decimal import Decimal
 from enum import Enum
 
+from backend.orm.labor_taxonomy import HourCategoryEnum, LaborClassEnum  # noqa: F401  (enums re-exported)
+
 
 class AbsenceTypeEnum(str, Enum):
     """Absence classification for absenteeism tracking - matches DB enum"""
@@ -17,6 +19,13 @@ class AbsenceTypeEnum(str, Enum):
     VACATION = "VACATION"  # Scheduled, doesn't count
     MEDICAL_LEAVE = "MEDICAL_LEAVE"  # Counts toward absenteeism
     PERSONAL_LEAVE = "PERSONAL_LEAVE"  # Counts toward absenteeism
+
+
+class AllocationItem(BaseModel):
+    """One intra-day hour-allocation ledger row (Cycle 3 PR-A)."""
+
+    category: HourCategoryEnum
+    hours: Decimal = Field(gt=0)
 
 
 class AttendanceRecordCreate(BaseModel):
@@ -55,6 +64,17 @@ class AttendanceRecordCreate(BaseModel):
     # Metadata
     absence_reason: Optional[str] = None
     notes: Optional[str] = None
+
+    # Labor-hours capture (Cycle 3 PR-A) — OT split (all-None = unsplit) + class override + allocations
+    normal_hours: Optional[Decimal] = Field(None, ge=0, le=24, description="Straight-time hours (OT split tier)")
+    double_hours: Optional[Decimal] = Field(None, ge=0, le=24, description="Double-time hours (OT split tier)")
+    triple_hours: Optional[Decimal] = Field(None, ge=0, le=24, description="Triple-time hours (OT split tier)")
+    labor_class_override: Optional[LaborClassEnum] = Field(
+        None, description="Per-entry direct/indirect override (NULL = use employee default)"
+    )
+    allocations: Optional[list[AllocationItem]] = Field(
+        None, description="Intra-day hour-allocation ledger (replace-on-write)"
+    )
 
     @classmethod
     def from_legacy_csv(cls, data: dict) -> "AttendanceRecordCreate":
@@ -112,6 +132,17 @@ class AttendanceRecordUpdate(BaseModel):
     coverage_confirmed: Optional[int] = Field(None, ge=0, le=1)
     notes: Optional[str] = None
 
+    # Labor-hours capture (Cycle 3 PR-A) — OT split + class override + allocations (replace-on-write)
+    normal_hours: Optional[Decimal] = Field(None, ge=0, le=24, description="Straight-time hours (OT split tier)")
+    double_hours: Optional[Decimal] = Field(None, ge=0, le=24, description="Double-time hours (OT split tier)")
+    triple_hours: Optional[Decimal] = Field(None, ge=0, le=24, description="Triple-time hours (OT split tier)")
+    labor_class_override: Optional[LaborClassEnum] = Field(
+        None, description="Per-entry direct/indirect override (NULL = use employee default)"
+    )
+    allocations: Optional[list[AllocationItem]] = Field(
+        None, description="Intra-day hour-allocation ledger; presence replaces the full list"
+    )
+
 
 class AttendanceRecordResponse(BaseModel):
     """Attendance record response - matches ATTENDANCE_ENTRY schema"""
@@ -137,6 +168,19 @@ class AttendanceRecordResponse(BaseModel):
     notes: Optional[str] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
+
+    # Labor-hours capture (Cycle 3 PR-A) — raw columns
+    normal_hours: Optional[Decimal] = None
+    double_hours: Optional[Decimal] = None
+    triple_hours: Optional[Decimal] = None
+    labor_class_override: Optional[str] = None
+
+    # Labor-hours capture — derived fields (populated by crud layer; defaults let
+    # model_validate(entry) succeed even though entry has no matching attribute)
+    allocations: list[AllocationItem] = Field(default_factory=list)
+    billed_hours: Decimal = Field(default=Decimal("0"))
+    available_for_efficiency_hours: Optional[Decimal] = None
+    effective_labor_class: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 
