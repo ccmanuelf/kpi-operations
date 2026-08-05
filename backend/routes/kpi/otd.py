@@ -94,10 +94,16 @@ def calculate_otd_kpi(
     # Additive: surface calculate_true_otd's gross+net/late_counts/
     # justified_by_reason keys verbatim (spec §6) whenever the request's
     # scope resolves to a single client — calculate_true_otd is inherently
-    # single-client. Scope covering multiple/all clients (e.g. an admin
-    # request with no client_id) keeps the response as-is; there is no
-    # single-client rollup to compute, so nothing is added (not an error).
-    resolved_client_id = scope.as_single()
+    # single-client. Scope covering zero/multiple/all clients (e.g. an
+    # admin request with no client_id, or a leader assigned 2+ clients)
+    # keeps the response as-is; there is no single-client rollup to
+    # compute, so nothing is added (not an error). Deliberately NOT
+    # `scope.as_single()` bare — that raises HTTPException 400 when
+    # client_ids has >1 entries (the PR #144 footgun: a multi-client
+    # leader would get a 400 where this endpoint previously returned 200).
+    resolved_client_id: Optional[str] = None
+    if scope.client_ids is not None and len(scope.client_ids) == 1:
+        resolved_client_id = scope.client_ids[0]
     if resolved_client_id is not None:
         true_otd_result = calculate_true_otd(db, resolved_client_id, start_date, end_date)
         result["true_otd"] = true_otd_result["true_otd"]
