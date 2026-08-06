@@ -373,3 +373,170 @@ class TestExcelSummarySheetOTDZeroDeliveryGuard:
         assert ws["B7"].value == "Current Value"
         assert ws["A8"].value is None
         assert ws["B8"].value is None
+
+
+def _seed_labor_hours_scenario(db, client):
+    """Seeds one attendance entry with a known OT split + hour allocations,
+    exercising summarize_labor_hours's derivations (Task 1) through the
+    Excel row-fetch path.
+
+    actual_hours=12, normal=8 / double=3 / triple=1 (sums to actual, per
+    Task 1's validate_ot_split invariant). Allocations: billed_production=9
+    (the only BILLABLE_CATEGORIES member) + idle_wait=1 (NOT in
+    PRODUCTIVE_CATEGORIES, so it's subtracted from available-for-efficiency);
+    2h left unallocated, which defaults to productive-unbilled (stays in
+    available-for-efficiency, per available_for_efficiency_hours' docstring).
+
+    Derivation:
+      billed = 9.0 (billed_production only)
+      available_for_efficiency = actual(12) - nonproductive_allocated(idle_wait=1) = 11.0
+      double = 3.0, triple = 1.0
+    """
+    from backend.orm.attendance_hour_allocation import AttendanceHourAllocation
+
+    shift = TestDataFactory.create_shift(db, client_id=client.client_id)
+    employee = TestDataFactory.create_employee(db, client_id=client.client_id)
+    shift_date = date(2026, 2, 1)
+
+    entry = TestDataFactory.create_attendance_entry(
+        db,
+        employee_id=employee.employee_id,
+        client_id=client.client_id,
+        shift_id=shift.shift_id,
+        shift_date=shift_date,
+        scheduled_hours=Decimal("8.00"),
+        actual_hours=Decimal("12.00"),
+    )
+    entry.normal_hours = Decimal("8.00")
+    entry.double_hours = Decimal("3.00")
+    entry.triple_hours = Decimal("1.00")
+    entry.hour_allocations = [
+        AttendanceHourAllocation(category="billed_production", hours=Decimal("9.00")),
+        AttendanceHourAllocation(category="idle_wait", hours=Decimal("1.00")),
+    ]
+    db.commit()
+    return shift_date
+
+
+class TestExcelSummarySheetLaborHours:
+    """Cycle 3 Task 4: Executive Summary's KPI table gains four Labor/OT
+    Hours rows sourced from a single summarize_labor_hours (Task 1) call --
+    same single-data-source-call + client-scoped-list ([client_id]) +
+    zero-data-guard idiom as the OTD block above.
+
+    These rows carry no % target -- they're raw hour totals, not
+    KPI-vs-target evaluations like every other row in this table. Design
+    choice (documented in excel_generator.py alongside the code): status
+    reuses this file's existing "N/A" not-applicable convention (already
+    used for missing text fields elsewhere in this module), rendered with a
+    neutral gray fill added to the status-color loop -- distinct from the
+    red error-branch fallback that any other non-"On Target"/"At Risk"
+    status value would otherwise get. Target is left blank (None): no
+    evaluation is made, so no target value would be meaningful."""
+
+    def test_fetch_kpi_summary_data_labor_hours_exact(self, transactional_db):
+        client = TestDataFactory.create_client(transactional_db)
+        shift_date = _seed_labor_hours_scenario(transactional_db, client)
+
+        kpi_data = ExcelReportGenerator(transactional_db)._fetch_kpi_summary_data(
+            client.client_id, shift_date, shift_date
+        )
+
+        by_name = {row["name"]: row for row in kpi_data}
+        assert by_name["Labor Hours — Billed"]["current"] == 9.0
+        assert by_name["Labor Hours — Available"]["current"] == 11.0
+        assert by_name["OT Hours — Double"]["current"] == 3.0
+        assert by_name["OT Hours — Triple"]["current"] == 1.0
+        for name in (
+            "Labor Hours — Billed",
+            "Labor Hours — Available",
+            "OT Hours — Double",
+            "OT Hours — Triple",
+        ):
+            assert by_name[name]["target"] is None
+            assert by_name[name]["status"] == "N/A"
+
+    def test_fetch_kpi_summary_data_labor_hours_omitted_without_client_id(self, transactional_db):
+        """All-clients comprehensive report: mirrors the OTD precedent --
+        summarize_labor_hours is only called (and its rows only rendered)
+        for a single-client report."""
+        client = TestDataFactory.create_client(transactional_db)
+        shift_date = _seed_labor_hours_scenario(transactional_db, client)
+
+        kpi_data = ExcelReportGenerator(transactional_db)._fetch_kpi_summary_data(None, shift_date, shift_date)
+
+        names = [row["name"] for row in kpi_data]
+        assert "Labor Hours — Billed" not in names
+        assert "Labor Hours — Available" not in names
+        assert "OT Hours — Double" not in names
+        assert "OT Hours — Triple" not in names
+
+    def test_summary_sheet_renders_labor_hours_at_exact_cells(self, transactional_db):
+        """Full render through _create_summary_sheet: with no production/
+        quality/work-order data seeded, only two KPI blocks populate the
+        table -- Absenteeism (unavoidably, since the seeded AttendanceEntry
+        that carries the labor-hours derivation also feeds the pre-existing
+        Attendance KPI block above; scheduled=8h, 0 absent -> 0.0%, "On
+        Target") at row 8, then the four Labor Hours rows at rows 9-12. The
+        status cells for the Labor Hours rows use the neutral "N/A" gray
+        fill, not the red error fallback."""
+        client = TestDataFactory.create_client(transactional_db)
+        shift_date = _seed_labor_hours_scenario(transactional_db, client)
+
+        generator = ExcelReportGenerator(transactional_db)
+        wb = Workbook()
+        generator._create_summary_sheet(wb, client.client_id, shift_date, shift_date)
+        ws = wb["Executive Summary"]
+
+        assert ws["A8"].value == "Absenteeism"
+        assert ws["B8"].value == 0.0
+
+        assert ws["A9"].value == "Labor Hours — Billed"
+        assert ws["B9"].value == 9.0
+        assert ws["C9"].value is None
+        assert ws["E9"].value == "N/A"
+        assert ws["A10"].value == "Labor Hours — Available"
+        assert ws["B10"].value == 11.0
+        assert ws["A11"].value == "OT Hours — Double"
+        assert ws["B11"].value == 3.0
+        assert ws["A12"].value == "OT Hours — Triple"
+        assert ws["B12"].value == 1.0
+
+        # Neutral gray fill, not the red error-branch fallback that any
+        # other non-"On Target"/"At Risk" status would otherwise render.
+        assert ws["E9"].fill.start_color.rgb == generator.colors["medium_gray"]
+
+
+class TestExcelSummarySheetLaborHoursZeroAttendanceGuard:
+    """A window with zero attendance entries must not render 0.0-hour rows
+    that could be misread as a legitimate "nobody worked any billed/OT
+    hours" total -- omit entirely, mirroring the OTD zero-delivered guard."""
+
+    def test_fetch_kpi_summary_data_omits_labor_hours_when_zero_attendance(self, transactional_db):
+        client = TestDataFactory.create_client(transactional_db)
+        transactional_db.commit()
+        # No attendance entries seeded at all -> entry_counts["total"] == 0.
+
+        kpi_data = ExcelReportGenerator(transactional_db)._fetch_kpi_summary_data(
+            client.client_id, date(2026, 1, 1), date(2026, 1, 31)
+        )
+
+        names = [row["name"] for row in kpi_data]
+        assert "Labor Hours — Billed" not in names
+        assert "Labor Hours — Available" not in names
+        assert "OT Hours — Double" not in names
+        assert "OT Hours — Triple" not in names
+
+    def test_summary_sheet_has_no_labor_hours_rows_when_zero_attendance(self, transactional_db):
+        client = TestDataFactory.create_client(transactional_db)
+        transactional_db.commit()
+
+        wb = Workbook()
+        ExcelReportGenerator(transactional_db)._create_summary_sheet(
+            wb, client.client_id, date(2026, 1, 1), date(2026, 1, 31)
+        )
+        ws = wb["Executive Summary"]
+
+        assert ws["A7"].value == "KPI"
+        assert ws["A8"].value is None
+        assert ws["B8"].value is None

@@ -169,6 +169,15 @@ class ExcelReportGenerator:
                     start_color=self.colors["warning"], end_color=self.colors["warning"], fill_type="solid"
                 )
                 status_cell.font = Font(bold=True, color=self.colors["text_primary"][2:])  # Dark text for yellow bg
+            elif kpi["status"] == "N/A":
+                # Carbon Gray 20 with secondary text -- neutral/not-applicable,
+                # distinct from the red error fallback below. Used by rows that
+                # report a raw total rather than evaluating against a target
+                # (Cycle 3 Task 4: Labor/OT Hours rows).
+                status_cell.fill = PatternFill(
+                    start_color=self.colors["medium_gray"], end_color=self.colors["medium_gray"], fill_type="solid"
+                )
+                status_cell.font = Font(bold=True, color=self.colors["text_secondary"][2:])
             else:
                 # Carbon Red 60 with white text
                 status_cell.fill = PatternFill(
@@ -653,6 +662,53 @@ class ExcelReportGenerator:
                         "format": '0.0"%"',
                     }
                 )
+
+        # Labor Hours (Cycle 3 Task 4): billed / available-for-efficiency
+        # totals plus OT double/triple tiers, sourced from a single
+        # summarize_labor_hours (Task 1) call -- same single-data-source-call,
+        # client-scoped-list, zero-data-guard idiom as the OTD block above.
+        #
+        # Only rendered for a single-client report, matching the OTD
+        # precedent and /api/kpi/labor-hours (which also never resolves an
+        # unbounded all-clients read via this path).
+        #
+        # These are raw hour totals, not %-of-target KPIs like every other
+        # row in this table -- there is no meaningful target to evaluate
+        # them against. The status-color loop above only distinguishes
+        # "On Target" (green) / "At Risk" (yellow) and falls back to red for
+        # any other value, so a naive status here would paint an
+        # uninformative total as a false alarm. We reuse this file's
+        # existing "N/A" not-applicable convention (already used for missing
+        # text fields elsewhere in this module, e.g. root_cause/machine
+        # columns) as the status value, paired with a matching neutral
+        # (gray) branch added to the status-color loop above. Target is left
+        # None (blank cell) for the same reason -- no evaluation is made, so
+        # no target value is meaningful.
+        if client_id:
+            from backend.calculations.labor_hours import summarize_labor_hours
+
+            labor_result = summarize_labor_hours(self.db, [client_id], start_date, end_date)
+            # Guard: zero attendance entries in the window is an
+            # absence-of-data signal (not "0.0 hours worked") -- omit the
+            # rows entirely, mirroring the OTD zero-delivered guard above.
+            if labor_result["entry_counts"]["total"] > 0:
+                totals = labor_result["totals"]
+                for label, value in (
+                    ("Labor Hours — Billed", totals["billed"]),
+                    ("Labor Hours — Available", totals["available_for_efficiency"]),
+                    ("OT Hours — Double", totals["double"]),
+                    ("OT Hours — Triple", totals["triple"]),
+                ):
+                    kpi_data.append(
+                        {
+                            "name": label,
+                            "current": float(value),
+                            "target": None,
+                            "status": "N/A",
+                            "trend": "→",
+                            "format": "0.00",
+                        }
+                    )
 
         return kpi_data
 
