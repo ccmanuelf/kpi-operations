@@ -230,6 +230,36 @@ class TestLaborHoursClientScope:
         assert data["totals"]["actual"] == 16.0
         assert data["entry_counts"]["total"] == 2
 
+    def test_operator_foreign_client_id_is_403(self, lh_db):
+        """A scoped (single-client) non-admin user explicitly requesting a
+        client_id they aren't assigned to must get 403 from
+        resolve_client_scope, never a 200 with someone else's data --
+        mirrors the sibling kpi-route 403 pattern in
+        test_client_scope_enforced.py (e.g. test_operator_cannot_read_other_clients_trend)."""
+        db = lh_db
+        own_client = TestDataFactory.create_client(db, client_id="LH-SCOPE-OWN")
+        foreign_client = TestDataFactory.create_client(db, client_id="LH-SCOPE-FOREIGN")
+        operator = TestDataFactory.create_user(
+            db,
+            user_id="lh-operator-001",
+            username="lh_operator",
+            role="operator",
+            client_id=own_client.client_id,
+        )
+        db.commit()
+
+        http_client = _authed_client(db, operator)
+        response = http_client.get(
+            "/api/kpi/labor-hours",
+            params={
+                "start_date": "2026-08-01",
+                "end_date": "2026-08-01",
+                "client_id": foreign_client.client_id,
+            },
+        )
+
+        assert response.status_code == 403
+
 
 class TestLaborHoursEfficiencyAvailableBasis:
     """Fix round 1 (2026-08-06, USER RULING): the honest efficiency_available_basis

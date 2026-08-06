@@ -694,6 +694,7 @@ class ExcelReportGenerator:
             if labor_result["entry_counts"]["total"] > 0:
                 totals = labor_result["totals"]
                 for label, value in (
+                    ("Labor Hours — Actual", totals["actual"]),
                     ("Labor Hours — Billed", totals["billed"]),
                     ("Labor Hours — Available", totals["available_for_efficiency"]),
                     ("OT Hours — Double", totals["double"]),

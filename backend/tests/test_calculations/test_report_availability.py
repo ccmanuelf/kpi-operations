@@ -419,7 +419,7 @@ def _seed_labor_hours_scenario(db, client):
 
 
 class TestExcelSummarySheetLaborHours:
-    """Cycle 3 Task 4: Executive Summary's KPI table gains four Labor/OT
+    """Cycle 3 Task 4: Executive Summary's KPI table gains five Labor/OT
     Hours rows sourced from a single summarize_labor_hours (Task 1) call --
     same single-data-source-call + client-scoped-list ([client_id]) +
     zero-data-guard idiom as the OTD block above.
@@ -443,11 +443,13 @@ class TestExcelSummarySheetLaborHours:
         )
 
         by_name = {row["name"]: row for row in kpi_data}
+        assert by_name["Labor Hours — Actual"]["current"] == 12.0
         assert by_name["Labor Hours — Billed"]["current"] == 9.0
         assert by_name["Labor Hours — Available"]["current"] == 11.0
         assert by_name["OT Hours — Double"]["current"] == 3.0
         assert by_name["OT Hours — Triple"]["current"] == 1.0
         for name in (
+            "Labor Hours — Actual",
             "Labor Hours — Billed",
             "Labor Hours — Available",
             "OT Hours — Double",
@@ -466,6 +468,7 @@ class TestExcelSummarySheetLaborHours:
         kpi_data = ExcelReportGenerator(transactional_db)._fetch_kpi_summary_data(None, shift_date, shift_date)
 
         names = [row["name"] for row in kpi_data]
+        assert "Labor Hours — Actual" not in names
         assert "Labor Hours — Billed" not in names
         assert "Labor Hours — Available" not in names
         assert "OT Hours — Double" not in names
@@ -477,7 +480,7 @@ class TestExcelSummarySheetLaborHours:
         table -- Absenteeism (unavoidably, since the seeded AttendanceEntry
         that carries the labor-hours derivation also feeds the pre-existing
         Attendance KPI block above; scheduled=8h, 0 absent -> 0.0%, "On
-        Target") at row 8, then the four Labor Hours rows at rows 9-12. The
+        Target") at row 8, then the five Labor Hours rows at rows 9-13. The
         status cells for the Labor Hours rows use the neutral "N/A" gray
         fill, not the red error fallback."""
         client = TestDataFactory.create_client(transactional_db)
@@ -491,16 +494,18 @@ class TestExcelSummarySheetLaborHours:
         assert ws["A8"].value == "Absenteeism"
         assert ws["B8"].value == 0.0
 
-        assert ws["A9"].value == "Labor Hours — Billed"
-        assert ws["B9"].value == 9.0
+        assert ws["A9"].value == "Labor Hours — Actual"
+        assert ws["B9"].value == 12.0
         assert ws["C9"].value is None
         assert ws["E9"].value == "N/A"
-        assert ws["A10"].value == "Labor Hours — Available"
-        assert ws["B10"].value == 11.0
-        assert ws["A11"].value == "OT Hours — Double"
-        assert ws["B11"].value == 3.0
-        assert ws["A12"].value == "OT Hours — Triple"
-        assert ws["B12"].value == 1.0
+        assert ws["A10"].value == "Labor Hours — Billed"
+        assert ws["B10"].value == 9.0
+        assert ws["A11"].value == "Labor Hours — Available"
+        assert ws["B11"].value == 11.0
+        assert ws["A12"].value == "OT Hours — Double"
+        assert ws["B12"].value == 3.0
+        assert ws["A13"].value == "OT Hours — Triple"
+        assert ws["B13"].value == 1.0
 
         # Neutral gray fill, not the red error-branch fallback that any
         # other non-"On Target"/"At Risk" status would otherwise render.
@@ -522,6 +527,7 @@ class TestExcelSummarySheetLaborHoursZeroAttendanceGuard:
         )
 
         names = [row["name"] for row in kpi_data]
+        assert "Labor Hours — Actual" not in names
         assert "Labor Hours — Billed" not in names
         assert "Labor Hours — Available" not in names
         assert "OT Hours — Double" not in names
