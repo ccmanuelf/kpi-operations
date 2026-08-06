@@ -48,8 +48,16 @@ def fetch_labor(
         q = q.filter(AttendanceEntry.client_id.in_(client_ids))
     entries = q.all()
 
-    class_rows = db.query(Employee.employee_id, Employee.labor_class).all()
-    class_by_employee: dict[int, Optional[str]] = {row.employee_id: row.labor_class for row in class_rows}
+    class_by_employee: dict[int, Optional[str]] = {}
+    if group_by == "labor_class":
+        employee_ids = {e.employee_id for e in entries}
+        if employee_ids:
+            class_rows = (
+                db.query(Employee.employee_id, Employee.labor_class)
+                .filter(Employee.employee_id.in_(employee_ids))
+                .all()
+            )
+            class_by_employee = {row.employee_id: row.labor_class for row in class_rows}
 
     acc: dict[tuple[date, Optional[str]], dict[str, float]] = defaultdict(lambda: defaultdict(float))
     for e in entries:

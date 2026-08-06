@@ -14,6 +14,10 @@ TestDataFactory, auth via app.dependency_overrides[get_current_user] (no
 real JWT needed for route-shape/scope tests).
 """
 
+import csv
+import io
+from datetime import datetime
+
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -159,11 +163,48 @@ def test_scoped_user_cannot_read_other_client(pivot_db):
     assert r.status_code == 403
 
 
-def test_csv_matches_json_rows(admin_client):
+def test_csv_matches_json_rows(admin_client, pivot_db):
+    """Seeds real downtime rows (the prior version of this test ran over an
+    empty DB, so writer.writerow never executed). Both entries carry
+    duration_minutes=0 -- deliberately, so the window's total downtime_hours
+    is 0 and share_of_window_pct's zero-denominator rule fires (None in
+    JSON), letting the same two rows also pin the None-ratio -> empty-cell
+    CSV serialization alongside the plain value round-trip."""
+    client = TestDataFactory.create_client(pivot_db, client_id="PVT-RT-CSV")
+    pivot_db.commit()
+    TestDataFactory.create_downtime_entry(
+        pivot_db,
+        client_id=client.client_id,
+        reported_by="pvt-admin-001",
+        shift_date=datetime(2025, 6, 15, 6),
+        duration_minutes=0,
+    )
+    TestDataFactory.create_downtime_entry(
+        pivot_db,
+        client_id=client.client_id,
+        reported_by="pvt-admin-001",
+        shift_date=datetime(2026, 6, 15, 6),
+        duration_minutes=0,
+    )
+    pivot_db.commit()
+
     params = {"bucket": "year", "start_date": "2025-01-01", "end_date": "2026-12-31"}
     j = admin_client.get("/api/pivot/downtime", params=params).json()
     r = admin_client.get("/api/pivot/downtime/csv", params=params)
     assert r.status_code == 200
     assert r.headers["content-type"].startswith("text/csv")
     lines = [ln for ln in r.text.strip().splitlines() if ln]
+    assert len(j["rows"]) == 2
     assert len(lines) == len(j["rows"]) + 1  # header + rows
+
+    csv_rows = list(csv.DictReader(io.StringIO(r.text)))
+    assert len(csv_rows) == 2
+    for json_row, csv_row in zip(j["rows"], csv_rows):
+        # Round-trip: the hours cell (a plain Sum component) matches JSON.
+        assert float(csv_row["downtime_hours"]) == json_row["downtime_hours"] == 0.0
+        assert json_row["events"] == 1
+        # None ratio (window total downtime_hours == 0 -> share is None,
+        # per the zero-denominator rule) serializes as an empty CSV cell,
+        # not the literal string "None".
+        assert json_row["share_of_window_pct"] is None
+        assert csv_row["share_of_window_pct"] == ""

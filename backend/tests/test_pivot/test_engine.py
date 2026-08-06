@@ -175,6 +175,56 @@ def test_group_by_and_share(db_session):
     assert out["totals"]["downtime_hours"] == 2.0
 
 
+def test_group_by_line_joins(db_session):
+    """Exercises GroupBy.joins (the `ds.joins + gb.joins` concatenation in
+    _sql_day_rows) -- no other test grouped production by `line`, which is
+    the only production group_by that adds its own join beyond the dataset's
+    Product join."""
+    from backend.orm.production_line import ProductionLine
+
+    db_session.add(
+        ProductionLine(
+            client_id="PIVOT-CLI",
+            line_code="PVT-LINE-1",
+            line_name="Pivot Sewing Line",
+        )
+    )
+    db_session.commit()
+    line = db_session.query(ProductionLine).filter_by(line_code="PVT-LINE-1").one()
+
+    db_session.add(
+        ProductionEntry(
+            production_entry_id="PVT-LINE-PE-1",
+            client_id="PIVOT-CLI",
+            product_id=1,
+            shift_id=1,
+            line_id=line.line_id,
+            production_date=datetime(2026, 3, 2, 6),
+            shift_date=datetime(2026, 3, 2, 6),
+            units_produced=40,
+            run_time_hours=Decimal("4"),
+            employees_assigned=2,
+            employees_present=2,
+            ideal_cycle_time=Decimal("0.1"),
+            entered_by="USR-ADMIN-001",
+        )
+    )
+    db_session.commit()
+
+    out = run_pivot(
+        db_session,
+        "production",
+        "month",
+        "line",
+        date(2026, 3, 1),
+        date(2026, 3, 31),
+        ["PIVOT-CLI"],
+    )
+    [row] = out["rows"]
+    assert row["group_key"] == "Pivot Sewing Line"
+    assert row["units"] == 40
+
+
 def test_client_scope_filters(db_session):
     _pe(db_session, "PVT-6", "PIVOT-CLI", date(2026, 3, 2), 10, 1, 0.1)
     _pe(db_session, "PVT-7", "PIVOT-OTHER", date(2026, 3, 2), 999, 1, 0.1)

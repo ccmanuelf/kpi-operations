@@ -275,6 +275,16 @@ def test_labor_totals_equal_summarize_labor_hours(db_session, seeded):
         "available_for_efficiency",
     ):
         assert t[key] == pytest.approx(float(g[key])), key
+    # Absolute anchors (not just self-consistency with the golden): pin the
+    # fixture's own branch coverage so a seed edit that silently changes
+    # which rows are split/unsplit or excluded can't slip through both sides
+    # moving together. unsplit_actual = ATT-2 (7.5h, no split) + ATT-4 (8h,
+    # no split); ATT-1/ATT-3 both carry an explicit OT split and so
+    # contribute to normal/double/triple instead.
+    assert t["unsplit_actual"] == pytest.approx(15.5)
+    # excluded_entries = PE-2 only (no own ideal_cycle_time and the product
+    # row also has none); PE-1 has its own ideal_cycle_time and is counted.
+    assert out["totals"]["excluded_entries"] == 1.0
 
 
 def test_labor_by_class_equals_golden(db_session, seeded):
@@ -316,6 +326,11 @@ def test_delivery_totals_equal_calculate_true_otd(db_session, seeded):
     assert t["delivered"] > 0
     assert t["otd_gross_pct"] == pytest.approx(float(golden["true_otd"]["percentage"]), abs=0.01)
     assert t["otd_net_pct"] == pytest.approx(float(golden["true_otd"]["net_percentage"]), abs=0.01)
+    # Absolute anchor: pin that the skip rule actually fired. 4 work orders
+    # are seeded (WO-1 on-time, WO-2 late-unjustified, WO-3 late-justified,
+    # WO-4 no inferable planned date at all), so `delivered` must be 3 -- WO-4
+    # excluded from the denominator, not silently counted as late.
+    assert t["delivered"] == 3.0
 
 
 def test_delivery_zero_on_time_reports_percentages_as_zero_not_omitted(db_session):
