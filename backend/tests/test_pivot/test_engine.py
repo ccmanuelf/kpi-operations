@@ -202,3 +202,92 @@ def test_unknown_group_by_raises_value_error(db_session):
             date(2026, 3, 31),
             None,
         )
+
+
+def test_quality_fpy_ratio_of_sums(db_session):
+    from backend.orm.quality_entry import QualityEntry
+    from backend.orm.work_order import WorkOrder
+
+    # Create WorkOrder for QualityEntry FK (work_order_id is NOT NULL)
+    db_session.add(
+        WorkOrder(
+            work_order_id="PVT-WO-QE",
+            client_id="PIVOT-CLI",
+            style_model="PVT",
+            planned_quantity=1,
+        )
+    )
+    db_session.commit()
+
+    for i, (insp, passed, defects) in enumerate([(100, 90, 12), (50, 25, 30)]):
+        db_session.add(
+            QualityEntry(
+                quality_entry_id=f"PVT-QE-{i}",
+                client_id="PIVOT-CLI",
+                work_order_id="PVT-WO-QE",
+                shift_date=datetime(2026, 3, 2, 6),
+                units_inspected=insp,
+                units_passed=passed,
+                units_defective=insp - passed,
+                total_defects_count=defects,
+            )
+        )
+    db_session.commit()
+    out = run_pivot(
+        db_session,
+        "quality",
+        "month",
+        None,
+        date(2026, 3, 1),
+        date(2026, 3, 31),
+        ["PIVOT-CLI"],
+    )
+    [row] = out["rows"]
+    assert row["inspected"] == 150
+    assert row["defects"] == 42
+    # FPY ratio-of-sums: (90+25)/150*100 = 76.67 — NOT avg(90%, 50%) = 70
+    assert row["fpy_pct"] == pytest.approx(76.67, abs=0.01)
+
+
+def test_holds_measures(db_session):
+    from backend.orm.hold_entry import HoldEntry
+    from backend.orm.work_order import WorkOrder
+
+    # Create WorkOrder for HoldEntry FK (work_order_id is NOT NULL)
+    db_session.add(
+        WorkOrder(
+            work_order_id="PVT-WO-HOLD",
+            client_id="PIVOT-CLI",
+            style_model="PVT",
+            planned_quantity=1,
+        )
+    )
+    db_session.commit()
+
+    for i, (cat, hours) in enumerate([("Material", 48), ("Material", 24), ("Quality", 12)]):
+        db_session.add(
+            HoldEntry(
+                hold_entry_id=f"PVT-H-{i}",
+                client_id="PIVOT-CLI",
+                work_order_id="PVT-WO-HOLD",
+                hold_status="ON_HOLD",
+                hold_date=datetime(2026, 3, 2, 6),
+                hold_reason_category=cat,
+                hold_reason="MATERIAL_SHORTAGE",
+                total_hold_duration_hours=Decimal(str(hours)),
+            )
+        )
+    db_session.commit()
+    out = run_pivot(
+        db_session,
+        "holds",
+        "month",
+        "reason_category",
+        date(2026, 3, 1),
+        date(2026, 3, 31),
+        ["PIVOT-CLI"],
+    )
+    by_key = {r["group_key"]: r for r in out["rows"]}
+    assert by_key["Material"]["holds"] == 2
+    assert by_key["Material"]["hold_days"] == 3.0  # 72h / 24
+    assert by_key["Material"]["avg_days_per_hold"] == pytest.approx(1.5)

@@ -13,9 +13,12 @@ from typing import Any, Callable, Optional
 from sqlalchemy import case, func
 
 from backend.orm.downtime_entry import DowntimeEntry
+from backend.orm.hold_entry import HoldEntry
 from backend.orm.product import Product
 from backend.orm.production_entry import ProductionEntry
 from backend.orm.production_line import ProductionLine
+from backend.orm.quality_entry import QualityEntry
+from backend.orm.work_order import WorkOrder
 
 
 @dataclass(frozen=True)
@@ -113,7 +116,50 @@ _DOWNTIME = Dataset(
     },
 )
 
+# --- quality ----------------------------------------------------------------
+_QUALITY = Dataset(
+    name="quality",
+    model=QualityEntry,
+    date_column=QualityEntry.shift_date,
+    client_column=QualityEntry.client_id,
+    group_bys={
+        "client": GroupBy(QualityEntry.client_id),
+        "style": GroupBy(
+            WorkOrder.style_model,
+            joins=((WorkOrder, QualityEntry.work_order_id == WorkOrder.work_order_id),),
+        ),
+    },
+    measures={
+        "inspected": Sum(QualityEntry.units_inspected),
+        "passed": Sum(QualityEntry.units_passed),
+        "defective": Sum(QualityEntry.units_defective),
+        "defects": Sum(QualityEntry.total_defects_count),
+        "fpy_pct": Ratio("passed", "inspected"),
+    },
+)
+
+# --- holds ------------------------------------------------------------------
+_HOLDS = Dataset(
+    name="holds",
+    model=HoldEntry,
+    date_column=HoldEntry.hold_date,
+    client_column=HoldEntry.client_id,
+    base_filters=(HoldEntry.hold_date.isnot(None),),
+    group_bys={
+        "client": GroupBy(HoldEntry.client_id),
+        "reason_category": GroupBy(func.coalesce(HoldEntry.hold_reason_category, "uncategorized")),
+        "reason": GroupBy(func.coalesce(HoldEntry.hold_reason, "uncategorized")),
+    },
+    measures={
+        "holds": Count(),
+        "hold_days": Sum(func.coalesce(HoldEntry.total_hold_duration_hours, 0) / 24.0),
+        "avg_days_per_hold": Ratio("hold_days", "holds", scale=1.0),
+    },
+)
+
 DATASETS: dict[str, Dataset] = {
     "production": _PRODUCTION,
     "downtime": _DOWNTIME,
+    "quality": _QUALITY,
+    "holds": _HOLDS,
 }
