@@ -6,6 +6,7 @@ import pytest
 from backend.calculations.labor_hours import (
     available_for_efficiency_hours,
     billed_hours,
+    earned_hours,
     effective_labor_class,
     summarize_labor_hours,
     validate_allocations,
@@ -275,3 +276,196 @@ class TestSummarizeLaborHours:
         result_filtered = summarize_labor_hours(db_session, ["LH-MULTI-ONE"], shift_date, shift_date)
         assert result_filtered["totals"]["actual"] == Decimal("8.00")
         assert result_filtered["entry_counts"]["total"] == 1
+
+
+class TestEarnedHours:
+    """Fix round 1 (2026-08-06, USER RULING): earned_hours(db, client_ids,
+    start_date, end_date) -> (Decimal total, int excluded_entries).
+
+    ideal_cycle_time resolution per entry: entry.ideal_cycle_time first,
+    else product.ideal_cycle_time; neither present -> excluded (never
+    guessed via the historical-inference chain -- see the function
+    docstring for why)."""
+
+    def test_entry_level_ict_takes_precedence_over_product(self, db_session):
+        """Entry A: entry.ideal_cycle_time=0.10 (product default 0.30 must be
+        ignored) -> earned = 100 units x 0.10 = 10.00."""
+        client = TestDataFactory.create_client(db_session, client_id="EH-A-CL")
+        shift = TestDataFactory.create_shift(db_session, client_id=client.client_id)
+        product = TestDataFactory.create_product(
+            db_session, client_id=client.client_id, ideal_cycle_time=Decimal("0.30")
+        )
+        db_session.flush()
+
+        shift_date = date(2026, 8, 1)
+        TestDataFactory.create_production_entry(
+            db_session,
+            client_id=client.client_id,
+            product_id=product.product_id,
+            shift_id=shift.shift_id,
+            entered_by="tester",
+            production_date=shift_date,
+            units_produced=100,
+            ideal_cycle_time=Decimal("0.10"),
+        )
+        db_session.commit()
+
+        total, excluded = earned_hours(db_session, ["EH-A-CL"], shift_date, shift_date)
+        assert total == Decimal("10.00")
+        assert excluded == 0
+
+    def test_falls_back_to_product_ict_when_entry_ict_unset(self, db_session):
+        """Entry B: entry.ideal_cycle_time=None, product.ideal_cycle_time=0.20
+        -> earned = 50 units x 0.20 = 10.00."""
+        client = TestDataFactory.create_client(db_session, client_id="EH-B-CL")
+        shift = TestDataFactory.create_shift(db_session, client_id=client.client_id)
+        product = TestDataFactory.create_product(
+            db_session, client_id=client.client_id, ideal_cycle_time=Decimal("0.20")
+        )
+        db_session.flush()
+
+        shift_date = date(2026, 8, 1)
+        TestDataFactory.create_production_entry(
+            db_session,
+            client_id=client.client_id,
+            product_id=product.product_id,
+            shift_id=shift.shift_id,
+            entered_by="tester",
+            production_date=shift_date,
+            units_produced=50,
+            ideal_cycle_time=None,
+        )
+        db_session.commit()
+
+        total, excluded = earned_hours(db_session, ["EH-B-CL"], shift_date, shift_date)
+        assert total == Decimal("10.00")
+        assert excluded == 0
+
+    def test_excludes_entries_with_no_ict_anywhere_and_counts_them(self, db_session):
+        """Entry C: neither entry nor product has ideal_cycle_time ->
+        excluded from the sum, counted in excluded_entries (never guessed)."""
+        client = TestDataFactory.create_client(db_session, client_id="EH-C-CL")
+        shift = TestDataFactory.create_shift(db_session, client_id=client.client_id)
+        product = TestDataFactory.create_product(db_session, client_id=client.client_id, ideal_cycle_time=None)
+        db_session.flush()
+
+        shift_date = date(2026, 8, 1)
+        TestDataFactory.create_production_entry(
+            db_session,
+            client_id=client.client_id,
+            product_id=product.product_id,
+            shift_id=shift.shift_id,
+            entered_by="tester",
+            production_date=shift_date,
+            units_produced=999,
+            ideal_cycle_time=None,
+        )
+        db_session.commit()
+
+        total, excluded = earned_hours(db_session, ["EH-C-CL"], shift_date, shift_date)
+        assert total == Decimal("0")
+        assert excluded == 1
+
+    def test_mixed_entries_sum_and_exclusion_count_combine(self, db_session):
+        """A (entry ict 0.10, 100u -> 10.00) + B (product ict 0.20, 50u ->
+        10.00) + C (no ict anywhere, 999u -> excluded) in ONE window:
+        total = 20.00, excluded_entries = 1."""
+        client = TestDataFactory.create_client(db_session, client_id="EH-MIX-CL")
+        shift = TestDataFactory.create_shift(db_session, client_id=client.client_id)
+        product_with_default = TestDataFactory.create_product(
+            db_session, client_id=client.client_id, product_code="EH-MIX-PROD-1", ideal_cycle_time=Decimal("0.30")
+        )
+        product_no_default = TestDataFactory.create_product(
+            db_session, client_id=client.client_id, product_code="EH-MIX-PROD-2", ideal_cycle_time=Decimal("0.20")
+        )
+        product_no_ict = TestDataFactory.create_product(
+            db_session, client_id=client.client_id, product_code="EH-MIX-PROD-3", ideal_cycle_time=None
+        )
+        db_session.flush()
+
+        shift_date = date(2026, 8, 1)
+        TestDataFactory.create_production_entry(
+            db_session,
+            client_id=client.client_id,
+            product_id=product_with_default.product_id,
+            shift_id=shift.shift_id,
+            entered_by="tester",
+            production_date=shift_date,
+            units_produced=100,
+            ideal_cycle_time=Decimal("0.10"),
+        )
+        TestDataFactory.create_production_entry(
+            db_session,
+            client_id=client.client_id,
+            product_id=product_no_default.product_id,
+            shift_id=shift.shift_id,
+            entered_by="tester",
+            production_date=shift_date,
+            units_produced=50,
+            ideal_cycle_time=None,
+        )
+        TestDataFactory.create_production_entry(
+            db_session,
+            client_id=client.client_id,
+            product_id=product_no_ict.product_id,
+            shift_id=shift.shift_id,
+            entered_by="tester",
+            production_date=shift_date,
+            units_produced=999,
+            ideal_cycle_time=None,
+        )
+        db_session.commit()
+
+        total, excluded = earned_hours(db_session, ["EH-MIX-CL"], shift_date, shift_date)
+        assert total == Decimal("20.00")
+        assert excluded == 1
+
+    def test_empty_window_returns_zero_and_no_exclusions(self, db_session):
+        TestDataFactory.create_client(db_session, client_id="EH-EMPTY-CL")
+        db_session.commit()
+
+        total, excluded = earned_hours(db_session, ["EH-EMPTY-CL"], date(2026, 8, 1), date(2026, 8, 1))
+        assert total == Decimal("0")
+        assert excluded == 0
+
+    def test_client_ids_none_means_all_clients(self, db_session):
+        client_one = TestDataFactory.create_client(db_session, client_id="EH-MULTI-ONE")
+        client_two = TestDataFactory.create_client(db_session, client_id="EH-MULTI-TWO")
+        shift_one = TestDataFactory.create_shift(db_session, client_id=client_one.client_id)
+        shift_two = TestDataFactory.create_shift(db_session, client_id=client_two.client_id)
+        product_one = TestDataFactory.create_product(
+            db_session, client_id=client_one.client_id, ideal_cycle_time=Decimal("0.10")
+        )
+        product_two = TestDataFactory.create_product(
+            db_session, client_id=client_two.client_id, ideal_cycle_time=Decimal("0.10")
+        )
+        db_session.flush()
+
+        shift_date = date(2026, 8, 1)
+        TestDataFactory.create_production_entry(
+            db_session,
+            client_id=client_one.client_id,
+            product_id=product_one.product_id,
+            shift_id=shift_one.shift_id,
+            entered_by="tester",
+            production_date=shift_date,
+            units_produced=100,
+        )
+        TestDataFactory.create_production_entry(
+            db_session,
+            client_id=client_two.client_id,
+            product_id=product_two.product_id,
+            shift_id=shift_two.shift_id,
+            entered_by="tester",
+            production_date=shift_date,
+            units_produced=100,
+        )
+        db_session.commit()
+
+        total_all, excluded_all = earned_hours(db_session, None, shift_date, shift_date)
+        assert total_all == Decimal("20.00")
+        assert excluded_all == 0
+
+        total_one, excluded_one = earned_hours(db_session, ["EH-MULTI-ONE"], shift_date, shift_date)
+        assert total_one == Decimal("10.00")
+        assert excluded_one == 0

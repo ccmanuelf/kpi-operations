@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session
 from backend.orm.attendance_entry import AttendanceEntry
 from backend.orm.employee import Employee
 from backend.orm.labor_taxonomy import BILLABLE_CATEGORIES, PRODUCTIVE_CATEGORIES
+from backend.orm.production_entry import ProductionEntry
 
 
 def validate_ot_split(
@@ -198,3 +199,59 @@ def summarize_labor_hours(db: Session, client_ids: Optional[Sequence[str]], star
         "by_category": by_category,
         "entry_counts": entry_counts,
     }
+
+
+def earned_hours(
+    db: Session, client_ids: Optional[Sequence[str]], start_date: date, end_date: date
+) -> tuple[Decimal, int]:
+    """Sum(units_produced x ideal_cycle_time) over ProductionEntry rows with
+    shift_date in [start_date, end_date] -- same date/scope filter idiom as
+    `summarize_labor_hours` above (`func.date(...)` between the dates;
+    `client_id.in_(client_ids)` only when `client_ids is not None`).
+
+    Per-entry ideal_cycle_time resolution mirrors ONLY the first branch of
+    `backend/calculations/efficiency.py::calculate_efficiency` /
+    `infer_ideal_cycle_time`: the entry's own `ideal_cycle_time` if captured,
+    else the entry's `product.ideal_cycle_time` (the product's defined
+    default; `ProductionEntry.product` is `lazy="joined"`, so this is free --
+    no N+1). `infer_ideal_cycle_time` goes further on a cache miss: it
+    reverse-derives a historical per-product average from up to 10 OTHER
+    entries' `efficiency_percentage`/`performance_percentage` (itself a
+    result this function would be feeding into), or falls back to a
+    client-config default -- each of those is its own DB round-trip per
+    distinct product, and reverse-deriving "earned hours" from a historical
+    efficiency AVERAGE would make this aggregate circular. That inference
+    tier is intentionally NOT invoked here.
+
+    Entries where NEITHER the entry nor its product has an ideal_cycle_time
+    are EXCLUDED from the sum (never guessed) and counted in the returned
+    `excluded_entries`, so a caller can tell whether -- and by how much --
+    the total under-counts real earned hours, rather than the metric
+    silently looking complete.
+
+    Returns (earned_hours, excluded_entries), both over ALL entries in
+    scope, not just excluded ones.
+    """
+    query = db.query(ProductionEntry).filter(
+        func.date(ProductionEntry.shift_date) >= start_date,
+        func.date(ProductionEntry.shift_date) <= end_date,
+    )
+    if client_ids is not None:
+        query = query.filter(ProductionEntry.client_id.in_(client_ids))
+    entries = query.all()
+
+    total = Decimal("0")
+    excluded_entries = 0
+
+    for entry in entries:
+        ideal_cycle_time = entry.ideal_cycle_time
+        if ideal_cycle_time is None and entry.product is not None:
+            ideal_cycle_time = entry.product.ideal_cycle_time
+
+        if ideal_cycle_time is None:
+            excluded_entries += 1
+            continue
+
+        total += Decimal(str(entry.units_produced)) * Decimal(str(ideal_cycle_time))
+
+    return total, excluded_entries
