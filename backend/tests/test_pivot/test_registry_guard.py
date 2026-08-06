@@ -23,7 +23,12 @@ def test_every_ratio_and_share_references_declared_sum_or_count_components():
                         f"summed components only (ratio-of-sums ruling)"
                     )
             if isinstance(m, Share):
-                assert m.of in ds.measures and isinstance(ds.measures[m.of], (Sum, Count))
+                assert m.of in ds.measures, f"{name}.{mname} references undeclared {m.of!r}"
+                assert isinstance(ds.measures[m.of], (Sum, Count)), (
+                    f"{name}.{mname} component {m.of!r} must be Sum/Count, "
+                    f"got {type(ds.measures[m.of]).__name__} — shares compose "
+                    f"summed components only (ratio-of-sums ruling)"
+                )
 
 
 def test_every_dataset_declares_scope_and_date_axis():
