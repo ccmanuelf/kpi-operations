@@ -92,7 +92,7 @@ These nine per-entity exports are the concrete expression of the data-first posi
 | Scheduler daily-only, ignores frequency/recipients | **Defer** — same spec | Deferred |
 | Pivot/summarization layer | **Active lane — Cycle 4** (§5); the remaining-samples blocker was dissolved by the 2026-07-30 management decision | Sequenced (§5) |
 | Downtime cause taxonomy | **Active lane — Cycle 1** (§5) — small, high leverage for Q2 | **DONE — Cycle 1 PR**: two-level (category, reason) taxonomy, auto-default, backfill migration, availability planned/unplanned fixed |
-| Labor-hours accounting (OT tiers, direct/indirect, billed vs available) | **Active lane — Cycle 3** (§5) — prerequisite for full Q1 | Sequenced (§5) |
+| Labor-hours accounting (OT tiers, direct/indirect, billed vs available) | **Active lane — Cycle 3** (§5) — prerequisite for full Q1 | **DONE — Cycle 3 (PR-A capture #165 + PR-B metrics, this PR)** |
 | Workbook replication | **Rejected permanently** — concepts, not layouts | Rejected (permanent, see §1) |
 
 ## 4. Concept register (living)
@@ -108,11 +108,11 @@ The register is organized under the five management questions the reporting effo
 | SAM per style | **have** | `WorkOrder.ideal_cycle_time` / `ProductionEntry.ideal_cycle_time` (decimal hours/unit; SAM minutes = ×60) |
 | Unit quantities vs labor hours | **have** | `ProductionEntry.units_produced`, `run_time_hours`, `employees_assigned/present` |
 | Units processed vs capacity allocated (hours) | **partial** | capacity planning module exists; no earned-vs-allocated comparison report |
-| Operator attendance vs available hours to commit | **partial** | `AttendanceEntry.scheduled_hours/actual_hours` exist; no "available for efficiency" derivation |
+| Operator attendance vs available hours to commit | **have** | `available_for_efficiency` from allocations; `efficiency_available_basis` (ratio-of-sums, not average-of-averages — 2026-08-06 ruling) on `/api/kpi/labor-hours` (Cycle 3) |
 | Shipped units vs billed hours | **missing** | no billed-hours concept anywhere in the model |
-| OT tiers (Normal/Double/Triple) | **missing** | no overtime modeling; double/triple is Mexican labor law, structural not client-specific |
-| Direct vs indirect labor | **missing** | `Employee` has free-text `department`/`position` only |
-| Billed vs available-for-efficiency hours | **missing** | the Franklin sample's central distinction; the true Q1 denominator |
+| OT tiers (Normal/Double/Triple) | **have** | captured 3-way split on `AttendanceEntry`; totals on `/api/kpi/labor-hours` (Cycle 3) |
+| Direct vs indirect labor | **have** | `Employee.labor_class` + per-entry override; effective-class rollups (Cycle 3) |
+| Billed vs available-for-efficiency hours | **have** | 8-category hour-allocation ledger; billed & available derivations (Cycle 3) |
 | Operator-level daily efficiency | **missing** | production is recorded at line level, not per operator (industry standard is per-operator daily, rolled up weekly) |
 | Efficiency benchmarks | n/a | cite 40–55% / 65–75% / 80%+ tiers for context in reports |
 
@@ -171,7 +171,7 @@ Sequenced per the approved roadmap spec (`docs/superpowers/specs/2026-07-31-repo
 
 1. **Cycle 1 — Downtime cause taxonomy** (Q2; smallest, highest leverage): controlled vocabulary — **machine / materials / scheduling / attendance / other**, with NPT sub-buckets — over the existing free-form `root_cause_category` on `DowntimeEntry`; entry UI becomes a select; migration maps confidently-matchable free-form values, everything else defaults to `uncategorized`. **[DONE — this PR]**
 2. **Cycle 2 — Justified-delay flag** (Q3): justified/unjustified classification plus reason on late work orders; delivery performance becomes reportable both gross and net-of-justified (the concept behind PGI's exclusion, never its layout). **[DONE — this PR]**
-3. **Cycle 3 — Labor-hours accounting** (Q1; the big capture): OT tiers (Normal/Double/Triple — Mexican labor law, structural), direct/indirect classification on `Employee`, billed vs available-for-efficiency hours. Expected 2 PRs — capture model + entry UI, then derived Q1 metrics; the split is decided in that cycle's spec.
+3. **Cycle 3 — Labor-hours accounting** (Q1; the big capture): OT tiers (Normal/Double/Triple — Mexican labor law, structural), direct/indirect classification on `Employee`, billed vs available-for-efficiency hours. Expected 2 PRs — capture model + entry UI, then derived Q1 metrics; the split is decided in that cycle's spec. **[DONE — this PR]**
 4. **Cycle 4 — Pivot/summarization layer** (largest; built once, over the enriched data): pre-defined time buckets (week/month/quarter/year), pre-defined groupings/categorizations, cross-metric comparison on the common hours basis (units ↔ SAM-earned hours ↔ operators ↔ attendance hours), every summary downloadable as its underlying data. Expected 2–3 PRs; split decided in that cycle's spec.
 
 **Capture policy (uniform across all cycles):** new capture fields ship optional or defaulted (e.g. `uncategorized`) and never block existing entry flows at introduction; each capture surface gets a completeness indicator; flip-to-required happens per field once completeness ≥ 90 % over a trailing 30 days AND management confirms the shop-floor workflow has adapted (the flip is its own small change); the demo seeder is updated in the same cycle that introduces a field.

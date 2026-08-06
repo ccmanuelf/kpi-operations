@@ -1,3 +1,4 @@
+from datetime import date
 from decimal import Decimal
 
 import pytest
@@ -5,10 +6,14 @@ import pytest
 from backend.calculations.labor_hours import (
     available_for_efficiency_hours,
     billed_hours,
+    earned_hours,
     effective_labor_class,
+    summarize_labor_hours,
     validate_allocations,
     validate_ot_split,
 )
+from backend.orm.attendance_hour_allocation import AttendanceHourAllocation
+from backend.tests.fixtures.factories import TestDataFactory
 
 
 class TestOTSplit:
@@ -100,3 +105,381 @@ class TestDerived:
         assert effective_labor_class("indirect", "direct") == "indirect"
         assert effective_labor_class(None, "direct") == "direct"
         assert effective_labor_class(None, None) is None
+
+
+class TestSummarizeLaborHours:
+    def test_summary_with_derivations(self, db_session):
+        """Seed one client, 2 employees (E1 direct, E2 indirect), 3 entries:
+        - A (E1, direct): scheduled 8, actual 10, split 8/2/0,
+          allocations billed_production 7 + training 1
+          -> billed 7, available 10-1=9
+        - B (E2, indirect): scheduled 8, actual 8, unsplit,
+          allocations billed_production 8 -> billed 8, available 8
+        - C (E1 but labor_class_override='indirect'): scheduled 8, actual 8,
+          split 8/0/0, NO allocations -> billed 0, available 8 (conservative)
+
+        totals: scheduled 24, actual 26, normal 16, double 2, triple 0,
+                unsplit_actual 8 (B's actual -- B is the only unsplit entry),
+                billed 15, available 25
+        by_labor_class: direct {actual 10, billed 7, available 9}   # only A
+                        indirect {actual 16, billed 8, available 16} # B + C (override)
+                        unclassified {actual 0, billed 0, available 0}
+        by_category: {billed_production: 15, training: 1}
+        entry_counts: {total 3, with_split 2, with_allocations 2}
+
+        Closure identity: normal + double + triple + unsplit_actual == actual
+        (16 + 2 + 0 + 8 == 26) -- the tier buckets plus the unsplit-actual
+        transparency bucket always fully decompose `actual`, so a consumer
+        summing only normal/double/triple never silently undercounts.
+        """
+        client = TestDataFactory.create_client(db_session, client_id="LH-SUM-CL")
+        shift = TestDataFactory.create_shift(db_session, client_id=client.client_id)
+
+        e1 = TestDataFactory.create_employee(db_session, client_id=client.client_id, employee_name="E1 Direct")
+        e1.labor_class = "direct"
+        e2 = TestDataFactory.create_employee(db_session, client_id=client.client_id, employee_name="E2 Indirect")
+        e2.labor_class = "indirect"
+        db_session.flush()
+
+        shift_date = date(2026, 8, 1)
+
+        entry_a = TestDataFactory.create_attendance_entry(
+            db_session,
+            employee_id=e1.employee_id,
+            client_id=client.client_id,
+            shift_id=shift.shift_id,
+            shift_date=shift_date,
+            scheduled_hours=Decimal("8.00"),
+            actual_hours=Decimal("10.00"),
+        )
+        entry_a.normal_hours = Decimal("8.00")
+        entry_a.double_hours = Decimal("2.00")
+        entry_a.triple_hours = Decimal("0.00")
+        entry_a.hour_allocations = [
+            AttendanceHourAllocation(category="billed_production", hours=Decimal("7.00")),
+            AttendanceHourAllocation(category="training", hours=Decimal("1.00")),
+        ]
+
+        entry_b = TestDataFactory.create_attendance_entry(
+            db_session,
+            employee_id=e2.employee_id,
+            client_id=client.client_id,
+            shift_id=shift.shift_id,
+            shift_date=shift_date,
+            scheduled_hours=Decimal("8.00"),
+            actual_hours=Decimal("8.00"),
+        )
+        entry_b.hour_allocations = [
+            AttendanceHourAllocation(category="billed_production", hours=Decimal("8.00")),
+        ]
+
+        entry_c = TestDataFactory.create_attendance_entry(
+            db_session,
+            employee_id=e1.employee_id,
+            client_id=client.client_id,
+            shift_id=shift.shift_id,
+            shift_date=shift_date,
+            scheduled_hours=Decimal("8.00"),
+            actual_hours=Decimal("8.00"),
+        )
+        entry_c.normal_hours = Decimal("8.00")
+        entry_c.double_hours = Decimal("0.00")
+        entry_c.triple_hours = Decimal("0.00")
+        entry_c.labor_class_override = "indirect"
+
+        db_session.commit()
+
+        result = summarize_labor_hours(db_session, ["LH-SUM-CL"], shift_date, shift_date)
+
+        assert result["totals"] == {
+            "scheduled": Decimal("24.00"),
+            "actual": Decimal("26.00"),
+            "normal": Decimal("16.00"),
+            "double": Decimal("2.00"),
+            "triple": Decimal("0.00"),
+            "unsplit_actual": Decimal("8.00"),
+            "billed": Decimal("15.00"),
+            "available_for_efficiency": Decimal("25.00"),
+        }
+        # Closure identity, asserted explicitly: the tier buckets plus the
+        # unsplit-actual bucket must always fully decompose `actual` --
+        # never just inferable from entry_counts["with_split"] (a count,
+        # not an hours magnitude).
+        totals = result["totals"]
+        assert totals["normal"] + totals["double"] + totals["triple"] + totals["unsplit_actual"] == totals["actual"]
+        assert result["by_labor_class"] == {
+            "direct": {
+                "actual": Decimal("10.00"),
+                "billed": Decimal("7.00"),
+                "available_for_efficiency": Decimal("9.00"),
+            },
+            "indirect": {
+                "actual": Decimal("16.00"),
+                "billed": Decimal("8.00"),
+                "available_for_efficiency": Decimal("16.00"),
+            },
+            "unclassified": {
+                "actual": Decimal("0"),
+                "billed": Decimal("0"),
+                "available_for_efficiency": Decimal("0"),
+            },
+        }
+        assert result["by_category"] == {
+            "billed_production": Decimal("15.00"),
+            "training": Decimal("1.00"),
+        }
+        assert result["entry_counts"] == {"total": 3, "with_split": 2, "with_allocations": 2}
+
+    def test_empty_window_returns_zeroed_totals(self, db_session):
+        TestDataFactory.create_client(db_session, client_id="LH-EMPTY-CL")
+        db_session.commit()
+
+        result = summarize_labor_hours(db_session, ["LH-EMPTY-CL"], date(2026, 8, 1), date(2026, 8, 1))
+
+        assert result["totals"] == {
+            "scheduled": Decimal("0"),
+            "actual": Decimal("0"),
+            "normal": Decimal("0"),
+            "double": Decimal("0"),
+            "triple": Decimal("0"),
+            "unsplit_actual": Decimal("0"),
+            "billed": Decimal("0"),
+            "available_for_efficiency": Decimal("0"),
+        }
+        assert result["by_labor_class"] == {
+            "direct": {"actual": Decimal("0"), "billed": Decimal("0"), "available_for_efficiency": Decimal("0")},
+            "indirect": {"actual": Decimal("0"), "billed": Decimal("0"), "available_for_efficiency": Decimal("0")},
+            "unclassified": {"actual": Decimal("0"), "billed": Decimal("0"), "available_for_efficiency": Decimal("0")},
+        }
+        assert result["by_category"] == {}
+        assert result["entry_counts"] == {"total": 0, "with_split": 0, "with_allocations": 0}
+
+    def test_client_ids_none_means_all_clients(self, db_session):
+        client_one = TestDataFactory.create_client(db_session, client_id="LH-MULTI-ONE")
+        client_two = TestDataFactory.create_client(db_session, client_id="LH-MULTI-TWO")
+        shift_one = TestDataFactory.create_shift(db_session, client_id=client_one.client_id)
+        shift_two = TestDataFactory.create_shift(db_session, client_id=client_two.client_id)
+        emp_one = TestDataFactory.create_employee(db_session, client_id=client_one.client_id)
+        emp_two = TestDataFactory.create_employee(db_session, client_id=client_two.client_id)
+
+        shift_date = date(2026, 8, 1)
+        TestDataFactory.create_attendance_entry(
+            db_session,
+            employee_id=emp_one.employee_id,
+            client_id=client_one.client_id,
+            shift_id=shift_one.shift_id,
+            shift_date=shift_date,
+            scheduled_hours=Decimal("8.00"),
+            actual_hours=Decimal("8.00"),
+        )
+        TestDataFactory.create_attendance_entry(
+            db_session,
+            employee_id=emp_two.employee_id,
+            client_id=client_two.client_id,
+            shift_id=shift_two.shift_id,
+            shift_date=shift_date,
+            scheduled_hours=Decimal("8.00"),
+            actual_hours=Decimal("8.00"),
+        )
+        db_session.commit()
+
+        result_all = summarize_labor_hours(db_session, None, shift_date, shift_date)
+        assert result_all["totals"]["actual"] == Decimal("16.00")
+        assert result_all["entry_counts"]["total"] == 2
+
+        result_filtered = summarize_labor_hours(db_session, ["LH-MULTI-ONE"], shift_date, shift_date)
+        assert result_filtered["totals"]["actual"] == Decimal("8.00")
+        assert result_filtered["entry_counts"]["total"] == 1
+
+
+class TestEarnedHours:
+    """Fix round 1 (2026-08-06, USER RULING): earned_hours(db, client_ids,
+    start_date, end_date) -> (Decimal total, int excluded_entries).
+
+    ideal_cycle_time resolution per entry: entry.ideal_cycle_time first,
+    else product.ideal_cycle_time; neither present -> excluded (never
+    guessed via the historical-inference chain -- see the function
+    docstring for why)."""
+
+    def test_entry_level_ict_takes_precedence_over_product(self, db_session):
+        """Entry A: entry.ideal_cycle_time=0.10 (product default 0.30 must be
+        ignored) -> earned = 100 units x 0.10 = 10.00."""
+        client = TestDataFactory.create_client(db_session, client_id="EH-A-CL")
+        shift = TestDataFactory.create_shift(db_session, client_id=client.client_id)
+        product = TestDataFactory.create_product(
+            db_session, client_id=client.client_id, ideal_cycle_time=Decimal("0.30")
+        )
+        db_session.flush()
+
+        shift_date = date(2026, 8, 1)
+        TestDataFactory.create_production_entry(
+            db_session,
+            client_id=client.client_id,
+            product_id=product.product_id,
+            shift_id=shift.shift_id,
+            entered_by="tester",
+            production_date=shift_date,
+            units_produced=100,
+            ideal_cycle_time=Decimal("0.10"),
+        )
+        db_session.commit()
+
+        total, excluded = earned_hours(db_session, ["EH-A-CL"], shift_date, shift_date)
+        assert total == Decimal("10.00")
+        assert excluded == 0
+
+    def test_falls_back_to_product_ict_when_entry_ict_unset(self, db_session):
+        """Entry B: entry.ideal_cycle_time=None, product.ideal_cycle_time=0.20
+        -> earned = 50 units x 0.20 = 10.00."""
+        client = TestDataFactory.create_client(db_session, client_id="EH-B-CL")
+        shift = TestDataFactory.create_shift(db_session, client_id=client.client_id)
+        product = TestDataFactory.create_product(
+            db_session, client_id=client.client_id, ideal_cycle_time=Decimal("0.20")
+        )
+        db_session.flush()
+
+        shift_date = date(2026, 8, 1)
+        TestDataFactory.create_production_entry(
+            db_session,
+            client_id=client.client_id,
+            product_id=product.product_id,
+            shift_id=shift.shift_id,
+            entered_by="tester",
+            production_date=shift_date,
+            units_produced=50,
+            ideal_cycle_time=None,
+        )
+        db_session.commit()
+
+        total, excluded = earned_hours(db_session, ["EH-B-CL"], shift_date, shift_date)
+        assert total == Decimal("10.00")
+        assert excluded == 0
+
+    def test_excludes_entries_with_no_ict_anywhere_and_counts_them(self, db_session):
+        """Entry C: neither entry nor product has ideal_cycle_time ->
+        excluded from the sum, counted in excluded_entries (never guessed)."""
+        client = TestDataFactory.create_client(db_session, client_id="EH-C-CL")
+        shift = TestDataFactory.create_shift(db_session, client_id=client.client_id)
+        product = TestDataFactory.create_product(db_session, client_id=client.client_id, ideal_cycle_time=None)
+        db_session.flush()
+
+        shift_date = date(2026, 8, 1)
+        TestDataFactory.create_production_entry(
+            db_session,
+            client_id=client.client_id,
+            product_id=product.product_id,
+            shift_id=shift.shift_id,
+            entered_by="tester",
+            production_date=shift_date,
+            units_produced=999,
+            ideal_cycle_time=None,
+        )
+        db_session.commit()
+
+        total, excluded = earned_hours(db_session, ["EH-C-CL"], shift_date, shift_date)
+        assert total == Decimal("0")
+        assert excluded == 1
+
+    def test_mixed_entries_sum_and_exclusion_count_combine(self, db_session):
+        """A (entry ict 0.10, 100u -> 10.00) + B (product ict 0.20, 50u ->
+        10.00) + C (no ict anywhere, 999u -> excluded) in ONE window:
+        total = 20.00, excluded_entries = 1."""
+        client = TestDataFactory.create_client(db_session, client_id="EH-MIX-CL")
+        shift = TestDataFactory.create_shift(db_session, client_id=client.client_id)
+        product_with_default = TestDataFactory.create_product(
+            db_session, client_id=client.client_id, product_code="EH-MIX-PROD-1", ideal_cycle_time=Decimal("0.30")
+        )
+        product_no_default = TestDataFactory.create_product(
+            db_session, client_id=client.client_id, product_code="EH-MIX-PROD-2", ideal_cycle_time=Decimal("0.20")
+        )
+        product_no_ict = TestDataFactory.create_product(
+            db_session, client_id=client.client_id, product_code="EH-MIX-PROD-3", ideal_cycle_time=None
+        )
+        db_session.flush()
+
+        shift_date = date(2026, 8, 1)
+        TestDataFactory.create_production_entry(
+            db_session,
+            client_id=client.client_id,
+            product_id=product_with_default.product_id,
+            shift_id=shift.shift_id,
+            entered_by="tester",
+            production_date=shift_date,
+            units_produced=100,
+            ideal_cycle_time=Decimal("0.10"),
+        )
+        TestDataFactory.create_production_entry(
+            db_session,
+            client_id=client.client_id,
+            product_id=product_no_default.product_id,
+            shift_id=shift.shift_id,
+            entered_by="tester",
+            production_date=shift_date,
+            units_produced=50,
+            ideal_cycle_time=None,
+        )
+        TestDataFactory.create_production_entry(
+            db_session,
+            client_id=client.client_id,
+            product_id=product_no_ict.product_id,
+            shift_id=shift.shift_id,
+            entered_by="tester",
+            production_date=shift_date,
+            units_produced=999,
+            ideal_cycle_time=None,
+        )
+        db_session.commit()
+
+        total, excluded = earned_hours(db_session, ["EH-MIX-CL"], shift_date, shift_date)
+        assert total == Decimal("20.00")
+        assert excluded == 1
+
+    def test_empty_window_returns_zero_and_no_exclusions(self, db_session):
+        TestDataFactory.create_client(db_session, client_id="EH-EMPTY-CL")
+        db_session.commit()
+
+        total, excluded = earned_hours(db_session, ["EH-EMPTY-CL"], date(2026, 8, 1), date(2026, 8, 1))
+        assert total == Decimal("0")
+        assert excluded == 0
+
+    def test_client_ids_none_means_all_clients(self, db_session):
+        client_one = TestDataFactory.create_client(db_session, client_id="EH-MULTI-ONE")
+        client_two = TestDataFactory.create_client(db_session, client_id="EH-MULTI-TWO")
+        shift_one = TestDataFactory.create_shift(db_session, client_id=client_one.client_id)
+        shift_two = TestDataFactory.create_shift(db_session, client_id=client_two.client_id)
+        product_one = TestDataFactory.create_product(
+            db_session, client_id=client_one.client_id, ideal_cycle_time=Decimal("0.10")
+        )
+        product_two = TestDataFactory.create_product(
+            db_session, client_id=client_two.client_id, ideal_cycle_time=Decimal("0.10")
+        )
+        db_session.flush()
+
+        shift_date = date(2026, 8, 1)
+        TestDataFactory.create_production_entry(
+            db_session,
+            client_id=client_one.client_id,
+            product_id=product_one.product_id,
+            shift_id=shift_one.shift_id,
+            entered_by="tester",
+            production_date=shift_date,
+            units_produced=100,
+        )
+        TestDataFactory.create_production_entry(
+            db_session,
+            client_id=client_two.client_id,
+            product_id=product_two.product_id,
+            shift_id=shift_two.shift_id,
+            entered_by="tester",
+            production_date=shift_date,
+            units_produced=100,
+        )
+        db_session.commit()
+
+        total_all, excluded_all = earned_hours(db_session, None, shift_date, shift_date)
+        assert total_all == Decimal("20.00")
+        assert excluded_all == 0
+
+        total_one, excluded_one = earned_hours(db_session, ["EH-MULTI-ONE"], shift_date, shift_date)
+        assert total_one == Decimal("10.00")
+        assert excluded_one == 0

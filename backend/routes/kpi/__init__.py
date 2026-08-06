@@ -8,6 +8,7 @@ Split from the monolithic kpi.py (1361 lines) into focused sub-modules:
 - trends.py        — Performance, quality, availability, OEE, OTD, and absenteeism trends
 - dashboard.py     — Aggregated dashboard (single call combining all metrics)
 - thresholds.py    — KPI threshold CRUD (separate /api/kpi-thresholds prefix)
+- labor_hours.py   — Labor hours summary (scheduled/actual/OT-split/billed/available)
 
 Each sub-module router carries its own full prefix ("/api/kpi" or
 "/api/kpi-thresholds"), so this __init__.py wraps them in a bare
@@ -25,6 +26,7 @@ from .otd import otd_router
 from .trends import trends_router
 from .dashboard import dashboard_router
 from .thresholds import thresholds_router
+from .labor_hours import labor_hours_router
 from backend.routes.kpi.cause import cause_router  # noqa: E402
 
 # Bare router (no prefix) — each sub-router already carries the full /api/kpi prefix.
@@ -36,6 +38,7 @@ router.include_router(otd_router)
 router.include_router(trends_router)
 router.include_router(dashboard_router)
 router.include_router(cause_router)
+router.include_router(labor_hours_router)
 
 # thresholds_router is exported separately — it uses /api/kpi-thresholds prefix
 # and is registered independently in backend/routes/__init__.py
