@@ -85,13 +85,30 @@ def fetch_labor(
         )
         if client_ids is not None:
             pq = pq.filter(ProductionEntry.client_id.in_(client_ids))
-        for pe in pq.all():
+        production_entries = pq.all()
+        if not production_entries:
+            # No production rows at all in scope this call -- earned_hours/
+            # excluded_entries are still structurally applicable for this
+            # group_by (production rows just happen not to exist here), so
+            # seed them onto every attendance-populated bucket rather than
+            # silently omitting efficiency_available_basis for an
+            # attendance-only window.
+            for c in acc.values():
+                c["earned_hours"] += 0.0
+                c["excluded_entries"] += 0.0
+        for pe in production_entries:
             ict = pe.ideal_cycle_time
             if ict is None and pe.product is not None:
                 ict = pe.product.ideal_cycle_time
             pe_day = pe.shift_date.date()
             pe_grp = pe.client_id if group_by == "client" else None
             pc = acc[(pe_day, pe_grp)]
+            # Seed both keys before the branch below: a bucket whose
+            # production rows all lack an inferable ideal_cycle_time must
+            # still report earned_hours=0.0 (produced) alongside
+            # excluded_entries, not omit efficiency_available_basis entirely.
+            pc["earned_hours"] += 0.0
+            pc["excluded_entries"] += 0.0
             if ict is None:
                 pc["excluded_entries"] += 1
             else:
@@ -139,6 +156,15 @@ def fetch_delivery(
         else:
             grp = None
         c = acc[(day, grp)]
+        # Seed every structurally-applicable component before the
+        # conditional increments below: a bucket whose only delivery is
+        # late-and-unjustified must still report on_time=0.0/
+        # justified_late=0.0/net_on_time=0.0 (produced) so otd_gross_pct/
+        # otd_net_pct compute as 0.0, not get omitted.
+        c["delivered"] += 0.0
+        c["on_time"] += 0.0
+        c["justified_late"] += 0.0
+        c["net_on_time"] += 0.0
         c["delivered"] += 1
         on_time = wo.actual_delivery_date <= inferred.date
         justified_late = (not on_time) and (wo.delay_classification == DelayClassificationEnum.JUSTIFIED.value)

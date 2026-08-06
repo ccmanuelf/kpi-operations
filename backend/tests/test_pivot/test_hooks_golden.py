@@ -316,3 +316,96 @@ def test_delivery_totals_equal_calculate_true_otd(db_session, seeded):
     assert t["delivered"] > 0
     assert t["otd_gross_pct"] == pytest.approx(float(golden["true_otd"]["percentage"]), abs=0.01)
     assert t["otd_net_pct"] == pytest.approx(float(golden["true_otd"]["net_percentage"]), abs=0.01)
+
+
+def test_delivery_zero_on_time_reports_percentages_as_zero_not_omitted(db_session):
+    """Regression: the omit-when-never-produced rule must be structural (a
+    Component the hook never touches for THIS group_by, e.g. earned_hours
+    under group_by='labor_class'), not data-dependent (a Component no row
+    happened to increment this run). A window whose only COMPLETED delivery
+    is late and unjustified must report 0% OTD -- not silently drop the
+    otd_gross_pct/otd_net_pct keys from rows and totals."""
+    cid = "PVTH-ZERO-OTD"
+    db_session.add(Client(client_id=cid, client_name="Zero OTD Client"))
+    db_session.commit()
+    db_session.add(
+        WorkOrder(
+            work_order_id="PVTH-ZERO-WO-1",
+            client_id=cid,
+            style_model="PVTH-STYLE-ZERO",
+            planned_quantity=1,
+            status=WorkOrderStatus.COMPLETED,
+            planned_ship_date=datetime(2026, 3, 5),
+            actual_delivery_date=datetime(2026, 3, 10),  # late; delay_classification unset -> unjustified
+        )
+    )
+    db_session.commit()
+
+    out = run_pivot(db_session, "delivery", "year", None, *WINDOW, [cid])
+    assert out["totals"]["delivered"] == 1.0
+    assert out["totals"]["on_time"] == 0.0
+    assert out["totals"]["otd_gross_pct"] == 0.0
+    assert out["totals"]["otd_net_pct"] == 0.0
+    [row] = out["rows"]
+    assert row["otd_gross_pct"] == 0.0
+    assert row["otd_net_pct"] == 0.0
+
+
+def test_labor_all_excluded_production_reports_efficiency_available_basis_as_zero(db_session):
+    """Regression companion to the delivery test above: a window whose
+    production rows all lack an inferable ideal_cycle_time must still report
+    efficiency_available_basis == 0.0 (earned_hours produced, just zero) --
+    not omit the ratio outright. Distinct from group_by='labor_class', where
+    earned_hours is genuinely never applicable (production rows carry no
+    labor class) and omission there is still correct (see
+    test_labor_by_class_equals_golden)."""
+    cid = "PVTH-ALL-EXCLUDED"
+    db_session.add_all(
+        [
+            Client(client_id=cid, client_name="All Excluded Client"),
+            Product(product_id=1, client_id=cid, product_code="PVTH-AE-PROD", product_name="AE Product"),
+            Shift(shift_id=1, client_id=cid, shift_name="AE Shift", start_time=time(6, 0), end_time=time(14, 0)),
+            User(user_id="USR-PVTH-AE-001", username="pvth_ae_admin", email="pvth_ae_admin@test.com", role="admin"),
+            Employee(
+                employee_id=1,
+                employee_code="PVTH-AE-E1",
+                employee_name="AE Employee",
+                client_id_assigned=cid,
+                labor_class="direct",
+            ),
+        ]
+    )
+    db_session.commit()
+    db_session.add(
+        AttendanceEntry(
+            attendance_entry_id="PVTH-AE-ATT-1",
+            client_id=cid,
+            employee_id=1,
+            shift_id=1,
+            shift_date=datetime(2026, 3, 2, 6),
+            scheduled_hours=Decimal("8"),
+            actual_hours=Decimal("8"),
+            entered_by="USR-PVTH-AE-001",
+        )
+    )
+    db_session.add(
+        ProductionEntry(
+            production_entry_id="PVTH-AE-PE-1",
+            client_id=cid,
+            product_id=1,
+            shift_id=1,
+            production_date=datetime(2026, 3, 2, 6),
+            shift_date=datetime(2026, 3, 2, 6),
+            units_produced=10,
+            run_time_hours=Decimal("1"),
+            employees_assigned=1,
+            employees_present=1,
+            ideal_cycle_time=None,  # and Product above also has none -> excluded
+            entered_by="USR-PVTH-AE-001",
+        )
+    )
+    db_session.commit()
+
+    out = run_pivot(db_session, "labor", "year", None, *WINDOW, [cid])
+    assert out["totals"]["excluded_entries"] == 1.0
+    assert out["totals"]["efficiency_available_basis"] == 0.0
