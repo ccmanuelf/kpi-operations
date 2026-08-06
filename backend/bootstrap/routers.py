@@ -57,6 +57,7 @@ from backend.routes.equipment import router as equipment_router
 from backend.routes.employee_line_assignments import router as employee_line_assignments_router
 from backend.routes.plan_vs_actual import router as plan_vs_actual_router
 from backend.routes.export import router as export_router
+from backend.routes.pivot import router as pivot_router
 from backend.routes.onboarding import router as onboarding_router
 from backend.endpoints.csv_upload import router as csv_upload_router
 from backend.routes.calculation_assumptions import router as calculation_assumptions_router
@@ -277,6 +278,11 @@ def register_routers(app: FastAPI) -> None:
     # Sprint 4: CSV/XLSX export routes
     # ============================================================================
     app.include_router(export_router)
+
+    # ============================================================================
+    # Cycle 4 PR-A: Pivot summary routes (pre-defined time buckets/groupings)
+    # ============================================================================
+    app.include_router(pivot_router)
 
     # ============================================================================
     # Sprint 5: Onboarding status routes
