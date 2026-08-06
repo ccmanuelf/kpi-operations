@@ -151,6 +151,7 @@ def summarize_labor_hours(db: Session, client_ids: Optional[Sequence[str]], star
         "normal": Decimal("0"),
         "double": Decimal("0"),
         "triple": Decimal("0"),
+        "unsplit_actual": Decimal("0"),
         "billed": Decimal("0"),
         "available_for_efficiency": Decimal("0"),
     }
@@ -174,6 +175,16 @@ def summarize_labor_hours(db: Session, client_ids: Optional[Sequence[str]], star
             totals["normal"] += entry.normal_hours or Decimal("0")
             totals["double"] += entry.double_hours or Decimal("0")
             totals["triple"] += entry.triple_hours or Decimal("0")
+        else:
+            # Transparency pattern (mirrors `earned_hours`' excluded_entries):
+            # entries with no OT split at all contribute nothing to
+            # normal/double/triple, so without this the tier buckets would
+            # silently undercount `actual` for any window containing unsplit
+            # entries. Surfacing the magnitude here keeps
+            # normal + double + triple + unsplit_actual == actual an
+            # invariant callers can rely on, not just infer from
+            # entry_counts["with_split"] (a count, not an hours total).
+            totals["unsplit_actual"] += actual
 
         alloc_tuples = [(alloc.category, alloc.hours) for alloc in entry.hour_allocations]
         if alloc_tuples:

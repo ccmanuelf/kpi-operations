@@ -119,12 +119,18 @@ class TestSummarizeLaborHours:
           split 8/0/0, NO allocations -> billed 0, available 8 (conservative)
 
         totals: scheduled 24, actual 26, normal 16, double 2, triple 0,
+                unsplit_actual 8 (B's actual -- B is the only unsplit entry),
                 billed 15, available 25
         by_labor_class: direct {actual 10, billed 7, available 9}   # only A
                         indirect {actual 16, billed 8, available 16} # B + C (override)
                         unclassified {actual 0, billed 0, available 0}
         by_category: {billed_production: 15, training: 1}
         entry_counts: {total 3, with_split 2, with_allocations 2}
+
+        Closure identity: normal + double + triple + unsplit_actual == actual
+        (16 + 2 + 0 + 8 == 26) -- the tier buckets plus the unsplit-actual
+        transparency bucket always fully decompose `actual`, so a consumer
+        summing only normal/double/triple never silently undercounts.
         """
         client = TestDataFactory.create_client(db_session, client_id="LH-SUM-CL")
         shift = TestDataFactory.create_shift(db_session, client_id=client.client_id)
@@ -191,9 +197,16 @@ class TestSummarizeLaborHours:
             "normal": Decimal("16.00"),
             "double": Decimal("2.00"),
             "triple": Decimal("0.00"),
+            "unsplit_actual": Decimal("8.00"),
             "billed": Decimal("15.00"),
             "available_for_efficiency": Decimal("25.00"),
         }
+        # Closure identity, asserted explicitly: the tier buckets plus the
+        # unsplit-actual bucket must always fully decompose `actual` --
+        # never just inferable from entry_counts["with_split"] (a count,
+        # not an hours magnitude).
+        totals = result["totals"]
+        assert totals["normal"] + totals["double"] + totals["triple"] + totals["unsplit_actual"] == totals["actual"]
         assert result["by_labor_class"] == {
             "direct": {
                 "actual": Decimal("10.00"),
@@ -229,6 +242,7 @@ class TestSummarizeLaborHours:
             "normal": Decimal("0"),
             "double": Decimal("0"),
             "triple": Decimal("0"),
+            "unsplit_actual": Decimal("0"),
             "billed": Decimal("0"),
             "available_for_efficiency": Decimal("0"),
         }

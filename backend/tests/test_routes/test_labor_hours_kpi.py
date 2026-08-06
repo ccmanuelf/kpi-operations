@@ -76,8 +76,9 @@ class TestLaborHoursSummary:
         C (E1 with labor_class_override='indirect', actual 8, split 8/0/0,
         no allocations). Derivation (cited verbatim from that test):
         totals = {scheduled 24, actual 26, normal 16, double 2, triple 0,
-        billed 15, available_for_efficiency 25}. The route must return these
-        as JSON floats (Decimal->float coercion), not strings.
+        unsplit_actual 8 (B's actual -- the only unsplit entry), billed 15,
+        available_for_efficiency 25}. The route must return these as JSON
+        floats (Decimal->float coercion), not strings.
         """
         db = lh_db
         client = TestDataFactory.create_client(db, client_id="LH-RT-CL", client_type=ClientType.HOURLY_RATE)
@@ -155,9 +156,13 @@ class TestLaborHoursSummary:
             "normal": 16.0,
             "double": 2.0,
             "triple": 0.0,
+            "unsplit_actual": 8.0,
             "billed": 15.0,
             "available_for_efficiency": 25.0,
         }
+        # unsplit_actual is a float leaf via the same recursive Decimal->float
+        # coercion as every other totals value (no special-casing needed).
+        assert isinstance(data["totals"]["unsplit_actual"], float)
         assert data["by_labor_class"] == {
             "direct": {"actual": 10.0, "billed": 7.0, "available_for_efficiency": 9.0},
             "indirect": {"actual": 16.0, "billed": 8.0, "available_for_efficiency": 16.0},
