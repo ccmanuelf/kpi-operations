@@ -3,7 +3,7 @@ measure MUST be composed of declared Sum/Count components. An average-of-
 averages is unrepresentable — this test makes that permanent for any dataset
 anyone registers, present or future."""
 
-from backend.pivot.registry import DATASETS, Count, Ratio, Share, Sum
+from backend.pivot.registry import DATASETS, Component, Count, Ratio, Share, Sum
 
 
 def test_registry_has_sql_path_datasets():
@@ -12,20 +12,24 @@ def test_registry_has_sql_path_datasets():
 
 
 def test_every_ratio_and_share_references_declared_sum_or_count_components():
+    # Component is the hook-path counterpart of Sum/Count (Task 5): a summed
+    # value a fetch hook produces instead of a SQL expr. Ratio/Share still
+    # must compose summed components only -- an average-of-averages is
+    # unrepresentable regardless of which path produced the sum.
     for name, ds in DATASETS.items():
         for mname, m in ds.measures.items():
             if isinstance(m, Ratio):
                 for ref in (m.numerator, m.denominator):
                     assert ref in ds.measures, f"{name}.{mname} references undeclared {ref!r}"
-                    assert isinstance(ds.measures[ref], (Sum, Count)), (
-                        f"{name}.{mname} component {ref!r} must be Sum/Count, "
+                    assert isinstance(ds.measures[ref], (Sum, Count, Component)), (
+                        f"{name}.{mname} component {ref!r} must be Sum/Count/Component, "
                         f"got {type(ds.measures[ref]).__name__} — ratios compose "
                         f"summed components only (ratio-of-sums ruling)"
                     )
             if isinstance(m, Share):
                 assert m.of in ds.measures, f"{name}.{mname} references undeclared {m.of!r}"
-                assert isinstance(ds.measures[m.of], (Sum, Count)), (
-                    f"{name}.{mname} component {m.of!r} must be Sum/Count, "
+                assert isinstance(ds.measures[m.of], (Sum, Count, Component)), (
+                    f"{name}.{mname} component {m.of!r} must be Sum/Count/Component, "
                     f"got {type(ds.measures[m.of]).__name__} — shares compose "
                     f"summed components only (ratio-of-sums ruling)"
                 )
