@@ -52,12 +52,19 @@ const view = usePivotView(props.preset)
 
 const bucketItems = computed(() => VALID_BUCKETS.map((b) => ({ value: b, title: t(BUCKET_LABEL_KEYS[b]) })))
 const groupingItems = computed(() => props.preset.groupings.map((g) => ({ value: g.value, title: t(g.labelKey) })))
+// Every column carries its own width strategy (rather than relying on a
+// shared AGGridBase defaultColDef, which this panel doesn't own): flex+
+// minWidth so columns share space evenly without clipping, wrapHeaderText+
+// autoHeaderHeight so multi-word headers (e.g. the three overtime columns)
+// wrap onto a second line instead of truncating to indistinguishable stubs
+// (validation finding F1). Both flags are AG Grid Community-supported.
+const PIVOT_COL_DEF = { flex: 1, minWidth: 130, wrapHeaderText: true, autoHeaderHeight: true }
 const columnDefs = computed(() => [
-  { field: 'bucket_start', headerName: t('pivot.cols.bucket') },
-  { field: 'group_key', headerName: t('pivot.cols.group'),
-    valueFormatter: (p: { value: unknown }) => groupLabel(p.value, t) },
+  { field: 'bucket_start', headerName: t('pivot.cols.bucket'), ...PIVOT_COL_DEF },
+  { field: 'group_key', headerName: t('pivot.cols.group'), ...PIVOT_COL_DEF,
+    valueFormatter: (p: { value: unknown }) => groupLabel(p.value, t, view.groupBy.value) },
   ...visibleColumns(props.preset, view.groupBy.value).map((c) => ({
-    field: c.key, headerName: t(c.headerKey),
+    field: c.key, headerName: t(c.headerKey), ...PIVOT_COL_DEF,
     valueFormatter: (p: { data: Record<string, unknown> }) => displayValue(p.data ?? {}, c),
   })),
 ])

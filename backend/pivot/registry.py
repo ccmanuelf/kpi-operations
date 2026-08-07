@@ -20,7 +20,7 @@ from backend.orm.production_entry import ProductionEntry
 from backend.orm.production_line import ProductionLine
 from backend.orm.quality_entry import QualityEntry
 from backend.orm.work_order import WorkOrder
-from backend.pivot.hooks import fetch_delivery, fetch_labor
+from backend.pivot.hooks import fetch_delivery, fetch_holds, fetch_labor
 
 
 @dataclass(frozen=True)
@@ -53,6 +53,13 @@ class Share:
 
 @dataclass(frozen=True)
 class GroupBy:
+    # `expr` is only actually read by the SQL path (engine.py::_sql_day_rows
+    # -- gb.expr.label(...) / q.group_by(gb.expr)). A hook-path dataset's
+    # GroupBy.expr is never evaluated (run_pivot only checks group_by
+    # membership in ds.group_bys before calling ds.fetch); hook datasets
+    # still declare the real column here for shape-consistency with
+    # SQL-path datasets and so a future SQL-path migration doesn't also
+    # need to invent the expr from scratch.
     expr: Any
     joins: tuple = ()
 
@@ -146,21 +153,26 @@ _QUALITY = Dataset(
     },
 )
 
-# --- holds ------------------------------------------------------------------
+# --- holds (hook path) -------------------------------------------------------
+# hold_days/avg_days_per_hold moved off the SQL path (validation finding F3):
+# total_hold_duration_hours is NULL until a hold resumes, so a SQL SUM
+# coalesces every still-open hold to 0, indistinguishable from a hold that
+# resolved in a minute. fetch_holds uses the recorded duration for resolved
+# holds and age-to-date for active ones -- see backend/pivot/hooks.py.
 _HOLDS = Dataset(
     name="holds",
     model=HoldEntry,
     date_column=HoldEntry.hold_date,
     client_column=HoldEntry.client_id,
-    base_filters=(HoldEntry.hold_date.isnot(None),),
+    fetch=fetch_holds,
     group_bys={
         "client": GroupBy(HoldEntry.client_id),
-        "reason_category": GroupBy(func.coalesce(HoldEntry.hold_reason_category, "uncategorized")),
-        "reason": GroupBy(func.coalesce(HoldEntry.hold_reason, "uncategorized")),
+        "reason_category": GroupBy(HoldEntry.hold_reason_category),
+        "reason": GroupBy(HoldEntry.hold_reason),
     },
     measures={
-        "holds": Count(),
-        "hold_days": Sum(func.coalesce(HoldEntry.total_hold_duration_hours, 0) / 24.0),
+        "holds": Component(),
+        "hold_days": Component(),
         "avg_days_per_hold": Ratio("hold_days", "holds", scale=1.0),
     },
 )

@@ -85,3 +85,19 @@ export function formatLocaleDateTimeIntl(
 ): string {
   return new Date(date).toLocaleString(getIntlLocaleTag(locale), options)
 }
+
+/**
+ * Plain (non-locale) ISO calendar-date string ("YYYY-MM-DD") built from a
+ * Date's LOCAL components -- NOT `date.toISOString()`, which converts to
+ * UTC first. For a UTC-behind user (e.g. UTC-6) an evening local timestamp
+ * can serialize as TOMORROW's date under toISOString() (the repo's #145
+ * date-boundary bug class). For API query params (start_date/end_date)
+ * only -- never for display; display uses the locale-aware formatters
+ * above.
+ */
+export function localISO(d: Date): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}

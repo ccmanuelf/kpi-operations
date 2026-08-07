@@ -16,7 +16,7 @@ real JWT needed for route-shape/scope tests).
 
 import csv
 import io
-from datetime import datetime
+from datetime import date, datetime
 
 import pytest
 from fastapi import FastAPI
@@ -24,6 +24,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import sessionmaker
 
 from backend.database import get_db
+from backend.routes.pivot import _escape_csv_cell
 from backend.routes.pivot import router as pivot_router
 from backend.tests.conftest import clone_template_engine
 from backend.tests.fixtures.factories import TestDataFactory
@@ -92,7 +93,10 @@ def test_pivot_labor_month_200_shape(admin_client):
         assert isinstance(row["bucket_start"], str)
         for k, v in row.items():
             if k not in ("bucket_start", "group_key"):
-                assert v is None or isinstance(v, (int, float)), (k, type(v))
+                # bool is an int subclass in Python -- isinstance(True, int)
+                # is True -- so a stray boolean measure would silently pass
+                # this wire-type check without the explicit exclusion.
+                assert v is None or (isinstance(v, (int, float)) and not isinstance(v, bool)), (k, type(v))
 
 
 def test_unknown_dataset_422(admin_client):
@@ -208,3 +212,62 @@ def test_csv_matches_json_rows(admin_client, pivot_db):
         # not the literal string "None".
         assert json_row["share_of_window_pct"] is None
         assert csv_row["share_of_window_pct"] == ""
+
+
+@pytest.mark.parametrize(
+    "value,expected",
+    [
+        ('=HYPERLINK("http://evil","click")', '\'=HYPERLINK("http://evil","click")'),
+        ("+1+1", "'+1+1"),
+        ("-1+1", "'-1+1"),
+        ("@SUM(A1)", "'@SUM(A1)"),
+        ("\tSUM(A1)", "'\tSUM(A1)"),
+        ("\rSUM(A1)", "'\rSUM(A1)"),
+        ("ACME Corp", "ACME Corp"),
+        ("", ""),
+        (42, 42),
+        (3.5, 3.5),
+        (None, None),
+    ],
+)
+def test_escape_csv_cell(value, expected):
+    """Pure unit coverage for the pivot-CSV-only formula-injection guard:
+    strings with a dangerous leading character (=, +, -, @, tab, CR) get a
+    single quote prefix; everything else (safe strings, numbers, None)
+    passes through unchanged."""
+    assert _escape_csv_cell(value) == expected
+
+
+def test_csv_group_key_with_formula_prefix_round_trips_escaped(admin_client, pivot_db):
+    """A group_key value that starts with a formula-injection character
+    (here via a user-entered WorkOrder.style_model, grouped by 'style' on
+    the quality dataset) must be prefixed with a single quote in the CSV
+    body -- not written verbatim, which would execute as a formula when the
+    file is opened in Excel."""
+    client = TestDataFactory.create_client(pivot_db, client_id="PVT-RT-CSVINJ")
+    work_order = TestDataFactory.create_work_order(
+        pivot_db,
+        client_id=client.client_id,
+        style_model='=HYPERLINK("http://evil.example","click me")',
+    )
+    pivot_db.commit()
+    TestDataFactory.create_quality_entry(
+        pivot_db,
+        work_order_id=work_order.work_order_id,
+        client_id=client.client_id,
+        inspector_id="pvt-admin-001",
+        inspection_date=date(2026, 6, 15),
+    )
+    pivot_db.commit()
+
+    params = {
+        "bucket": "year",
+        "start_date": "2026-01-01",
+        "end_date": "2026-12-31",
+        "group_by": "style",
+    }
+    r = admin_client.get("/api/pivot/quality/csv", params=params)
+    assert r.status_code == 200
+    csv_rows = list(csv.DictReader(io.StringIO(r.text)))
+    assert len(csv_rows) == 1
+    assert csv_rows[0]["group_key"] == '\'=HYPERLINK("http://evil.example","click me")'

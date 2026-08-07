@@ -2,6 +2,8 @@
  * registry (backend/pivot/registry.py) is the authority for datasets,
  * group_by allow-lists, and measure keys — these presets must reference
  * only keys that exist there. */
+import { JUSTIFIED_DELAY_REASON_CODES, delayReasonLabelKey } from '@/constants/delayTaxonomy'
+
 export interface PivotColumn {
   key: string
   headerKey: string
@@ -86,9 +88,15 @@ export const PIVOT_VIEWS: PivotViewPreset[] = [
       { value: 'delay_reason', labelKey: 'pivot.grouping.delayReason' },
     ],
     columns: [
-      { key: 'inspected', headerKey: 'pivot.cols.inspected', kind: 'count' },
-      { key: 'defects', headerKey: 'pivot.cols.defects', kind: 'count' },
-      { key: 'fpy_pct', headerKey: 'pivot.cols.fpy', kind: 'percent' },
+      // inspected/defects/fpy_pct are QUALITY measures -- delay_reason is a
+      // DELIVERY-side grouping, so every reason row renders these as bare
+      // "—" noise (quality entries carry no delay reason). Hidden under
+      // delay_reason for the same structural reason otd_gross_pct/
+      // otd_net_pct are below; delivered/on_time/justified_late stay since
+      // those ARE meaningful per delay reason.
+      { key: 'inspected', headerKey: 'pivot.cols.inspected', kind: 'count', hideForGroupings: ['delay_reason'] },
+      { key: 'defects', headerKey: 'pivot.cols.defects', kind: 'count', hideForGroupings: ['delay_reason'] },
+      { key: 'fpy_pct', headerKey: 'pivot.cols.fpy', kind: 'percent', hideForGroupings: ['delay_reason'] },
       { key: 'delivered', headerKey: 'pivot.cols.delivered', kind: 'count' },
       { key: 'on_time', headerKey: 'pivot.cols.onTime', kind: 'count' },
       { key: 'justified_late', headerKey: 'pivot.cols.justifiedLate', kind: 'count' },
@@ -153,10 +161,21 @@ const GROUP_SENTINEL_KEYS: Record<string, string> = {
 }
 
 /** Pure: renders a group_key cell value — null stays an em dash, a known
- * sentinel is localized, any other value renders as-is. */
-export function groupLabel(value: unknown, t: (_key: string) => string): string {
+ * sentinel is localized, a delay-reason group value maps to its existing
+ * `delay.reasons.*` i18n label (the WO delay-classification drawer already
+ * defines these — see constants/delayTaxonomy.ts; reused here rather than
+ * duplicated), and any other value renders as-is. `groupBy` is optional so
+ * existing (non-grouping-aware) callers keep working unchanged. */
+export function groupLabel(
+  value: unknown,
+  t: (_key: string) => string,
+  groupBy?: string | null,
+): string {
   if (value === null || value === undefined) return '—'
   const s = String(value)
+  if (groupBy === 'delay_reason' && JUSTIFIED_DELAY_REASON_CODES.includes(s)) {
+    return t(delayReasonLabelKey(s))
+  }
   const key = GROUP_SENTINEL_KEYS[s]
   return key ? t(key) : s
 }

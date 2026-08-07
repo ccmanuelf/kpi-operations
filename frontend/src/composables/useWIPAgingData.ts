@@ -7,7 +7,7 @@
  */
 import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { formatLocaleDate } from '@/utils/localeDate'
+import { formatLocaleDate, localISO } from '@/utils/localeDate'
 import { useKPIStore } from '@/stores/kpi'
 import api from '@/services/api'
 
@@ -29,8 +29,12 @@ export default function useWIPAgingData() {
   const loading = ref(false)
   const clients = ref<ClientOption[]>([])
   const selectedClient = ref<string | number | null>(null)
-  const startDate = ref(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
-  const endDate = ref(new Date().toISOString().split('T')[0])
+  // localISO, not toISOString().split('T')[0] -- the latter converts to UTC
+  // first, so a UTC-behind user's evening timestamp can serialize as
+  // TOMORROW's date (the repo's #145 date-boundary bug class; same fix as
+  // usePivotView/useWipTriadData's default windows).
+  const startDate = ref(localISO(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)))
+  const endDate = ref(localISO(new Date()))
   const tableSearch = ref('')
   const holdHistory = ref<unknown[]>([])
 

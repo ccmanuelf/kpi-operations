@@ -1,5 +1,19 @@
 import { describe, it, expect } from 'vitest'
 import { BUCKET_LABEL_KEYS, VALID_BUCKETS, PIVOT_VIEWS, DATASET_GROUPINGS, groupLabel, visibleColumns } from '@/composables/pivotPresets'
+import { JUSTIFIED_DELAY_REASON_CODES, delayReasonLabelKey } from '@/constants/delayTaxonomy'
+import en from '@/i18n/locales/en.json'
+import es from '@/i18n/locales/es.json'
+
+// Walks a dotted i18n key ("delay.reasons.customerRequest") through a real
+// locale bundle object; returns undefined if any segment is missing.
+function resolveKey(bundle: unknown, key: string): unknown {
+  return key.split('.').reduce<unknown>((node, segment) => {
+    if (node && typeof node === 'object' && segment in (node as Record<string, unknown>)) {
+      return (node as Record<string, unknown>)[segment]
+    }
+    return undefined
+  }, bundle)
+}
 
 describe('PIVOT_VIEWS structural invariants', () => {
   it('declares exactly q1..q5 in order', () => {
@@ -52,13 +66,21 @@ describe('BUCKET_LABEL_KEYS', () => {
 describe('visibleColumns', () => {
   const q3 = PIVOT_VIEWS.find((v) => v.id === 'q3')!
 
-  it('drops otd_gross_pct/otd_net_pct when grouped by delay_reason', () => {
+  it('drops otd_gross_pct/otd_net_pct/inspected/defects/fpy_pct when grouped by delay_reason', () => {
     const cols = visibleColumns(q3, 'delay_reason').map((c) => c.key)
     expect(cols).not.toContain('otd_gross_pct')
     expect(cols).not.toContain('otd_net_pct')
-    // Everything else in q3 stays -- only the two OTD% columns are hidden.
+    // Quality measures are structurally meaningless per delay reason too --
+    // delay_reason is delivery-side, so a quality entry never carries one;
+    // every reason row would otherwise render these as bare "—" noise.
+    expect(cols).not.toContain('inspected')
+    expect(cols).not.toContain('defects')
+    expect(cols).not.toContain('fpy_pct')
+    // Everything else in q3 stays -- delivered/on_time/justified_late ARE
+    // meaningful per delay reason.
     expect(cols).toContain('justified_late')
     expect(cols).toContain('delivered')
+    expect(cols).toContain('on_time')
   })
 
   it('keeps otd_gross_pct/otd_net_pct for other groupings, incl. time-only (null)', () => {
@@ -88,8 +110,44 @@ describe('groupLabel', () => {
     expect(groupLabel('unclassified', t)).toBe('[pivot.sentinels.unclassified]')
   })
 
-  it('renders non-sentinel values as-is', () => {
+  it('renders non-sentinel values as-is when groupBy is not delay_reason', () => {
     expect(groupLabel('material_supplier_delay', t)).toBe('material_supplier_delay')
     expect(groupLabel('ACME Corp', t)).toBe('ACME Corp')
+    expect(groupLabel('ACME Corp', t, 'client')).toBe('ACME Corp')
+  })
+
+  it('localizes all six delay-reason codes when grouped by delay_reason (F2)', () => {
+    expect(groupLabel('customer_request', t, 'delay_reason')).toBe('[delay.reasons.customerRequest]')
+    expect(groupLabel('customer_change_order', t, 'delay_reason')).toBe(
+      '[delay.reasons.customerChangeOrder]',
+    )
+    expect(groupLabel('material_supplier_delay', t, 'delay_reason')).toBe(
+      '[delay.reasons.materialSupplierDelay]',
+    )
+    expect(groupLabel('force_majeure', t, 'delay_reason')).toBe('[delay.reasons.forceMajeure]')
+    expect(groupLabel('upstream_hold', t, 'delay_reason')).toBe('[delay.reasons.upstreamHold]')
+    expect(groupLabel('other', t, 'delay_reason')).toBe('[delay.reasons.other]')
+  })
+
+  it('still localizes the "none" sentinel when grouped by delay_reason (on-time orders)', () => {
+    expect(groupLabel('none', t, 'delay_reason')).toBe('[pivot.sentinels.none]')
+  })
+
+  it('passes through an unknown value as-is even when grouped by delay_reason', () => {
+    expect(groupLabel('some_future_reason', t, 'delay_reason')).toBe('some_future_reason')
+  })
+
+  // Review round MINOR 11: delayReasonLabelKey builds its i18n key via
+  // string interpolation (`delay.reasons.${camel(id)}`), so the
+  // referenced-keys i18n gate (which only sees literal key strings) can't
+  // verify these resolve in the real locale bundles. Assert it directly
+  // here, against the actual en.json/es.json content, not the mocked `t`
+  // used by every other case in this block.
+  it('every JUSTIFIED_DELAY_REASON_CODES key resolves to a real string in BOTH locale bundles', () => {
+    for (const code of JUSTIFIED_DELAY_REASON_CODES) {
+      const key = delayReasonLabelKey(code)
+      expect(typeof resolveKey(en, key)).toBe('string')
+      expect(typeof resolveKey(es, key)).toBe('string')
+    }
   })
 })

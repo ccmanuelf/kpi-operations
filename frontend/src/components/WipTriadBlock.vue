@@ -30,7 +30,7 @@
 <script setup lang="ts">
 /**
  * Q5's WIP headline triad. Not a pivot measure — deliberately sourced from
- * useWIPAgingData (same composable/API surface as views/kpi/WIPAging.vue)
+ * useWipTriadData (a narrow, store-free fetch -- see its own doc comment)
  * rather than the /pivot/holds dataset, per spec §6.
  *
  * Three genuinely distinct fields (fix for a review finding: the original
@@ -53,13 +53,13 @@
  * literally named "stalled" or "past due" to map onto.
  */
 import { onMounted } from 'vue'
-import useWIPAgingData from '@/composables/useWIPAgingData'
+import { useWipTriadData } from '@/composables/useWipTriadData'
 
-const { wipData, initialize } = useWIPAgingData()
+const { wipData, load } = useWipTriadData()
 
 // Matches usePivotView's displayValue convention: an absent/null reading
 // renders as an honest "—", never a fabricated 0.
 const fmt = (v: unknown): string => (v === null || v === undefined ? '—' : String(Number(v)))
 
-onMounted(() => initialize())
+onMounted(() => load())
 </script>

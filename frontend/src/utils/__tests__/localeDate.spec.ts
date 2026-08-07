@@ -5,6 +5,7 @@ import {
   formatLocaleTimeIntl,
   formatLocaleDateTimeIntl,
   getIntlLocaleTag,
+  localISO,
 } from '../localeDate'
 
 // Observation: AG Grid date columns showed "Jul 17, 2026" under the es
@@ -82,5 +83,26 @@ describe('formatLocaleDateTimeIntl', () => {
   it('formats a combined date+time with the given locale', () => {
     expect(formatLocaleDateTimeIntl(date, 'en')).toBe('7/17/2026, 2:30:00 PM')
     expect(formatLocaleDateTimeIntl(date, 'es')).toBe('17/7/2026, 2:30:00 p.m.')
+  })
+})
+
+// Moved here from usePivotView.spec.ts (review round MINOR 8) -- localISO
+// is a plain date-string utility, not pivot-specific; usePivotView and
+// useWipTriadData both just import it from here now.
+describe('localISO', () => {
+  // Fixed Date built from LOCAL components (the `new Date(y, m, d, h, ...)`
+  // constructor, not a UTC ISO string) -- localISO must read those same
+  // local components back, so this is deterministic regardless of which
+  // timezone the test runner itself is in. toISOString() would instead
+  // convert to UTC first, which for a UTC-behind runner can roll an evening
+  // local timestamp into the NEXT UTC calendar day.
+  it('formats an evening local timestamp as the local calendar date, not a UTC-shifted one', () => {
+    const evening = new Date(2026, 7, 6, 22, 30, 0) // 2026-08-06 22:30 local
+    expect(localISO(evening)).toBe('2026-08-06')
+  })
+
+  it('zero-pads single-digit month and day', () => {
+    const early = new Date(2026, 0, 5, 9, 0, 0) // 2026-01-05
+    expect(localISO(early)).toBe('2026-01-05')
   })
 })
