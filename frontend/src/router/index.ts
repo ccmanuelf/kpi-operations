@@ -45,6 +45,12 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true },
   },
   {
+    path: '/summaries',
+    name: 'summaries',
+    component: () => import('@/views/PivotSummaries.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
     path: '/kpi/efficiency',
     name: 'kpi-efficiency',
     component: () => import('@/views/kpi/Efficiency.vue'),

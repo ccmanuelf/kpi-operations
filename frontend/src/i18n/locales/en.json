@@ -121,6 +121,7 @@
     "dataEntry": "Data Entry",
     "kpiDashboard": "KPI Dashboard",
     "kpiReports": "KPI Reports",
+    "summaries": "Summaries",
     "clients": "Clients",
     "employees": "Employees",
     "users": "Users",
@@ -2125,7 +2126,7 @@
     "stepUpload": "Upload",
     "stepPreview": "Preview",
     "stepConfirm": "Confirm",
-    "downloadSuccess": "{type} CSV downloaded successfully",
+    "downloadSuccess": "CSV downloaded successfully",
     "exportFailed": "Export failed: {message}"
   },
   "validation": {
@@ -4456,5 +4457,76 @@
     "duplicateCategory": "Duplicate category",
     "exceedsActualHours": "Allocated hours exceed actual hours",
     "invalidHours": "Hours must be greater than 0"
+  },
+  "pivot": {
+    "title": "Management Summaries",
+    "subtitle": "Cross-cutting operational views answering the five core management questions",
+    "bucket": "Time Bucket",
+    "groupBy": "Group By",
+    "downloadCsv": "Download CSV",
+    "buckets": {
+      "week": "Week",
+      "month": "Month",
+      "quarter": "Quarter",
+      "year": "Year"
+    },
+    "grouping": {
+      "timeOnly": "Time only",
+      "client": "Client",
+      "category": "Category",
+      "reason": "Reason",
+      "line": "Line",
+      "style": "Style",
+      "delayReason": "Delay Reason",
+      "holdCategory": "Hold Category",
+      "holdReason": "Hold Reason"
+    },
+    "views": {
+      "q1": "Efficiency",
+      "q2": "Downtime",
+      "q3": "Quality & Delivery",
+      "q4": "Re-shuffling",
+      "q5": "Holds"
+    },
+    "cols": {
+      "bucket": "Period",
+      "group": "Group",
+      "units": "Units",
+      "earnedHours": "Earned Hours",
+      "runHours": "Run Hours",
+      "attendanceHours": "Attendance Hours",
+      "operators": "Operators",
+      "otNormal": "Overtime (Normal)",
+      "otDouble": "Overtime (Double)",
+      "otTriple": "Overtime (Triple)",
+      "billed": "Billed Hours",
+      "available": "Available Hours",
+      "efficiency": "Efficiency %",
+      "downtimeHours": "Downtime Hours",
+      "events": "Events",
+      "share": "Share of Window %",
+      "inspected": "Inspected",
+      "defects": "Defects",
+      "fpy": "FPY %",
+      "delivered": "Delivered",
+      "onTime": "On Time",
+      "justifiedLate": "Justified Late",
+      "otdGross": "OTD Gross %",
+      "otdNet": "OTD Net %",
+      "holds": "Holds",
+      "holdDays": "Hold Days",
+      "avgDaysPerHold": "Avg Days / Hold"
+    },
+    "wip": {
+      "avgDaysOnHold": "Avg Days on Hold",
+      "oldestDays": "Oldest Item (Days)",
+      "aged15Plus": "Count Aged 15+ Days"
+    },
+    "sentinels": {
+      "none": "None",
+      "uncategorized": "Uncategorized",
+      "unknown": "Unknown",
+      "unclassified": "Unclassified"
+    }
   }
 }

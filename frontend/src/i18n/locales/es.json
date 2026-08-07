@@ -121,6 +121,7 @@
     "dataEntry": "Captura de Datos",
     "kpiDashboard": "Tablero de KPIs",
     "kpiReports": "Reportes de KPIs",
+    "summaries": "Resúmenes",
     "clients": "Clientes",
     "employees": "Empleados",
     "users": "Usuarios",
@@ -2125,7 +2126,7 @@
     "stepUpload": "Subir",
     "stepPreview": "Vista Previa",
     "stepConfirm": "Confirmar",
-    "downloadSuccess": "CSV de {type} descargado exitosamente",
+    "downloadSuccess": "CSV descargado exitosamente",
     "exportFailed": "Error de exportación: {message}"
   },
   "validation": {
@@ -4456,5 +4457,76 @@
     "duplicateCategory": "Categoría duplicada",
     "exceedsActualHours": "Las horas asignadas superan las horas reales",
     "invalidHours": "Las horas deben ser mayores que 0"
+  },
+  "pivot": {
+    "title": "Resúmenes Gerenciales",
+    "subtitle": "Vistas operativas transversales que responden las cinco preguntas gerenciales clave",
+    "bucket": "Período",
+    "groupBy": "Agrupar Por",
+    "downloadCsv": "Descargar CSV",
+    "buckets": {
+      "week": "Semana",
+      "month": "Mes",
+      "quarter": "Trimestre",
+      "year": "Año"
+    },
+    "grouping": {
+      "timeOnly": "Solo tiempo",
+      "client": "Cliente",
+      "category": "Categoría",
+      "reason": "Razón",
+      "line": "Línea",
+      "style": "Estilo",
+      "delayReason": "Razón de Retraso",
+      "holdCategory": "Categoría de Retención",
+      "holdReason": "Razón de Retención"
+    },
+    "views": {
+      "q1": "Eficiencia",
+      "q2": "Tiempo Muerto",
+      "q3": "Calidad y Entrega",
+      "q4": "Reacomodos",
+      "q5": "Retenciones"
+    },
+    "cols": {
+      "bucket": "Período",
+      "group": "Grupo",
+      "units": "Unidades",
+      "earnedHours": "Horas Ganadas",
+      "runHours": "Horas de Operación",
+      "attendanceHours": "Horas de Asistencia",
+      "operators": "Operadores",
+      "otNormal": "Tiempo Extra (Normal)",
+      "otDouble": "Tiempo Extra (Doble)",
+      "otTriple": "Tiempo Extra (Triple)",
+      "billed": "Horas Facturadas",
+      "available": "Horas Disponibles",
+      "efficiency": "Eficiencia %",
+      "downtimeHours": "Horas de Tiempo Muerto",
+      "events": "Eventos",
+      "share": "% del Período",
+      "inspected": "Inspeccionados",
+      "defects": "Defectos",
+      "fpy": "FPY %",
+      "delivered": "Entregados",
+      "onTime": "A Tiempo",
+      "justifiedLate": "Tardío Justificado",
+      "otdGross": "OTD Bruto %",
+      "otdNet": "OTD Neto %",
+      "holds": "Retenciones",
+      "holdDays": "Días en Retención",
+      "avgDaysPerHold": "Días Prom. / Retención"
+    },
+    "wip": {
+      "avgDaysOnHold": "Días Prom. en Retención",
+      "oldestDays": "Artículo Más Antiguo (Días)",
+      "aged15Plus": "Cantidad con 15+ Días"
+    },
+    "sentinels": {
+      "none": "Sin razón",
+      "uncategorized": "Sin categorizar",
+      "unknown": "Desconocido",
+      "unclassified": "Sin clasificar"
+    }
   }
 }

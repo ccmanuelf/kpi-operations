@@ -199,9 +199,10 @@ _LABOR = Dataset(
 )
 
 # --- delivery (hook path) ----------------------------------------------------
-# Delivery semantics (COMPLETED-only, date-inference chain, justified-late)
-# live in backend/calculations/otd.py::calculate_true_otd -- fetch_delivery
-# mirrors its counting rules verbatim (see test_hooks_golden.py).
+# Delivery semantics (delivered-orders basis: any status, date-inference
+# chain, justified-late) live in backend/calculations/otd.py::calculate_true_otd
+# -- fetch_delivery mirrors its `standard_otd` counting rules verbatim (see
+# test_hooks_golden.py).
 _DELIVERY = Dataset(
     name="delivery",
     model=WorkOrder,

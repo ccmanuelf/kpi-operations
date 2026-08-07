@@ -80,6 +80,7 @@
           <v-list-item prepend-icon="mdi-calendar-clock" :title="$t('navigation.capacityPlanning')" value="capacity-planning" to="/capacity-planning" />
           <v-list-item prepend-icon="mdi-clipboard-list" :title="$t('navigation.workOrders')" value="work-orders" to="/work-orders" />
           <v-list-item prepend-icon="mdi-scale-balance" :title="$t('navigation.planVsActual')" value="plan-vs-actual" to="/plan-vs-actual" />
+          <v-list-item prepend-icon="mdi-table-pivot" :title="$t('navigation.summaries')" value="summaries" to="/summaries" />
         </v-list-group>
 
         <!-- 2. Operations — Day-to-day execution -->
