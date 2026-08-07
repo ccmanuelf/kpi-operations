@@ -4,7 +4,7 @@ Seeds minimal ORM rows spanning a week boundary so bucket rollup, grouping,
 ratio-of-sums, zero-denominator None, scoping, and coercion are all pinned.
 """
 
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 
 import pytest
@@ -341,3 +341,101 @@ def test_holds_measures(db_session):
     assert by_key["Material"]["holds"] == 2
     assert by_key["Material"]["hold_days"] == 3.0  # 72h / 24
     assert by_key["Material"]["avg_days_per_hold"] == pytest.approx(1.5)
+
+
+def test_holds_resolved_hold_uses_recorded_duration(db_session):
+    """Validation finding F3 (b): a resolved hold (total_hold_duration_hours
+    set) uses its recorded hours/24 -- unchanged from the pre-fix SQL path's
+    math, now produced by the fetch_holds hook instead."""
+    from backend.orm.hold_entry import HoldEntry
+    from backend.orm.work_order import WorkOrder
+
+    db_session.add(
+        WorkOrder(
+            work_order_id="PVT-WO-RESOLVED",
+            client_id="PIVOT-CLI",
+            style_model="PVT",
+            planned_quantity=1,
+        )
+    )
+    db_session.commit()
+    db_session.add(
+        HoldEntry(
+            hold_entry_id="PVT-H-RESOLVED",
+            client_id="PIVOT-CLI",
+            work_order_id="PVT-WO-RESOLVED",
+            hold_status="RESUMED",
+            hold_date=datetime(2026, 3, 2, 6),
+            hold_reason_category="Material",
+            hold_reason="MATERIAL_SHORTAGE",
+            total_hold_duration_hours=Decimal("48"),
+        )
+    )
+    db_session.commit()
+    out = run_pivot(db_session, "holds", "month", "reason_category", date(2026, 3, 1), date(2026, 3, 31), ["PIVOT-CLI"])
+    by_key = {r["group_key"]: r for r in out["rows"]}
+    assert by_key["Material"]["holds"] == 1
+    assert by_key["Material"]["hold_days"] == 2.0  # 48h / 24
+    assert by_key["Material"]["avg_days_per_hold"] == pytest.approx(2.0)
+
+
+def test_holds_active_hold_uses_age_to_date(db_session):
+    """Validation finding F3 (a): an active hold (NULL duration -- the VM's
+    chronic seeded holds are still ON_HOLD) contributes age-to-date, not 0.
+    Previously the SQL path's SUM(COALESCE(total_hold_duration_hours, 0))
+    silently zeroed every open hold; the fetch_holds hook now falls back to
+    (today - hold_date).days for rows with no recorded duration.
+
+    HoldEntry.total_hold_duration_hours declares an ORM-level `default=0`
+    (backend/orm/hold_entry.py) that SQLAlchemy applies at flush whenever the
+    attribute is None -- whether explicitly passed or simply omitted -- so a
+    plain `HoldEntry(...)` insert can never land a genuine NULL through the
+    ORM. The column itself is nullable at the DB layer (no server_default,
+    per the Alembic baseline), so real NULLs do exist (imported/legacy rows);
+    force one here via a Core UPDATE, which bypasses that ORM-instance
+    default path, to exercise the branch this fix targets.
+    """
+    from sqlalchemy import update
+
+    from backend.orm.hold_entry import HoldEntry
+    from backend.orm.work_order import WorkOrder
+
+    db_session.add(
+        WorkOrder(
+            work_order_id="PVT-WO-ACTIVE",
+            client_id="PIVOT-CLI",
+            style_model="PVT",
+            planned_quantity=1,
+        )
+    )
+    db_session.commit()
+    hold_day = date.today() - timedelta(days=10)
+    db_session.add(
+        HoldEntry(
+            hold_entry_id="PVT-H-ACTIVE",
+            client_id="PIVOT-CLI",
+            work_order_id="PVT-WO-ACTIVE",
+            hold_status="ON_HOLD",
+            hold_date=datetime.combine(hold_day, time(6, 0)),
+            hold_reason_category="Material",
+            hold_reason="MATERIAL_SHORTAGE",
+        )
+    )
+    db_session.commit()
+    db_session.execute(
+        update(HoldEntry).where(HoldEntry.hold_entry_id == "PVT-H-ACTIVE").values(total_hold_duration_hours=None)
+    )
+    db_session.commit()
+    out = run_pivot(
+        db_session,
+        "holds",
+        "year",
+        "reason_category",
+        date.today() - timedelta(days=400),
+        date.today(),
+        ["PIVOT-CLI"],
+    )
+    by_key = {r["group_key"]: r for r in out["rows"]}
+    assert by_key["Material"]["holds"] == 1
+    assert by_key["Material"]["hold_days"] == pytest.approx(10, abs=0.01)
+    assert by_key["Material"]["avg_days_per_hold"] == pytest.approx(10, abs=0.01)

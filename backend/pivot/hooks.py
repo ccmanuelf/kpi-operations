@@ -1,9 +1,16 @@
-"""Fetch hooks for datasets whose semantics live in existing calculations.
+"""Fetch hooks for datasets whose semantics live in existing calculations, or
+whose per-row logic simply isn't SQL-expressible.
 
 Each hook yields (day, group_key, components) triples -- the same shape the
-generic SQL path (`_sql_day_rows` in engine.py) produces -- and REUSES the
-existing calculation functions verbatim so the cross-source goldens
-(test_hooks_golden.py) hold by construction, never by re-deriving the math."""
+generic SQL path (`_sql_day_rows` in engine.py) produces. fetch_labor and
+fetch_delivery REUSE the existing calculation functions verbatim so the
+cross-source goldens (test_hooks_golden.py) hold by construction, never by
+re-deriving the math. fetch_holds has no such external calculation to golden
+against -- it moved off the SQL path (validation finding F3) because
+`SUM(total_hold_duration_hours)` silently coalesces every still-open hold
+(duration NULL until resume) to 0, which a plain SQL sum can't distinguish
+from a hold that resolved in a minute; the per-row NULL check that fixes this
+is only expressible in Python."""
 
 from collections import defaultdict
 from datetime import date, datetime
@@ -22,6 +29,7 @@ from backend.calculations.otd import infer_planned_delivery_date
 from backend.orm.attendance_entry import AttendanceEntry
 from backend.orm.delay_taxonomy import DelayClassificationEnum
 from backend.orm.employee import Employee
+from backend.orm.hold_entry import HoldEntry
 from backend.orm.production_entry import ProductionEntry
 from backend.orm.work_order import WorkOrder
 
@@ -121,6 +129,59 @@ def fetch_labor(
                 pc["excluded_entries"] += 1
             else:
                 pc["earned_hours"] += float(Decimal(pe.units_produced) * ict)
+
+    for (acc_day, acc_grp), comps in acc.items():
+        yield (acc_day, acc_grp, dict(comps))
+
+
+def fetch_holds(
+    db: Session,
+    group_by: Optional[str],
+    start_date: date,
+    end_date: date,
+    client_ids: Optional[Sequence[str]],
+) -> Iterator[tuple[date, Optional[str], dict[str, float]]]:
+    """Per-(day, group) hold components (validation finding F3). The SQL-path
+    `hold_days` measure summed HoldEntry.total_hold_duration_hours directly,
+    which is NULL until a hold resumes -- so every still-ON_HOLD row silently
+    coalesced to 0, indistinguishable from a hold that resolved in a minute.
+    Resolved holds (total_hold_duration_hours is not None) keep using their
+    recorded duration (hours/24, unchanged from the SQL path); active holds
+    (duration NULL) use age-to-date instead, so hold_days/avg_days_per_hold
+    reflect real WIP exposure for chronic open holds. date.today() matches
+    is_late's server-local convention (backend/calculations/otd.py /
+    backend/crud/work_order.py) -- not timezone-aware, just the server clock.
+    Same window filter and client scoping as the SQL path; group_by
+    coalesce-to-"uncategorized" semantics reapplied here in Python since the
+    fetch path bypasses the SQL func.coalesce()."""
+    q = db.query(HoldEntry).filter(
+        HoldEntry.hold_date.isnot(None),
+        func.date(HoldEntry.hold_date) >= start_date,
+        func.date(HoldEntry.hold_date) <= end_date,
+    )
+    if client_ids is not None:
+        q = q.filter(HoldEntry.client_id.in_(client_ids))
+
+    acc: dict[tuple[date, Optional[str]], dict[str, float]] = defaultdict(lambda: defaultdict(float))
+    for h in q.all():
+        if h.hold_date is None:
+            continue  # SQL filter already excludes these; narrows for mypy
+        day = h.hold_date.date()
+        grp: Optional[str]
+        if group_by == "client":
+            grp = h.client_id
+        elif group_by == "reason_category":
+            grp = h.hold_reason_category or "uncategorized"
+        elif group_by == "reason":
+            grp = h.hold_reason or "uncategorized"
+        else:
+            grp = None
+        c = acc[(day, grp)]
+        c["holds"] += 1
+        if h.total_hold_duration_hours is not None:
+            c["hold_days"] += float(h.total_hold_duration_hours) / 24.0
+        else:
+            c["hold_days"] += (date.today() - day).days
 
     for (acc_day, acc_grp), comps in acc.items():
         yield (acc_day, acc_grp, dict(comps))

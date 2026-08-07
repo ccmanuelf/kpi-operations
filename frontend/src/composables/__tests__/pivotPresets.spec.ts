@@ -88,8 +88,30 @@ describe('groupLabel', () => {
     expect(groupLabel('unclassified', t)).toBe('[pivot.sentinels.unclassified]')
   })
 
-  it('renders non-sentinel values as-is', () => {
+  it('renders non-sentinel values as-is when groupBy is not delay_reason', () => {
     expect(groupLabel('material_supplier_delay', t)).toBe('material_supplier_delay')
     expect(groupLabel('ACME Corp', t)).toBe('ACME Corp')
+    expect(groupLabel('ACME Corp', t, 'client')).toBe('ACME Corp')
+  })
+
+  it('localizes all six delay-reason codes when grouped by delay_reason (F2)', () => {
+    expect(groupLabel('customer_request', t, 'delay_reason')).toBe('[delay.reasons.customerRequest]')
+    expect(groupLabel('customer_change_order', t, 'delay_reason')).toBe(
+      '[delay.reasons.customerChangeOrder]',
+    )
+    expect(groupLabel('material_supplier_delay', t, 'delay_reason')).toBe(
+      '[delay.reasons.materialSupplierDelay]',
+    )
+    expect(groupLabel('force_majeure', t, 'delay_reason')).toBe('[delay.reasons.forceMajeure]')
+    expect(groupLabel('upstream_hold', t, 'delay_reason')).toBe('[delay.reasons.upstreamHold]')
+    expect(groupLabel('other', t, 'delay_reason')).toBe('[delay.reasons.other]')
+  })
+
+  it('still localizes the "none" sentinel when grouped by delay_reason (on-time orders)', () => {
+    expect(groupLabel('none', t, 'delay_reason')).toBe('[pivot.sentinels.none]')
+  })
+
+  it('passes through an unknown value as-is even when grouped by delay_reason', () => {
+    expect(groupLabel('some_future_reason', t, 'delay_reason')).toBe('some_future_reason')
   })
 })

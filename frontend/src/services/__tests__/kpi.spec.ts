@@ -182,6 +182,44 @@ describe('KPI API', () => {
       expect(result.data.average_days).toBe(0)
       expect(result.data.total_held).toBe(4)
     })
+
+    // Validation finding F4: pins the mapping against the EXACT payload
+    // captured live from GET /api/kpi/wip-aging on the production VM (real
+    // MariaDB data) — the fixture the Summaries WIP-triad bug report was
+    // filed against. Before this fix, the triad's three cards read
+    // different field names than this contract, so avg/aged15+ silently
+    // computed as undefined/0 despite this real (non-empty) response.
+    it('maps the real production /kpi/wip-aging response contract (F4)', async () => {
+      api.get.mockImplementation((url) => {
+        if (url === '/kpi/wip-aging') {
+          return Promise.resolve({
+            data: {
+              total_held_quantity: 4,
+              average_aging_days: 64.5,
+              aging_0_7_days: 0,
+              aging_8_14_days: 0,
+              aging_15_30_days: 0,
+              aging_over_30_days: 4,
+              total_hold_events: 4,
+            },
+          })
+        }
+        if (url === '/kpi/wip-aging/top') {
+          return Promise.resolve({ data: [{ age: 67 }, { age: 64 }] })
+        }
+        return Promise.resolve({ data: [] })
+      })
+
+      const result = await kpiApi.getWIPAging({})
+
+      expect(result.data.average_days).toBe(64.5)
+      // aged15+ (WipTriadBlock's "Count Aged 15+ Days") = aging_15_30 + aging_over_30 = 0 + 4.
+      expect(result.data.age_15_plus).toBe(4)
+      // max_days ("Oldest Item") comes from the SEPARATE /kpi/wip-aging/top
+      // endpoint's per-item `age`, not from the /wip-aging payload at all.
+      expect(result.data.max_days).toBe(67)
+      expect(result.data.total_hold_events).toBe(4)
+    })
   })
 
   describe('getOnTimeDelivery', () => {
