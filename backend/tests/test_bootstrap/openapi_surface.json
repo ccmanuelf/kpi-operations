@@ -850,6 +850,14 @@
     ],
     [
       "GET",
+      "/api/pivot/{dataset}"
+    ],
+    [
+      "GET",
+      "/api/pivot/{dataset}/csv"
+    ],
+    [
+      "GET",
       "/api/plan-vs-actual"
     ],
     [
