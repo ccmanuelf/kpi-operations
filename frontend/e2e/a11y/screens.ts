@@ -9,6 +9,7 @@ export const SCREENS: { name: string; path: string }[] = [
   { name: 'plan-vs-actual', path: '/plan-vs-actual' },
   { name: 'work-orders', path: '/work-orders' },
   { name: 'capacity-planning', path: '/capacity-planning' },
+  { name: 'summaries', path: '/summaries' },
   { name: 'simulation-v2', path: '/simulation-v2' },
   { name: 'alerts', path: '/alerts' },
   { name: 'reports-admin-settings', path: '/admin/settings' },
