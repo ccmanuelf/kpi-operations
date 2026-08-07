@@ -14,8 +14,8 @@ export interface CSVExportParams {
 export function useCSVExport() {
   const downloading = ref(false)
 
-  async function downloadCSV(
-    entityType: string,
+  async function downloadCSVByPath(
+    path: string,
     params: CSVExportParams = {},
     filename: string | null = null,
   ): Promise<void> {
@@ -23,7 +23,7 @@ export function useCSVExport() {
     downloading.value = true
 
     try {
-      const response = await api.get(`/export/${entityType}`, {
+      const response = await api.get(path, {
         params,
         responseType: 'blob',
       })
@@ -37,7 +37,7 @@ export function useCSVExport() {
         }
       }
       if (!resolvedFilename) {
-        resolvedFilename = `${entityType}_export.csv`
+        resolvedFilename = 'export.csv'
       }
 
       const blob = new Blob([response.data as BlobPart], { type: 'text/csv' })
@@ -50,7 +50,7 @@ export function useCSVExport() {
       document.body.removeChild(link)
       window.URL.revokeObjectURL(url)
 
-      notificationStore.showSuccess(i18n.global.t('csv.downloadSuccess', { type: entityType }))
+      notificationStore.showSuccess(i18n.global.t('csv.downloadSuccess'))
     } catch (error) {
       const ax = error as { response?: { data?: { detail?: string } }; message?: string }
       const message = ax?.response?.data?.detail || ax?.message || 'CSV download failed'
@@ -61,15 +61,16 @@ export function useCSVExport() {
     }
   }
 
-  async function downloadCSVByPath(
-    path: string,
+  async function downloadCSV(
+    entityType: string,
     params: CSVExportParams = {},
     filename: string | null = null,
   ): Promise<void> {
-    // Task 3: fully implement this method (endpoint path-based download)
-    // For now: delegate to downloadCSV for backwards compatibility
-    const entityType = path.replace(/^\/|\/csv$/g, '')
-    await downloadCSV(entityType, params, filename)
+    return downloadCSVByPath(
+      `/export/${entityType}`,
+      params,
+      filename ?? `${entityType}_export.csv`,
+    )
   }
 
   return { downloading, downloadCSV, downloadCSVByPath }
