@@ -4518,9 +4518,9 @@
       "avgDaysPerHold": "Avg Days / Hold"
     },
     "wip": {
-      "stalled": "Stalled Items",
-      "old": "Oldest Item (Days)",
-      "pastDue": "Aged 15+ Days"
+      "avgDaysOnHold": "Avg Days on Hold",
+      "oldestDays": "Oldest Item (Days)",
+      "aged15Plus": "Count Aged 15+ Days"
     }
   }
 }

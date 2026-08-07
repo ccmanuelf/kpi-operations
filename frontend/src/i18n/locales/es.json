@@ -4518,9 +4518,9 @@
       "avgDaysPerHold": "Días Prom. / Retención"
     },
     "wip": {
-      "stalled": "Artículos Estancados",
-      "old": "Artículo Más Antiguo (Días)",
-      "pastDue": "Con 15+ Días"
+      "avgDaysOnHold": "Días Prom. en Retención",
+      "oldestDays": "Artículo Más Antiguo (Días)",
+      "aged15Plus": "Cantidad con 15+ Días"
     }
   }
 }
