@@ -61,5 +61,16 @@ export function useCSVExport() {
     }
   }
 
-  return { downloading, downloadCSV }
+  async function downloadCSVByPath(
+    path: string,
+    params: CSVExportParams = {},
+    filename: string | null = null,
+  ): Promise<void> {
+    // Task 3: fully implement this method (endpoint path-based download)
+    // For now: delegate to downloadCSV for backwards compatibility
+    const entityType = path.replace(/^\/|\/csv$/g, '')
+    await downloadCSV(entityType, params, filename)
+  }
+
+  return { downloading, downloadCSV, downloadCSVByPath }
 }
