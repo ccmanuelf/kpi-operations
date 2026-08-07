@@ -15,7 +15,7 @@
  */
 import { ref } from 'vue'
 import { getWIPAging } from '@/services/api/kpi'
-import { localISO } from '@/composables/usePivotView'
+import { localISO } from '@/utils/localeDate'
 
 export interface WipTriadData {
   average_days: number | null
@@ -28,7 +28,10 @@ export function useWipTriadData() {
   const wipData = ref<WipTriadData | null>(null)
   const loading = ref(false)
 
-  async function fetch(): Promise<void> {
+  // Named `load`, not `fetch` -- `fetch` shadows the global fetch API and
+  // reads as a suspicious rebind at both the definition and every call
+  // site that destructures it.
+  async function load(): Promise<void> {
     loading.value = true
     try {
       const end = new Date()
@@ -40,5 +43,5 @@ export function useWipTriadData() {
     }
   }
 
-  return { wipData, loading, fetch }
+  return { wipData, loading, load }
 }

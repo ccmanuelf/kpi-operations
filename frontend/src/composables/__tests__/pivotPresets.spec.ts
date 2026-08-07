@@ -1,5 +1,19 @@
 import { describe, it, expect } from 'vitest'
 import { BUCKET_LABEL_KEYS, VALID_BUCKETS, PIVOT_VIEWS, DATASET_GROUPINGS, groupLabel, visibleColumns } from '@/composables/pivotPresets'
+import { JUSTIFIED_DELAY_REASON_CODES, delayReasonLabelKey } from '@/constants/delayTaxonomy'
+import en from '@/i18n/locales/en.json'
+import es from '@/i18n/locales/es.json'
+
+// Walks a dotted i18n key ("delay.reasons.customerRequest") through a real
+// locale bundle object; returns undefined if any segment is missing.
+function resolveKey(bundle: unknown, key: string): unknown {
+  return key.split('.').reduce<unknown>((node, segment) => {
+    if (node && typeof node === 'object' && segment in (node as Record<string, unknown>)) {
+      return (node as Record<string, unknown>)[segment]
+    }
+    return undefined
+  }, bundle)
+}
 
 describe('PIVOT_VIEWS structural invariants', () => {
   it('declares exactly q1..q5 in order', () => {
@@ -121,5 +135,19 @@ describe('groupLabel', () => {
 
   it('passes through an unknown value as-is even when grouped by delay_reason', () => {
     expect(groupLabel('some_future_reason', t, 'delay_reason')).toBe('some_future_reason')
+  })
+
+  // Review round MINOR 11: delayReasonLabelKey builds its i18n key via
+  // string interpolation (`delay.reasons.${camel(id)}`), so the
+  // referenced-keys i18n gate (which only sees literal key strings) can't
+  // verify these resolve in the real locale bundles. Assert it directly
+  // here, against the actual en.json/es.json content, not the mocked `t`
+  // used by every other case in this block.
+  it('every JUSTIFIED_DELAY_REASON_CODES key resolves to a real string in BOTH locale bundles', () => {
+    for (const code of JUSTIFIED_DELAY_REASON_CODES) {
+      const key = delayReasonLabelKey(code)
+      expect(typeof resolveKey(en, key)).toBe('string')
+      expect(typeof resolveKey(es, key)).toBe('string')
+    }
   })
 })

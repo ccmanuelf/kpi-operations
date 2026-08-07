@@ -314,13 +314,18 @@ def test_holds_measures(db_session):
     )
     db_session.commit()
 
+    # RESUMED (not ON_HOLD): this test exercises the RECORDED-duration path
+    # (review round CRITICAL 1 makes ON_HOLD always use age-to-date,
+    # unconditionally, regardless of any total_hold_duration_hours value
+    # sitting on the row -- an open hold's "duration so far" isn't final
+    # until it resumes).
     for i, (cat, hours) in enumerate([("Material", 48), ("Material", 24), ("Quality", 12)]):
         db_session.add(
             HoldEntry(
                 hold_entry_id=f"PVT-H-{i}",
                 client_id="PIVOT-CLI",
                 work_order_id="PVT-WO-HOLD",
-                hold_status="ON_HOLD",
+                hold_status="RESUMED",
                 hold_date=datetime(2026, 3, 2, 6),
                 hold_reason_category=cat,
                 hold_reason="MATERIAL_SHORTAGE",
@@ -380,23 +385,23 @@ def test_holds_resolved_hold_uses_recorded_duration(db_session):
 
 
 def test_holds_active_hold_uses_age_to_date(db_session):
-    """Validation finding F3 (a): an active hold (NULL duration -- the VM's
-    chronic seeded holds are still ON_HOLD) contributes age-to-date, not 0.
-    Previously the SQL path's SUM(COALESCE(total_hold_duration_hours, 0))
-    silently zeroed every open hold; the fetch_holds hook now falls back to
-    (today - hold_date).days for rows with no recorded duration.
+    """Validation finding F3 (a) + review round CRITICAL 1: an active hold
+    (hold_status == ON_HOLD) contributes age-to-date, not 0.
 
     HoldEntry.total_hold_duration_hours declares an ORM-level `default=0`
     (backend/orm/hold_entry.py) that SQLAlchemy applies at flush whenever the
     attribute is None -- whether explicitly passed or simply omitted -- so a
-    plain `HoldEntry(...)` insert can never land a genuine NULL through the
-    ORM. The column itself is nullable at the DB layer (no server_default,
-    per the Alembic baseline), so real NULLs do exist (imported/legacy rows);
-    force one here via a Core UPDATE, which bypasses that ORM-instance
-    default path, to exercise the branch this fix targets.
+    plain `HoldEntry(...)` insert (exactly what every real code path does:
+    backend/crud/hold/core.py, the demo seeder) can NEVER land a genuine NULL
+    through the ORM. A fix that branches on `total_hold_duration_hours is
+    None` is therefore dead code in production -- it only ever sees 0, never
+    NULL, so it takes the "resolved" branch (0 hours) for every real active
+    hold. This test seeds a PLAIN ORM HoldEntry (no Core UPDATE bypass, no
+    explicit total_hold_duration_hours) so it exercises exactly what
+    production inserts produce. The fix must branch on hold_status (open ==
+    ON_HOLD/PENDING_HOLD_APPROVAL/PENDING_RESUME_APPROVAL -> age-to-date),
+    not on the duration column's nullness.
     """
-    from sqlalchemy import update
-
     from backend.orm.hold_entry import HoldEntry
     from backend.orm.work_order import WorkOrder
 
@@ -419,11 +424,9 @@ def test_holds_active_hold_uses_age_to_date(db_session):
             hold_date=datetime.combine(hold_day, time(6, 0)),
             hold_reason_category="Material",
             hold_reason="MATERIAL_SHORTAGE",
+            # No total_hold_duration_hours -- the ORM's own default=0 fills
+            # it in at flush, exactly like every real insert.
         )
-    )
-    db_session.commit()
-    db_session.execute(
-        update(HoldEntry).where(HoldEntry.hold_entry_id == "PVT-H-ACTIVE").values(total_hold_duration_hours=None)
     )
     db_session.commit()
     out = run_pivot(
@@ -439,3 +442,86 @@ def test_holds_active_hold_uses_age_to_date(db_session):
     assert by_key["Material"]["holds"] == 1
     assert by_key["Material"]["hold_days"] == pytest.approx(10, abs=0.01)
     assert by_key["Material"]["avg_days_per_hold"] == pytest.approx(10, abs=0.01)
+
+
+def test_holds_cancelled_hold_with_unrecorded_duration_falls_back_to_resume_minus_hold(db_session):
+    """Review round IMPORTANT 2: a terminal (non-open) hold whose duration
+    was never recorded (0 or NULL -- e.g. a legacy/imported row, or a status
+    transition that bypassed the auto-calculate-on-resume code path) must
+    not silently report 0 days just because it's no longer open. Falls back
+    to (resume_date - hold_date).days when a resume_date exists, matching
+    the "None-or-0 means not recorded" convention in
+    backend/crud/hold/duration.py::release_hold."""
+    from backend.orm.hold_entry import HoldEntry
+    from backend.orm.work_order import WorkOrder
+
+    db_session.add(
+        WorkOrder(
+            work_order_id="PVT-WO-CANCELLED",
+            client_id="PIVOT-CLI",
+            style_model="PVT",
+            planned_quantity=1,
+        )
+    )
+    db_session.commit()
+    hold_day = date(2026, 3, 5)
+    resume_day = date(2026, 3, 12)
+    db_session.add(
+        HoldEntry(
+            hold_entry_id="PVT-H-CANCELLED",
+            client_id="PIVOT-CLI",
+            work_order_id="PVT-WO-CANCELLED",
+            hold_status="CANCELLED",
+            hold_date=datetime.combine(hold_day, time(6, 0)),
+            resume_date=datetime.combine(resume_day, time(6, 0)),
+            hold_reason_category="Material",
+            hold_reason="MATERIAL_SHORTAGE",
+            # total_hold_duration_hours left at its ORM default (0) --
+            # never recorded, even though this hold is terminal.
+        )
+    )
+    db_session.commit()
+    out = run_pivot(db_session, "holds", "month", "reason_category", date(2026, 3, 1), date(2026, 3, 31), ["PIVOT-CLI"])
+    by_key = {r["group_key"]: r for r in out["rows"]}
+    assert by_key["Material"]["holds"] == 1
+    assert by_key["Material"]["hold_days"] == 7.0  # resume_date - hold_date
+
+
+def test_holds_age_to_date_clamps_to_window_end_date_not_today(db_session):
+    """Review round IMPORTANT 3: age-to-date must use min(date.today(),
+    end_date), not date.today() unconditionally, so a historical window
+    (end_date in the past) produces a STABLE hold_days across re-exports --
+    otherwise every re-run of the same historical report would silently
+    grow as real-world today() advances, even though the requested window
+    never changed."""
+    from backend.orm.hold_entry import HoldEntry
+    from backend.orm.work_order import WorkOrder
+
+    db_session.add(
+        WorkOrder(
+            work_order_id="PVT-WO-HISTORICAL",
+            client_id="PIVOT-CLI",
+            style_model="PVT",
+            planned_quantity=1,
+        )
+    )
+    db_session.commit()
+    hold_day = date(2020, 1, 1)
+    db_session.add(
+        HoldEntry(
+            hold_entry_id="PVT-H-HISTORICAL",
+            client_id="PIVOT-CLI",
+            work_order_id="PVT-WO-HISTORICAL",
+            hold_status="ON_HOLD",
+            hold_date=datetime.combine(hold_day, time(6, 0)),
+            hold_reason_category="Material",
+            hold_reason="MATERIAL_SHORTAGE",
+        )
+    )
+    db_session.commit()
+    window_end = date(2020, 1, 31)  # long before today() -- the clamp target
+    out = run_pivot(db_session, "holds", "month", "reason_category", date(2020, 1, 1), window_end, ["PIVOT-CLI"])
+    by_key = {r["group_key"]: r for r in out["rows"]}
+    # Clamped to window_end, not real-world today(): 2020-01-01 -> 2020-01-31
+    # is exactly 30 days, regardless of how far "today" actually is.
+    assert by_key["Material"]["hold_days"] == pytest.approx(30, abs=0.01)

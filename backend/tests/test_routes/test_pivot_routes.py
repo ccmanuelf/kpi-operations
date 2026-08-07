@@ -221,6 +221,8 @@ def test_csv_matches_json_rows(admin_client, pivot_db):
         ("+1+1", "'+1+1"),
         ("-1+1", "'-1+1"),
         ("@SUM(A1)", "'@SUM(A1)"),
+        ("\tSUM(A1)", "'\tSUM(A1)"),
+        ("\rSUM(A1)", "'\rSUM(A1)"),
         ("ACME Corp", "ACME Corp"),
         ("", ""),
         (42, 42),
@@ -230,9 +232,9 @@ def test_csv_matches_json_rows(admin_client, pivot_db):
 )
 def test_escape_csv_cell(value, expected):
     """Pure unit coverage for the pivot-CSV-only formula-injection guard:
-    strings with a dangerous leading character (=, +, -, @) get a single
-    quote prefix; everything else (safe strings, numbers, None) passes
-    through unchanged."""
+    strings with a dangerous leading character (=, +, -, @, tab, CR) get a
+    single quote prefix; everything else (safe strings, numbers, None)
+    passes through unchanged."""
     assert _escape_csv_cell(value) == expected
 
 

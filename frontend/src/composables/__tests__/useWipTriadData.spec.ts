@@ -27,8 +27,8 @@ describe('useWipTriadData', () => {
       },
     })
 
-    const { wipData, fetch } = useWipTriadData()
-    await fetch()
+    const { wipData, load } = useWipTriadData()
+    await load()
 
     expect(wipData.value).toMatchObject({ average_days: 12.5, max_days: 67, age_15_plus: 9 })
     expect(getWIPAgingMock).toHaveBeenCalledTimes(1)
@@ -44,18 +44,18 @@ describe('useWipTriadData', () => {
     getWIPAgingMock.mockResolvedValue({
       data: { average_days: null, total_held: 0, max_days: 0, age_15_plus: 0, top_aging: [] },
     })
-    const { wipData, fetch } = useWipTriadData()
-    await fetch()
+    const { wipData, load } = useWipTriadData()
+    await load()
     expect(wipData.value?.average_days).toBeNull()
   })
 
   it('sets loading true during the fetch and false once settled', async () => {
-    let resolveFetch!: (_v: unknown) => void
-    getWIPAgingMock.mockReturnValue(new Promise((resolve) => { resolveFetch = resolve }))
-    const { loading, fetch } = useWipTriadData()
-    const p = fetch()
+    let resolveLoad!: (_v: unknown) => void
+    getWIPAgingMock.mockReturnValue(new Promise((resolve) => { resolveLoad = resolve }))
+    const { loading, load } = useWipTriadData()
+    const p = load()
     expect(loading.value).toBe(true)
-    resolveFetch({ data: { average_days: 1, max_days: 1, age_15_plus: 1 } })
+    resolveLoad({ data: { average_days: 1, max_days: 1, age_15_plus: 1 } })
     await p
     expect(loading.value).toBe(false)
   })

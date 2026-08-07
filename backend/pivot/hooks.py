@@ -7,9 +7,11 @@ fetch_delivery REUSE the existing calculation functions verbatim so the
 cross-source goldens (test_hooks_golden.py) hold by construction, never by
 re-deriving the math. fetch_holds has no such external calculation to golden
 against -- it moved off the SQL path (validation finding F3) because
-`SUM(total_hold_duration_hours)` silently coalesces every still-open hold
-(duration NULL until resume) to 0, which a plain SQL sum can't distinguish
-from a hold that resolved in a minute; the per-row NULL check that fixes this
+`SUM(total_hold_duration_hours)` silently coalesces every still-open hold to
+0 (the column defaults to 0, not NULL, until a hold resumes), which a plain
+SQL sum can't distinguish from a hold that resolved in a minute; the
+per-row hold_status branch that fixes this (open vs. terminal, not a
+nullness check -- see fetch_holds' own docstring, review round CRITICAL 1)
 is only expressible in Python."""
 
 from collections import defaultdict
@@ -29,9 +31,16 @@ from backend.calculations.otd import infer_planned_delivery_date
 from backend.orm.attendance_entry import AttendanceEntry
 from backend.orm.delay_taxonomy import DelayClassificationEnum
 from backend.orm.employee import Employee
-from backend.orm.hold_entry import HoldEntry
+from backend.orm.hold_entry import HoldEntry, HoldStatus
 from backend.orm.production_entry import ProductionEntry
 from backend.orm.work_order import WorkOrder
+
+# Mirrors backend/scripts/_seed_operations.py's open_statuses set: a hold is
+# still "open" (not yet resumed/cancelled/released) in these three statuses.
+# Used to decide age-to-date vs. recorded-duration in fetch_holds below.
+_OPEN_HOLD_STATUSES = frozenset(
+    {HoldStatus.PENDING_HOLD_APPROVAL, HoldStatus.ON_HOLD, HoldStatus.PENDING_RESUME_APPROVAL}
+)
 
 
 def fetch_labor(
@@ -141,19 +150,39 @@ def fetch_holds(
     end_date: date,
     client_ids: Optional[Sequence[str]],
 ) -> Iterator[tuple[date, Optional[str], dict[str, float]]]:
-    """Per-(day, group) hold components (validation finding F3). The SQL-path
-    `hold_days` measure summed HoldEntry.total_hold_duration_hours directly,
-    which is NULL until a hold resumes -- so every still-ON_HOLD row silently
-    coalesced to 0, indistinguishable from a hold that resolved in a minute.
-    Resolved holds (total_hold_duration_hours is not None) keep using their
-    recorded duration (hours/24, unchanged from the SQL path); active holds
-    (duration NULL) use age-to-date instead, so hold_days/avg_days_per_hold
-    reflect real WIP exposure for chronic open holds. date.today() matches
+    """Per-(day, group) hold components (validation finding F3; review round
+    CRITICAL 1). The SQL-path `hold_days` measure summed
+    HoldEntry.total_hold_duration_hours directly, which stays 0 until a hold
+    resumes -- so every still-open row silently coalesced to 0,
+    indistinguishable from a hold that resolved in a minute.
+
+    Branches on hold_status, NOT on total_hold_duration_hours' nullness:
+    HoldEntry.total_hold_duration_hours declares an ORM-level `default=0`
+    (backend/orm/hold_entry.py), which SQLAlchemy applies at flush whenever
+    the attribute is left None -- so a plain ORM insert (every real code
+    path: backend/crud/hold/core.py, the demo seeder) can never actually
+    land a NULL through the ORM. A None-check here would be dead code in
+    production, always taking the "resolved" branch. Open statuses
+    (_OPEN_HOLD_STATUSES, mirroring backend/calculations/wip_aging.py and
+    backend/crud/hold/duration.py's ON_HOLD-vs-terminal split, widened to
+    the pending-approval statuses too) get age-to-date; terminal/resumed
+    holds use their recorded duration, falling back to
+    (resume_date - hold_date) when the duration was never recorded (None or
+    0 -- matches release_hold's "not recorded" convention in
+    backend/crud/hold/duration.py:171), else 0.
+
+    Age-to-date uses min(date.today(), end_date) as the "as of" day, not
+    date.today() unconditionally -- a historical window (end_date in the
+    past) must produce a STABLE hold_days across re-exports/re-runs, not one
+    that silently grows as real-world today() advances after the window
+    closed. date.today() (uncapped, for windows still open) matches
     is_late's server-local convention (backend/calculations/otd.py /
-    backend/crud/work_order.py) -- not timezone-aware, just the server clock.
-    Same window filter and client scoping as the SQL path; group_by
+    backend/crud/work_order.py) -- not timezone-aware, just the server
+    clock. Same window filter and client scoping as the SQL path; group_by
     coalesce-to-"uncategorized" semantics reapplied here in Python since the
-    fetch path bypasses the SQL func.coalesce()."""
+    fetch path bypasses the SQL func.coalesce() -- `is None` only (NOT
+    `or`), so an empty string doesn't fold into the sentinel, matching SQL
+    COALESCE's NULL-only substitution exactly."""
     q = db.query(HoldEntry).filter(
         HoldEntry.hold_date.isnot(None),
         func.date(HoldEntry.hold_date) >= start_date,
@@ -162,26 +191,34 @@ def fetch_holds(
     if client_ids is not None:
         q = q.filter(HoldEntry.client_id.in_(client_ids))
 
+    as_of = min(date.today(), end_date)
     acc: dict[tuple[date, Optional[str]], dict[str, float]] = defaultdict(lambda: defaultdict(float))
+    # .all() materializes every matching hold row in Python -- fine at the
+    # scale this table runs at (mirrors fetch_labor/fetch_delivery, which do
+    # the same for attendance/work-order rows).
     for h in q.all():
         if h.hold_date is None:
             continue  # SQL filter already excludes these; narrows for mypy
         day = h.hold_date.date()
         grp: Optional[str]
         if group_by == "client":
-            grp = h.client_id
+            grp = h.client_id  # NOT NULL column -- never None
         elif group_by == "reason_category":
-            grp = h.hold_reason_category or "uncategorized"
+            grp = "uncategorized" if h.hold_reason_category is None else h.hold_reason_category
         elif group_by == "reason":
-            grp = h.hold_reason or "uncategorized"
+            grp = "uncategorized" if h.hold_reason is None else h.hold_reason
         else:
             grp = None
         c = acc[(day, grp)]
         c["holds"] += 1
-        if h.total_hold_duration_hours is not None:
+        if h.hold_status in _OPEN_HOLD_STATUSES:
+            c["hold_days"] += (as_of - day).days
+        elif h.total_hold_duration_hours:
             c["hold_days"] += float(h.total_hold_duration_hours) / 24.0
+        elif h.resume_date is not None:
+            c["hold_days"] += (h.resume_date.date() - day).days
         else:
-            c["hold_days"] += (date.today() - day).days
+            c["hold_days"] += 0.0
 
     for (acc_day, acc_grp), comps in acc.items():
         yield (acc_day, acc_grp, dict(comps))

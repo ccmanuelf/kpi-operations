@@ -24,11 +24,14 @@ router = APIRouter(prefix="/api/pivot", tags=["Pivot Summaries"])
 # beginning with one of these characters becomes a live formula when opened
 # in Excel/Sheets (e.g. a group_key of "=HYPERLINK(...)" from a user-entered
 # style_model/downtime_reason/etc.) -- prefixing it with a single quote
-# neutralizes that while leaving the underlying value intact. This is
-# deliberately scoped to /api/pivot/*/csv: the /api/export backbone stays
-# verbatim by design (documented CSV re-import round-trip contract) and must
-# NOT gain this escaping.
-_DANGEROUS_CSV_PREFIXES = ("=", "+", "-", "@")
+# neutralizes that while leaving the underlying value intact. =/+/-/@ are
+# the classic formula leaders; \t and \r are included too since Excel also
+# launches a formula after a leading tab/carriage-return once other cell
+# content is stripped/trimmed on open. This is deliberately scoped to
+# /api/pivot/*/csv: the /api/export backbone stays verbatim by design
+# (documented CSV re-import round-trip contract) and must NOT gain this
+# escaping.
+_DANGEROUS_CSV_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
 
 
 def _escape_csv_cell(value: Any) -> Any:

@@ -53,6 +53,13 @@ class Share:
 
 @dataclass(frozen=True)
 class GroupBy:
+    # `expr` is only actually read by the SQL path (engine.py::_sql_day_rows
+    # -- gb.expr.label(...) / q.group_by(gb.expr)). A hook-path dataset's
+    # GroupBy.expr is never evaluated (run_pivot only checks group_by
+    # membership in ds.group_bys before calling ds.fetch); hook datasets
+    # still declare the real column here for shape-consistency with
+    # SQL-path datasets and so a future SQL-path migration doesn't also
+    # need to invent the expr from scratch.
     expr: Any
     joins: tuple = ()
 
@@ -159,9 +166,9 @@ _HOLDS = Dataset(
     client_column=HoldEntry.client_id,
     fetch=fetch_holds,
     group_bys={
-        "client": GroupBy(None),
-        "reason_category": GroupBy(None),
-        "reason": GroupBy(None),
+        "client": GroupBy(HoldEntry.client_id),
+        "reason_category": GroupBy(HoldEntry.hold_reason_category),
+        "reason": GroupBy(HoldEntry.hold_reason),
     },
     measures={
         "holds": Component(),

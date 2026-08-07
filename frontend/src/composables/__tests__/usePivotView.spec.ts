@@ -9,29 +9,15 @@ vi.mock('@/composables/useCSVExport', () => ({
   useCSVExport: () => ({ downloading: { value: false }, downloadCSVByPath: vi.fn() }),
 }))
 
-import { localISO, mergePivotRows, displayValue, usePivotView } from '@/composables/usePivotView'
+import { mergePivotRows, displayValue, usePivotView } from '@/composables/usePivotView'
 import { PIVOT_VIEWS } from '@/composables/pivotPresets'
 
 const q2 = PIVOT_VIEWS.find((v) => v.id === 'q2')!
 const q3 = PIVOT_VIEWS.find((v) => v.id === 'q3')!
 
-describe('localISO', () => {
-  // Fixed Date built from LOCAL components (the `new Date(y, m, d, h, ...)`
-  // constructor, not a UTC ISO string) -- localISO must read those same
-  // local components back, so this is deterministic regardless of which
-  // timezone the test runner itself is in. toISOString() would instead
-  // convert to UTC first, which for a UTC-behind runner can roll an evening
-  // local timestamp into the NEXT UTC calendar day.
-  it('formats an evening local timestamp as the local calendar date, not a UTC-shifted one', () => {
-    const evening = new Date(2026, 7, 6, 22, 30, 0) // 2026-08-06 22:30 local
-    expect(localISO(evening)).toBe('2026-08-06')
-  })
-
-  it('zero-pads single-digit month and day', () => {
-    const early = new Date(2026, 0, 5, 9, 0, 0) // 2026-01-05
-    expect(localISO(early)).toBe('2026-01-05')
-  })
-})
+// localISO itself now lives in, and is tested by,
+// frontend/src/utils/__tests__/localeDate.spec.ts -- usePivotView just
+// imports it from there (review round MINOR 8).
 
 describe('mergePivotRows', () => {
   it('joins on (bucket_start, group_key) and unions measures', () => {
@@ -101,44 +87,44 @@ describe('usePivotView', () => {
     expect(view.loading.value).toBe(false)
   })
 
-  it('a grouping unsupported by one dataset falls back to time-only for that dataset alone -- rows interleave, not merge', async () => {
+  it('a grouping unsupported by one dataset SKIPS that dataset entirely (Q3 + delay_reason fetches ONLY delivery)', async () => {
     // q3 = [quality, delivery]. delay_reason is in delivery's allow-list but
-    // not quality's, so quality must be fetched without group_by (falls
-    // back to time-only, group_key=null) while delivery gets group_by sent.
+    // not quality's -- every one of quality's columns is hidden under
+    // delay_reason anyway (pivotPresets.ts hideForGroupings), so a
+    // time-only fallback row would just be an all-blank noise row. quality
+    // must not be fetched at all; delivery gets group_by sent normally.
     mockApiGet.mockImplementation((path: string) => {
-      if (path === '/pivot/quality') {
+      if (path === '/pivot/delivery') {
         return Promise.resolve({
-          data: { rows: [{ bucket_start: '2026-03-01', group_key: null, inspected: 10 }], totals: {} },
+          data: {
+            rows: [{ bucket_start: '2026-03-01', group_key: 'material_supplier_delay', delivered: 5 }],
+            totals: {},
+          },
         })
       }
-      return Promise.resolve({
-        data: {
-          rows: [{ bucket_start: '2026-03-01', group_key: 'material_supplier_delay', delivered: 5 }],
-          totals: {},
-        },
-      })
+      // Any other path (e.g. '/pivot/quality') would mean the skip logic
+      // failed to skip it -- caught below via toHaveBeenCalledTimes(1) /
+      // toHaveBeenCalledWith, not by rejecting here (a harness quirk fires
+      // one further call to this same mock during test teardown, after
+      // refresh() has already settled and been asserted on -- rejecting
+      // unconditionally turns that into an unrelated unhandled-rejection
+      // failure instead of a clean, accurate assertion mismatch).
+      return Promise.resolve({ data: { rows: [], totals: {} } })
     })
     const view = usePivotView(q3)
     view.groupBy.value = 'delay_reason'
     await view.refresh()
 
-    expect(mockApiGet).toHaveBeenCalledWith(
-      '/pivot/quality',
-      expect.objectContaining({ params: expect.not.objectContaining({ group_by: expect.anything() }) }),
-    )
+    expect(mockApiGet).toHaveBeenCalledTimes(1)
     expect(mockApiGet).toHaveBeenCalledWith(
       '/pivot/delivery',
       expect.objectContaining({ params: expect.objectContaining({ group_by: 'delay_reason' }) }),
     )
 
-    // Both rows survive as distinct entries -- keyed on (bucket_start,
-    // group_key), so the null-group quality row and the grouped delivery
-    // row for the same bucket_start do NOT collapse into one.
-    expect(view.rows.value).toHaveLength(2)
-    const qualityRow = view.rows.value.find((r) => r.group_key === null)
-    const deliveryRow = view.rows.value.find((r) => r.group_key === 'material_supplier_delay')
-    expect(qualityRow).toMatchObject({ inspected: 10 })
-    expect(deliveryRow).toMatchObject({ delivered: 5 })
+    // No null-group quality row -- only delivery's grouped row.
+    expect(view.rows.value).toHaveLength(1)
+    expect(view.rows.value.find((r) => r.group_key === null)).toBeUndefined()
+    expect(view.rows.value[0]).toMatchObject({ group_key: 'material_supplier_delay', delivered: 5 })
   })
 
   it('a stale response cannot overwrite a newer selection (request-token guard)', async () => {

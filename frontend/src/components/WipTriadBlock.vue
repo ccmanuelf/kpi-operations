@@ -55,11 +55,11 @@
 import { onMounted } from 'vue'
 import { useWipTriadData } from '@/composables/useWipTriadData'
 
-const { wipData, fetch } = useWipTriadData()
+const { wipData, load } = useWipTriadData()
 
 // Matches usePivotView's displayValue convention: an absent/null reading
 // renders as an honest "—", never a fabricated 0.
 const fmt = (v: unknown): string => (v === null || v === undefined ? '—' : String(Number(v)))
 
-onMounted(() => fetch())
+onMounted(() => load())
 </script>
