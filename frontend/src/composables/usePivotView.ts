@@ -47,7 +47,7 @@ export function usePivotView(preset: PivotViewPreset) {
   const error = ref<string | null>(null)
   const rows = ref<PivotRow[]>([])
   const totals = ref<Record<string, unknown>>({})
-  const { downloadCSVByPath } = useCSVExport()
+  const { downloading, downloadCSVByPath } = useCSVExport()
 
   function paramsFor(dataset: string): Record<string, unknown> {
     const p: Record<string, unknown> = {
@@ -93,5 +93,7 @@ export function usePivotView(preset: PivotViewPreset) {
     }
   }
 
-  return { bucket, groupBy, startDate, endDate, clientId, loading, error, rows, totals, refresh, download }
+  return {
+    bucket, groupBy, startDate, endDate, clientId, loading, error, rows, totals, downloading, refresh, download,
+  }
 }
