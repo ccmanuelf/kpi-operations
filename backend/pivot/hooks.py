@@ -23,7 +23,7 @@ from backend.orm.attendance_entry import AttendanceEntry
 from backend.orm.delay_taxonomy import DelayClassificationEnum
 from backend.orm.employee import Employee
 from backend.orm.production_entry import ProductionEntry
-from backend.orm.work_order import WorkOrder, WorkOrderStatus
+from backend.orm.work_order import WorkOrder
 
 
 def fetch_labor(
@@ -134,13 +134,13 @@ def fetch_delivery(
     client_ids: Optional[Sequence[str]],
 ) -> Iterator[tuple[date, Optional[str], dict[str, float]]]:
     """Per-(day, group) delivery components mirroring calculate_true_otd's
-    counting rules (backend/calculations/otd.py:286-380): COMPLETED orders
-    with actual_delivery_date in window; planned date via the inference
-    chain; orders with no inferable date are skipped (not in the
-    denominator, same as calculate_true_otd's skipped_no_date bucket);
+    STANDARD-OTD counting rules (backend/calculations/otd.py:380-433, spec §4
+    amendment 2026-08-07): delivered-orders basis -- any status counts, not
+    just COMPLETED -- with actual_delivery_date in window; planned date via
+    the inference chain; orders with no inferable date are skipped (not in
+    the denominator, same as calculate_true_otd's skipped_no_date bucket);
     justified-late per delay_classification."""
     q = db.query(WorkOrder).filter(
-        WorkOrder.status == WorkOrderStatus.COMPLETED,
         WorkOrder.actual_delivery_date.isnot(None),
         WorkOrder.actual_delivery_date >= datetime.combine(start_date, datetime.min.time()),
         WorkOrder.actual_delivery_date <= datetime.combine(end_date, datetime.max.time()),

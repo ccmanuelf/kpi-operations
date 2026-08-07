@@ -314,23 +314,61 @@ def test_labor_efficiency_available_basis_matches_ratio_of_sums(db_session, seed
     assert out["totals"]["efficiency_available_basis"] == pytest.approx(round(float(earned) / avail * 100, 2))
 
 
-def test_delivery_totals_equal_calculate_true_otd(db_session, seeded):
+def test_delivery_totals_equal_standard_otd(db_session, seeded):
+    """Delivered-orders basis (spec §4 amendment 2026-08-07): fetch_delivery
+    mirrors calculate_true_otd's `standard_otd` section (any status), not
+    `true_otd` (COMPLETED only). All 4 seeded WOs happen to be COMPLETED, so
+    the standard section counts the same rows as true_otd here -- the basis
+    difference only bites in test_delivery_counts_shipped_and_closed_orders
+    below, which seeds non-COMPLETED statuses."""
     cid = seeded
     golden = calculate_true_otd(db_session, cid, *WINDOW)
     out = run_pivot(db_session, "delivery", "year", None, *WINDOW, [cid])
     t = out["totals"]
-    # calculate_true_otd's true_otd sub-dict keys are `total`/`on_time`
-    # (backend/calculations/otd.py:477-488) -- not total_orders/on_time_count.
-    assert t["delivered"] == golden["true_otd"]["total"]
-    assert t["on_time"] == golden["true_otd"]["on_time"]
+    # calculate_true_otd's standard_otd sub-dict keys are `total`/`on_time`
+    # (backend/calculations/otd.py:489-497) -- not total_orders/on_time_count.
+    assert t["delivered"] == golden["standard_otd"]["total"]
+    assert t["on_time"] == golden["standard_otd"]["on_time"]
     assert t["delivered"] > 0
-    assert t["otd_gross_pct"] == pytest.approx(float(golden["true_otd"]["percentage"]), abs=0.01)
-    assert t["otd_net_pct"] == pytest.approx(float(golden["true_otd"]["net_percentage"]), abs=0.01)
+    assert t["otd_gross_pct"] == pytest.approx(float(golden["standard_otd"]["percentage"]), abs=0.01)
+    assert t["otd_net_pct"] == pytest.approx(float(golden["standard_otd"]["net_percentage"]), abs=0.01)
     # Absolute anchor: pin that the skip rule actually fired. 4 work orders
     # are seeded (WO-1 on-time, WO-2 late-unjustified, WO-3 late-justified,
     # WO-4 no inferable planned date at all), so `delivered` must be 3 -- WO-4
     # excluded from the denominator, not silently counted as late.
     assert t["delivered"] == 3.0
+
+
+def test_delivery_counts_shipped_and_closed_orders(db_session):
+    """Delivered-orders basis (spec §4 amendment 2026-08-07): status is
+    irrelevant -- a SHIPPED and a CLOSED order with delivery dates both count.
+    Under the old COMPLETED-only basis this window reported delivered == 0
+    (the §10-A finding on real VM data)."""
+    for i, status in enumerate(["SHIPPED", "CLOSED"]):
+        db_session.add(
+            WorkOrder(
+                work_order_id=f"PVT-BASIS-{i}",
+                client_id="PIVOT-CLI",
+                style_model="BASIS-STYLE",
+                planned_quantity=10,
+                status=status,
+                planned_ship_date=datetime(2026, 5, 10),
+                actual_delivery_date=datetime(2026, 5, 9),
+            )
+        )
+    db_session.commit()
+    out = run_pivot(
+        db_session,
+        "delivery",
+        "month",
+        None,
+        date(2026, 5, 1),
+        date(2026, 5, 31),
+        ["PIVOT-CLI"],
+    )
+    assert out["totals"]["delivered"] == 2
+    assert out["totals"]["on_time"] == 2
+    assert out["totals"]["otd_gross_pct"] == 100.0
 
 
 def test_delivery_zero_on_time_reports_percentages_as_zero_not_omitted(db_session):
