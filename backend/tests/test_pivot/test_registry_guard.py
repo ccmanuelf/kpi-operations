@@ -93,3 +93,64 @@ def test_every_dataset_declares_scope_and_date_axis():
         assert ds.date_column is not None, name
         assert ds.client_column is not None, name
         assert "client" in ds.group_bys, name
+
+
+def _validate_fetch_path(name: str, ds: Dataset) -> None:
+    """Per-dataset structural check: a Component measure has no SQL `.expr`
+    -- it's only ever populated by a fetch hook. The SQL path
+    (backend/pivot/engine.py::_sql_day_rows) unconditionally calls
+    `func.sum(m.expr)` for every non-Count component, so a Component
+    measure on a dataset with `fetch=None` crashes at REQUEST time with
+    AttributeError, not at import time -- this guard makes that class of
+    mistake fail in CI instead. The converse is asserted too: a dataset that
+    declares a fetch hook but no Component measure is at best pointless
+    (nothing on the hook path needs one) and likely a sign the hook's output
+    was wired up wrong, so it's flagged as well."""
+    has_component = any(isinstance(m, Component) for m in ds.measures.values())
+    if ds.fetch is None:
+        assert not has_component, (
+            f"{name} has no fetch hook (SQL path) but declares a Component "
+            f"measure -- the SQL path calls Component.expr, which doesn't "
+            f"exist, and crashes at request time with AttributeError"
+        )
+    else:
+        assert has_component, (
+            f"{name} declares a fetch hook but no Component measure -- " f"the fetch hook's output has nowhere to land"
+        )
+
+
+def test_every_dataset_fetch_path_matches_its_component_measures():
+    for name, ds in DATASETS.items():
+        _validate_fetch_path(name, ds)
+
+
+def test_validate_fetch_path_rejects_component_measure_without_fetch():
+    """Negative case: a Component measure on a dataset with no fetch hook --
+    exactly the crash-at-request-time bug this guard exists to catch."""
+    bad = Dataset(
+        name="bad-component-no-fetch",
+        model=None,
+        date_column=None,
+        client_column=None,
+        group_bys={},
+        measures={"holds": Component()},
+        fetch=None,
+    )
+    with pytest.raises(AssertionError):
+        _validate_fetch_path(bad.name, bad)
+
+
+def test_validate_fetch_path_rejects_fetch_without_component_measure():
+    """Negative case: a fetch hook declared but no Component measure to
+    receive its output."""
+    bad = Dataset(
+        name="bad-fetch-no-component",
+        model=None,
+        date_column=None,
+        client_column=None,
+        group_bys={},
+        measures={"units": Sum(None)},
+        fetch=lambda *args, **kwargs: [],
+    )
+    with pytest.raises(AssertionError):
+        _validate_fetch_path(bad.name, bad)

@@ -20,6 +20,25 @@ from backend.utils.date_range import validate_date_range
 
 router = APIRouter(prefix="/api/pivot", tags=["Pivot Summaries"])
 
+# Formula-injection guard for the pivot CSV export ONLY. A string cell
+# beginning with one of these characters becomes a live formula when opened
+# in Excel/Sheets (e.g. a group_key of "=HYPERLINK(...)" from a user-entered
+# style_model/downtime_reason/etc.) -- prefixing it with a single quote
+# neutralizes that while leaving the underlying value intact. This is
+# deliberately scoped to /api/pivot/*/csv: the /api/export backbone stays
+# verbatim by design (documented CSV re-import round-trip contract) and must
+# NOT gain this escaping.
+_DANGEROUS_CSV_PREFIXES = ("=", "+", "-", "@")
+
+
+def _escape_csv_cell(value: Any) -> Any:
+    """Pure: prefixes a dangerous-leading-character string with `'` so Excel
+    treats it as literal text, not a formula. Non-string cells (numbers,
+    None, dates) pass through unchanged."""
+    if isinstance(value, str) and value.startswith(_DANGEROUS_CSV_PREFIXES):
+        return f"'{value}"
+    return value
+
 
 def _run(
     db: Session,
@@ -76,7 +95,7 @@ def get_pivot_csv(
     writer = csv.DictWriter(buf, fieldnames=fieldnames)
     writer.writeheader()
     for row in result["rows"]:
-        writer.writerow(row)
+        writer.writerow({k: _escape_csv_cell(v) for k, v in row.items()})
     buf.seek(0)
     filename = f"pivot_{dataset}_{bucket}_{start_date}_{end_date}.csv"
     return StreamingResponse(

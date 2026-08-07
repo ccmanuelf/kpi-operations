@@ -48,11 +48,7 @@ describe('useCSVExport', () => {
         headers: {},
       })
 
-      try {
-        await downloadCSVByPath('/pivot/downtime/csv', { bucket: 'month' }, 'test.csv')
-      } catch {
-        // Ignore DOM errors
-      }
+      await downloadCSVByPath('/pivot/downtime/csv', { bucket: 'month' }, 'test.csv')
 
       expect(apiMock.get).toHaveBeenCalledWith('/pivot/downtime/csv', {
         params: { bucket: 'month' },
@@ -82,11 +78,7 @@ describe('useCSVExport', () => {
         headers: {},
       })
 
-      try {
-        await downloadCSV('production-entries', {})
-      } catch {
-        // Ignore DOM errors
-      }
+      await downloadCSV('production-entries', {})
 
       expect(apiMock.get).toHaveBeenCalledWith('/export/production-entries', {
         params: {},
@@ -103,11 +95,7 @@ describe('useCSVExport', () => {
         headers: {},
       })
 
-      try {
-        await downloadCSV('downtime-data', {})
-      } catch {
-        // Ignore DOM errors
-      }
+      await downloadCSV('downtime-data', {})
 
       expect(notificationMock.showSuccess).toHaveBeenCalled()
     })
@@ -123,11 +111,7 @@ describe('useCSVExport', () => {
         headers: {},
       })
 
-      try {
-        await downloadCSVByPath('/pivot/downtime/csv', { bucket: 'month' }, 'test.csv')
-      } catch {
-        // Ignore DOM errors
-      }
+      await downloadCSVByPath('/pivot/downtime/csv', { bucket: 'month' }, 'test.csv')
 
       // The mocked i18n.global.t returns the bare key when called with no
       // params (see the vi.mock('@/i18n', ...) above); a stray {type}:...

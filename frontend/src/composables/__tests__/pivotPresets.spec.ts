@@ -52,13 +52,21 @@ describe('BUCKET_LABEL_KEYS', () => {
 describe('visibleColumns', () => {
   const q3 = PIVOT_VIEWS.find((v) => v.id === 'q3')!
 
-  it('drops otd_gross_pct/otd_net_pct when grouped by delay_reason', () => {
+  it('drops otd_gross_pct/otd_net_pct/inspected/defects/fpy_pct when grouped by delay_reason', () => {
     const cols = visibleColumns(q3, 'delay_reason').map((c) => c.key)
     expect(cols).not.toContain('otd_gross_pct')
     expect(cols).not.toContain('otd_net_pct')
-    // Everything else in q3 stays -- only the two OTD% columns are hidden.
+    // Quality measures are structurally meaningless per delay reason too --
+    // delay_reason is delivery-side, so a quality entry never carries one;
+    // every reason row would otherwise render these as bare "—" noise.
+    expect(cols).not.toContain('inspected')
+    expect(cols).not.toContain('defects')
+    expect(cols).not.toContain('fpy_pct')
+    // Everything else in q3 stays -- delivered/on_time/justified_late ARE
+    // meaningful per delay reason.
     expect(cols).toContain('justified_late')
     expect(cols).toContain('delivered')
+    expect(cols).toContain('on_time')
   })
 
   it('keeps otd_gross_pct/otd_net_pct for other groupings, incl. time-only (null)', () => {

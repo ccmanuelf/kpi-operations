@@ -18,6 +18,7 @@ vi.mock('@/components/WipTriadBlock.vue', () => ({
   default: { template: '<div class="wip-triad-stub" />' },
 }))
 
+import { VALID_BUCKETS } from '@/composables/pivotPresets'
 import PivotSummaries from '@/views/PivotSummaries.vue'
 
 // Mirrors the vuetify + i18n + pinia harness used by other view specs
@@ -38,9 +39,13 @@ describe('PivotSummaries', () => {
     expect(wrapper.findAll('[data-testid^="pivot-tab-"]')).toHaveLength(5)
   })
 
-  it('renders bucket selector with the four buckets and a download button', () => {
+  it('renders bucket selector offering exactly the four VALID_BUCKETS options, plus a download button', () => {
     const wrapper = mountView()
-    expect(wrapper.find('[data-testid="pivot-bucket-select"]').exists()).toBe(true)
+    const bucketSelect = wrapper.findComponent('[data-testid="pivot-bucket-select"]')
+    expect(bucketSelect.exists()).toBe(true)
+    const items = bucketSelect.props('items') as Array<{ value: string; title: string }>
+    expect(items).toHaveLength(4)
+    expect(items.map((i) => i.value).sort()).toEqual([...VALID_BUCKETS].sort())
     expect(wrapper.find('[data-testid="pivot-download"]').exists()).toBe(true)
   })
 })

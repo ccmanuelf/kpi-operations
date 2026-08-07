@@ -1,3 +1,4 @@
+import { readFile } from 'node:fs/promises'
 import { test, expect } from '@playwright/test'
 import { login } from './helpers'
 
@@ -36,14 +37,23 @@ test.describe('Summaries screen', () => {
     // slide transition briefly gives the outgoing panel a non-zero
     // bounding box too, which makes :visible ambiguous mid-flight.
     const activePanel = page.locator('.v-window-item--active')
-    const req = page.waitForRequest((r) => r.url().includes('/pivot/downtime'), { timeout: 15000 })
+    const resp = page.waitForResponse(
+      (r) => r.url().includes('/pivot/downtime') && r.request().method() === 'GET',
+      { timeout: 15000 },
+    )
     await activePanel.getByTestId('pivot-bucket-select').click()
     await page.locator('.v-list-item').filter({ hasText: /^Quarter$/i }).first().click()
-    await req
+    expect((await resp).status()).toBe(200)
 
     const downloadPromise = page.waitForEvent('download', { timeout: 15000 })
     await activePanel.getByTestId('pivot-download').click()
     const download = await downloadPromise
     expect(download.suggestedFilename()).toContain('pivot_downtime')
+
+    const path = await download.path()
+    expect(path).not.toBeNull()
+    const content = await readFile(path as string, 'utf-8')
+    expect(content.length).toBeGreaterThan(0)
+    expect(content.split('\n')[0]).toContain('bucket_start')
   })
 })
