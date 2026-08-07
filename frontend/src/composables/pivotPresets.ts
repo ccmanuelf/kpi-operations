@@ -22,6 +22,16 @@ export interface PivotViewPreset {
 
 export const VALID_BUCKETS = ['week', 'month', 'quarter', 'year'] as const
 
+// Literal (non-template-literal) i18n keys for bucket labels — a template-literal
+// key like `pivot.buckets.${b}` evades the referenced-keys i18n gate, which can
+// only statically verify literal key strings.
+export const BUCKET_LABEL_KEYS: Record<(typeof VALID_BUCKETS)[number], string> = {
+  week: 'pivot.buckets.week',
+  month: 'pivot.buckets.month',
+  quarter: 'pivot.buckets.quarter',
+  year: 'pivot.buckets.year',
+}
+
 const timeOnly: PivotGrouping = { value: null, labelKey: 'pivot.grouping.timeOnly' }
 const byClient: PivotGrouping = { value: 'client', labelKey: 'pivot.grouping.client' }
 

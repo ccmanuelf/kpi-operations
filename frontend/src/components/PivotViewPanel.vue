@@ -43,14 +43,14 @@ import { computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AGGridBase from '@/components/grids/AGGridBase.vue'
 import WipTriadBlock from '@/components/WipTriadBlock.vue'
-import { VALID_BUCKETS, groupLabel, visibleColumns, type PivotViewPreset } from '@/composables/pivotPresets'
+import { BUCKET_LABEL_KEYS, VALID_BUCKETS, groupLabel, visibleColumns, type PivotViewPreset } from '@/composables/pivotPresets'
 import { displayValue, usePivotView } from '@/composables/usePivotView'
 
 const props = defineProps<{ preset: PivotViewPreset }>()
 const { t } = useI18n()
 const view = usePivotView(props.preset)
 
-const bucketItems = computed(() => VALID_BUCKETS.map((b) => ({ value: b, title: t(`pivot.buckets.${b}`) })))
+const bucketItems = computed(() => VALID_BUCKETS.map((b) => ({ value: b, title: t(BUCKET_LABEL_KEYS[b]) })))
 const groupingItems = computed(() => props.preset.groupings.map((g) => ({ value: g.value, title: t(g.labelKey) })))
 const columnDefs = computed(() => [
   { field: 'bucket_start', headerName: t('pivot.cols.bucket') },

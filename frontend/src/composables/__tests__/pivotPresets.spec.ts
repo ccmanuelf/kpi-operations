@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { PIVOT_VIEWS, DATASET_GROUPINGS, groupLabel, visibleColumns } from '@/composables/pivotPresets'
+import { BUCKET_LABEL_KEYS, VALID_BUCKETS, PIVOT_VIEWS, DATASET_GROUPINGS, groupLabel, visibleColumns } from '@/composables/pivotPresets'
 
 describe('PIVOT_VIEWS structural invariants', () => {
   it('declares exactly q1..q5 in order', () => {
@@ -36,6 +36,15 @@ describe('PIVOT_VIEWS structural invariants', () => {
         )
         expect(valid).toBe(true)
       }
+    }
+  })
+})
+
+describe('BUCKET_LABEL_KEYS', () => {
+  it('covers exactly VALID_BUCKETS, each with a literal pivot.buckets.* key', () => {
+    expect(Object.keys(BUCKET_LABEL_KEYS).sort()).toEqual([...VALID_BUCKETS].sort())
+    for (const bucket of VALID_BUCKETS) {
+      expect(BUCKET_LABEL_KEYS[bucket]).toBe(`pivot.buckets.${bucket}`)
     }
   })
 })
