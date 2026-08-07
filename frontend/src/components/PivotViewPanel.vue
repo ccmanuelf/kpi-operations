@@ -30,7 +30,7 @@
     <v-alert v-if="view.error.value" type="error" density="compact" class="mb-2">{{ view.error.value }}</v-alert>
 
     <AGGridBase :column-defs="columnDefs" :row-data="gridRows" :loading="view.loading.value"
-                :enable-excel-paste="false" />
+                :enable-excel-paste="false" :enable-csv-import="false" />
 
     <WipTriadBlock v-if="preset.showWipTriad" class="mt-4" />
   </div>
