@@ -8,36 +8,35 @@ import { useWipTriadData } from '@/composables/useWipTriadData'
 describe('useWipTriadData', () => {
   beforeEach(() => getWIPAgingMock.mockReset())
 
-  it('fetches getWIPAging directly (no kpi store involved) and surfaces the three distinct fields, using the real merged response shape', async () => {
-    // Real shape getWIPAging() returns (frontend/src/services/api/kpi.ts):
-    // it already merges /kpi/wip-aging + /kpi/wip-aging/top into one
-    // object -- this composable does no additional merging of its own.
+  it('fetches getWIPAging directly (no kpi store involved), with NO date window, and surfaces the three distinct fields using the real as-of-now snapshot response shape', async () => {
+    // Real shape getWIPAging() returns with no params (frontend/src/services/api/kpi.ts):
+    // an as-of-now snapshot -- these headline cards are not a windowed
+    // series (live-VM finding: windowing this endpoint excludes holds
+    // whose hold_date falls outside the range, i.e. the oldest/worst
+    // holds are exactly what a trailing window drops).
     getWIPAgingMock.mockResolvedValue({
       data: {
-        average_days: 12.5,
-        total_held: 20,
-        total_units: 20,
-        aging_15_30: 6,
-        aging_over_30: 3,
-        age_15_plus: 9,
-        critical_count: 9,
-        max_days: 67,
-        total_hold_events: 5,
-        top_aging: [{ age: 67 }],
+        average_days: 64.5,
+        total_held: 4,
+        total_units: 4,
+        aging_15_30: 0,
+        aging_over_30: 4,
+        age_15_plus: 4,
+        critical_count: 4,
+        max_days: 70,
+        total_hold_events: 4,
+        top_aging: [{ age: 70 }],
       },
     })
 
     const { wipData, load } = useWipTriadData()
     await load()
 
-    expect(wipData.value).toMatchObject({ average_days: 12.5, max_days: 67, age_15_plus: 9 })
+    expect(wipData.value).toMatchObject({ average_days: 64.5, max_days: 70, age_15_plus: 4 })
     expect(getWIPAgingMock).toHaveBeenCalledTimes(1)
-    const params = getWIPAgingMock.mock.calls[0][0] as Record<string, unknown>
-    // No client_id (no store, no scoping) and a plain string date window --
-    // never a store mutation.
-    expect(params).not.toHaveProperty('client_id')
-    expect(typeof params.start_date).toBe('string')
-    expect(typeof params.end_date).toBe('string')
+    // No arguments at all -- not just "no client_id" but no date window
+    // either, so the backend returns its unfiltered as-of-now snapshot.
+    expect(getWIPAgingMock).toHaveBeenCalledWith()
   })
 
   it('surfaces a null average_days (honest no-data) rather than a fabricated 0', async () => {
