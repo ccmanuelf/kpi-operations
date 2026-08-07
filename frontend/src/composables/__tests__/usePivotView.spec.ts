@@ -9,11 +9,11 @@ vi.mock('@/composables/useCSVExport', () => ({
   useCSVExport: () => ({ downloading: { value: false }, downloadCSVByPath: vi.fn() }),
 }))
 
-import api from '@/services/api/client'
 import { mergePivotRows, displayValue, usePivotView } from '@/composables/usePivotView'
 import { PIVOT_VIEWS } from '@/composables/pivotPresets'
 
 const q2 = PIVOT_VIEWS.find((v) => v.id === 'q2')!
+const q3 = PIVOT_VIEWS.find((v) => v.id === 'q3')!
 
 describe('mergePivotRows', () => {
   it('joins on (bucket_start, group_key) and unions measures', () => {
@@ -65,5 +65,45 @@ describe('usePivotView', () => {
     await view.refresh()
     expect(view.error.value).toContain('boom')
     expect(view.loading.value).toBe(false)
+  })
+
+  it('a grouping unsupported by one dataset falls back to time-only for that dataset alone -- rows interleave, not merge', async () => {
+    // q3 = [quality, delivery]. delay_reason is in delivery's allow-list but
+    // not quality's, so quality must be fetched without group_by (falls
+    // back to time-only, group_key=null) while delivery gets group_by sent.
+    mockApiGet.mockImplementation((path: string) => {
+      if (path === '/pivot/quality') {
+        return Promise.resolve({
+          data: { rows: [{ bucket_start: '2026-03-01', group_key: null, inspected: 10 }], totals: {} },
+        })
+      }
+      return Promise.resolve({
+        data: {
+          rows: [{ bucket_start: '2026-03-01', group_key: 'material_supplier_delay', delivered: 5 }],
+          totals: {},
+        },
+      })
+    })
+    const view = usePivotView(q3)
+    view.groupBy.value = 'delay_reason'
+    await view.refresh()
+
+    expect(mockApiGet).toHaveBeenCalledWith(
+      '/pivot/quality',
+      expect.objectContaining({ params: expect.not.objectContaining({ group_by: expect.anything() }) }),
+    )
+    expect(mockApiGet).toHaveBeenCalledWith(
+      '/pivot/delivery',
+      expect.objectContaining({ params: expect.objectContaining({ group_by: 'delay_reason' }) }),
+    )
+
+    // Both rows survive as distinct entries -- keyed on (bucket_start,
+    // group_key), so the null-group quality row and the grouped delivery
+    // row for the same bucket_start do NOT collapse into one.
+    expect(view.rows.value).toHaveLength(2)
+    const qualityRow = view.rows.value.find((r) => r.group_key === null)
+    const deliveryRow = view.rows.value.find((r) => r.group_key === 'material_supplier_delay')
+    expect(qualityRow).toMatchObject({ inspected: 10 })
+    expect(deliveryRow).toMatchObject({ delivered: 5 })
   })
 })

@@ -29,8 +29,10 @@
 
     <v-alert v-if="view.error.value" type="error" density="compact" class="mb-2">{{ view.error.value }}</v-alert>
 
-    <AGGridBase :column-defs="columnDefs" :row-data="gridRows" :loading="view.loading.value"
-                :enable-excel-paste="false" :enable-csv-import="false" />
+    <v-progress-linear :active="view.loading.value" indeterminate color="primary" class="mb-2" />
+
+    <AGGridBase :column-defs="columnDefs" :row-data="gridRows"
+                :enable-excel-paste="false" :enable-csv-import="false" :enable-export="false" />
 
     <WipTriadBlock v-if="preset.showWipTriad" class="mt-4" />
   </div>
@@ -41,7 +43,7 @@ import { computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AGGridBase from '@/components/grids/AGGridBase.vue'
 import WipTriadBlock from '@/components/WipTriadBlock.vue'
-import { VALID_BUCKETS, type PivotViewPreset } from '@/composables/pivotPresets'
+import { VALID_BUCKETS, groupLabel, visibleColumns, type PivotViewPreset } from '@/composables/pivotPresets'
 import { displayValue, usePivotView } from '@/composables/usePivotView'
 
 const props = defineProps<{ preset: PivotViewPreset }>()
@@ -53,8 +55,8 @@ const groupingItems = computed(() => props.preset.groupings.map((g) => ({ value:
 const columnDefs = computed(() => [
   { field: 'bucket_start', headerName: t('pivot.cols.bucket') },
   { field: 'group_key', headerName: t('pivot.cols.group'),
-    valueFormatter: (p: { value: unknown }) => p.value == null ? '—' : String(p.value) },
-  ...props.preset.columns.map((c) => ({
+    valueFormatter: (p: { value: unknown }) => groupLabel(p.value, t) },
+  ...visibleColumns(props.preset, view.groupBy.value).map((c) => ({
     field: c.key, headerName: t(c.headerKey),
     valueFormatter: (p: { data: Record<string, unknown> }) => displayValue(p.data ?? {}, c),
   })),

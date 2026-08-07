@@ -344,6 +344,8 @@ def test_delivery_counts_shipped_and_closed_orders(db_session):
     irrelevant -- a SHIPPED and a CLOSED order with delivery dates both count.
     Under the old COMPLETED-only basis this window reported delivered == 0
     (the §10-A finding on real VM data)."""
+    db_session.add(Client(client_id="PIVOT-CLI", client_name="Pivot Basis Client"))
+    db_session.commit()
     for i, status in enumerate(["SHIPPED", "CLOSED"]):
         db_session.add(
             WorkOrder(

@@ -2126,7 +2126,7 @@
     "stepUpload": "Subir",
     "stepPreview": "Vista Previa",
     "stepConfirm": "Confirmar",
-    "downloadSuccess": "CSV de {type} descargado exitosamente",
+    "downloadSuccess": "CSV descargado exitosamente",
     "exportFailed": "Error de exportación: {message}"
   },
   "validation": {
@@ -4521,6 +4521,12 @@
       "avgDaysOnHold": "Días Prom. en Retención",
       "oldestDays": "Artículo Más Antiguo (Días)",
       "aged15Plus": "Cantidad con 15+ Días"
+    },
+    "sentinels": {
+      "none": "Sin razón",
+      "uncategorized": "Sin categorizar",
+      "unknown": "Desconocido",
+      "unclassified": "Sin clasificar"
     }
   }
 }

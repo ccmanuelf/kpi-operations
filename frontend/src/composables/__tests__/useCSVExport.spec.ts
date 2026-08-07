@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 const { apiMock, notificationMock } = vi.hoisted(() => ({
   apiMock: {
@@ -110,6 +110,30 @@ describe('useCSVExport', () => {
       }
 
       expect(notificationMock.showSuccess).toHaveBeenCalled()
+    })
+  })
+
+  describe('success toast', () => {
+    it('calls t(csv.downloadSuccess) with no params -- the locale string must not interpolate {type}', async () => {
+      const { downloadCSVByPath } = useCSVExport()
+      const blob = new Blob(['test data'], { type: 'text/csv' })
+
+      apiMock.get.mockResolvedValueOnce({
+        data: blob,
+        headers: {},
+      })
+
+      try {
+        await downloadCSVByPath('/pivot/downtime/csv', { bucket: 'month' }, 'test.csv')
+      } catch {
+        // Ignore DOM errors
+      }
+
+      // The mocked i18n.global.t returns the bare key when called with no
+      // params (see the vi.mock('@/i18n', ...) above); a stray {type}:...
+      // suffix would mean the call site is still threading params it never
+      // has, reproducing the unresolved-placeholder bug.
+      expect(notificationMock.showSuccess).toHaveBeenCalledWith('csv.downloadSuccess')
     })
   })
 })

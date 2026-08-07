@@ -2,7 +2,14 @@
  * registry (backend/pivot/registry.py) is the authority for datasets,
  * group_by allow-lists, and measure keys — these presets must reference
  * only keys that exist there. */
-export interface PivotColumn { key: string; headerKey: string; kind: 'number' | 'percent' | 'count' }
+export interface PivotColumn {
+  key: string
+  headerKey: string
+  kind: 'number' | 'percent' | 'count'
+  // Groupings under which this column is structurally meaningless and must
+  // be hidden (e.g. a per-reason OTD% — spec §6, see the q3 comment below).
+  hideForGroupings?: string[]
+}
 export interface PivotGrouping { value: string | null; labelKey: string }
 export interface PivotViewPreset {
   id: 'q1' | 'q2' | 'q3' | 'q4' | 'q5'
@@ -75,8 +82,8 @@ export const PIVOT_VIEWS: PivotViewPreset[] = [
       { key: 'delivered', headerKey: 'pivot.cols.delivered', kind: 'count' },
       { key: 'on_time', headerKey: 'pivot.cols.onTime', kind: 'count' },
       { key: 'justified_late', headerKey: 'pivot.cols.justifiedLate', kind: 'count' },
-      { key: 'otd_gross_pct', headerKey: 'pivot.cols.otdGross', kind: 'percent' },
-      { key: 'otd_net_pct', headerKey: 'pivot.cols.otdNet', kind: 'percent' },
+      { key: 'otd_gross_pct', headerKey: 'pivot.cols.otdGross', kind: 'percent', hideForGroupings: ['delay_reason'] },
+      { key: 'otd_net_pct', headerKey: 'pivot.cols.otdNet', kind: 'percent', hideForGroupings: ['delay_reason'] },
     ],
   },
   {
@@ -116,4 +123,30 @@ export const DATASET_GROUPINGS: Record<string, string[]> = {
   quality: ['client', 'style'],
   delivery: ['client', 'style', 'delay_reason'],
   holds: ['client', 'reason_category', 'reason'],
+}
+
+/** Pure: the preset's columns minus any whose `hideForGroupings` includes
+ * the current grouping. Exported so the panel's columnDefs can stay a thin
+ * consumer and this filtering rule is independently unit-testable. */
+export function visibleColumns(preset: PivotViewPreset, groupBy: string | null): PivotColumn[] {
+  return preset.columns.filter((c) => !groupBy || !c.hideForGroupings?.includes(groupBy))
+}
+
+// Backend group-by sentinels (backend/pivot/hooks.py + registry.py + engine.py
+// coalesce nulls into these literal strings) mapped to i18n keys so the grid
+// never renders a raw English sentinel to a Spanish-locale user.
+const GROUP_SENTINEL_KEYS: Record<string, string> = {
+  none: 'pivot.sentinels.none',
+  uncategorized: 'pivot.sentinels.uncategorized',
+  unknown: 'pivot.sentinels.unknown',
+  unclassified: 'pivot.sentinels.unclassified',
+}
+
+/** Pure: renders a group_key cell value — null stays an em dash, a known
+ * sentinel is localized, any other value renders as-is. */
+export function groupLabel(value: unknown, t: (_key: string) => string): string {
+  if (value === null || value === undefined) return '—'
+  const s = String(value)
+  const key = GROUP_SENTINEL_KEYS[s]
+  return key ? t(key) : s
 }

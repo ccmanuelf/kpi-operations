@@ -2126,7 +2126,7 @@
     "stepUpload": "Upload",
     "stepPreview": "Preview",
     "stepConfirm": "Confirm",
-    "downloadSuccess": "{type} CSV downloaded successfully",
+    "downloadSuccess": "CSV downloaded successfully",
     "exportFailed": "Export failed: {message}"
   },
   "validation": {
@@ -4521,6 +4521,12 @@
       "avgDaysOnHold": "Avg Days on Hold",
       "oldestDays": "Oldest Item (Days)",
       "aged15Plus": "Count Aged 15+ Days"
+    },
+    "sentinels": {
+      "none": "None",
+      "uncategorized": "Uncategorized",
+      "unknown": "Unknown",
+      "unclassified": "Unclassified"
     }
   }
 }

@@ -54,7 +54,11 @@ export function usePivotView(preset: PivotViewPreset) {
       bucket: bucket.value, start_date: startDate.value, end_date: endDate.value,
     }
     // A grouping the dataset doesn't support falls back to time-only for
-    // that dataset; its rows then merge on bucket_start alone.
+    // that dataset: no group_by param is sent, so that dataset's rows carry
+    // group_key=null while the other dataset's rows carry the real group
+    // value. mergePivotRows keys on (bucket_start, group_key), so these
+    // DON'T merge into one row -- a time-only row and a grouped row for the
+    // same bucket_start interleave as separate rows in the result.
     if (groupBy.value && (DATASET_GROUPINGS[dataset] ?? []).includes(groupBy.value)) {
       p.group_by = groupBy.value
     }
