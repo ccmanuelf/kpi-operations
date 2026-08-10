@@ -13,16 +13,20 @@
  *
  * Calls getWIPAging() with NO date params. These cards ("Avg Days on
  * Hold", "Oldest Item", "Count Aged 15+") are an as-of-now snapshot of
- * WIP currently on hold, not a windowed time series. Live-VM finding: the
- * backend (GET /kpi/wip-aging) filters by hold_date falling INSIDE
- * start_date/end_date -- so a trailing-30-day window silently excludes
- * every hold older than 30 days, i.e. windowing an AGING metric excludes
- * precisely the worst holds. A production DB with 4 chronic holds
- * 60-70 days old showed Avg "--" and Aged-15+ "0" under the inherited
- * 30-day window, while the unwindowed endpoint correctly returned
- * {"total_held_quantity":4,"average_aging_days":64.5,"aging_over_30_days":4}.
- * Do not reintroduce a date window here without also fixing that
- * semantic on the backend/store side (tracked separately).
+ * WIP currently on hold, not a windowed time series, so omitting the
+ * params expresses the intent directly -- the backend defaults `as_of` to
+ * today.
+ *
+ * HISTORY: this originally omitted the params as a WORKAROUND. The backend
+ * (GET /kpi/wip-aging) used to filter by hold_date falling INSIDE
+ * start_date/end_date, so a trailing-30-day window silently excluded every
+ * hold older than 30 days -- windowing an AGING metric excluded precisely
+ * the worst holds. A production DB with 4 chronic holds 60-70 days old
+ * showed Avg "--" and Aged-15+ "0" under the inherited 30-day window.
+ * That backend semantic is now FIXED (owner ruling 2026-08-07): a windowed
+ * call is an as-of snapshot at `end_date`, so passing a window here would
+ * no longer drop chronic holds. Omitting the params remains correct for
+ * these three cards, which are explicitly as-of-now.
  */
 import { ref } from 'vue'
 import { getWIPAging } from '@/services/api/kpi'
