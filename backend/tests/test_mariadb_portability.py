@@ -347,7 +347,11 @@ def test_wip_aging_top_query_shape_executes_on_mariadb(mariadb_schema):
     changed (ORDER BY date_diff_days + hold_status filter -> _active_as_of +
     ORDER BY hold_date) the copy kept passing while asserting SQL production
     no longer builds -- a green gate proving nothing. Importing it means this
-    job fails if the real predicate ever stops executing on MariaDB."""
+    job fails if the real predicate ever stops executing on MariaDB.
+
+    SCOPE: execution only -- against an empty table `rows == []` holds
+    however the predicate behaves. Row-level correctness is asserted by
+    test_wip_aging_snapshot_boundary_is_exact_on_mariadb."""
     from backend.orm.work_order import WorkOrder
     from backend.routes.holds import HoldEntry, _active_as_of
 
@@ -378,7 +382,13 @@ def test_wip_aging_trend_avg_executes_on_mariadb(mariadb_schema):
 
     Mirrors the route exactly, including the func.date() truncation inside
     the diff and the shared _active_as_of predicate — DATE() and the
-    NOT IN / IS NULL combination all have to resolve on MariaDB."""
+    NOT IN / IS NULL combination all have to resolve on MariaDB.
+
+    SCOPE: this proves EXECUTION only. AVG over zero rows is NULL whatever
+    date_diff_days returns, so this would pass even if the arithmetic were
+    wrong on MariaDB. The correctness assertion lives in
+    test_wip_aging_trend_average_is_correct_on_mariadb, which runs the same
+    expression over seeded rows."""
     from backend.routes.holds import HoldEntry, _active_as_of
 
     current_date = datetime(2026, 6, 11).date()
@@ -394,22 +404,31 @@ def test_wip_aging_trend_avg_executes_on_mariadb(mariadb_schema):
     assert result is None
 
 
-@requires_mariadb
-def test_wip_aging_snapshot_boundary_is_exact_on_mariadb(mariadb_schema):
-    """The as-of boundary must land identically on MariaDB and SQLite.
+@pytest.fixture
+def mariadb_boundary_holds(mariadb_schema):
+    """Seed holds straddling the as-of boundary of 2026-06-11 on live MariaDB.
 
-    This is the one assertion the SQLite suite structurally cannot make: the
-    cutoff is compared against DATETIME columns declared without fractional
-    seconds, which is exactly where dialect-dependent rounding would bite.
-    Seeds three holds around the boundary of 2026-06-11 and asserts only the
-    one opened within that day, still unresumed, is active."""
+    Covers every arm of `_active_as_of` with real rows, so the assertions
+    below fail if MariaDB disagrees with SQLite about any of them:
+      MDB-IN            opened at the last second of `as_of`      -> ACTIVE (age 0)
+      MDB-AT-CUTOFF     resumed exactly AT the next midnight      -> ACTIVE (age 41)
+      MDB-OUT           opened at the first second of the next day-> not yet open
+      MDB-RESUMED       resumed during `as_of`                    -> already resumed
+      MDB-SCRAPPED      terminal status, never resumed            -> not WIP
+    """
     from backend.orm.client import Client
     from backend.orm.hold_entry import HoldStatus
     from backend.orm.work_order import WorkOrder
-    from backend.routes.holds import HoldEntry, _active_as_of
+    from backend.routes.holds import HoldEntry
 
-    as_of = datetime(2026, 6, 11).date()
-    work_order_ids = ["WO-MDB-IN", "WO-MDB-OUT", "WO-MDB-RESUMED"]
+    holds = [
+        ("MDB-IN", datetime(2026, 6, 11, 23, 59, 59), None, HoldStatus.ON_HOLD),
+        ("MDB-AT-CUTOFF", datetime(2026, 5, 1, 9, 15), datetime(2026, 6, 12, 0, 0, 0), HoldStatus.RESUMED),
+        ("MDB-OUT", datetime(2026, 6, 12, 0, 0, 0), None, HoldStatus.ON_HOLD),
+        ("MDB-RESUMED", datetime(2026, 5, 1, 9, 15), datetime(2026, 6, 11, 10, 0), HoldStatus.RESUMED),
+        ("MDB-SCRAPPED", datetime(2026, 5, 1, 9, 15), None, HoldStatus.SCRAPPED),
+    ]
+
     session = SessionLocal()
     try:
         session.add(Client(client_id="MDBBOUND", client_name="MariaDB Boundary"))
@@ -419,55 +438,82 @@ def test_wip_aging_snapshot_boundary_is_exact_on_mariadb(mariadb_schema):
         session.add_all(
             [
                 WorkOrder(
-                    work_order_id=wo_id,
+                    work_order_id=f"WO-{hold_id}",
                     client_id="MDBBOUND",
                     style_model="MDB-STYLE",
                     planned_quantity=1,
                 )
-                for wo_id in work_order_ids
+                for hold_id, _, _, _ in holds
             ]
         )
         session.flush()
         session.add_all(
             [
-                # Last second of `as_of`, never resumed -> ACTIVE.
                 HoldEntry(
-                    hold_entry_id="MDB-IN",
+                    hold_entry_id=hold_id,
                     client_id="MDBBOUND",
-                    work_order_id="WO-MDB-IN",
-                    hold_date=datetime(2026, 6, 11, 23, 59, 59),
-                    hold_status=HoldStatus.ON_HOLD,
+                    work_order_id=f"WO-{hold_id}",
+                    hold_date=hold_date,
+                    resume_date=resume_date,
+                    hold_status=hold_status,
                     hold_reason_category="QUALITY",
-                ),
-                # First second of the next day -> NOT yet open at the snapshot.
-                HoldEntry(
-                    hold_entry_id="MDB-OUT",
-                    client_id="MDBBOUND",
-                    work_order_id="WO-MDB-OUT",
-                    hold_date=datetime(2026, 6, 12, 0, 0, 0),
-                    hold_status=HoldStatus.ON_HOLD,
-                    hold_reason_category="QUALITY",
-                ),
-                # Opened earlier but resumed during `as_of` -> no longer WIP.
-                HoldEntry(
-                    hold_entry_id="MDB-RESUMED",
-                    client_id="MDBBOUND",
-                    work_order_id="WO-MDB-RESUMED",
-                    hold_date=datetime(2026, 5, 1, 9, 15),
-                    resume_date=datetime(2026, 6, 11, 10, 0),
-                    hold_status=HoldStatus.RESUMED,
-                    hold_reason_category="QUALITY",
-                ),
+                )
+                for hold_id, hold_date, resume_date, hold_status in holds
             ]
         )
         session.commit()
-
-        active = session.query(HoldEntry.hold_entry_id).filter(_active_as_of(as_of)).all()
-        assert [row[0] for row in active] == ["MDB-IN"]
+        yield session
     finally:
-        # Children before parents -- same FK constraint, in reverse.
-        session.query(HoldEntry).filter(HoldEntry.client_id == "MDBBOUND").delete()
-        session.query(WorkOrder).filter(WorkOrder.client_id == "MDBBOUND").delete()
-        session.query(Client).filter(Client.client_id == "MDBBOUND").delete()
-        session.commit()
-        session.close()
+        try:
+            # A failed assertion query leaves the session pending-rollback;
+            # without this the teardown DELETEs would fail too and the seeded
+            # rows would survive into later tests.
+            session.rollback()
+            session.query(HoldEntry).filter(HoldEntry.client_id == "MDBBOUND").delete()
+            session.query(WorkOrder).filter(WorkOrder.client_id == "MDBBOUND").delete()
+            session.query(Client).filter(Client.client_id == "MDBBOUND").delete()
+            session.commit()
+        finally:
+            # Nested so a failing teardown still returns the connection.
+            session.close()
+
+
+@requires_mariadb
+def test_wip_aging_snapshot_boundary_is_exact_on_mariadb(mariadb_boundary_holds):
+    """The as-of boundary must land identically on MariaDB and SQLite.
+
+    This is the assertion the SQLite suite structurally cannot make: the
+    cutoff is compared against DATETIME columns declared without fractional
+    seconds, which is exactly where dialect-dependent rounding would bite.
+    Includes the equality case on BOTH sides of the cutoff (a hold resumed
+    exactly at the next midnight is still active), which is what separates
+    `>=` from `>` — a test without it passes under either operator."""
+    from backend.routes.holds import HoldEntry, _active_as_of
+
+    session = mariadb_boundary_holds
+    active = session.query(HoldEntry.hold_entry_id).filter(_active_as_of(datetime(2026, 6, 11).date())).all()
+    assert sorted(row[0] for row in active) == ["MDB-AT-CUTOFF", "MDB-IN"]
+
+
+@requires_mariadb
+def test_wip_aging_trend_average_is_correct_on_mariadb(mariadb_boundary_holds):
+    """The trend AVG must produce the same integer-day ages as the snapshot
+    endpoints compute in Python.
+
+    Over an EMPTY table AVG is NULL no matter what date_diff_days returns, so
+    an empty-table test proves nothing about the arithmetic. Against the
+    seeded rows the two active holds age 0 (opened on `as_of`) and 41
+    (2026-05-01 -> 2026-06-11), so a correct MariaDB result is exactly 20.5.
+    Without the func.date() truncation the times-of-day would drag this off
+    the whole number."""
+    from backend.routes.holds import HoldEntry, _active_as_of
+
+    current_date = datetime(2026, 6, 11).date()
+    session = mariadb_boundary_holds
+    result = (
+        session.query(func.avg(date_diff_days(current_date, func.date(HoldEntry.hold_date))))
+        .filter(_active_as_of(current_date))
+        .scalar()
+    )
+    assert result is not None
+    assert abs(float(result) - 20.5) < 0.001
