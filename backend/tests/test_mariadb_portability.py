@@ -491,7 +491,16 @@ def test_wip_aging_snapshot_boundary_is_exact_on_mariadb(mariadb_boundary_holds)
     from backend.routes.holds import HoldEntry, _active_as_of
 
     session = mariadb_boundary_holds
-    active = session.query(HoldEntry.hold_entry_id).filter(_active_as_of(datetime(2026, 6, 11).date())).all()
+    # Scoped to this fixture's client. `mariadb_schema` rebuilds the schema
+    # per test so there should be nothing else in HOLD_ENTRY, but an
+    # unscoped read would silently depend on that and start failing the day
+    # a session- or module-scoped variant is introduced.
+    active = (
+        session.query(HoldEntry.hold_entry_id)
+        .filter(_active_as_of(datetime(2026, 6, 11).date()))
+        .filter(HoldEntry.client_id == "MDBBOUND")
+        .all()
+    )
     assert sorted(row[0] for row in active) == ["MDB-AT-CUTOFF", "MDB-IN"]
 
 
@@ -513,6 +522,7 @@ def test_wip_aging_trend_average_is_correct_on_mariadb(mariadb_boundary_holds):
     result = (
         session.query(func.avg(date_diff_days(current_date, func.date(HoldEntry.hold_date))))
         .filter(_active_as_of(current_date))
+        .filter(HoldEntry.client_id == "MDBBOUND")  # see boundary test: don't depend on an empty table
         .scalar()
     )
     assert result is not None
