@@ -453,15 +453,21 @@ def test_trend_point_equals_snapshot_for_the_same_date(_bind, admin_user):
     with `end_date=D`. These drifted before `_snapshot_cutoff` centralized
     the predicate (trend put the resume boundary at midnight). The fixture
     deliberately spans all three cases the boundary decides: still open,
-    resumed during D, resumed after D."""
+    resumed during D, resumed after D.
+
+    Every hold_date carries a NON-ZERO time component on purpose. An earlier
+    version of this test used midnight timestamps and passed while the two
+    surfaces genuinely disagreed: date_diff_days returns FRACTIONAL days, so
+    a hold opened at 09:00 aged 44.625 on the trend line and 45 in the
+    snapshot. Midnight fixtures cannot see that class of bug."""
     db = _bind
     client = TestDataFactory.create_client(db)
     snapshot_day = date(2026, 6, 15)
     fixtures = [
         # (suffix, hold_date, resume_date) -- open, resumed-during-D, resumed-after-D
-        ("OPEN", datetime(2026, 5, 1, tzinfo=timezone.utc), None),
-        ("MID", datetime(2026, 5, 10, tzinfo=timezone.utc), datetime(2026, 6, 15, 10, 0, tzinfo=timezone.utc)),
-        ("LATE", datetime(2026, 5, 20, tzinfo=timezone.utc), datetime(2026, 6, 20, 10, 0, tzinfo=timezone.utc)),
+        ("OPEN", datetime(2026, 5, 1, 9, 15, tzinfo=timezone.utc), None),
+        ("MID", datetime(2026, 5, 10, 17, 45, tzinfo=timezone.utc), datetime(2026, 6, 15, 10, 0, tzinfo=timezone.utc)),
+        ("LATE", datetime(2026, 5, 20, 6, 5, tzinfo=timezone.utc), datetime(2026, 6, 20, 10, 0, tzinfo=timezone.utc)),
     ]
     for suffix, hold_date, resume_date in fixtures:
         wo = TestDataFactory.create_work_order(db, client_id=client.client_id, work_order_id=f"WO-TREND-{suffix}")

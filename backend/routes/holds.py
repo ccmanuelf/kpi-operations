@@ -609,7 +609,14 @@ def get_wip_aging_trend(
         # (= midnight), putting the resume boundary at the START of the day
         # while hold_date sat at the end -- the asymmetry documented in
         # `_snapshot_cutoff`.
-        query = db.query(func.avg(date_diff_days(current_date, HoldEntry.hold_date))).filter(
+        # `func.date()` truncates hold_date to a calendar day before the
+        # diff. date_diff_days returns FRACTIONAL days, so without this a
+        # hold opened at 09:00 ages 44.625 here while the snapshot endpoints
+        # report 45 -- the two surfaces would disagree on every hold with a
+        # time component, which is all of them in production (cross-model
+        # review finding). DATE() exists in both dialects, so this stays
+        # portable.
+        query = db.query(func.avg(date_diff_days(current_date, func.date(HoldEntry.hold_date)))).filter(
             _active_as_of(current_date)
         )
 
