@@ -285,11 +285,22 @@ def test_hold_opened_during_snapshot_day_is_active_at_age_zero(_bind, admin_user
         app.dependency_overrides.pop(get_current_user, None)
 
 
-@pytest.mark.parametrize("terminal_status", [HoldStatus.CANCELLED, HoldStatus.RELEASED, HoldStatus.SCRAPPED])
+@pytest.mark.parametrize(
+    "terminal_status",
+    [
+        HoldStatus.CANCELLED,
+        HoldStatus.RELEASED,
+        HoldStatus.SCRAPPED,
+        # Not terminal, excluded for the other reason: the hold is only
+        # REQUESTED, so nothing has stopped yet (owner ruling 2026-08-10).
+        HoldStatus.PENDING_HOLD_APPROVAL,
+    ],
+)
 def test_terminal_status_hold_is_not_active_wip(_bind, admin_user, terminal_status):
-    """A hold in a terminal status left WIP without ever stamping
-    `resume_date`, so a resume_date-only predicate would age it forever.
-    CANCELLED/RELEASED/SCRAPPED must not count as active WIP."""
+    """A hold in one of these statuses is not aging WIP, and none of them
+    stamps `resume_date` -- so a resume_date-only predicate would age them
+    forever. CANCELLED/RELEASED/SCRAPPED left WIP without resuming;
+    PENDING_HOLD_APPROVAL never entered it."""
     db = _bind
     client = TestDataFactory.create_client(db)
     wo = TestDataFactory.create_work_order(db, client_id=client.client_id)
@@ -316,8 +327,11 @@ def test_terminal_status_hold_is_not_active_wip(_bind, admin_user, terminal_stat
 
 
 def test_pending_resume_approval_still_counts_as_active_wip(_bind, admin_user):
-    """The counterpart to the terminal-status exclusion: work awaiting
-    resume approval has NOT resumed, so it is still WIP on hold."""
+    """The counterpart to the exclusion above, and deliberately the OPPOSITE
+    call from PENDING_HOLD_APPROVAL: work awaiting *resume* approval has
+    genuinely stopped and is waiting for permission to restart, so it is
+    still aging WIP. The distinction is what keeps the headline figure
+    honest -- counting both took it from 8 to 12 on live VM data."""
     db = _bind
     client = TestDataFactory.create_client(db)
     wo = TestDataFactory.create_work_order(db, client_id=client.client_id)

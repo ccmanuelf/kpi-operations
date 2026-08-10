@@ -421,6 +421,12 @@ def mariadb_boundary_holds(mariadb_schema):
       MDB-OUT           opened at the first second of the next day-> not yet open
       MDB-RESUMED       resumed during `as_of`                    -> already resumed
       MDB-SCRAPPED      terminal status, never resumed            -> not WIP
+      MDB-PENDING-HOLD  hold only REQUESTED, never resumed        -> not WIP
+
+    MDB-PENDING-HOLD and MDB-SCRAPPED both sit inside the active date range
+    with a NULL resume_date, so they are excluded by status alone -- drop
+    either from _NON_WIP_HOLD_STATUSES and both the ID set and the average
+    below move.
     """
     from backend.orm.client import Client
     from backend.orm.hold_entry import HoldStatus
@@ -433,6 +439,7 @@ def mariadb_boundary_holds(mariadb_schema):
         ("MDB-OUT", datetime(2026, 6, 12, 0, 0, 0), None, HoldStatus.ON_HOLD),
         ("MDB-RESUMED", datetime(2026, 5, 1, 9, 15), datetime(2026, 6, 11, 10, 0), HoldStatus.RESUMED),
         ("MDB-SCRAPPED", datetime(2026, 5, 1, 9, 15), None, HoldStatus.SCRAPPED),
+        ("MDB-PENDING-HOLD", datetime(2026, 5, 1, 9, 15), None, HoldStatus.PENDING_HOLD_APPROVAL),
     ]
 
     session = SessionLocal()
