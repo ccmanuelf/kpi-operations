@@ -1,5 +1,0 @@
-n_days = 5;
-n_products = 2;
-weekly_demand = [200, 100];
-minutes_per_piece_x100 = [167, 112];
-daily_minutes = 480;

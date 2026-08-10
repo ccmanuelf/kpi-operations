@@ -161,3 +161,6 @@ docs/analysis/SCHEMA_COMPARISON.json
 # Local marketing assets (LinkedIn carousel/video/PNGs + post drafts) — not source
 marketing/
 .gstack/
+
+# MiniZinc temp data files written by simulation_v2 optimizer runs
+backend/simulation_v2/optimization/tmp*.dzn
