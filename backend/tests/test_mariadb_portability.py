@@ -371,7 +371,10 @@ def test_wip_aging_top_query_shape_executes_on_mariadb(mariadb_schema):
         )
     finally:
         session.close()
-    assert rows == []
+    # Assert it EXECUTED, not that the table is empty: `mariadb_schema` is
+    # module-scoped, so a `== []` assertion would silently depend on running
+    # before mariadb_boundary_holds seeds its rows.
+    assert isinstance(rows, list)
 
 
 @requires_mariadb
@@ -401,7 +404,10 @@ def test_wip_aging_trend_avg_executes_on_mariadb(mariadb_schema):
         )
     finally:
         session.close()
-    assert result is None
+    # None (empty table) or a number (if seeded rows exist) both prove the
+    # expression executed; see the boundary test for why this file cannot
+    # assume an empty HOLD_ENTRY.
+    assert result is None or float(result) >= 0
 
 
 @pytest.fixture
@@ -491,10 +497,11 @@ def test_wip_aging_snapshot_boundary_is_exact_on_mariadb(mariadb_boundary_holds)
     from backend.routes.holds import HoldEntry, _active_as_of
 
     session = mariadb_boundary_holds
-    # Scoped to this fixture's client. `mariadb_schema` rebuilds the schema
-    # per test so there should be nothing else in HOLD_ENTRY, but an
-    # unscoped read would silently depend on that and start failing the day
-    # a session- or module-scoped variant is introduced.
+    # Scoped to this fixture's client, and REQUIRED rather than defensive:
+    # `mariadb_schema` is module-scoped, so the schema is built once for the
+    # whole file and HOLD_ENTRY rows survive between tests in it. An
+    # unscoped read here would take whatever any other test left behind into
+    # its ID set.
     active = (
         session.query(HoldEntry.hold_entry_id)
         .filter(_active_as_of(datetime(2026, 6, 11).date()))
