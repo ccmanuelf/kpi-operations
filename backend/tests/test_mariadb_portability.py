@@ -337,12 +337,19 @@ def test_date_diff_days_executes_on_mariadb(mariadb_schema):
 
 @requires_mariadb
 def test_wip_aging_top_query_shape_executes_on_mariadb(mariadb_schema):
-    """The get_top_aging_items query shape (SELECT + ORDER BY date_diff_days)
-    must execute on MariaDB without OperationalError, even against an empty
-    HOLD_ENTRY table (proves the function resolves; 1305 is raised at parse/exec
-    time regardless of row count)."""
-    from backend.orm.hold_entry import HoldEntry, HoldStatus
+    """The get_top_aging_items query shape must execute on MariaDB without
+    OperationalError, even against an empty HOLD_ENTRY table (proves every
+    function/operator resolves; 1305 is raised at parse/exec time regardless
+    of row count).
+
+    Imports the PRODUCTION predicate rather than hand-copying the filter.
+    An earlier revision of this test copied the shape, and when the route
+    changed (ORDER BY date_diff_days + hold_status filter -> _active_as_of +
+    ORDER BY hold_date) the copy kept passing while asserting SQL production
+    no longer builds -- a green gate proving nothing. Importing it means this
+    job fails if the real predicate ever stops executing on MariaDB."""
     from backend.orm.work_order import WorkOrder
+    from backend.routes.holds import HoldEntry, _active_as_of
 
     session = SessionLocal()
     try:
@@ -351,11 +358,10 @@ def test_wip_aging_top_query_shape_executes_on_mariadb(mariadb_schema):
                 HoldEntry.work_order_id,
                 WorkOrder.style_model,
                 HoldEntry.hold_date,
-                date_diff_days(func.now(), HoldEntry.hold_date),
             )
             .outerjoin(WorkOrder, HoldEntry.work_order_id == WorkOrder.work_order_id)
-            .filter(HoldEntry.hold_status == HoldStatus.ON_HOLD)
-            .order_by(date_diff_days(func.now(), HoldEntry.hold_date).desc())
+            .filter(_active_as_of(datetime(2026, 6, 11).date()))
+            .order_by(HoldEntry.hold_date.asc())
             .limit(10)
             .all()
         )
@@ -366,18 +372,102 @@ def test_wip_aging_top_query_shape_executes_on_mariadb(mariadb_schema):
 
 @requires_mariadb
 def test_wip_aging_trend_avg_executes_on_mariadb(mariadb_schema):
-    """The get_wip_aging_trend AVG(date_diff_days(...)) shape must execute on
-    MariaDB. Empty table → AVG is NULL → scalar() is None, no OperationalError."""
-    from backend.orm.hold_entry import HoldEntry
+    """The get_wip_aging_trend AVG(date_diff_days(DATE(...))) shape must
+    execute on MariaDB. Empty table → AVG is NULL → scalar() is None, no
+    OperationalError.
+
+    Mirrors the route exactly, including the func.date() truncation inside
+    the diff and the shared _active_as_of predicate — DATE() and the
+    NOT IN / IS NULL combination all have to resolve on MariaDB."""
+    from backend.routes.holds import HoldEntry, _active_as_of
 
     current_date = datetime(2026, 6, 11).date()
     session = SessionLocal()
     try:
         result = (
-            session.query(func.avg(date_diff_days(current_date, HoldEntry.hold_date)))
-            .filter(HoldEntry.hold_date <= current_date)
+            session.query(func.avg(date_diff_days(current_date, func.date(HoldEntry.hold_date))))
+            .filter(_active_as_of(current_date))
             .scalar()
         )
     finally:
         session.close()
     assert result is None
+
+
+@requires_mariadb
+def test_wip_aging_snapshot_boundary_is_exact_on_mariadb(mariadb_schema):
+    """The as-of boundary must land identically on MariaDB and SQLite.
+
+    This is the one assertion the SQLite suite structurally cannot make: the
+    cutoff is compared against DATETIME columns declared without fractional
+    seconds, which is exactly where dialect-dependent rounding would bite.
+    Seeds three holds around the boundary of 2026-06-11 and asserts only the
+    one opened within that day, still unresumed, is active."""
+    from backend.orm.client import Client
+    from backend.orm.hold_entry import HoldStatus
+    from backend.orm.work_order import WorkOrder
+    from backend.routes.holds import HoldEntry, _active_as_of
+
+    as_of = datetime(2026, 6, 11).date()
+    work_order_ids = ["WO-MDB-IN", "WO-MDB-OUT", "WO-MDB-RESUMED"]
+    session = SessionLocal()
+    try:
+        session.add(Client(client_id="MDBBOUND", client_name="MariaDB Boundary"))
+        session.flush()
+        # HOLD_ENTRY.work_order_id is a real FK; InnoDB enforces it even where
+        # SQLite would let an orphan through, so the parents come first.
+        session.add_all(
+            [
+                WorkOrder(
+                    work_order_id=wo_id,
+                    client_id="MDBBOUND",
+                    style_model="MDB-STYLE",
+                    planned_quantity=1,
+                )
+                for wo_id in work_order_ids
+            ]
+        )
+        session.flush()
+        session.add_all(
+            [
+                # Last second of `as_of`, never resumed -> ACTIVE.
+                HoldEntry(
+                    hold_entry_id="MDB-IN",
+                    client_id="MDBBOUND",
+                    work_order_id="WO-MDB-IN",
+                    hold_date=datetime(2026, 6, 11, 23, 59, 59),
+                    hold_status=HoldStatus.ON_HOLD,
+                    hold_reason_category="QUALITY",
+                ),
+                # First second of the next day -> NOT yet open at the snapshot.
+                HoldEntry(
+                    hold_entry_id="MDB-OUT",
+                    client_id="MDBBOUND",
+                    work_order_id="WO-MDB-OUT",
+                    hold_date=datetime(2026, 6, 12, 0, 0, 0),
+                    hold_status=HoldStatus.ON_HOLD,
+                    hold_reason_category="QUALITY",
+                ),
+                # Opened earlier but resumed during `as_of` -> no longer WIP.
+                HoldEntry(
+                    hold_entry_id="MDB-RESUMED",
+                    client_id="MDBBOUND",
+                    work_order_id="WO-MDB-RESUMED",
+                    hold_date=datetime(2026, 5, 1, 9, 15),
+                    resume_date=datetime(2026, 6, 11, 10, 0),
+                    hold_status=HoldStatus.RESUMED,
+                    hold_reason_category="QUALITY",
+                ),
+            ]
+        )
+        session.commit()
+
+        active = session.query(HoldEntry.hold_entry_id).filter(_active_as_of(as_of)).all()
+        assert [row[0] for row in active] == ["MDB-IN"]
+    finally:
+        # Children before parents -- same FK constraint, in reverse.
+        session.query(HoldEntry).filter(HoldEntry.client_id == "MDBBOUND").delete()
+        session.query(WorkOrder).filter(WorkOrder.client_id == "MDBBOUND").delete()
+        session.query(Client).filter(Client.client_id == "MDBBOUND").delete()
+        session.commit()
+        session.close()
