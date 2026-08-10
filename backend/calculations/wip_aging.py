@@ -8,7 +8,8 @@ Tracks how long inventory sits in hold status
 """
 
 from sqlalchemy.orm import Session
-from sqlalchemy import and_
+from sqlalchemy import and_, or_
+from sqlalchemy.sql.elements import ColumnElement
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Dict, List, Optional, Sequence, Tuple
@@ -24,6 +25,115 @@ logger = logging.getLogger(__name__)
 # Fallback default thresholds
 DEFAULT_AGING_THRESHOLD_DAYS = 7
 DEFAULT_CRITICAL_THRESHOLD_DAYS = 14
+
+
+# =============================================================================
+# "Is this hold aging WIP right now?" — the ONE definition
+#
+# Lives here, in the calculation layer, because both the WIP-aging endpoints
+# (backend/routes/holds.py) and identify_chronic_holds below must answer it
+# identically. It previously lived in the routes module while
+# identify_chronic_holds kept its own `hold_status == ON_HOLD` filter, so the
+# chronic list and the aging KPI disagreed about which holds were active.
+# Routes import from here; nothing here imports routes.
+# =============================================================================
+
+# Statuses that are never aging WIP, for two DIFFERENT reasons.
+#
+# Left WIP without ever stamping `resume_date` -- `resume_date IS NULL` means
+# "never resumed", which equals "still on hold" only on a live path. A
+# SCRAPPED or CANCELLED hold never resumes and would otherwise age forever.
+# No writer sets these today; they are declared in HOLD_STATUS_CATALOG, so
+# this closes the hole rather than relying on no such rows existing.
+#
+# Never ENTERED hold -- PENDING_HOLD_APPROVAL is a hold *requested* and not
+# yet approved, so the material is still in normal flow and nothing has
+# stopped. Owner ruling 2026-08-10, made against live VM data where counting
+# it took the headline WIP-aging figure from 8 holds to 12. The opposite call
+# from PENDING_RESUME_APPROVAL, which DOES count: there the work has genuinely
+# stopped and is waiting for permission to restart.
+#
+# Deliberately an exclusion list, not an allow-list of (ON_HOLD,
+# PENDING_RESUME_APPROVAL): `hold_status` is CURRENT state, so a hold that
+# reads RESUMED today was still on hold at a past `as_of`. An allow-list
+# would drop it from every historical snapshot; the `resume_date` comparison
+# is what dates that correctly.
+NON_WIP_HOLD_STATUSES = (
+    HoldStatus.CANCELLED,
+    HoldStatus.RELEASED,
+    HoldStatus.SCRAPPED,
+    HoldStatus.PENDING_HOLD_APPROVAL,
+)
+
+
+def snapshot_cutoff(as_of: date) -> datetime:
+    """EXCLUSIVE upper bound for as-of scoping: midnight starting the day
+    after `as_of`.
+
+    Every WIP-aging consumer scopes against this single cutoff so their
+    boundaries cannot drift: a hold is active as of date D iff
+    `hold_date < cutoff` AND (`resume_date IS NULL` OR
+    `resume_date >= cutoff`) -- i.e. both sides settle at the END of day D.
+
+    Both sides deliberately cover the whole of day D. An earlier revision
+    compared `resume_date` against the START of the day (a bare `date` binds
+    to midnight in SQL), which made the boundaries asymmetric: a hold opened
+    at any hour of D counted, but a hold *resumed* at any hour of D also
+    still counted -- so a hold opened and resumed within D reported as
+    active with age 0. At the end of day D that hold is not on hold, and WIP
+    aging asks what is sitting on hold at the snapshot instant.
+
+    Exclusive-next-midnight rather than an inclusive `23:59:59.999999`:
+    MariaDB DATETIME columns are declared without fractional seconds, so a
+    microsecond-bearing bound risks dialect-dependent rounding at exactly
+    the boundary this predicate exists to define (cross-model review
+    finding). Midnight is representable exactly in both dialects, and the
+    two forms are otherwise equivalent -- every instant within day D is
+    strictly before the next midnight.
+    """
+    return datetime.combine(as_of + timedelta(days=1), datetime.min.time())
+
+
+def active_as_of(as_of: date) -> ColumnElement[bool]:
+    """SQL predicate for "this hold was still on hold at the `as_of` instant".
+
+    The single source of truth for WIP-aging scoping: the aggregate, top-N,
+    trend and chronic-hold queries all filter on this, so their notions of
+    "active" cannot drift apart. Expressed in SQL (not Python) so callers
+    keep index-assisted ORDER BY ... LIMIT instead of loading every candidate
+    hold into memory, and so aggregates transfer only rows they will count.
+
+    Active means: opened on or before `as_of`, not yet resumed as of then,
+    and in a status that is actually aging WIP -- see `NON_WIP_HOLD_STATUSES`
+    for the two reasons a status is excluded. PENDING_RESUME_APPROVAL counts
+    (work has stopped, awaiting permission to restart); PENDING_HOLD_APPROVAL
+    does not (the hold is only requested, so nothing has stopped).
+
+    Portable by construction: plain comparisons against a bound datetime, no
+    dialect-specific date arithmetic and no fractional seconds.
+
+    KNOWN LIMITATION (historical snapshots). `hold_status` is CURRENT state,
+    so a past `as_of` is judged partly by what the hold looks like TODAY: a
+    hold that was only PENDING_HOLD_APPROVAL back then but has since been
+    approved counts for that date, and one still pending now is absent from
+    every past date. Dates and resume-state ARE evaluated correctly (that is
+    what `resume_date` does), so this is confined to the status arm and only
+    bites callers that walk past dates -- `/wip-aging/trend`. As-of-now
+    callers pass today's date and are unaffected.
+
+    This is inherited, not introduced -- the previous `hold_status ==
+    ON_HOLD` filter was strictly worse, dropping every since-resumed hold
+    out of history altogether. Fixing it properly needs a status-transition
+    history to ask "what was this hold's status on date D", which is exactly
+    the transitions dataset scoped for Cycle 4 PR-C. Do not paper over it
+    with more current-status logic.
+    """
+    cutoff = snapshot_cutoff(as_of)
+    return and_(
+        HoldEntry.hold_date < cutoff,
+        or_(HoldEntry.resume_date.is_(None), HoldEntry.resume_date >= cutoff),
+        HoldEntry.hold_status.notin_(NON_WIP_HOLD_STATUSES),
+    )
 
 
 def get_client_wip_thresholds(db: Session, client_id: Optional[str] = None) -> Tuple[int, int]:
@@ -256,11 +366,24 @@ def identify_chronic_holds(
 
     threshold_date = today - timedelta(days=threshold_days)
 
-    # Use date comparison instead of datediff (SQLite compatible)
-    threshold_datetime = datetime.combine(threshold_date, datetime.min.time())
-    query = db.query(HoldEntry).filter(
-        and_(HoldEntry.hold_status == HoldStatus.ON_HOLD, HoldEntry.hold_date <= threshold_datetime)
-    )
+    # "Chronic" = active WIP (the shared `active_as_of` definition) that has
+    # additionally been on hold at least `threshold_days`. The active arm was
+    # previously a bare `hold_status == ON_HOLD`, which disagreed with the
+    # WIP-aging endpoints: it dropped PENDING_RESUME_APPROVAL holds (work
+    # stopped, awaiting restart -- chronic if old) and would have kept a
+    # CANCELLED/SCRAPPED hold had one ever carried that status.
+    #
+    # The age arm uses `snapshot_cutoff(threshold_date)` -- the END of the
+    # threshold day -- for the same reason the rest of this family does. It
+    # was `<= midnight of threshold_date`, which silently dropped any hold
+    # opened later in the day on the threshold date even though `aging_days`
+    # computed below reports it as exactly `threshold_days` old: the row
+    # qualified by the function's own arithmetic and was filtered out by the
+    # query (cross-model review finding; pre-existing, and inconsistent with
+    # the end-of-day convention once the predicates were unified). Boundary
+    # is therefore `aging_days >= threshold_days`, stated rather than
+    # accidental. Date comparison, not datediff, keeps it SQLite-compatible.
+    query = db.query(HoldEntry).filter(and_(active_as_of(today), HoldEntry.hold_date < snapshot_cutoff(threshold_date)))
 
     # Filter by client_id if provided
     if client_id:

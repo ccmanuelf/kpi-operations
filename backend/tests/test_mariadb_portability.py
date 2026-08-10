@@ -344,7 +344,7 @@ def test_wip_aging_top_query_shape_executes_on_mariadb(mariadb_schema):
 
     Imports the PRODUCTION predicate rather than hand-copying the filter.
     An earlier revision of this test copied the shape, and when the route
-    changed (ORDER BY date_diff_days + hold_status filter -> _active_as_of +
+    changed (ORDER BY date_diff_days + hold_status filter -> active_as_of +
     ORDER BY hold_date) the copy kept passing while asserting SQL production
     no longer builds -- a green gate proving nothing. Importing it means this
     job fails if the real predicate ever stops executing on MariaDB.
@@ -353,7 +353,7 @@ def test_wip_aging_top_query_shape_executes_on_mariadb(mariadb_schema):
     however the predicate behaves. Row-level correctness is asserted by
     test_wip_aging_snapshot_boundary_is_exact_on_mariadb."""
     from backend.orm.work_order import WorkOrder
-    from backend.routes.holds import HoldEntry, _active_as_of
+    from backend.calculations.wip_aging import HoldEntry, active_as_of
 
     session = SessionLocal()
     try:
@@ -364,7 +364,7 @@ def test_wip_aging_top_query_shape_executes_on_mariadb(mariadb_schema):
                 HoldEntry.hold_date,
             )
             .outerjoin(WorkOrder, HoldEntry.work_order_id == WorkOrder.work_order_id)
-            .filter(_active_as_of(datetime(2026, 6, 11).date()))
+            .filter(active_as_of(datetime(2026, 6, 11).date()))
             .order_by(HoldEntry.hold_date.asc())
             .limit(10)
             .all()
@@ -384,7 +384,7 @@ def test_wip_aging_trend_avg_executes_on_mariadb(mariadb_schema):
     OperationalError.
 
     Mirrors the route exactly, including the func.date() truncation inside
-    the diff and the shared _active_as_of predicate — DATE() and the
+    the diff and the shared active_as_of predicate — DATE() and the
     NOT IN / IS NULL combination all have to resolve on MariaDB.
 
     SCOPE: this proves EXECUTION only. AVG over zero rows is NULL whatever
@@ -392,14 +392,14 @@ def test_wip_aging_trend_avg_executes_on_mariadb(mariadb_schema):
     wrong on MariaDB. The correctness assertion lives in
     test_wip_aging_trend_average_is_correct_on_mariadb, which runs the same
     expression over seeded rows."""
-    from backend.routes.holds import HoldEntry, _active_as_of
+    from backend.calculations.wip_aging import HoldEntry, active_as_of
 
     current_date = datetime(2026, 6, 11).date()
     session = SessionLocal()
     try:
         result = (
             session.query(func.avg(date_diff_days(current_date, func.date(HoldEntry.hold_date))))
-            .filter(_active_as_of(current_date))
+            .filter(active_as_of(current_date))
             .scalar()
         )
     finally:
@@ -414,7 +414,7 @@ def test_wip_aging_trend_avg_executes_on_mariadb(mariadb_schema):
 def mariadb_boundary_holds(mariadb_schema):
     """Seed holds straddling the as-of boundary of 2026-06-11 on live MariaDB.
 
-    Covers every arm of `_active_as_of` with real rows, so the assertions
+    Covers every arm of `active_as_of` with real rows, so the assertions
     below fail if MariaDB disagrees with SQLite about any of them:
       MDB-IN            opened at the last second of `as_of`      -> ACTIVE (age 0)
       MDB-AT-CUTOFF     resumed exactly AT the next midnight      -> ACTIVE (age 41)
@@ -425,7 +425,7 @@ def mariadb_boundary_holds(mariadb_schema):
 
     MDB-PENDING-HOLD and MDB-SCRAPPED both sit inside the active date range
     with a NULL resume_date, so they are excluded by status alone -- drop
-    either from _NON_WIP_HOLD_STATUSES and both the ID set and the average
+    either from NON_WIP_HOLD_STATUSES and both the ID set and the average
     below move.
     """
     from backend.orm.client import Client
@@ -501,7 +501,7 @@ def test_wip_aging_snapshot_boundary_is_exact_on_mariadb(mariadb_boundary_holds)
     Includes the equality case on BOTH sides of the cutoff (a hold resumed
     exactly at the next midnight is still active), which is what separates
     `>=` from `>` — a test without it passes under either operator."""
-    from backend.routes.holds import HoldEntry, _active_as_of
+    from backend.calculations.wip_aging import HoldEntry, active_as_of
 
     session = mariadb_boundary_holds
     # Scoped to this fixture's client, and REQUIRED rather than defensive:
@@ -511,7 +511,7 @@ def test_wip_aging_snapshot_boundary_is_exact_on_mariadb(mariadb_boundary_holds)
     # its ID set.
     active = (
         session.query(HoldEntry.hold_entry_id)
-        .filter(_active_as_of(datetime(2026, 6, 11).date()))
+        .filter(active_as_of(datetime(2026, 6, 11).date()))
         .filter(HoldEntry.client_id == "MDBBOUND")
         .all()
     )
@@ -529,13 +529,13 @@ def test_wip_aging_trend_average_is_correct_on_mariadb(mariadb_boundary_holds):
     (2026-05-01 -> 2026-06-11), so a correct MariaDB result is exactly 20.5.
     Without the func.date() truncation the times-of-day would drag this off
     the whole number."""
-    from backend.routes.holds import HoldEntry, _active_as_of
+    from backend.calculations.wip_aging import HoldEntry, active_as_of
 
     current_date = datetime(2026, 6, 11).date()
     session = mariadb_boundary_holds
     result = (
         session.query(func.avg(date_diff_days(current_date, func.date(HoldEntry.hold_date))))
-        .filter(_active_as_of(current_date))
+        .filter(active_as_of(current_date))
         .filter(HoldEntry.client_id == "MDBBOUND")  # see boundary test: don't depend on an empty table
         .scalar()
     )

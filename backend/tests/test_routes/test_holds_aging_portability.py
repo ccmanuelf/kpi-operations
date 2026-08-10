@@ -40,7 +40,7 @@ def test_wip_aging_trend_returns_200(test_client, admin_auth_headers):
 # AND (`resume_date IS NULL` OR `resume_date > end_of_day(as_of)`), where
 # `as_of = end_date` (default today); `start_date` no longer scopes the
 # query. All three WIP-aging endpoints (including /wip-aging/trend) share
-# that boundary via routes/holds.py `_snapshot_cutoff` -- see its docstring
+# that boundary via calculations/wip_aging.py `snapshot_cutoff` -- see its docstring
 # for why both sides are end-of-day.
 # ---------------------------------------------------------------------------
 
@@ -198,7 +198,7 @@ def test_past_window_ages_are_reproducible_not_today_leaking(_bind, admin_user):
 def test_hold_resumed_during_snapshot_day_is_not_active(_bind, admin_user):
     """The snapshot boundary is END of day: a hold resumed at any hour of
     `end_date` has already resumed at the snapshot instant, so it is not
-    active WIP. Guards the asymmetry described in `_snapshot_cutoff` --
+    active WIP. Guards the asymmetry described in `snapshot_cutoff` --
     binding a bare date put this boundary at midnight, which counted a
     resumed hold as still on hold for the whole of its resume day."""
     db = _bind
@@ -281,6 +281,88 @@ def test_hold_opened_during_snapshot_day_is_active_at_age_zero(_bind, admin_user
         body = resp.json()
         assert body["total_held_quantity"] == 1
         assert body["average_aging_days"] == pytest.approx(0, abs=0.1)
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+
+
+def test_chronic_holds_includes_hold_exactly_at_the_threshold(_bind, admin_user):
+    """A hold opened mid-morning exactly `threshold_days` ago is chronic.
+
+    The age arm used `<= midnight of threshold_date`, so such a hold was
+    filtered out by the query while the function's own `aging_days`
+    arithmetic reported it as exactly `threshold_days` old -- the row
+    qualified and was dropped. Boundary is `aging_days >= threshold_days`.
+    """
+    db = _bind
+    client = TestDataFactory.create_client(db)
+    wo = TestDataFactory.create_work_order(db, client_id=client.client_id, work_order_id="WO-THRESH")
+    opened = datetime.combine(date.today() - timedelta(days=30), datetime.min.time(), tzinfo=timezone.utc).replace(
+        hour=9, minute=30
+    )
+    _make_hold(
+        db,
+        client_id=client.client_id,
+        work_order_id=wo.work_order_id,
+        hold_entry_id="HOLD-THRESH-EXACT",
+        hold_date=opened,
+    )
+
+    c = _as(admin_user)
+    try:
+        resp = c.get("/api/kpi/chronic-holds", params={"threshold_days": 30, "client_id": client.client_id})
+        assert resp.status_code == 200
+        body = resp.json()
+        assert [item["hold_id"] for item in body] == ["HOLD-THRESH-EXACT"]
+        assert body[0]["aging_days"] == 30
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+
+
+def test_chronic_holds_uses_the_same_active_definition_as_wip_aging(_bind, admin_user):
+    """/api/kpi/chronic-holds must agree with GET /api/kpi/wip-aging about
+    which holds are active.
+
+    identify_chronic_holds used to carry its own `hold_status == ON_HOLD`
+    filter, so a PENDING_RESUME_APPROVAL hold 60 days old appeared in the
+    aging KPI but never in the chronic list -- two surfaces disagreeing about
+    the same holds. Both now filter on the shared `active_as_of` predicate.
+    """
+    db = _bind
+    client = TestDataFactory.create_client(db)
+    old = datetime.now(tz=timezone.utc) - timedelta(days=60)
+    for suffix, status in (("ONHOLD", HoldStatus.ON_HOLD), ("PENDRES", HoldStatus.PENDING_RESUME_APPROVAL)):
+        wo = TestDataFactory.create_work_order(db, client_id=client.client_id, work_order_id=f"WO-CHRONIC-{suffix}")
+        _make_hold(
+            db,
+            client_id=client.client_id,
+            work_order_id=wo.work_order_id,
+            hold_entry_id=f"HOLD-CHRONIC-{suffix}",
+            hold_date=old,
+            hold_status=status,
+        )
+    # Excluded by status: only REQUESTED, so not aging WIP at all.
+    wo_pending = TestDataFactory.create_work_order(db, client_id=client.client_id, work_order_id="WO-CHRONIC-PENDHOLD")
+    _make_hold(
+        db,
+        client_id=client.client_id,
+        work_order_id=wo_pending.work_order_id,
+        hold_entry_id="HOLD-CHRONIC-PENDHOLD",
+        hold_date=old,
+        hold_status=HoldStatus.PENDING_HOLD_APPROVAL,
+    )
+
+    c = _as(admin_user)
+    try:
+        aging = c.get("/api/kpi/wip-aging", params={"client_id": client.client_id})
+        chronic = c.get("/api/kpi/chronic-holds", params={"threshold_days": 30, "client_id": client.client_id})
+        assert aging.status_code == 200
+        assert chronic.status_code == 200
+        # Both see the same two holds; neither sees the pending-hold request.
+        assert aging.json()["total_held_quantity"] == 2
+        assert sorted(item["hold_id"] for item in chronic.json()) == [
+            "HOLD-CHRONIC-ONHOLD",
+            "HOLD-CHRONIC-PENDRES",
+        ]
     finally:
         app.dependency_overrides.pop(get_current_user, None)
 
@@ -464,7 +546,7 @@ def test_top_returns_oldest_holds_when_limit_truncates(_bind, admin_user):
 def test_trend_point_equals_snapshot_for_the_same_date(_bind, admin_user):
     """STRUCTURAL GUARD: /wip-aging/trend must share the snapshot boundary,
     so the trend point for date D equals the average GET /wip-aging reports
-    with `end_date=D`. These drifted before `_snapshot_cutoff` centralized
+    with `end_date=D`. These drifted before `snapshot_cutoff` centralized
     the predicate (trend put the resume boundary at midnight). The fixture
     deliberately spans all three cases the boundary decides: still open,
     resumed during D, resumed after D.

@@ -5,14 +5,13 @@ All holds CRUD and WIP aging KPI endpoints
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from sqlalchemy import and_, func, or_
-from sqlalchemy.sql.elements import ColumnElement
+from sqlalchemy import func
 from typing import List, Optional
 from datetime import date, datetime, timedelta, timezone
 
 from backend.database import get_db
 from backend.db.sql_functions import date_diff_days
-from backend.orm.hold_entry import HoldEntry, HoldStatus
+from backend.orm.hold_entry import HoldEntry
 from backend.schemas.hold import WIPHoldCreate, WIPHoldUpdate, WIPHoldResponse, WIPAgingResponse
 from backend.services.hold_service import (
     create_hold as create_wip_hold,
@@ -22,7 +21,7 @@ from backend.services.hold_service import (
     delete_hold as delete_wip_hold,
     validate_reason_for_client as validate_hold_reason_for_client,
 )
-from backend.calculations.wip_aging import identify_chronic_holds
+from backend.calculations.wip_aging import active_as_of, identify_chronic_holds
 from backend.auth.jwt import (
     get_current_active_supervisor,
     get_current_contributor,
@@ -345,106 +344,6 @@ def _hold_column_to_date(raw_value: object) -> Optional[date]:
     return None
 
 
-def _snapshot_cutoff(as_of: date) -> datetime:
-    """EXCLUSIVE upper bound for as-of snapshot scoping: midnight starting
-    the day after `as_of`.
-
-    ALL THREE WIP-aging endpoints scope against this single cutoff so their
-    boundaries cannot drift: a hold is active as of date D iff
-    `hold_date < cutoff` AND (`resume_date IS NULL` OR
-    `resume_date >= cutoff`) -- i.e. both sides settle at the END of day D.
-
-    Both sides deliberately cover the whole of day D. An earlier revision
-    compared `resume_date` against the START of the day (a bare `date` binds
-    to midnight in SQL), which made the boundaries asymmetric: a hold opened
-    at any hour of D counted, but a hold *resumed* at any hour of D also
-    still counted -- so a hold opened and resumed within D reported as
-    active with age 0. At the end of day D that hold is not on hold, and WIP
-    aging asks what is sitting on hold at the snapshot instant.
-
-    Exclusive-next-midnight rather than an inclusive `23:59:59.999999`:
-    MariaDB DATETIME columns are declared without fractional seconds, so a
-    microsecond-bearing bound risks dialect-dependent rounding at exactly
-    the boundary this predicate exists to define (cross-model review
-    finding). Midnight is representable exactly in both dialects, and the
-    two forms are otherwise equivalent -- every instant within day D is
-    strictly before the next midnight.
-    """
-    return datetime.combine(as_of + timedelta(days=1), datetime.min.time())
-
-
-# Statuses that are never aging WIP, for two DIFFERENT reasons.
-#
-# Left WIP without ever stamping `resume_date` -- `resume_date IS NULL` means
-# "never resumed", which equals "still on hold" only on a live path. A
-# SCRAPPED or CANCELLED hold never resumes and would otherwise age forever
-# (cross-model review finding). No writer sets these today; they are declared
-# in HOLD_STATUS_CATALOG, so this closes the hole rather than relying on no
-# such rows existing.
-#
-# Never ENTERED hold -- PENDING_HOLD_APPROVAL is a hold *requested* and not
-# yet approved, so the material is still in normal flow and nothing has
-# stopped. Owner ruling 2026-08-10, made against live VM data where counting
-# it took the headline WIP-aging figure from 8 holds to 12. Note this is the
-# opposite call from PENDING_RESUME_APPROVAL, which DOES count: there the
-# work has genuinely stopped and is waiting for permission to restart.
-#
-# Deliberately an exclusion list, not an allow-list of (ON_HOLD,
-# PENDING_RESUME_APPROVAL): `hold_status` is CURRENT state, so a hold that
-# reads RESUMED today was still on hold at a past `as_of`. An allow-list
-# would drop it from every historical snapshot; the `resume_date` comparison
-# is what dates that correctly.
-_NON_WIP_HOLD_STATUSES = (
-    HoldStatus.CANCELLED,
-    HoldStatus.RELEASED,
-    HoldStatus.SCRAPPED,
-    HoldStatus.PENDING_HOLD_APPROVAL,
-)
-
-
-def _active_as_of(as_of: date) -> ColumnElement[bool]:
-    """SQL predicate for "this hold was still on hold at the `as_of` instant".
-
-    The single source of truth for WIP-aging scoping: all three endpoints
-    filter on this, so their boundaries cannot drift apart. Expressed in SQL
-    (not Python) so `/wip-aging/top` keeps an index-assisted ORDER BY ...
-    LIMIT instead of loading every candidate hold into memory, and so the
-    aggregate endpoints transfer only rows they will actually count.
-
-    Active means: opened on or before `as_of`, not yet resumed as of then,
-    and in a status that is actually aging WIP -- see
-    `_NON_WIP_HOLD_STATUSES` for the two reasons a status is excluded.
-    PENDING_RESUME_APPROVAL counts (work has stopped, awaiting permission to
-    restart); PENDING_HOLD_APPROVAL does not (the hold is only requested, so
-    nothing has stopped).
-
-    Portable by construction: plain comparisons against a bound datetime, no
-    dialect-specific date arithmetic and no fractional seconds.
-
-    KNOWN LIMITATION (historical snapshots). `hold_status` is CURRENT state,
-    so a past `as_of` is judged partly by what the hold looks like TODAY: a
-    hold that was only PENDING_HOLD_APPROVAL back then but has since been
-    approved counts for that date, and one still pending now is absent from
-    every past date. Dates and resume-state ARE evaluated correctly (that is
-    what `resume_date` does), so this is confined to the status arm and only
-    bites `/wip-aging/trend`, which walks past dates; the two as-of-now
-    endpoints pass today's date and are unaffected.
-
-    This is inherited, not introduced -- the previous `hold_status ==
-    ON_HOLD` filter was strictly worse, dropping every since-resumed hold
-    out of history altogether. Fixing it properly needs a status-transition
-    history to ask "what was this hold's status on date D", which is exactly
-    the transitions dataset scoped for Cycle 4 PR-C. Do not paper over it
-    with more current-status logic.
-    """
-    cutoff = _snapshot_cutoff(as_of)
-    return and_(
-        HoldEntry.hold_date < cutoff,
-        or_(HoldEntry.resume_date.is_(None), HoldEntry.resume_date >= cutoff),
-        HoldEntry.hold_status.notin_(_NON_WIP_HOLD_STATUSES),
-    )
-
-
 @wip_aging_router.get("/wip-aging", response_model=WIPAgingResponse)
 def calculate_wip_aging_kpi(
     product_id: Optional[int] = None,
@@ -472,7 +371,7 @@ def calculate_wip_aging_kpi(
     A hold is in scope iff it was still active as of `as_of` (= `as_of_date`,
     falling back to `end_date`, falling back to today):
     `hold_date <= end_of_day(as_of)` AND (`resume_date IS NULL` OR
-    `resume_date > end_of_day(as_of)`) -- see `_active_as_of`, the single
+    `resume_date > end_of_day(as_of)`) -- see `active_as_of`, the single
     predicate all three WIP-aging endpoints share. Age is measured from
     `hold_date` to `as_of` -- NOT real-world today -- so a historical
     `end_date` reproduces the same snapshot on every call (same clamping
@@ -495,7 +394,7 @@ def calculate_wip_aging_kpi(
     # implies one) when a caller supplies both.
     as_of = as_of_date or end_date or date.today()
 
-    query = db.query(HoldEntry).filter(_active_as_of(as_of))
+    query = db.query(HoldEntry).filter(active_as_of(as_of))
 
     # Apply client filter
     query = query.filter(scope.filter(HoldEntry.client_id))
@@ -556,7 +455,7 @@ def get_top_aging_items(
     Same as-of snapshot semantics as GET /api/kpi/wip-aging (owner ruling
     2026-08-07): `as_of` = `end_date` (default today); `start_date` is
     accepted for API compatibility only and is IGNORED. Scoping is the
-    shared `_active_as_of` predicate. Age is computed in Python from
+    shared `active_as_of` predicate. Age is computed in Python from
     `hold_date` to `as_of`, not the DB's current time, so a historical
     `end_date` reproduces the same top-N list on every call (mirrors
     calculate_wip_aging_kpi; avoids dialect-specific date-diff SQL for the
@@ -582,7 +481,7 @@ def get_top_aging_items(
             HoldEntry.hold_date,
         )
         .outerjoin(WorkOrder, HoldEntry.work_order_id == WorkOrder.work_order_id)
-        .filter(_active_as_of(as_of))
+        .filter(active_as_of(as_of))
     )
 
     # Apply client filter
@@ -635,13 +534,13 @@ def get_wip_aging_trend(
     current_date = start_date
 
     while current_date <= end_date:
-        # Same `_active_as_of` predicate as GET /wip-aging and
+        # Same `active_as_of` predicate as GET /wip-aging and
         # /wip-aging/top, so a point on this trend line equals the snapshot
         # those endpoints report for the same date. Previously this filter
         # was written out by hand and bound `current_date` as a bare date
         # (= midnight), putting the resume boundary at the START of the day
         # while hold_date sat at the end -- the asymmetry documented in
-        # `_snapshot_cutoff`.
+        # `calculations.wip_aging.snapshot_cutoff`.
         # `func.date()` truncates hold_date to a calendar day before the
         # diff. date_diff_days returns FRACTIONAL days, so without this a
         # hold opened at 09:00 ages 44.625 here while the snapshot endpoints
@@ -650,7 +549,7 @@ def get_wip_aging_trend(
         # review finding). DATE() exists in both dialects, so this stays
         # portable.
         query = db.query(func.avg(date_diff_days(current_date, func.date(HoldEntry.hold_date)))).filter(
-            _active_as_of(current_date)
+            active_as_of(current_date)
         )
 
         # Apply client filter
