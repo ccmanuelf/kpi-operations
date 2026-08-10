@@ -373,17 +373,32 @@ def _snapshot_cutoff(as_of: date) -> datetime:
     return datetime.combine(as_of + timedelta(days=1), datetime.min.time())
 
 
-# Statuses that take a hold out of WIP without ever stamping `resume_date`.
-# `resume_date IS NULL` means "never resumed", which is only the same as
-# "still on hold" while the hold is on a live path -- a SCRAPPED or CANCELLED
-# hold never resumes and would otherwise age forever (cross-model review
-# finding). No writer sets these today; they are declared in
-# HOLD_STATUS_CATALOG, so the predicate closes the hole rather than relying
-# on no such rows existing.
-_TERMINAL_HOLD_STATUSES = (
+# Statuses that are never aging WIP, for two DIFFERENT reasons.
+#
+# Left WIP without ever stamping `resume_date` -- `resume_date IS NULL` means
+# "never resumed", which equals "still on hold" only on a live path. A
+# SCRAPPED or CANCELLED hold never resumes and would otherwise age forever
+# (cross-model review finding). No writer sets these today; they are declared
+# in HOLD_STATUS_CATALOG, so this closes the hole rather than relying on no
+# such rows existing.
+#
+# Never ENTERED hold -- PENDING_HOLD_APPROVAL is a hold *requested* and not
+# yet approved, so the material is still in normal flow and nothing has
+# stopped. Owner ruling 2026-08-10, made against live VM data where counting
+# it took the headline WIP-aging figure from 8 holds to 12. Note this is the
+# opposite call from PENDING_RESUME_APPROVAL, which DOES count: there the
+# work has genuinely stopped and is waiting for permission to restart.
+#
+# Deliberately an exclusion list, not an allow-list of (ON_HOLD,
+# PENDING_RESUME_APPROVAL): `hold_status` is CURRENT state, so a hold that
+# reads RESUMED today was still on hold at a past `as_of`. An allow-list
+# would drop it from every historical snapshot; the `resume_date` comparison
+# is what dates that correctly.
+_NON_WIP_HOLD_STATUSES = (
     HoldStatus.CANCELLED,
     HoldStatus.RELEASED,
     HoldStatus.SCRAPPED,
+    HoldStatus.PENDING_HOLD_APPROVAL,
 )
 
 
@@ -397,18 +412,36 @@ def _active_as_of(as_of: date) -> ColumnElement[bool]:
     aggregate endpoints transfer only rows they will actually count.
 
     Active means: opened on or before `as_of`, not yet resumed as of then,
-    and not parked in a terminal status that leaves WIP without a
-    `resume_date`. Statuses awaiting approval (PENDING_HOLD_APPROVAL,
-    PENDING_RESUME_APPROVAL) DO count -- the work has not resumed yet.
+    and in a status that is actually aging WIP -- see
+    `_NON_WIP_HOLD_STATUSES` for the two reasons a status is excluded.
+    PENDING_RESUME_APPROVAL counts (work has stopped, awaiting permission to
+    restart); PENDING_HOLD_APPROVAL does not (the hold is only requested, so
+    nothing has stopped).
 
     Portable by construction: plain comparisons against a bound datetime, no
     dialect-specific date arithmetic and no fractional seconds.
+
+    KNOWN LIMITATION (historical snapshots). `hold_status` is CURRENT state,
+    so a past `as_of` is judged partly by what the hold looks like TODAY: a
+    hold that was only PENDING_HOLD_APPROVAL back then but has since been
+    approved counts for that date, and one still pending now is absent from
+    every past date. Dates and resume-state ARE evaluated correctly (that is
+    what `resume_date` does), so this is confined to the status arm and only
+    bites `/wip-aging/trend`, which walks past dates; the two as-of-now
+    endpoints pass today's date and are unaffected.
+
+    This is inherited, not introduced -- the previous `hold_status ==
+    ON_HOLD` filter was strictly worse, dropping every since-resumed hold
+    out of history altogether. Fixing it properly needs a status-transition
+    history to ask "what was this hold's status on date D", which is exactly
+    the transitions dataset scoped for Cycle 4 PR-C. Do not paper over it
+    with more current-status logic.
     """
     cutoff = _snapshot_cutoff(as_of)
     return and_(
         HoldEntry.hold_date < cutoff,
         or_(HoldEntry.resume_date.is_(None), HoldEntry.resume_date >= cutoff),
-        HoldEntry.hold_status.notin_(_TERMINAL_HOLD_STATUSES),
+        HoldEntry.hold_status.notin_(_NON_WIP_HOLD_STATUSES),
     )
 
 
