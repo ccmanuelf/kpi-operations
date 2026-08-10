@@ -285,6 +285,71 @@ def test_hold_opened_during_snapshot_day_is_active_at_age_zero(_bind, admin_user
         app.dependency_overrides.pop(get_current_user, None)
 
 
+def test_explicit_as_of_date_outranks_end_date(_bind, admin_user):
+    """`as_of_date` names the snapshot instant explicitly; `end_date` only
+    implies one (it arrives from the shared dashboard date range). When a
+    caller supplies both, the explicit parameter must win -- otherwise
+    passing `as_of_date` silently does nothing."""
+    db = _bind
+    client = TestDataFactory.create_client(db)
+    wo = TestDataFactory.create_work_order(db, client_id=client.client_id)
+    _make_hold(
+        db,
+        client_id=client.client_id,
+        work_order_id=wo.work_order_id,
+        hold_entry_id="HOLD-PRECEDENCE",
+        hold_date=datetime(2026, 5, 1, tzinfo=timezone.utc),
+    )
+
+    c = _as(admin_user)
+    try:
+        resp = c.get(
+            "/api/kpi/wip-aging",
+            params={
+                "client_id": client.client_id,
+                "as_of_date": date(2026, 5, 11).isoformat(),
+                "end_date": date(2026, 6, 15).isoformat(),
+            },
+        )
+        assert resp.status_code == 200
+        # Age from as_of_date (10 days), not from end_date (45 days).
+        assert resp.json()["average_aging_days"] == pytest.approx(10, abs=0.1)
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+
+
+def test_top_returns_oldest_holds_when_limit_truncates(_bind, admin_user):
+    """The top-N is applied in SQL (ORDER BY hold_date ASC LIMIT n) rather
+    than by sorting every candidate in Python. Ordering by hold_date is
+    equivalent to ordering by age descending because `as_of` is fixed for
+    the query -- this pins that equivalence, so a truncated result is still
+    the OLDEST holds, not an arbitrary n."""
+    db = _bind
+    client = TestDataFactory.create_client(db)
+    as_of = date(2026, 6, 15)
+    # Ages 40, 30, 20, 10 days as of `as_of`.
+    for age_days in (40, 30, 20, 10):
+        wo = TestDataFactory.create_work_order(db, client_id=client.client_id, work_order_id=f"WO-LIMIT-{age_days}")
+        _make_hold(
+            db,
+            client_id=client.client_id,
+            work_order_id=wo.work_order_id,
+            hold_entry_id=f"HOLD-LIMIT-{age_days}",
+            hold_date=datetime.combine(as_of - timedelta(days=age_days), datetime.min.time(), tzinfo=timezone.utc),
+        )
+
+    c = _as(admin_user)
+    try:
+        resp = c.get(
+            "/api/kpi/wip-aging/top",
+            params={"client_id": client.client_id, "end_date": as_of.isoformat(), "limit": 2},
+        )
+        assert resp.status_code == 200
+        assert [item["age"] for item in resp.json()] == [40, 30]
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+
+
 def test_trend_point_equals_snapshot_for_the_same_date(_bind, admin_user):
     """STRUCTURAL GUARD: /wip-aging/trend must share the snapshot boundary,
     so the trend point for date D equals the average GET /wip-aging reports

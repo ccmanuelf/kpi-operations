@@ -5,7 +5,8 @@ All holds CRUD and WIP aging KPI endpoints
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import and_, func, or_
+from sqlalchemy.sql.elements import ColumnElement
 from typing import List, Optional
 from datetime import date, datetime, timedelta, timezone
 
@@ -363,15 +364,23 @@ def _snapshot_cutoff(as_of: date) -> datetime:
     return datetime.combine(as_of, datetime.max.time())
 
 
-def _resumed_by(resume_value: object, as_of: date) -> bool:
-    """True iff a hold had already resumed at the `as_of` snapshot instant.
+def _active_as_of(as_of: date) -> ColumnElement[bool]:
+    """SQL predicate for "this hold was still on hold at the `as_of` instant".
 
-    Date-granular counterpart of the SQL `resume_date > end_of_day(as_of)`
-    predicate used by the trend endpoint -- equivalent because a resume
-    stamped anywhere within day `as_of` is at or before that day's end.
+    The single source of truth for WIP-aging scoping: all three endpoints
+    filter on this, so their boundaries cannot drift apart. Expressed in SQL
+    (not Python) so `/wip-aging/top` keeps an index-assisted ORDER BY ...
+    LIMIT instead of loading every candidate hold into memory, and so the
+    aggregate endpoints transfer only rows they will actually count.
+
+    Portable by construction: plain comparisons against a bound datetime, no
+    dialect-specific date arithmetic.
     """
-    resume_date_only = _hold_column_to_date(resume_value)
-    return resume_date_only is not None and resume_date_only <= as_of
+    cutoff = _snapshot_cutoff(as_of)
+    return and_(
+        HoldEntry.hold_date <= cutoff,
+        or_(HoldEntry.resume_date.is_(None), HoldEntry.resume_date > cutoff),
+    )
 
 
 @wip_aging_router.get("/wip-aging", response_model=WIPAgingResponse)
@@ -398,14 +407,14 @@ def calculate_wip_aging_kpi(
     accepted for API compatibility only and is IGNORED: scoping is
     entirely a function of `as_of`.
 
-    A hold is in scope iff it was still active as of `as_of` (= `end_date`,
-    falling back to `as_of_date`, falling back to today):
+    A hold is in scope iff it was still active as of `as_of` (= `as_of_date`,
+    falling back to `end_date`, falling back to today):
     `hold_date <= end_of_day(as_of)` AND (`resume_date IS NULL` OR
-    `resume_date > end_of_day(as_of)`) -- see `_snapshot_cutoff`, which all
-    three WIP-aging endpoints share. Age is measured from `hold_date` to
-    `as_of` -- NOT real-world today -- so a historical `end_date` reproduces
-    the same snapshot on every call (same clamping principle as
-    backend/pivot/hooks.py's fetch_holds).
+    `resume_date > end_of_day(as_of)`) -- see `_active_as_of`, the single
+    predicate all three WIP-aging endpoints share. Age is measured from
+    `hold_date` to `as_of` -- NOT real-world today -- so a historical
+    `end_date` reproduces the same snapshot on every call (same clamping
+    principle as backend/pivot/hooks.py's fetch_holds).
 
     Returns aging bucket distribution (0-7, 8-14, 15-30, 30+ days),
     average aging days, and total active hold count.
@@ -419,15 +428,12 @@ def calculate_wip_aging_kpi(
     # for API compatibility even though start_date no longer scopes the query.
     validate_date_range(start_date, end_date)
 
-    as_of = end_date or as_of_date or date.today()
+    # `as_of_date` names the snapshot instant explicitly, so it outranks
+    # `end_date` (which arrives from the shared dashboard date range and only
+    # implies one) when a caller supplies both.
+    as_of = as_of_date or end_date or date.today()
 
-    # Holds that existed by `as_of` -- resume-state is filtered in Python
-    # below (avoids dialect-specific date-diff SQL; matches
-    # backend/pivot/hooks.py's fetch_holds, which computes ages in Python
-    # for the same portability reason -- see the SQLite-only date-diff
-    # regression guarded by tests/test_db/test_no_sqlite_only_funcs.py,
-    # which is why this comment cannot name that function literally).
-    query = db.query(HoldEntry).filter(HoldEntry.hold_date <= _snapshot_cutoff(as_of))
+    query = db.query(HoldEntry).filter(_active_as_of(as_of))
 
     # Apply client filter
     query = query.filter(scope.filter(HoldEntry.client_id))
@@ -445,9 +451,6 @@ def calculate_wip_aging_kpi(
         hold_date_only = _hold_column_to_date(hold.hold_date)
         if hold_date_only is None:
             continue
-
-        if _resumed_by(hold.resume_date, as_of):
-            continue  # already resumed at the snapshot instant -- not active WIP
 
         total_held += 1
         age_days = (as_of - hold_date_only).days
@@ -491,14 +494,12 @@ def get_top_aging_items(
     Same as-of snapshot semantics as GET /api/kpi/wip-aging (owner ruling
     2026-08-07): `as_of` = `end_date` (default today); `start_date` is
     accepted for API compatibility only and is IGNORED. Scoping is the
-    shared `_snapshot_cutoff` predicate -- `hold_date <= end_of_day(as_of)`
-    and not yet resumed at that instant. Age is computed in Python from
+    shared `_active_as_of` predicate. Age is computed in Python from
     `hold_date` to `as_of`, not the DB's current time, so a historical
     `end_date` reproduces the same top-N list on every call (mirrors
     calculate_wip_aging_kpi; avoids dialect-specific date-diff SQL for the
     snapshot cutoff).
     """
-    from backend.orm.hold_entry import HoldEntry
     from backend.orm.work_order import WorkOrder
     from backend.utils.date_range import validate_date_range
 
@@ -508,28 +509,30 @@ def get_top_aging_items(
 
     as_of = end_date or date.today()
 
+    # `as_of` is fixed for the whole query, so age descending IS hold_date
+    # ascending -- the ordering needs no date arithmetic, and hold_date is
+    # indexed, so the DB does the top-N rather than Python sorting every
+    # candidate hold.
     query = (
         db.query(
             HoldEntry.work_order_id,
             WorkOrder.style_model,
             HoldEntry.hold_date,
-            HoldEntry.resume_date,
         )
         .outerjoin(WorkOrder, HoldEntry.work_order_id == WorkOrder.work_order_id)
-        .filter(HoldEntry.hold_date <= _snapshot_cutoff(as_of))
+        .filter(_active_as_of(as_of))
     )
 
     # Apply client filter
     query = query.filter(scope.filter(HoldEntry.client_id))
 
+    rows = query.order_by(HoldEntry.hold_date.asc()).limit(limit).all()
+
     items = []
-    for work_order_id, style_model, hold_date_raw, resume_date_raw in query.all():
+    for work_order_id, style_model, hold_date_raw in rows:
         hold_date_only = _hold_column_to_date(hold_date_raw)
         if hold_date_only is None:
             continue
-
-        if _resumed_by(resume_date_raw, as_of):
-            continue  # already resumed at the snapshot instant -- not active WIP
 
         items.append(
             {
@@ -540,8 +543,7 @@ def get_top_aging_items(
             }
         )
 
-    items.sort(key=lambda item: item["age"], reverse=True)
-    return items[:limit]
+    return items
 
 
 @wip_aging_router.get("/wip-aging/trend")
@@ -571,17 +573,15 @@ def get_wip_aging_trend(
     current_date = start_date
 
     while current_date <= end_date:
-        # Query holds active as of this date, using the SAME end-of-day
-        # boundary as GET /wip-aging and /wip-aging/top (`_snapshot_cutoff`)
-        # so a point on this trend line equals the snapshot those endpoints
-        # would report for the same date. Previously `current_date` bound as
-        # a bare date (= midnight), which put the resume boundary at the
-        # START of the day while hold_date sat at the end -- the asymmetry
-        # documented in `_snapshot_cutoff`.
-        cutoff = _snapshot_cutoff(current_date)
+        # Same `_active_as_of` predicate as GET /wip-aging and
+        # /wip-aging/top, so a point on this trend line equals the snapshot
+        # those endpoints report for the same date. Previously this filter
+        # was written out by hand and bound `current_date` as a bare date
+        # (= midnight), putting the resume boundary at the START of the day
+        # while hold_date sat at the end -- the asymmetry documented in
+        # `_snapshot_cutoff`.
         query = db.query(func.avg(date_diff_days(current_date, HoldEntry.hold_date))).filter(
-            HoldEntry.hold_date <= cutoff,
-            (HoldEntry.resume_date.is_(None)) | (HoldEntry.resume_date > cutoff),
+            _active_as_of(current_date)
         )
 
         # Apply client filter
