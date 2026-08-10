@@ -285,6 +285,103 @@ def test_hold_opened_during_snapshot_day_is_active_at_age_zero(_bind, admin_user
         app.dependency_overrides.pop(get_current_user, None)
 
 
+@pytest.mark.parametrize("terminal_status", [HoldStatus.CANCELLED, HoldStatus.RELEASED, HoldStatus.SCRAPPED])
+def test_terminal_status_hold_is_not_active_wip(_bind, admin_user, terminal_status):
+    """A hold in a terminal status left WIP without ever stamping
+    `resume_date`, so a resume_date-only predicate would age it forever.
+    CANCELLED/RELEASED/SCRAPPED must not count as active WIP."""
+    db = _bind
+    client = TestDataFactory.create_client(db)
+    wo = TestDataFactory.create_work_order(db, client_id=client.client_id)
+    _make_hold(
+        db,
+        client_id=client.client_id,
+        work_order_id=wo.work_order_id,
+        hold_entry_id=f"HOLD-TERMINAL-{terminal_status}",
+        hold_date=datetime(2026, 5, 1, tzinfo=timezone.utc),
+        hold_status=terminal_status,
+        resume_date=None,
+    )
+
+    c = _as(admin_user)
+    try:
+        resp = c.get(
+            "/api/kpi/wip-aging",
+            params={"client_id": client.client_id, "end_date": date(2026, 6, 15).isoformat()},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["total_held_quantity"] == 0
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+
+
+def test_pending_resume_approval_still_counts_as_active_wip(_bind, admin_user):
+    """The counterpart to the terminal-status exclusion: work awaiting
+    resume approval has NOT resumed, so it is still WIP on hold."""
+    db = _bind
+    client = TestDataFactory.create_client(db)
+    wo = TestDataFactory.create_work_order(db, client_id=client.client_id)
+    _make_hold(
+        db,
+        client_id=client.client_id,
+        work_order_id=wo.work_order_id,
+        hold_entry_id="HOLD-PENDING-RESUME",
+        hold_date=datetime(2026, 5, 1, tzinfo=timezone.utc),
+        hold_status=HoldStatus.PENDING_RESUME_APPROVAL,
+        resume_date=None,
+    )
+
+    c = _as(admin_user)
+    try:
+        resp = c.get(
+            "/api/kpi/wip-aging",
+            params={"client_id": client.client_id, "end_date": date(2026, 6, 15).isoformat()},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["total_held_quantity"] == 1
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+
+
+def test_boundary_uses_no_fractional_seconds(_bind, admin_user):
+    """The cutoff is an exclusive next-midnight, not an inclusive
+    23:59:59.999999 -- MariaDB DATETIME columns carry no fractional seconds,
+    so a microsecond-bearing bound risks dialect-dependent rounding at
+    exactly this boundary. Pins both edges: a hold opened at the last second
+    of `as_of` is active, one opened at the first second of the next day is
+    not."""
+    db = _bind
+    client = TestDataFactory.create_client(db)
+    as_of = date(2026, 6, 15)
+    wo_in = TestDataFactory.create_work_order(db, client_id=client.client_id, work_order_id="WO-EDGE-IN")
+    wo_out = TestDataFactory.create_work_order(db, client_id=client.client_id, work_order_id="WO-EDGE-OUT")
+    _make_hold(
+        db,
+        client_id=client.client_id,
+        work_order_id=wo_in.work_order_id,
+        hold_entry_id="HOLD-EDGE-IN",
+        hold_date=datetime(2026, 6, 15, 23, 59, 59, tzinfo=timezone.utc),
+    )
+    _make_hold(
+        db,
+        client_id=client.client_id,
+        work_order_id=wo_out.work_order_id,
+        hold_entry_id="HOLD-EDGE-OUT",
+        hold_date=datetime(2026, 6, 16, 0, 0, 0, tzinfo=timezone.utc),
+    )
+
+    c = _as(admin_user)
+    try:
+        resp = c.get(
+            "/api/kpi/wip-aging",
+            params={"client_id": client.client_id, "end_date": as_of.isoformat()},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["total_held_quantity"] == 1
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+
+
 def test_explicit_as_of_date_outranks_end_date(_bind, admin_user):
     """`as_of_date` names the snapshot instant explicitly; `end_date` only
     implies one (it arrives from the shared dashboard date range). When a

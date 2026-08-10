@@ -12,7 +12,7 @@ from datetime import date, datetime, timedelta, timezone
 
 from backend.database import get_db
 from backend.db.sql_functions import date_diff_days
-from backend.orm.hold_entry import HoldEntry
+from backend.orm.hold_entry import HoldEntry, HoldStatus
 from backend.schemas.hold import WIPHoldCreate, WIPHoldUpdate, WIPHoldResponse, WIPAgingResponse
 from backend.services.hold_service import (
     create_hold as create_wip_hold,
@@ -346,22 +346,45 @@ def _hold_column_to_date(raw_value: object) -> Optional[date]:
 
 
 def _snapshot_cutoff(as_of: date) -> datetime:
-    """End-of-day instant for as-of snapshot scoping.
+    """EXCLUSIVE upper bound for as-of snapshot scoping: midnight starting
+    the day after `as_of`.
 
     ALL THREE WIP-aging endpoints scope against this single cutoff so their
     boundaries cannot drift: a hold is active as of date D iff
-    `hold_date <= end_of_day(D)` AND (`resume_date IS NULL` OR
-    `resume_date > end_of_day(D)`).
+    `hold_date < cutoff` AND (`resume_date IS NULL` OR
+    `resume_date >= cutoff`) -- i.e. both sides settle at the END of day D.
 
-    Both sides deliberately use END of day. An earlier revision compared
-    `resume_date` against the START of the day (a bare `date` binds to
-    midnight in SQL), which made the two boundaries asymmetric: a hold
-    opened at any hour of D counted, but a hold *resumed* at any hour of D
-    also still counted -- so a hold opened and resumed within D reported as
-    active with age 0. At end-of-day D that hold is not on hold, and WIP
+    Both sides deliberately cover the whole of day D. An earlier revision
+    compared `resume_date` against the START of the day (a bare `date` binds
+    to midnight in SQL), which made the boundaries asymmetric: a hold opened
+    at any hour of D counted, but a hold *resumed* at any hour of D also
+    still counted -- so a hold opened and resumed within D reported as
+    active with age 0. At the end of day D that hold is not on hold, and WIP
     aging asks what is sitting on hold at the snapshot instant.
+
+    Exclusive-next-midnight rather than an inclusive `23:59:59.999999`:
+    MariaDB DATETIME columns are declared without fractional seconds, so a
+    microsecond-bearing bound risks dialect-dependent rounding at exactly
+    the boundary this predicate exists to define (cross-model review
+    finding). Midnight is representable exactly in both dialects, and the
+    two forms are otherwise equivalent -- every instant within day D is
+    strictly before the next midnight.
     """
-    return datetime.combine(as_of, datetime.max.time())
+    return datetime.combine(as_of + timedelta(days=1), datetime.min.time())
+
+
+# Statuses that take a hold out of WIP without ever stamping `resume_date`.
+# `resume_date IS NULL` means "never resumed", which is only the same as
+# "still on hold" while the hold is on a live path -- a SCRAPPED or CANCELLED
+# hold never resumes and would otherwise age forever (cross-model review
+# finding). No writer sets these today; they are declared in
+# HOLD_STATUS_CATALOG, so the predicate closes the hole rather than relying
+# on no such rows existing.
+_TERMINAL_HOLD_STATUSES = (
+    HoldStatus.CANCELLED,
+    HoldStatus.RELEASED,
+    HoldStatus.SCRAPPED,
+)
 
 
 def _active_as_of(as_of: date) -> ColumnElement[bool]:
@@ -373,13 +396,19 @@ def _active_as_of(as_of: date) -> ColumnElement[bool]:
     LIMIT instead of loading every candidate hold into memory, and so the
     aggregate endpoints transfer only rows they will actually count.
 
+    Active means: opened on or before `as_of`, not yet resumed as of then,
+    and not parked in a terminal status that leaves WIP without a
+    `resume_date`. Statuses awaiting approval (PENDING_HOLD_APPROVAL,
+    PENDING_RESUME_APPROVAL) DO count -- the work has not resumed yet.
+
     Portable by construction: plain comparisons against a bound datetime, no
-    dialect-specific date arithmetic.
+    dialect-specific date arithmetic and no fractional seconds.
     """
     cutoff = _snapshot_cutoff(as_of)
     return and_(
-        HoldEntry.hold_date <= cutoff,
-        or_(HoldEntry.resume_date.is_(None), HoldEntry.resume_date > cutoff),
+        HoldEntry.hold_date < cutoff,
+        or_(HoldEntry.resume_date.is_(None), HoldEntry.resume_date >= cutoff),
+        HoldEntry.hold_status.notin_(_TERMINAL_HOLD_STATUSES),
     )
 
 
