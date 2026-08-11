@@ -20,11 +20,11 @@ pyjwt==2.13.0          # HS256 JWTs (replaced unmaintained python-jose, Run 7); 
 # pyasn1 / rsa, which only existed for jose's unused EC/RSA paths.
 argon2-cffi==25.1.0    # Primary password-hashing (OWASP-recommended algorithm)
 bcrypt==5.0.0          # Retained for legacy-hash verification path (rehash-on-verify migration shim from passlib era)
-python-multipart==0.0.31  # GHSA-v9pg-7xvm-68hf + GHSA-5rvq-cxj2-64vf + GHSA-6jv3-5f52-599m + prior CVEs
+python-multipart==0.0.32  # GHSA-v9pg-7xvm-68hf + GHSA-5rvq-cxj2-64vf + GHSA-6jv3-5f52-599m + prior CVEs
 
 # CORS & Security
 python-dotenv==1.2.2   # CVE-2026-28684 fix
-slowapi==0.1.9
+slowapi==0.1.10
 
 # Date Utilities
 python-dateutil==2.9.0.post0
@@ -39,7 +39,7 @@ pillow==12.3.0          # transitive via reportlab; pinned for CVEs (40192, 4230
 # Email & Reports
 sendgrid==6.12.5
 werkzeug==3.1.8         # transitive via sendgrid; pinned for CVE-2026-27199
-APScheduler==3.11.2
+APScheduler==3.11.3
 
 # System Monitoring
 psutil==7.2.2
