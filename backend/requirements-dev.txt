@@ -11,7 +11,7 @@ httpx==0.28.1
 
 # Code Quality
 bandit==1.8.3
-black==26.3.1          # CVE-2026-32274 fix (was 25.1.0)
+black==26.5.1          # CVE-2026-32274 fix (was 25.1.0)
 flake8==7.3.0
 mypy==2.1.0
 
