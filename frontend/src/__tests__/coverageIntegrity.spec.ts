@@ -61,7 +61,10 @@ function walk(dir: string, exts: string[], out: string[] = []): string[] {
     if (e.isDirectory()) {
       if (e.name === '__tests__' || e.name === 'node_modules') continue
       walk(full, exts, out)
-    } else if (exts.some((x) => e.name.endsWith(x)) && !e.name.endsWith('.d.ts')) {
+    } else if (
+      exts.some((x) => e.name.endsWith(x)) &&
+      !/\.d\.(ts|mts|cts)$/.test(e.name) // declaration files are not source
+    ) {
       out.push(full)
     }
   }
@@ -91,6 +94,13 @@ function isOwnedSpecifier(spec: string): boolean {
 
 const EXT_CANDIDATES = ['.ts', '.js', '.vue', '.mjs', '.mts', '.cts', '.tsx', '.jsx', '.json']
 
+/**
+ * NOT implemented, deliberately: TS/NodeNext `./foo.js` -> `foo.ts` rewriting.
+ * The codebase contains no such specifiers, and adding the mapping would make
+ * the guard PASS on an import Vite itself may refuse to resolve — trading a
+ * theoretical false positive for a real false negative, which is the wrong
+ * direction for a gate-integrity check. Revisit only if that style appears.
+ */
 function resolveSpecifier(spec: string, fromFile: string): string | null {
   // Vite specifiers may carry a resource query or hash (`./a.css?inline`,
   // `./a.vue?raw`). Strip it before touching the filesystem, or valid imports
@@ -113,44 +123,80 @@ function resolveSpecifier(spec: string, fromFile: string): string | null {
   return null
 }
 
+/** Matches `... from` / `import` / `require`, optionally followed by `(`. */
+const IMPORT_TAIL = /\b(from|import|require)\s*\(?\s*$/
+
 /**
- * Static `from '...'`, side-effect `import '...'`, dynamic `import('...')`
- * and `require('...')`.
+ * Extracts module specifiers in a single pass: static `from '...'`,
+ * side-effect `import '...'`, dynamic `import('...')` and `require('...')`.
  *
- * Scanned line by line with comment lines skipped: a commented-out import of
- * a since-deleted path would otherwise fail the guard for no reason. Full
- * fidelity would need an AST, which is not worth the weight here — the cost
- * of a miss is one unguarded file, whereas the cost of a false positive is a
- * red build nobody can action.
+ * A string literal counts as a specifier only when the code immediately
+ * before it ends in `from`, `import` or `require`. Deciding by preceding
+ * token — rather than regexing the file text — is what makes
+ * `const s = "import './x'"` inert: the scanner sees one literal whose
+ * preceding token is `=`, and never reads the text inside it as code.
+ * Multi-line forms and trailing import attributes fall out for free, since
+ * nothing depends on what follows the specifier.
+ *
+ * Comments are skipped inline, so `/* c *​/ import './x'` is still seen while
+ * `const a = 1 // import './x'` is not.
+ *
+ * Performance matters here: this runs over every coverage-measured file, and
+ * an earlier version that concatenated char-by-char and built whole stripped
+ * copies blew the 5s test timeout under parallel workers. This keeps only a
+ * short rolling tail of recent code characters instead.
  */
 function extractSpecifiers(code: string): string[] {
   const specs = new Set<string>()
-  const patterns = [
-    /\bfrom\s+['"]([^'"]+)['"]/g,
-    /\bimport\s+['"]([^'"]+)['"]/g, // side-effect import
-    /\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)/g,
-    /\brequire\s*\(\s*['"]([^'"]+)['"]\s*\)/g,
-  ]
+  const TAIL = 24 // enough to hold "require(" / "} from " plus whitespace
+  let tail = ''
+  let i = 0
 
-  let inBlockComment = false
-  for (const rawLine of code.split('\n')) {
-    const line = rawLine.trim()
-    if (inBlockComment) {
-      if (line.includes('*/')) inBlockComment = false
-      continue
-    }
-    if (line.startsWith('/*')) {
-      if (!line.includes('*/')) inBlockComment = true
-      continue
-    }
-    if (line.startsWith('//') || line.startsWith('*')) continue
-
-    for (const re of patterns) {
-      re.lastIndex = 0
-      let m: RegExpExecArray | null
-      while ((m = re.exec(line)) !== null) specs.add(m[1])
-    }
+  const pushTail = (s: string) => {
+    tail = (tail + s).slice(-TAIL)
   }
+
+  while (i < code.length) {
+    const c = code[i]
+    const next = code[i + 1]
+
+    if (c === '/' && next === '/') {
+      while (i < code.length && code[i] !== '\n') i++
+      pushTail(' ')
+      continue
+    }
+
+    if (c === '/' && next === '*') {
+      const end = code.indexOf('*/', i + 2)
+      i = end === -1 ? code.length : end + 2
+      pushTail(' ')
+      continue
+    }
+
+    if (c === '"' || c === "'" || c === '`') {
+      const isSpecifier = IMPORT_TAIL.test(tail)
+      const quote = c
+      i++
+      let value = ''
+      while (i < code.length && code[i] !== quote) {
+        if (code[i] === '\\') {
+          value += code[i + 1] ?? ''
+          i += 2
+          continue
+        }
+        value += code[i]
+        i++
+      }
+      i++ // closing quote
+      if (isSpecifier) specs.add(value)
+      pushTail('"') // a literal is a value; it must not look like a keyword
+      continue
+    }
+
+    pushTail(c)
+    i++
+  }
+
   return [...specs].filter((s) => !IGNORED_PREFIXES.some((p) => s.startsWith(p)))
 }
 
