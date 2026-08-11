@@ -123,8 +123,14 @@ function resolveSpecifier(spec: string, fromFile: string): string | null {
   return null
 }
 
-/** Matches `... from` / `import` / `require`, optionally followed by `(`. */
-const IMPORT_TAIL = /\b(from|import|require)\s*\(?\s*$/
+/**
+ * Matches `from` / `import` / `require`, optionally followed by `(`.
+ *
+ * The lookbehind rejects member access, so `Array.from('./x')`,
+ * `obj.import('./x')` and `obj.require('./x')` are not mistaken for module
+ * specifiers. (`Array.from` appears 9 times in this codebase.)
+ */
+const IMPORT_TAIL = /(?<![.\w$])(from|import|require)\s*\(?\s*$/
 
 /**
  * Extracts module specifiers in a single pass: static `from '...'`,
@@ -152,8 +158,13 @@ function extractSpecifiers(code: string): string[] {
   let tail = ''
   let i = 0
 
+  // Runs of whitespace collapse to one char, so the fixed-size window cannot
+  // be flushed by indentation alone. Without this, a deeply indented
+  // `import(\n<lots of spaces>'./x')` would push the keyword out of `tail`
+  // and the specifier would be missed entirely.
   const pushTail = (s: string) => {
-    tail = (tail + s).slice(-TAIL)
+    if (/\s/.test(s) && tail.endsWith(' ')) return
+    tail = (tail + (/\s/.test(s) ? ' ' : s)).slice(-TAIL)
   }
 
   while (i < code.length) {
@@ -197,7 +208,14 @@ function extractSpecifiers(code: string): string[] {
     i++
   }
 
-  return [...specs].filter((s) => !IGNORED_PREFIXES.some((p) => s.startsWith(p)))
+  return [...specs].filter(
+    (s) =>
+      !IGNORED_PREFIXES.some((p) => s.startsWith(p)) &&
+      // Interpolated template specifiers (`./${name}.vue`) have no single
+      // resolvable target. Reporting one as "missing" would be a false
+      // failure; leaving it unguarded is the safer direction.
+      !s.includes('${'),
+  )
 }
 
 const files = COVERED_TREES.flatMap(({ dir, exts }) => walk(resolve(SRC, dir), exts)).sort()
