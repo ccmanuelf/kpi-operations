@@ -12,7 +12,7 @@
 
 - **Spec:** `docs/superpowers/specs/2026-08-11-audit-trail-design.md`. Every decision there is an owner ruling; do not revisit them in code.
 - **Alembic is the only schema mechanism.** No `create_all`. New revision id `0005_audit_trail`, `down_revision = "0004_labor_hours"`.
-- **Audited tables (exactly these 11):** `WORK_ORDER`, `HOLD_ENTRY`, `USER`, `CLIENT`, `CLIENT_CONFIG`, `EMPLOYEE`, `EMPLOYEE_CLIENT_ASSIGNMENT`, `EMPLOYEE_LINE_ASSIGNMENT`, `KPI_THRESHOLD`, `HOLD_REASON_CATALOG`, `HOLD_STATUS_CATALOG`.
+- **Audited tables (exactly these 13):** `WORK_ORDER`, `HOLD_ENTRY`, `USER`, `CLIENT`, `CLIENT_CONFIG`, `EMPLOYEE`, `EMPLOYEE_CLIENT_ASSIGNMENT`, `EMPLOYEE_LINE_ASSIGNMENT`, `KPI_THRESHOLD`, `HOLD_REASON_CATALOG`, `HOLD_STATUS_CATALOG`, `USER_CLIENT_ASSIGNMENT`, `DEFECT_TYPE_CATALOG`.
 - **Redacted fields:** `{"password_hash"}`.
 - **Reads are admin-only** via `from backend.auth.jwt import get_current_admin`.
 - **No purge job. No backfill.** The trail starts at deploy.
@@ -254,7 +254,7 @@ def test_every_exclusion_states_a_reason():
 
 
 def test_audited_tables_matches_the_spec():
-    """Pinned to the spec's 11 tables so scope changes are deliberate."""
+    """Pinned to the spec's 13 tables so scope changes are deliberate."""
     assert AUDITED_TABLES == frozenset(
         {
             "WORK_ORDER",
@@ -268,6 +268,8 @@ def test_audited_tables_matches_the_spec():
             "KPI_THRESHOLD",
             "HOLD_REASON_CATALOG",
             "HOLD_STATUS_CATALOG",
+            "USER_CLIENT_ASSIGNMENT",
+            "DEFECT_TYPE_CATALOG",
         }
     )
 
@@ -344,6 +346,8 @@ AUDITED_TABLES: FrozenSet[str] = frozenset(
         "KPI_THRESHOLD",  # the targets performance is judged against
         "HOLD_REASON_CATALOG",  # taxonomy edits reshape historical reporting
         "HOLD_STATUS_CATALOG",  # taxonomy edits reshape historical reporting
+        "USER_CLIENT_ASSIGNMENT",  # access-control grant read by middleware/client_auth.py
+        "DEFECT_TYPE_CATALOG",  # taxonomy edits reshape historical reporting
     }
 )
 

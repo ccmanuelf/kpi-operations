@@ -110,10 +110,19 @@ The single source the guards read:
   | `KPI_THRESHOLD` | the targets performance is judged against |
   | `HOLD_REASON_CATALOG` | taxonomy edits that reshape reporting |
   | `HOLD_STATUS_CATALOG` | taxonomy edits that reshape reporting |
+  | `USER_CLIENT_ASSIGNMENT` | **access-control grant** — read by `middleware/client_auth.py` to decide which tenants a user may access |
+  | `DEFECT_TYPE_CATALOG` | taxonomy edits that reshape reporting, same rule as the hold catalogues |
 
-  The two catalogue tables are included because editing a taxonomy retroactively
+  The catalogue tables are included because editing a taxonomy retroactively
   changes what every historical report means — a high-consequence, low-frequency
   human act.
+
+  `USER_CLIENT_ASSIGNMENT` and `DEFECT_TYPE_CATALOG` were added during
+  implementation (owner ruling, 2026-08-11) after the Task 2 implementer flagged
+  them. Both close inconsistencies in the original 11: a `USER` role change was
+  audited while the tenant-access grant conferring the same reach was not — in a
+  codebase that has already shipped a cross-tenant authorization fix — and one
+  taxonomy table was excluded while its two structural siblings were audited.
 
 - `EXCLUDED_TABLES` — every other ORM table, each with a **stated reason**
   (derived, cron-written, or self-auditing). The completeness guard makes this
