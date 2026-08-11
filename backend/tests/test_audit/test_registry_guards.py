@@ -43,7 +43,7 @@ def test_every_exclusion_states_a_reason():
 
 
 def test_audited_tables_matches_the_spec():
-    """Pinned to the spec's 11 tables so scope changes are deliberate."""
+    """Pinned to the spec's 13 tables so scope changes are deliberate."""
     assert AUDITED_TABLES == frozenset(
         {
             "WORK_ORDER",
@@ -57,6 +57,8 @@ def test_audited_tables_matches_the_spec():
             "KPI_THRESHOLD",
             "HOLD_REASON_CATALOG",
             "HOLD_STATUS_CATALOG",
+            "USER_CLIENT_ASSIGNMENT",
+            "DEFECT_TYPE_CATALOG",
         }
     )
 

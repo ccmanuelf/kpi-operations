@@ -1,6 +1,6 @@
 """What the audit trail covers, and what it deliberately does not.
 
-Scope is human decisions only (spec section 2, owner-ruled 11-table list):
+Scope is human decisions only (spec section 2, owner-ruled 13-table list):
 work order and hold lifecycle, identity/tenant records, staffing decisions,
 and the taxonomies/thresholds that reshape how history is interpreted.
 
@@ -30,6 +30,8 @@ AUDITED_TABLES: FrozenSet[str] = frozenset(
         "KPI_THRESHOLD",  # the targets performance is judged against
         "HOLD_REASON_CATALOG",  # taxonomy edits reshape historical reporting
         "HOLD_STATUS_CATALOG",  # taxonomy edits reshape historical reporting
+        "USER_CLIENT_ASSIGNMENT",  # access-control grant read by middleware/client_auth.py to decide tenant reach
+        "DEFECT_TYPE_CATALOG",  # taxonomy edits reshape historical reporting, same rule as the hold catalogs
     }
 )
 
@@ -87,7 +89,7 @@ EXCLUDED_TABLES: Dict[str, str] = {
     "SAVED_FILTER": "personal saved dashboard filter presets, a user convenience with no downstream effect",
     "FILTER_HISTORY": "ephemeral recently-applied-filter log auto-written on every filter apply, not a decision",
     "ALERT_CONFIG": (
-        "per-client alert threshold/notification settings; secondary configuration, not one of the 11 tables"
+        "per-client alert threshold/notification settings; secondary configuration, not one of the 13 tables"
     ),
     # --- Master/reference data, edited rarely during setup --------------------
     "EQUIPMENT": "machine/equipment master registry set up during client onboarding, not a recurring decision point",
@@ -103,14 +105,7 @@ EXCLUDED_TABLES: Dict[str, str] = {
     "PART_OPPORTUNITIES": (
         "DPMO calculation constant (opportunities per unit) set once per part number, an engineering value"
     ),
-    "DEFECT_TYPE_CATALOG": (
-        "client-specific quality defect taxonomy, edited occasionally; lower priority than the hold taxonomies"
-    ),
     "BREAK_TIME": "configurable per-shift break-period definition, infrequently changed factory-setup data",
-    "USER_CLIENT_ASSIGNMENT": (
-        "system-login access-control grant (which app users can view which tenant), distinct from the staffing "
-        "decision EMPLOYEE_CLIENT_ASSIGNMENT records"
-    ),
     # --- Sandbox / what-if tools, no live operational effect ------------------
     "SIMULATION_SCENARIO": (
         "saved what-if SimPy/MiniZinc simulation config; a sandbox tool that never touches live operational data"
