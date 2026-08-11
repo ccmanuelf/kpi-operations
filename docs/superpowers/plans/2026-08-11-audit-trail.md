@@ -1021,9 +1021,25 @@ git commit -m "test(audit): prove audit rows share the change's transaction"
 
 ```python
 # backend/tests/test_audit/test_audit_wiring.py
-"""The listener is registered on the app, and requests attribute their actor."""
+"""The listener is registered, and the real auth dependency attributes the actor.
+
+These are BEHAVIOURAL on purpose. An earlier draft asserted on module source
+text (`"set_actor(" in inspect.getsource(jwt)`); that passes if the call
+appears in a comment and breaks on harmless refactors — the green-while-dead
+shape this codebase has been bitten by three times.
+
+Note the trap this avoids: a TestClient test cannot use
+`app.dependency_overrides[get_current_user]`, because that replaces the very
+function under test. The real dependency is therefore called directly with a
+real token.
+"""
+
+import pytest
 
 from backend.audit import capture
+from backend.audit.context import current_actor, get_actor
+from backend.auth.jwt import create_access_token, get_current_user
+from backend.tests.fixtures.factories import TestDataFactory
 
 
 def test_listener_is_registered_at_app_startup():
@@ -1032,19 +1048,46 @@ def test_listener_is_registered_at_app_startup():
     assert capture._listener_registered is True
 
 
-def test_auth_dependency_sets_the_audit_actor():
-    """jwt.py must set the contextvar wherever it sets request.state.user_id."""
-    import inspect as py_inspect
+def test_real_auth_dependency_sets_the_audit_actor(transactional_db):
+    """Calling the REAL get_current_user must populate the audit contextvar."""
 
-    from backend.auth import jwt as jwt_module
+    class _FakeRequest:
+        """Minimal stand-in exposing the .state the dependency writes to."""
 
-    source = py_inspect.getsource(jwt_module)
-    assert "request.state.user_id = user.user_id" in source
-    assert "set_actor(user.user_id)" in source, (
-        "The audit contextvar must be set alongside request.state.user_id so "
-        "attribution has a single source of truth."
+        class _State:
+            pass
+
+        def __init__(self):
+            self.state = _FakeRequest._State()
+
+    user = TestDataFactory.create_user(
+        transactional_db, user_id="wire-u1", username="wire_user", role="admin", client_id=None
     )
+    transactional_db.commit()
+
+    token = create_access_token(data={"sub": user.username, "role": user.role})
+    request = _FakeRequest()
+
+    # Reset first so a leaked value from another test cannot make this pass.
+    reset_token = current_actor.set(None)
+    try:
+        resolved = get_current_user(request=request, token=token, db=transactional_db)
+        assert resolved.user_id == "wire-u1"
+        assert get_actor() == "wire-u1", (
+            "get_current_user must set the audit contextvar; ORM flush hooks "
+            "have no request object and read it instead."
+        )
+        # Same source of truth as the existing middleware attribution.
+        assert request.state.user_id == "wire-u1"
+    finally:
+        current_actor.reset(reset_token)
 ```
+
+**Implementer note:** `create_access_token` and `get_current_user`'s exact
+signature must be read from `backend/auth/jwt.py` — match the real parameter
+names and token payload keys rather than the illustrative ones above. If
+`get_current_user` is `async`, await it or drive it with `anyio`/`asyncio.run`
+following the pattern already used in `backend/tests/test_security/`.
 
 - [ ] **Step 2: Run test to verify it fails**
 
@@ -1108,28 +1151,73 @@ Without this a `--reset` re-seed writes roughly 8,000 audit rows carrying no dec
 
 ```python
 # backend/tests/test_audit/test_suppression_sites.py
-"""Bulk writers must opt out of audit capture explicitly."""
+"""Bulk writers must produce NO audit rows.
 
-import inspect as py_inspect
+Behavioural on purpose. An earlier draft asserted `"audit_suppressed" in
+inspect.getsource(module)`, which passes if the name appears in a comment and
+proves nothing about what the seeder actually wrote.
 
+Reuse the existing seeder test setup in
+`backend/tests/test_scripts/test_seed_sample_client.py` — read that file for
+the fixture and invocation pattern rather than inventing one.
+"""
 
-def test_sample_seeder_suppresses_audit():
-    from backend.scripts import seed_sample_client
-
-    assert "audit_suppressed" in py_inspect.getsource(seed_sample_client)
-
-
-def test_demo_seeder_suppresses_audit():
-    from backend.scripts import init_demo_database
-
-    assert "audit_suppressed" in py_inspect.getsource(init_demo_database)
+from backend.orm.audit_entry import AuditEntry
 
 
-def test_csv_upload_processor_suppresses_audit():
-    from backend.services import csv_upload_processor
+def _audit_count(db) -> int:
+    return db.query(AuditEntry).count()
 
-    assert "audit_suppressed" in py_inspect.getsource(csv_upload_processor)
+
+def test_sample_seeder_writes_no_audit_rows(transactional_db):
+    """A --reset re-seed would otherwise emit ~8000 rows carrying no decision."""
+    from backend.audit.capture import register_audit_listener
+    from backend.scripts.seed_sample_client import seed_sample_client
+
+    register_audit_listener()
+    before = _audit_count(transactional_db)
+
+    # Match the real signature from backend/scripts/seed_sample_client.py.
+    seed_sample_client(transactional_db, client_id="SUPPRESS-TEST")
+    transactional_db.flush()
+
+    assert _audit_count(transactional_db) == before
+
+
+def test_csv_upload_writes_no_audit_rows(transactional_db):
+    """Bulk CSV import is data movement, not a per-row human decision."""
+    from backend.audit.capture import register_audit_listener
+    from backend.services import csv_upload_processor  # noqa: F401
+
+    register_audit_listener()
+    before = _audit_count(transactional_db)
+
+    # Drive the processor exactly as tests/test_api/test_csv_upload_characterization.py
+    # does; read that file for the helper it uses to build the upload payload.
+    # ... invoke the processor here ...
+
+    assert _audit_count(transactional_db) == before
+
+
+def test_writes_outside_suppression_are_still_captured(transactional_db):
+    """The opt-out must stay deliberate — it is not an ambient default."""
+    from backend.audit.capture import register_audit_listener
+    from backend.tests.fixtures.factories import TestDataFactory
+
+    register_audit_listener()
+    before = _audit_count(transactional_db)
+
+    TestDataFactory.create_client(transactional_db, client_id="SUPP-CTRL", client_name="Control")
+    transactional_db.flush()
+
+    assert _audit_count(transactional_db) == before + 1
 ```
+
+**Implementer note:** the third test is the control. Without it, all-zero
+counts would also be satisfied by capture being broken entirely — the two
+suppression tests alone cannot tell "suppression works" apart from "nothing
+is ever captured". Read the real signatures for `seed_sample_client` and the
+CSV processor before writing the calls; the names above are illustrative.
 
 - [ ] **Step 2: Run test to verify it fails**
 
@@ -1386,6 +1474,16 @@ def _end_of_day(value: date) -> datetime:
     return datetime.combine(value, time.min, tzinfo=timezone.utc) + timedelta(days=1)
 
 
+def _trail_started_at(db: Session) -> Optional[datetime]:
+    """When the trail begins, or None if empty.
+
+    Shared by both endpoints deliberately: there is no backfill, so "the trail
+    starts here" is load-bearing for interpreting an empty result, and it needs
+    exactly one definition. Both responses carry it.
+    """
+    return db.query(func.min(AuditEntry.occurred_at)).scalar()
+
+
 @router.get("", response_model=AuditListResponse)
 def list_audit_entries(
     table_name: Optional[str] = Query(None),
@@ -1416,7 +1514,7 @@ def list_audit_entries(
 
     total = query.count()
     rows = query.order_by(AuditEntry.occurred_at.desc()).offset(offset).limit(limit).all()
-    trail_started_at = db.query(func.min(AuditEntry.occurred_at)).scalar()
+    trail_started_at = _trail_started_at(db)
 
     return AuditListResponse(
         entries=[AuditEntryResponse.model_validate(r) for r in rows],
@@ -1533,7 +1631,7 @@ def get_entity_history(
     )
     total = query.count()
     rows = query.order_by(AuditEntry.occurred_at.desc()).offset(offset).limit(limit).all()
-    trail_started_at = db.query(func.min(AuditEntry.occurred_at)).scalar()
+    trail_started_at = _trail_started_at(db)
 
     return AuditListResponse(
         entries=[AuditEntryResponse.model_validate(r) for r in rows],
