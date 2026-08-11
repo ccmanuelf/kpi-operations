@@ -1,6 +1,6 @@
 """What the audit trail covers, and what it deliberately does not.
 
-Scope is human decisions only (spec section 2, owner-ruled 13-table list):
+Scope is human decisions only (spec section 2, owner-ruled 14-table list):
 work order and hold lifecycle, identity/tenant records, staffing decisions,
 and the taxonomies/thresholds that reshape how history is interpreted.
 
@@ -32,6 +32,7 @@ AUDITED_TABLES: FrozenSet[str] = frozenset(
         "HOLD_STATUS_CATALOG",  # taxonomy edits reshape historical reporting
         "USER_CLIENT_ASSIGNMENT",  # access-control grant read by middleware/client_auth.py to decide tenant reach
         "DEFECT_TYPE_CATALOG",  # taxonomy edits reshape historical reporting, same rule as the hold catalogs
+        "ALERT_CONFIG",  # per-client thresholds + enabled flag; mirrors KPI_THRESHOLD
     }
 )
 
@@ -40,7 +41,10 @@ EXCLUDED_TABLES: Dict[str, str] = {
     # --- High-volume shift-level data entry -------------------------------
     # Routine operator input, one row per shift/day/inspection. Auditing
     # these would flood AUDIT_ENTRY with normal workflow noise rather than
-    # decisions; the tables already carry entered_by/updated_by columns.
+    # decisions. Most carry their own entered_by/assigned_by/updated_by-style
+    # attribution column(s); the two child/allocation tables (DEFECT_DETAIL,
+    # ATTENDANCE_HOUR_ALLOCATION) have none of their own and inherit
+    # attribution from their parent row instead.
     "ATTENDANCE_ENTRY": (
         "high-volume daily shift entry, not a discretionary decision; carries its own entered_by/updated_by"
     ),
@@ -88,9 +92,6 @@ EXCLUDED_TABLES: Dict[str, str] = {
     "DASHBOARD_WIDGET_DEFAULTS": "role-based dashboard layout defaults, purely cosmetic, no KPI or business impact",
     "SAVED_FILTER": "personal saved dashboard filter presets, a user convenience with no downstream effect",
     "FILTER_HISTORY": "ephemeral recently-applied-filter log auto-written on every filter apply, not a decision",
-    "ALERT_CONFIG": (
-        "per-client alert threshold/notification settings; secondary configuration, not one of the 13 tables"
-    ),
     # --- Master/reference data, edited rarely during setup --------------------
     "EQUIPMENT": "machine/equipment master registry set up during client onboarding, not a recurring decision point",
     "PRODUCT": (
@@ -111,10 +112,11 @@ EXCLUDED_TABLES: Dict[str, str] = {
         "saved what-if SimPy/MiniZinc simulation config; a sandbox tool that never touches live operational data"
     ),
     # --- Capacity Planning module: a separate what-if planning subsystem ------
-    # Distinct from the operational tables in AUDITED_TABLES; several of
-    # these tables explicitly note in their own docstrings that they are
-    # kept separate from the operational equivalents (e.g. capacity_orders
-    # vs WORK_ORDER, capacity_production_lines vs PRODUCTION_LINE).
+    # Distinct from the equivalent operational tables elsewhere in this file
+    # (audited, e.g. WORK_ORDER, or excluded, e.g. PRODUCTION_LINE). Some of
+    # these tables say so in their own docstring (capacity_orders explicitly
+    # notes it is kept separate from WORK_ORDER); others are distinguished by
+    # what they store, not by an explicit docstring disclaimer.
     "capacity_analysis": (
         "derived utilization/bottleneck output computed by CapacityAnalysis.calculate_metrics(), not a decision"
     ),
@@ -131,7 +133,8 @@ EXCLUDED_TABLES: Dict[str, str] = {
         "capacity-planning-only order record, explicitly kept separate from the audited WORK_ORDER per its docstring"
     ),
     "capacity_production_lines": (
-        "capacity-module line definition, explicitly kept separate from the operational PRODUCTION_LINE per docstring"
+        "capacity-planning line configuration (units/hour, efficiency, absenteeism factors used in planning math), "
+        "distinct from PRODUCTION_LINE's factory-floor topology"
     ),
     "capacity_production_standards": (
         "SAM (Standard Allowed Minutes) reference data set once per style/operation, engineering configuration"
