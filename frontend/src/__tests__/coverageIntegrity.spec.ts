@@ -144,8 +144,9 @@ const IMPORT_TAIL = /(?<![.\w$])(from|import|require)\s*\(?\s*$/
  * Multi-line forms and trailing import attributes fall out for free, since
  * nothing depends on what follows the specifier.
  *
- * Comments are skipped inline, so `/* c *​/ import './x'` is still seen while
- * `const a = 1 // import './x'` is not.
+ * Comments are skipped inline, so an import sitting after a closed block
+ * comment on the same line is still seen, while `const a = 1 // import
+ * './x'` is not.
  *
  * Performance matters here: this runs over every coverage-measured file, and
  * an earlier version that concatenated char-by-char and built whole stripped
