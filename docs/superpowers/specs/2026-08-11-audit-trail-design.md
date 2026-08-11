@@ -238,8 +238,16 @@ Explicitly **out** of Project A:
 - No retention or purge job (D4).
 - No UI. The `audit_log` widget belongs to Project B.
 - No widening beyond admin (D3).
-- **No backfill.** The trail starts the day it deploys. Stated plainly so an empty
-  result for historical changes is never mistaken for a bug.
+- **No backfill — owner ruling, 2026-08-11.** Retroactive reconstruction was raised
+  explicitly and declined. The trail starts the day it deploys; changes made before
+  that are permanently unrecoverable, and that is accepted.
+
+  Two consequences worth carrying forward:
+  - An empty result for a historical change is **correct behaviour**, not a bug. The
+    read API should make this legible rather than returning a bare empty list — the
+    entity-history endpoint reports the trail's start date alongside its results.
+  - There is therefore value in deploying A1 sooner rather than later: every day
+    without it is a day of change history that cannot be recovered afterwards.
 
 ---
 
