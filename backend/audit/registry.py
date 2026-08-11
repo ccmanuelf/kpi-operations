@@ -64,6 +64,7 @@ EXCLUDED_TABLES: Dict[str, str] = {
     # --- Self-auditing tables -----------------------------------------------
     # These tables already are an audit trail for something else. Wrapping
     # them in AUDIT_ENTRY would double-log the same event.
+    "AUDIT_ENTRY": "the audit trail itself; auditing it would recurse — every audit row would generate another",
     "WORKFLOW_TRANSITION_LOG": (
         "own append-only audit trail for WORK_ORDER status transitions; auditing it would double-log"
     ),
