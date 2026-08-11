@@ -112,10 +112,17 @@ The single source the guards read:
   | `HOLD_STATUS_CATALOG` | taxonomy edits that reshape reporting |
   | `USER_CLIENT_ASSIGNMENT` | **access-control grant** — read by `middleware/client_auth.py` to decide which tenants a user may access |
   | `DEFECT_TYPE_CATALOG` | taxonomy edits that reshape reporting, same rule as the hold catalogues |
+  | `ALERT_CONFIG` | per-client `warning_threshold` / `critical_threshold` / `enabled` — mirrors `KPI_THRESHOLD`; disabling an alert silently stops the system warning anyone |
 
   The catalogue tables are included because editing a taxonomy retroactively
   changes what every historical report means — a high-consequence, low-frequency
   human act.
+
+  `ALERT_CONFIG` was added in the same way after the Task 2 *reviewer* flagged it
+  (owner ruling, 2026-08-11): it mirrors the audited `KPI_THRESHOLD` — both are
+  per-client threshold reference data, seeded together by
+  `scripts/_seed_reference.py` — so auditing one and not the other was
+  inconsistent.
 
   `USER_CLIENT_ASSIGNMENT` and `DEFECT_TYPE_CATALOG` were added during
   implementation (owner ruling, 2026-08-11) after the Task 2 implementer flagged
