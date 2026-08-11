@@ -249,7 +249,13 @@ describe('coverage integrity: every measured file must be resolvable', () => {
         'the run, silently inflating the reported percentage. Fix the import, ' +
         'or add the file to KNOWN_UNRESOLVABLE with a reason.',
     ).toEqual([])
-  })
+    // Explicit headroom over the 5s default. This walks and scans every
+    // coverage-measured file: ~100ms locally but 1070ms on a CI runner, and
+    // shared runners vary by 2-3x on top of that. An earlier revision of this
+    // guard DID blow the default timeout inside the full suite, and a required
+    // check that fails intermittently is worse than no check, because it gets
+    // switched off. Cheap insurance, not a licence to be slow.
+  }, 30_000)
 
   it('keeps every KNOWN_UNRESOLVABLE entry honest', () => {
     for (const [rel, reason] of Object.entries(KNOWN_UNRESOLVABLE)) {
@@ -267,5 +273,5 @@ describe('coverage integrity: every measured file must be resolvable', () => {
       ).toBeGreaterThan(0)
       expect(reason.length).toBeGreaterThan(30)
     }
-  })
+  }, 30_000)
 })
