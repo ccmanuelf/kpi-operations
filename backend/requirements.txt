@@ -33,7 +33,7 @@ python-dateutil==2.9.0.post0
 openpyxl==3.1.5
 
 # PDF Generation
-reportlab==4.4.10
+reportlab==5.0.0
 pillow==12.3.0          # transitive via reportlab; pinned for CVEs (40192, 42308–42311; PYSEC-2026-2253–2257 fixed in 12.3.0)
 
 # Email & Reports
