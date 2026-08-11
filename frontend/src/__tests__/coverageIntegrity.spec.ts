@@ -16,7 +16,12 @@
  *
  * This guard resolves every relative and `@/`-aliased import specifier in the
  * source files the coverage config measures, and fails if any target is
- * missing. Bare package specifiers are skipped (npm resolution is npm's job).
+ * missing.
+ *
+ * NOTE on scope: bare package specifiers are deliberately NOT validated. A
+ * missing npm dependency fails loudly at install or build time, so it is not
+ * part of the silent-drop class this guard targets; resolving them here would
+ * duplicate npm's job and drift from it.
  */
 import { describe, it, expect } from 'vitest'
 import { readFileSync, existsSync, statSync, readdirSync } from 'node:fs'
@@ -44,8 +49,12 @@ function walk(dir: string, exts: string[], out: string[] = []): string[] {
   let entries
   try {
     entries = readdirSync(dir, { withFileTypes: true })
-  } catch {
-    return out
+  } catch (err) {
+    // Only a genuinely absent directory is tolerable. Swallowing every error
+    // would let an unreadable subtree vanish while the file-count sanity check
+    // still passed — the exact silent-skip failure this guard exists to stop.
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') return out
+    throw err
   }
   for (const e of entries) {
     const full = join(dir, e.name)
@@ -75,21 +84,28 @@ const KNOWN_UNRESOLVABLE: Record<string, string> = {
 
 const IGNORED_PREFIXES = ['node:', 'http:', 'https:', 'data:', 'virtual:']
 
+/** Specifiers we own: project-relative and `@/`-aliased. */
+function isOwnedSpecifier(spec: string): boolean {
+  return spec.startsWith('./') || spec.startsWith('../') || spec.startsWith('@/')
+}
+
+const EXT_CANDIDATES = ['.ts', '.js', '.vue', '.mjs', '.mts', '.cts', '.tsx', '.jsx', '.json']
+
 function resolveSpecifier(spec: string, fromFile: string): string | null {
+  // Vite specifiers may carry a resource query or hash (`./a.css?inline`,
+  // `./a.vue?raw`). Strip it before touching the filesystem, or valid imports
+  // are reported as missing — a false failure is as damaging as a missed one.
+  const clean = spec.split('?')[0].split('#')[0]
+
   let base: string
-  if (spec.startsWith('@/')) base = resolve(SRC, spec.slice(2))
-  else if (spec.startsWith('./') || spec.startsWith('../')) base = resolve(dirname(fromFile), spec)
-  else return null // bare package specifier — not ours to resolve
+  if (clean.startsWith('@/')) base = resolve(SRC, clean.slice(2))
+  else if (clean.startsWith('./') || clean.startsWith('../')) base = resolve(dirname(fromFile), clean)
+  else return null // bare package specifier — npm's job, see NOTE below
 
   const candidates = [
     base,
-    `${base}.ts`,
-    `${base}.js`,
-    `${base}.vue`,
-    `${base}.mjs`,
-    `${base}/index.ts`,
-    `${base}/index.js`,
-    `${base}/index.vue`,
+    ...EXT_CANDIDATES.map((e) => `${base}${e}`),
+    ...EXT_CANDIDATES.map((e) => `${base}/index${e}`),
   ]
   for (const c of candidates) {
     if (existsSync(c) && statSync(c).isFile()) return c
@@ -97,17 +113,43 @@ function resolveSpecifier(spec: string, fromFile: string): string | null {
   return null
 }
 
-/** Static `from '...'` plus dynamic `import('...')`. */
+/**
+ * Static `from '...'`, side-effect `import '...'`, dynamic `import('...')`
+ * and `require('...')`.
+ *
+ * Scanned line by line with comment lines skipped: a commented-out import of
+ * a since-deleted path would otherwise fail the guard for no reason. Full
+ * fidelity would need an AST, which is not worth the weight here — the cost
+ * of a miss is one unguarded file, whereas the cost of a false positive is a
+ * red build nobody can action.
+ */
 function extractSpecifiers(code: string): string[] {
   const specs = new Set<string>()
   const patterns = [
     /\bfrom\s+['"]([^'"]+)['"]/g,
+    /\bimport\s+['"]([^'"]+)['"]/g, // side-effect import
     /\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)/g,
     /\brequire\s*\(\s*['"]([^'"]+)['"]\s*\)/g,
   ]
-  for (const re of patterns) {
-    let m: RegExpExecArray | null
-    while ((m = re.exec(code)) !== null) specs.add(m[1])
+
+  let inBlockComment = false
+  for (const rawLine of code.split('\n')) {
+    const line = rawLine.trim()
+    if (inBlockComment) {
+      if (line.includes('*/')) inBlockComment = false
+      continue
+    }
+    if (line.startsWith('/*')) {
+      if (!line.includes('*/')) inBlockComment = true
+      continue
+    }
+    if (line.startsWith('//') || line.startsWith('*')) continue
+
+    for (const re of patterns) {
+      re.lastIndex = 0
+      let m: RegExpExecArray | null
+      while ((m = re.exec(line)) !== null) specs.add(m[1])
+    }
   }
   return [...specs].filter((s) => !IGNORED_PREFIXES.some((p) => s.startsWith(p)))
 }
@@ -129,7 +171,7 @@ describe('coverage integrity: every measured file must be resolvable', () => {
 
       const code = readFileSync(file, 'utf-8')
       for (const spec of extractSpecifiers(code)) {
-        if (resolveSpecifier(spec, file) === null && (spec.startsWith('.') || spec.startsWith('@/'))) {
+        if (isOwnedSpecifier(spec) && resolveSpecifier(spec, file) === null) {
           failures.push(`${rel} -> ${spec}`)
         }
       }
@@ -152,7 +194,7 @@ describe('coverage integrity: every measured file must be resolvable', () => {
       // collecting dust and quietly staying out of the coverage denominator.
       const code = readFileSync(resolve(SRC, rel), 'utf-8')
       const broken = extractSpecifiers(code).filter(
-        (s) => (s.startsWith('.') || s.startsWith('@/')) && resolveSpecifier(s, resolve(SRC, rel)) === null,
+        (s) => isOwnedSpecifier(s) && resolveSpecifier(s, resolve(SRC, rel)) === null,
       )
       expect(
         broken.length,
