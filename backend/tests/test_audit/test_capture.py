@@ -5,6 +5,7 @@ from decimal import Decimal
 
 import pytest
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session as SASession
 
 from backend.audit.capture import _jsonable, register_audit_listener, unregister_audit_listener
 from backend.audit.context import audit_suppressed, set_actor, current_actor
@@ -338,3 +339,73 @@ def test_employee_audit_row_carries_tenant_from_client_id_assigned(transactional
     rows = [e for e in _entries(transactional_db) if e.table_name == "EMPLOYEE"]
     assert len(rows) == 1
     assert rows[0].client_id == "AUD-CX"
+
+
+def test_rolled_back_outer_transaction_leaves_no_change_and_no_audit_row(_txn_engine):
+    """The production shape: a plain Session on a real connection-owned
+    transaction, no savepoints involved (unlike ``transactional_db``, which
+    is savepoint-based and cannot express a genuine outer rollback).
+
+    Roll back a real transaction and both the change and its audit row must
+    be gone -- verified from a second, independent connection so the check
+    cannot be fooled by anything cached on the writing session.
+    """
+    register_audit_listener()
+
+    connection = _txn_engine.connect()
+    trans = connection.begin()
+    session = SASession(bind=connection)
+    try:
+        session.add(KPIThreshold(threshold_id="AUD-RB1", kpi_key="rty", target_value=95.0))
+        session.flush()
+        # The audit row exists inside the still-open transaction...
+        staged = session.query(AuditEntry).filter_by(record_pk="AUD-RB1").count()
+        assert staged == 1
+    finally:
+        session.close()
+        trans.rollback()
+        connection.close()
+
+    # ...and is gone, along with the change itself, once the transaction is
+    # discarded -- checked from a fresh connection, not the one that wrote it.
+    verify_conn = _txn_engine.connect()
+    verify_session = SASession(bind=verify_conn)
+    try:
+        assert verify_session.query(AuditEntry).filter_by(record_pk="AUD-RB1").count() == 0
+        assert verify_session.query(KPIThreshold).filter_by(threshold_id="AUD-RB1").count() == 0
+    finally:
+        verify_session.close()
+        verify_conn.close()
+
+
+def test_committed_outer_transaction_persists_change_and_audit_row_together(_txn_engine):
+    """The mirror of the rollback test, and just as load-bearing.
+
+    A committed change must never lack its audit entry: without this half,
+    an implementation that captured nothing at all (or wrote the audit row
+    on a connection other than the flush's own) would still pass the
+    rollback-only test above.
+    """
+    register_audit_listener()
+
+    connection = _txn_engine.connect()
+    trans = connection.begin()
+    session = SASession(bind=connection)
+    try:
+        session.add(KPIThreshold(threshold_id="AUD-CM1", kpi_key="rty", target_value=95.0))
+        session.flush()
+    finally:
+        session.close()
+        trans.commit()
+        connection.close()
+
+    verify_conn = _txn_engine.connect()
+    verify_session = SASession(bind=verify_conn)
+    try:
+        assert verify_session.query(KPIThreshold).filter_by(threshold_id="AUD-CM1").count() == 1
+        entries = verify_session.query(AuditEntry).filter_by(record_pk="AUD-CM1").all()
+        assert len(entries) == 1
+        assert entries[0].operation == AuditOperation.INSERT
+    finally:
+        verify_session.close()
+        verify_conn.close()
