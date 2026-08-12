@@ -1,13 +1,29 @@
 """Audit capture: diffs, redaction, suppression, transactionality."""
 
-from backend.audit.capture import register_audit_listener
-from backend.audit.context import audit_suppressed, set_actor, current_actor
 from datetime import datetime, timezone
+from decimal import Decimal
 
+import pytest
+from sqlalchemy.exc import IntegrityError
+
+from backend.audit.capture import _jsonable, register_audit_listener, unregister_audit_listener
+from backend.audit.context import audit_suppressed, set_actor, current_actor
 from backend.orm.audit_entry import AuditEntry, AuditOperation
+from backend.orm.employee import Employee
 from backend.orm.kpi_threshold import KPIThreshold
 from backend.orm.metric_calculation_result import MetricCalculationResult
+from backend.orm.work_order import WorkOrder, WorkOrderStatus
 from backend.tests.fixtures.factories import TestDataFactory
+
+
+@pytest.fixture(autouse=True)
+def _cleanup_audit_listener():
+    """register_audit_listener() attaches process-wide mapper events (not
+    Session-scoped), so without teardown every test after this module runs
+    with capture silently active -- a real cross-test contamination vector.
+    """
+    yield
+    unregister_audit_listener()
 
 
 def _entries(db):
@@ -184,8 +200,6 @@ def test_rollback_discards_autoincrement_insert_and_its_audit_row(transactional_
 
     transactional_db.rollback()
 
-    from backend.orm.employee import Employee
-
     assert transactional_db.query(Employee).filter(Employee.employee_id == employee_id).first() is None
     assert [e for e in _entries(transactional_db) if e.table_name == "EMPLOYEE"] == []
 
@@ -194,3 +208,133 @@ def test_rollback_discards_autoincrement_insert_and_its_audit_row(transactional_
     rows = [e for e in _entries(transactional_db) if e.table_name == "EMPLOYEE"]
     assert len(rows) == 1
     assert rows[0].record_pk == str(survivor.employee_id)
+
+
+def test_failed_flush_leaves_no_phantom_employee_row_for_the_next_actor(transactional_db):
+    """Regression for the pre-rewrite deferred-INSERT design (Critical 1).
+
+    The original capture stashed autoincrement-PK inserts on ``session.info``
+    in ``before_flush`` and drained them in ``after_flush``. When a flush
+    *fails*, ``after_flush`` never runs and SQLAlchemy does not clear
+    user-owned ``session.info`` on rollback, so the stashed EMPLOYEE insert
+    survived the rollback and drained on the next *successful* flush --
+    writing an audit row for a record that was never created, attributed to
+    whichever actor happened to be writing at that later moment, under a PK
+    the database would go on to reissue to a real employee.
+
+    Shape: one flush carrying an EMPLOYEE insert plus a failing statement (a
+    second EMPLOYEE with a duplicate ``employee_code``, which the unique index
+    rejects), rolled back, followed by an unrelated successful write by a
+    different actor. Zero EMPLOYEE audit rows may exist afterwards.
+    """
+    register_audit_listener()
+
+    token_a = set_actor("actor-a")
+    try:
+        transactional_db.add(Employee(employee_code="AUD-DUP", employee_name="Doomed"))
+        transactional_db.add(Employee(employee_code="AUD-DUP", employee_name="Duplicate code"))
+        with pytest.raises(IntegrityError):
+            transactional_db.flush()
+    finally:
+        current_actor.reset(token_a)
+
+    transactional_db.rollback()
+
+    token_b = set_actor("actor-b")
+    try:
+        transactional_db.add(KPIThreshold(threshold_id="AUD-T5", kpi_key="otd", target_value=95.0))
+        transactional_db.flush()
+    finally:
+        current_actor.reset(token_b)
+
+    assert [e for e in _entries(transactional_db) if e.table_name == "EMPLOYEE"] == []
+
+    # Not vacuous: the later, legitimate write really was captured, and only
+    # actor-b is attributed to it.
+    later = [e for e in _entries(transactional_db) if e.record_pk == "AUD-T5"]
+    assert len(later) == 1
+    assert later[0].actor_user_id == "actor-b"
+
+
+def test_update_after_expiry_records_the_real_old_value(transactional_db):
+    """Regression for the expire_on_commit=True blind spot (Important 2).
+
+    ``SessionLocal`` (backend/database.py) commits with ``expire_on_commit``
+    left at its default of True, so every attribute of an already-committed
+    object is expired. Without ``active_history`` forced on audited mappers,
+    SQLAlchemy's passive history lookup reports the "old" side as None on the
+    next change instead of reloading the pre-expiry value -- silently losing
+    exactly the field this trail exists to preserve.
+    """
+    register_audit_listener()
+    threshold = KPIThreshold(threshold_id="AUD-T6", kpi_key="fpy", target_value=50.0)
+    transactional_db.add(threshold)
+    transactional_db.commit()  # expires every attribute on `threshold`
+
+    threshold.target_value = 70.0
+    transactional_db.flush()
+
+    updates = [
+        e for e in _entries(transactional_db) if e.record_pk == "AUD-T6" and e.operation == AuditOperation.UPDATE
+    ]
+    assert len(updates) == 1
+    assert updates[0].changes == {"target_value": {"old": 50.0, "new": 70.0}}
+
+
+def test_column_values_are_recorded_as_json_native_types(transactional_db):
+    """Decimal -> JSON number, datetime -> ISO string, Enum -> its .value.
+
+    Asserted on real WORK_ORDER columns, read back through the JSON column so
+    the persisted representation is what is checked, not the in-memory one.
+    """
+    register_audit_listener()
+    client = TestDataFactory.create_client(transactional_db, client_id="AUD-C5", client_name="Serialize Co")
+    transactional_db.add(
+        WorkOrder(
+            work_order_id="AUD-WO1",
+            client_id=client.client_id,
+            style_model="STYLE-AUD",
+            planned_quantity=10,
+            status=WorkOrderStatus.IN_PROGRESS,
+            planned_ship_date=datetime(2026, 3, 4, 5, 6, 7),
+            ideal_cycle_time=Decimal("0.2500"),
+        )
+    )
+    transactional_db.flush()
+
+    rows = [e for e in _entries(transactional_db) if e.table_name == "WORK_ORDER"]
+    assert len(rows) == 1
+    changes = rows[0].changes
+
+    # Decimal must survive as a JSON number, not a stringified "0.2500" --
+    # the MariaDB "0.00"-as-string bug class this codebase has already shipped.
+    assert type(changes["ideal_cycle_time"]["new"]) is float
+    assert changes["ideal_cycle_time"]["new"] == 0.25
+
+    assert changes["planned_ship_date"]["new"] == "2026-03-04T05:06:07"
+    assert changes["status"]["new"] == "IN_PROGRESS"
+
+    # Ordering hazard, and the only place it is observable: WorkOrderStatus is
+    # a `str`-mixin Enum, so a primitives-before-Enum check in `_jsonable`
+    # returns the member itself rather than its `.value`. That happens to
+    # serialize to the same JSON text, so the round-tripped assertion above
+    # cannot catch it -- this one can, and would break for an IntEnum.
+    assert type(_jsonable(WorkOrderStatus.IN_PROGRESS)) is str
+
+
+def test_employee_audit_row_carries_tenant_from_client_id_assigned(transactional_db):
+    """EMPLOYEE has no `client_id` column; tenancy lives in `client_id_assigned`.
+
+    A `getattr(obj, "client_id", None)`-only lookup records `client_id=None`
+    for every EMPLOYEE row, dropping the tenant scope AUDIT_ENTRY.client_id
+    exists to carry (and which cannot be reconstructed once the employee's
+    assignment changes).
+    """
+    register_audit_listener()
+    TestDataFactory.create_employee(
+        transactional_db, employee_code="AUD-E4", employee_name="Assigned", client_id="AUD-CX"
+    )
+
+    rows = [e for e in _entries(transactional_db) if e.table_name == "EMPLOYEE"]
+    assert len(rows) == 1
+    assert rows[0].client_id == "AUD-CX"

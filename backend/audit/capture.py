@@ -1,62 +1,90 @@
-"""SQLAlchemy before_flush/after_flush capture of entity-level changes.
+"""Mapper-level capture of entity-level changes into AUDIT_ENTRY.
 
-before_flush rather than solely after_flush for two reasons that matter: old
-values are still present in attribute history before the flush completes, and
-staged audit rows join the SAME transaction -- so a rolled-back change can
-never leave an entry behind, and a committed change can never lack one.
+Fix round 1 rewrite. The original design used a session-wide before_flush
+listener (add fully-resolved UPDATE/DELETE rows, defer INSERT rows needing an
+autoincrement PK to session.info) drained by after_flush. Adversarial review
+(verified by execution, not by reading) found that shape structurally
+unsound: session.info is user-owned state SQLAlchemy does not clear on
+rollback, so a failed flush left residue that drained on the *next*
+successful flush -- producing a phantom audit row for a record that was
+never persisted, attributed to whichever actor happened to be active later,
+and aliased to whatever PK got reissued to the next real row. A second,
+narrower failure mode: if no flush or commit happened to follow, the
+deferred row was silently dropped (commit() rescues it via SQLAlchemy's
+after-flush re-flush retries, but that made the guarantee depend on how the
+transaction happened to end, not on the design).
 
-Autoincrement primary keys (EMPLOYEE, EMPLOYEE_CLIENT_ASSIGNMENT) are the one
-wrinkle: at before_flush time the database has not assigned them yet, so the
-row's identity does not exist. Building the INSERT audit row then would bake
-in a useless "None" record_pk. Those two cases are deferred: before_flush
-records everything an insert needs EXCEPT its primary key, and after_flush --
-once the INSERT has executed and the real key is sitting on the Python
-instance -- builds the row and adds it to the session. Per SQLAlchemy's own
-session-events docs, objects added inside after_flush are not part of the
-flush that is just finishing, but they DO participate in the next one
-(explicit, autoflush-on-query, or the implicit flush inside commit()), so
-this still lands in the same transaction as the row it describes, in exactly
-one INSERT. This was verified directly against SQLAlchemy 2.0.51 semantics
-before relying on it (see task-4-report.md).
+This version removes the deferred state entirely rather than patching around
+it, using SQLAlchemy's mapper-level persistence events instead of the
+session-wide flush events:
+
+- `after_insert(mapper, connection, target)` -- fires per row, once that
+  row's own INSERT has executed. The primary key (autoincrement or
+  caller-assigned) is guaranteed to be populated on `target` by this point,
+  even for EMPLOYEE/EMPLOYEE_CLIENT_ASSIGNMENT's DB-assigned integer PKs.
+- `before_update(mapper, connection, target)` -- fires per row, before that
+  row's own UPDATE executes, while attribute history is still intact.
+- `before_delete(mapper, connection, target)` -- fires per row, before that
+  row's own DELETE executes, while attribute values are still on `target`.
+
+Each handler writes its AUDIT_ENTRY row with `connection.execute(...)` --
+the same DBAPI connection SQLAlchemy is using for the row's own statement,
+inside the same flush, inside the same transaction. There is no window where
+the audit row can exist without the change it describes, or vice versa:
+transactionality falls out of using one connection, not out of getting a
+rollback hook right. This is also the pattern SQLAlchemy's own docs use for
+change-data-capture / versioning recipes.
+
+One consequence worth naming: mapper events are global to the process (they
+attach to the `Base` class with `propagate=True`, not to a Session).
+`register_audit_listener()` is idempotent, but nothing about SQLAlchemy
+tears it down automatically -- callers that need isolation (this module's
+own test suite) must call `unregister_audit_listener()` when done, or every
+later test in the same process silently starts capturing audit rows too.
 """
 
 import enum
 from datetime import date, datetime, timezone
 from decimal import Decimal
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Optional
 
 from sqlalchemy import event, inspect
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import configure_mappers
 
 from backend.audit.context import get_actor, is_suppressed
 from backend.audit.registry import REDACTED_FIELDS, is_audited
+from backend.database import Base
 from backend.orm.audit_entry import AuditEntry, AuditOperation
 
 _REDACTED = "[redacted]"
 _listener_registered = False
 
-#: session.info key holding (obj, changes) pairs for INSERTs whose primary
-#: key was not yet assigned at before_flush time. Populated in before_flush,
-#: drained in after_flush once identities exist.
-_PENDING_INSERTS_KEY = "_audit_pending_inserts"
-
 
 def _jsonable(value: Any) -> Any:
     """Coerce a column value into something the JSON column accepts.
 
-    Decimal becomes float, not str. Numeric before/after values must stay JSON
-    numbers so consumers can compare them arithmetically -- stringified Decimals
-    are a bug class this codebase has already shipped to production once, where
-    MariaDB returned "0.00" and the frontend had to coerce it back.
+    Decimal becomes float, not str -- numeric before/after values must stay
+    JSON numbers so consumers can compare them arithmetically; stringified
+    Decimals are a bug class this codebase has already shipped to production
+    once, where MariaDB returned "0.00" and the frontend had to coerce it
+    back. Enum is checked *before* the str/int/float/bool primitives: a
+    `str`-mixin Enum (this codebase has one -- AuditOperation itself) is also
+    an instance of `str`, so checking primitives first would silently return
+    the raw enum member instead of its `.value`. It happens to serialize
+    correctly by coincidence for str-mixin enums (JSON encodes it as its
+    string value anyway) but would be wrong for an IntEnum or a plain Enum,
+    so the order is load-bearing, not stylistic.
     """
-    if value is None or isinstance(value, (str, int, float, bool)):
+    if value is None:
+        return value
+    if isinstance(value, enum.Enum):
+        return value.value
+    if isinstance(value, (str, int, float, bool)):
         return value
     if isinstance(value, Decimal):
         return float(value)
     if isinstance(value, (datetime, date)):
         return value.isoformat()
-    if isinstance(value, enum.Enum):
-        return value.value
     return str(value)
 
 
@@ -64,36 +92,45 @@ def _mask(field: str, value: Any) -> Any:
     return _REDACTED if field in REDACTED_FIELDS else _jsonable(value)
 
 
-def _record_pk(obj: Any) -> Optional[str]:
-    """Stringified primary key, or None if the database hasn't assigned one yet.
+def _require_pk(obj: Any) -> str:
+    """Stringified primary key.
 
-    Caller-assigned PKs (String columns such as WORK_ORDER, CLIENT, USER) are
-    already set before flush. Autoincrement PKs are only populated once the
-    INSERT statement for that row has actually executed. Every audited table
-    was verified to have a single-column PK.
+    Every audited table was verified to have a single-column PK. Safe to
+    call unconditionally in all three handlers below: `after_insert` only
+    fires once the row's own INSERT has executed (autoincrement PKs are
+    populated by then), and `before_update`/`before_delete` only ever see
+    already-persisted rows, which always have an identity.
     """
     state = inspect(obj)
     identity = state.mapper.primary_key_from_instance(obj)
     value = identity[0]
-    return None if value is None else str(value)
-
-
-def _require_pk(obj: Any) -> str:
-    """Like `_record_pk`, but for contexts where the primary key is
-    guaranteed to already be assigned: existing persisted rows (UPDATE,
-    DELETE), or a new row after the flush that inserted it has executed.
-    Raises if that invariant is somehow violated -- that would be a bug in
-    this module, not a legitimate runtime state.
-    """
-    pk = _record_pk(obj)
-    if pk is None:
+    if value is None:
+        # Would mean this function was called somewhere the timing guarantee
+        # above doesn't hold -- a bug in this module, not a legitimate
+        # runtime state worth swallowing into a placeholder string.
         raise RuntimeError(f"expected an assigned primary key for {obj.__tablename__!r}, got None")
-    return pk
+    return str(value)
 
 
 def _client_id(obj: Any) -> Optional[str]:
+    """Best-effort tenant scope for this row.
+
+    Most audited tables have a `client_id` column. USER and EMPLOYEE are the
+    exception: multi-client actors (leaders, floating-pool staff) are scoped
+    via `client_id_assigned` instead, a comma-separated list (or NULL for
+    floating pool / unassigned). Captured now because it cannot be
+    reconstructed later if the source row is deleted or its assignment
+    changes. AUDIT_ENTRY.client_id is a single-tenant admin-read filter, not
+    a scoping boundary, so a comma-separated value is trimmed to its first
+    listed client rather than dropped -- a best-effort single value beats
+    recording nothing.
+    """
     value = getattr(obj, "client_id", None)
-    return str(value) if value is not None else None
+    if value is None:
+        assigned = getattr(obj, "client_id_assigned", None)
+        if assigned:
+            value = assigned.split(",", 1)[0].strip()
+    return str(value) if value else None
 
 
 def _insert_changes(obj: Any) -> Dict[str, Any]:
@@ -107,7 +144,15 @@ def _insert_changes(obj: Any) -> Dict[str, Any]:
 
 
 def _update_changes(obj: Any) -> Dict[str, Any]:
-    """Only genuinely modified columns. A no-op write yields {}."""
+    """Only genuinely modified columns. A no-op write yields {}.
+
+    Relies on `active_history` being forced on every audited mapper's column
+    attributes (see `_force_active_history_for_audited_tables`) -- without
+    it, an attribute expired by an earlier commit in the same session
+    (SessionLocal uses expire_on_commit=True) reports `old: None` on its
+    next change instead of reloading the real pre-expiry value, silently
+    corrupting exactly the field this trail exists to preserve.
+    """
     state = inspect(obj)
     changes: Dict[str, Any] = {}
     for column in state.mapper.columns:
@@ -123,6 +168,14 @@ def _update_changes(obj: Any) -> Dict[str, Any]:
 
 
 def _delete_changes(obj: Any) -> Dict[str, Any]:
+    """Every column's current value, recorded as the "old" side.
+
+    Unlike `_insert_changes`, this does not skip None-valued columns: a
+    delete's "before" snapshot should be complete (this is the last chance
+    to record what the row looked like), whereas an insert's "before" side
+    is always None by definition and a column that was never set is not
+    informative enough to justify the row in the changes dict.
+    """
     changes: Dict[str, Any] = {}
     for column in inspect(obj).mapper.columns:
         value = getattr(obj, column.key, None)
@@ -130,98 +183,111 @@ def _delete_changes(obj: Any) -> Dict[str, Any]:
     return changes
 
 
-def _build_entry(obj: Any, operation: AuditOperation, changes: Dict[str, Any], record_pk: str) -> AuditEntry:
+def _write_entry(connection: Any, obj: Any, operation: AuditOperation, changes: Dict[str, Any]) -> None:
+    """Insert one AUDIT_ENTRY row via Core, on the flush's own connection.
+
+    Deliberately not `session.add()` / ORM: a Core insert on the connection
+    the mapper event handed us lands in the exact same transaction as the
+    row it describes, with no dependency on a later flush and nothing to
+    reconcile if the surrounding transaction rolls back. It also cannot
+    recurse into these same listeners -- mapper events only fire for ORM
+    session flushes, and this bypasses the ORM entirely.
+    """
     actor = get_actor()
-    return AuditEntry(
-        occurred_at=datetime.now(tz=timezone.utc),
-        actor_user_id=actor,
-        actor_username=actor if actor else "system",
-        table_name=obj.__tablename__,
-        record_pk=record_pk,
-        operation=operation,
-        changes=changes,
-        client_id=_client_id(obj),
+    connection.execute(
+        AuditEntry.__table__.insert(),
+        {
+            "occurred_at": datetime.now(tz=timezone.utc),
+            "actor_user_id": actor,
+            "actor_username": actor if actor else "system",
+            "table_name": obj.__tablename__,
+            "record_pk": _require_pk(obj),
+            "operation": operation,
+            "changes": changes,
+            "client_id": _client_id(obj),
+        },
     )
 
 
-def build_entries(session: Session) -> List[AuditEntry]:
-    """Audit rows resolvable right now: updates, deletes, and inserts whose
-    primary key is already known (caller-assigned PK tables). Pure; adds
-    nothing to the session.
-
-    Inserts into autoincrement-PK tables are deliberately excluded here --
-    their identity does not exist until the flush actually executes -- and
-    are instead captured via `_pending_inserts` for after_flush to resolve.
-    """
+def _capture_insert(mapper: Any, connection: Any, target: Any) -> None:
     if is_suppressed():
-        return []
-
-    entries: List[AuditEntry] = []
-
-    for obj in session.new:
-        if not is_audited(getattr(obj, "__tablename__", "")):
-            continue
-        pk = _record_pk(obj)
-        if pk is None:
-            continue  # autoincrement PK not yet assigned; see _pending_inserts
-        entries.append(_build_entry(obj, AuditOperation.INSERT, _insert_changes(obj), pk))
-
-    for obj in session.dirty:
-        if not is_audited(getattr(obj, "__tablename__", "")):
-            continue
-        changes = _update_changes(obj)
-        if not changes:
-            continue  # no-op write
-        entries.append(_build_entry(obj, AuditOperation.UPDATE, changes, _require_pk(obj)))
-
-    for obj in session.deleted:
-        if not is_audited(getattr(obj, "__tablename__", "")):
-            continue
-        entries.append(_build_entry(obj, AuditOperation.DELETE, _delete_changes(obj), _require_pk(obj)))
-
-    return entries
+        return
+    if not is_audited(getattr(target, "__tablename__", "")):
+        return
+    _write_entry(connection, target, AuditOperation.INSERT, _insert_changes(target))
 
 
-def _pending_inserts(session: Session) -> List[Tuple[Any, Dict[str, Any]]]:
-    """Autoincrement-PK inserts awaiting their real primary key.
-
-    Values are captured now (before_flush) because attribute history is only
-    reliable pre-flush; only the key resolution itself is deferred.
-    """
+def _capture_update(mapper: Any, connection: Any, target: Any) -> None:
     if is_suppressed():
-        return []
+        return
+    if not is_audited(getattr(target, "__tablename__", "")):
+        return
+    changes = _update_changes(target)
+    if not changes:
+        return  # no-op write
+    _write_entry(connection, target, AuditOperation.UPDATE, changes)
 
-    pending: List[Tuple[Any, Dict[str, Any]]] = []
-    for obj in session.new:
-        if not is_audited(getattr(obj, "__tablename__", "")):
+
+def _capture_delete(mapper: Any, connection: Any, target: Any) -> None:
+    if is_suppressed():
+        return
+    if not is_audited(getattr(target, "__tablename__", "")):
+        return
+    _write_entry(connection, target, AuditOperation.DELETE, _delete_changes(target))
+
+
+def _force_active_history_for_audited_tables() -> None:
+    """Make expired attributes reload their real value when history is read.
+
+    `SessionLocal` (backend/database.py) uses `expire_on_commit=True`. Any
+    object touched again after an earlier commit in the *same* session has
+    every attribute expired; SQLAlchemy's default (passive) history lookup
+    then reports the "old" side as None instead of reloading it -- verified
+    directly: a real old value of 50.0 came back as `{'old': None, 'new':
+    70.0}`. `load_history()` does not fix this (also verified); forcing
+    `active_history=True` on the attribute implementation does, by making
+    SQLAlchemy actively reload the pre-expiry value instead of trusting a
+    (now-invalid) cached one. Scoped to audited tables only, and applied
+    programmatically here rather than by editing 14 ORM files' column
+    definitions, since `active_history` isn't exposed as a `mapped_column()`
+    kwarg and this keeps the change contained to the audit module.
+    """
+    configure_mappers()
+    for mapper in Base.registry.mappers:
+        table = mapper.local_table
+        if table is None or not is_audited(table.name):
             continue
-        if _record_pk(obj) is not None:
-            continue  # already handled by build_entries
-        pending.append((obj, _insert_changes(obj)))
-    return pending
+        class_manager = mapper.class_manager
+        for prop in mapper.column_attrs:
+            class_manager[prop.key].impl.active_history = True
 
 
 def register_audit_listener() -> None:
-    """Attach the before_flush/after_flush listener pair. Idempotent."""
+    """Attach the mapper-level capture listeners. Idempotent."""
     global _listener_registered
     if _listener_registered:
         return
 
-    @event.listens_for(Session, "before_flush")
-    def _before_flush(session: Session, flush_context: Any, instances: Any) -> None:
-        for entry in build_entries(session):
-            session.add(entry)
-
-        pending = _pending_inserts(session)
-        if pending:
-            session.info.setdefault(_PENDING_INSERTS_KEY, []).extend(pending)
-
-    @event.listens_for(Session, "after_flush")
-    def _after_flush(session: Session, flush_context: Any) -> None:
-        pending = session.info.pop(_PENDING_INSERTS_KEY, None)
-        if not pending:
-            return
-        for obj, changes in pending:
-            session.add(_build_entry(obj, AuditOperation.INSERT, changes, _require_pk(obj)))
-
+    _force_active_history_for_audited_tables()
+    event.listen(Base, "after_insert", _capture_insert, propagate=True)
+    event.listen(Base, "before_update", _capture_update, propagate=True)
+    event.listen(Base, "before_delete", _capture_delete, propagate=True)
     _listener_registered = True
+
+
+def unregister_audit_listener() -> None:
+    """Detach the mapper-level capture listeners.
+
+    Needed because these attach process-wide (mapper events aren't
+    Session-scoped): once registered, they stay live for every later test
+    in the same pytest process unless explicitly removed. Safe to call when
+    nothing is registered.
+    """
+    global _listener_registered
+    if not _listener_registered:
+        return
+
+    event.remove(Base, "after_insert", _capture_insert)
+    event.remove(Base, "before_update", _capture_update)
+    event.remove(Base, "before_delete", _capture_delete)
+    _listener_registered = False
