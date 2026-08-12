@@ -120,6 +120,9 @@ from .capacity import (
 # D3 — SimPy V2 / MiniZinc scenario persistence
 from .simulation_scenario import SimulationScenario
 
+# Project A — Audit trail
+from .audit_entry import AuditEntry, AuditOperation
+
 
 def register_all_models() -> None:
     """Register EVERY ORM model on Base.metadata (idempotent).
@@ -225,4 +228,7 @@ __all__ = [
     "CapacityKPICommitment",
     # Simulation V2 scenario persistence (D3)
     "SimulationScenario",
+    # Project A — Audit trail
+    "AuditEntry",
+    "AuditOperation",
 ]

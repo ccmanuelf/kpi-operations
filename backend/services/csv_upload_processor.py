@@ -61,7 +61,17 @@ def process_csv_upload(
     create_fn: Callable[[Session, Any, User], Any],
     id_getter: Callable[[Any], Any],
 ) -> CSVUploadResponse:
-    """Run each row through row_mapper → create_fn, collecting the same counts/errors as the legacy endpoints."""
+    """Run each row through row_mapper → create_fn, collecting the same counts/errors as the legacy endpoints.
+
+    NOT suppressed from audit capture (owner ruling 2026-08-12): this is
+    reached from 11 authenticated, user-facing endpoints
+    (backend/endpoints/csv_upload.py). A supervisor uploading 500 hold
+    records must leave the same entity-level trail as editing one hold in
+    the UI -- bulk changes are exactly the ones most worth tracing. Only the
+    demo seeders (backend/scripts/seed_sample_client.py,
+    backend/scripts/init_demo_database.py) suppress, because they generate
+    fixture data rather than a human decision.
+    """
     total_rows = 0
     successful = 0
     failed = 0

@@ -24,6 +24,7 @@ from sqlalchemy import create_engine, inspect  # noqa: E402
 from sqlalchemy.exc import ArgumentError, NoSuchModuleError, OperationalError  # noqa: E402
 from sqlalchemy.orm import Session  # noqa: E402
 
+from backend.audit import audit_suppressed  # noqa: E402
 from backend.orm.client import Client, ClientType  # noqa: E402
 
 from backend.scripts._seed_common import rng_for, ClientSpec  # noqa: E402,F401 — rng_for re-exported for `seed.rng_for`
@@ -297,7 +298,11 @@ def seed_client(session: Session, spec: ClientSpec, days: int, anchor: date, jus
     seed_simulation(session, spec.client_id)
 
 
+@audit_suppressed()
 def main(argv: Optional[list] = None) -> int:
+    """Entry point (CLI / VM invocation). Wrapped in ``audit_suppressed()`` --
+    a --reset re-seed writes thousands of rows describing machine-generated
+    fixture data, not a human decision; see backend/audit/context.py."""
     parser = argparse.ArgumentParser(
         prog="seed_sample_client",
         description="Seed DEMO clients with a full credible dataset (INSERT-only, allowlist-guarded).",
