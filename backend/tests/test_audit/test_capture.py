@@ -14,6 +14,7 @@ from backend.orm.employee import Employee
 from backend.orm.kpi_threshold import KPIThreshold
 from backend.orm.metric_calculation_result import MetricCalculationResult
 from backend.orm.work_order import WorkOrder, WorkOrderStatus
+from backend.tests.conftest import clone_template_engine
 from backend.tests.fixtures.factories import TestDataFactory
 
 
@@ -378,34 +379,54 @@ def test_rolled_back_outer_transaction_leaves_no_change_and_no_audit_row(_txn_en
         verify_conn.close()
 
 
-def test_committed_outer_transaction_persists_change_and_audit_row_together(_txn_engine):
+def test_committed_outer_transaction_persists_change_and_audit_row_together():
     """The mirror of the rollback test, and just as load-bearing.
 
     A committed change must never lack its audit entry: without this half,
     an implementation that captured nothing at all (or wrote the audit row
     on a connection other than the flush's own) would still pass the
     rollback-only test above.
+
+    Deliberately NOT on the shared, session-scoped ``_txn_engine``: this test
+    commits for real, and ``_txn_engine`` backs the whole ``transactional_db``
+    fixture family (``seeded_db``, ``comprehensive_db``, etc.) for the rest of
+    the pytest process. A durable row there would be a latent order-dependency
+    for any later test asserting exact counts. Uses its own disposable engine
+    instead (the same ``clone_template_engine`` pattern already used by
+    ~40 other test modules in this suite), so a real commit here can never
+    leak into anything else.
     """
     register_audit_listener()
-
-    connection = _txn_engine.connect()
-    trans = connection.begin()
-    session = SASession(bind=connection)
+    engine = clone_template_engine()
     try:
-        session.add(KPIThreshold(threshold_id="AUD-CM1", kpi_key="rty", target_value=95.0))
-        session.flush()
-    finally:
-        session.close()
-        trans.commit()
-        connection.close()
+        connection = engine.connect()
+        trans = connection.begin()
+        session = SASession(bind=connection)
+        try:
+            session.add(KPIThreshold(threshold_id="AUD-CM1", kpi_key="rty", target_value=95.0))
+            session.flush()
+        except Exception:
+            # A real failure here (e.g. a capture bug) has already put the
+            # DBAPI transaction in pending-rollback state; committing it
+            # would raise a second, masking error. Roll back instead and let
+            # the original exception propagate.
+            trans.rollback()
+            raise
+        else:
+            trans.commit()
+        finally:
+            session.close()
+            connection.close()
 
-    verify_conn = _txn_engine.connect()
-    verify_session = SASession(bind=verify_conn)
-    try:
-        assert verify_session.query(KPIThreshold).filter_by(threshold_id="AUD-CM1").count() == 1
-        entries = verify_session.query(AuditEntry).filter_by(record_pk="AUD-CM1").all()
-        assert len(entries) == 1
-        assert entries[0].operation == AuditOperation.INSERT
+        verify_conn = engine.connect()
+        verify_session = SASession(bind=verify_conn)
+        try:
+            assert verify_session.query(KPIThreshold).filter_by(threshold_id="AUD-CM1").count() == 1
+            entries = verify_session.query(AuditEntry).filter_by(record_pk="AUD-CM1").all()
+            assert len(entries) == 1
+            assert entries[0].operation == AuditOperation.INSERT
+        finally:
+            verify_session.close()
+            verify_conn.close()
     finally:
-        verify_session.close()
-        verify_conn.close()
+        engine.dispose()
