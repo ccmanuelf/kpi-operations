@@ -631,9 +631,24 @@ git commit -m "feat(audit): AUDIT_ENTRY model and Alembic 0005"
 
 **Interfaces:**
 - Consumes: Task 1 (`get_actor`, `is_suppressed`), Task 2 (`is_audited`, `REDACTED_FIELDS`), Task 3 (`AuditEntry`, `AuditOperation`).
-- Produces: `register_audit_listener() -> None`; `build_entries(session) -> list[AuditEntry]`.
+- Produces: `register_audit_listener() -> None`; `unregister_audit_listener() -> None`.
+  (**Superseded during implementation:** the original design also declared
+  `build_entries(session)`. The adversarial review forced a redesign from
+  `before_flush` + `session.info` + `after_flush` to mapper-level `after_insert`
+  writing via Core on the flush's own connection, which removed the concept of
+  batch-building entries from a session. `build_entries` no longer exists.)
 
-`build_entries` is separated from the listener so it can be tested directly without driving a flush.
+> ⚠️ **The implementation code in this task is SUPERSEDED — kept as the historical
+> record of what was attempted, not as instructions.** An adversarial review proved
+> the `before_flush` + `session.info` + `after_flush` design below is unsound: state
+> parked in `session.info` survives a *failed* flush (SQLAlchemy does not clear user
+> `session.info` on rollback) and drains into the next successful flush, writing a
+> phantom audit row for a record that was never created, attributed to whichever
+> actor is acting then. The shipped design (commit `f7b288d`) instead uses
+> mapper-level `after_insert(mapper, connection, target)` writing via Core on the
+> flush's own connection, plus `_force_active_history_for_audited_tables()` to stop
+> `expire_on_commit=True` recording `old: None`. `build_entries` does not exist in
+> the shipped code. **Read `backend/audit/capture.py` for the real implementation.**
 
 - [ ] **Step 1: Write the failing test**
 
