@@ -1159,7 +1159,7 @@ git commit -m "feat(audit): register listener and attribute the acting user"
 ### Task 7: Suppress capture in the seeder and CSV importers
 
 **Files:**
-- Modify: `backend/scripts/seed_sample_client.py`, `backend/scripts/init_demo_database.py`, `backend/services/csv_upload_processor.py`
+- Modify: `backend/scripts/seed_sample_client.py`, `backend/scripts/init_demo_database.py`
 - Test: `backend/tests/test_audit/test_suppression_sites.py`
 
 **Interfaces:**

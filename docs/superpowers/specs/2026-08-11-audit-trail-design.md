@@ -138,10 +138,19 @@ The single source the guards read:
   `{"password_hash"}`, the only sensitive column in the ORM layer today.
 
 ### Suppression
-Narrow and explicit. The demo seeder (`scripts/seed_sample_client.py`, which uses
-`session.add(...)` and would otherwise be captured) and the CSV bulk importers wrap
-their work in `audit_suppressed()`. **Unsuppressed bulk writes are still captured**, so
-the opt-out is a deliberate act at a known call site rather than an ambient default.
+Narrow and explicit, and **limited to fixture generation**. The seeders
+(`scripts/seed_sample_client.py` and `scripts/init_demo_database.py`, which use
+`session.add(...)` and would otherwise be captured) wrap their work in
+`audit_suppressed()`. **Unsuppressed bulk writes are still captured**, so the opt-out
+is a deliberate act at a known call site rather than an ambient default.
+
+**CSV uploads are NOT suppressed (owner ruling, 2026-08-12 — corrects an earlier
+version of this spec).** `process_csv_upload` is reached from eleven *authenticated,
+user-facing* endpoints in `backend/endpoints/csv_upload.py`. Suppressing it would mean
+a supervisor uploading 500 hold records left no entity-level trail, while the same
+person editing one hold in the UI was fully audited — a hole exactly where the largest
+changes enter the system. Bulk changes are the ones most worth tracing, so they are
+captured per row. The allow-list keeps that volume confined to human-decision tables.
 
 ### Attribution without a user
 Scheduler jobs, migrations and CLI writes record `actor=system` rather than failing or
