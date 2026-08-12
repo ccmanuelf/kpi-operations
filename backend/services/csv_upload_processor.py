@@ -11,7 +11,6 @@ from pydantic import ValidationError
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from backend.audit import audit_suppressed
 from backend.orm.user import User
 from backend.schemas.production import CSVUploadResponse
 
@@ -53,7 +52,6 @@ def read_upload(content: bytes, filename: str, sheet_name: Optional[str] = None)
     return _read_upload_file(content, filename, sheet_name=sheet_name)
 
 
-@audit_suppressed()
 def process_csv_upload(
     rows: list[dict],
     db: Session,
@@ -65,8 +63,14 @@ def process_csv_upload(
 ) -> CSVUploadResponse:
     """Run each row through row_mapper → create_fn, collecting the same counts/errors as the legacy endpoints.
 
-    Wrapped in ``audit_suppressed()`` -- bulk CSV/XLSX import is data
-    movement, not a per-row human decision; see backend/audit/context.py.
+    NOT suppressed from audit capture (owner ruling 2026-08-12): this is
+    reached from 11 authenticated, user-facing endpoints
+    (backend/endpoints/csv_upload.py). A supervisor uploading 500 hold
+    records must leave the same entity-level trail as editing one hold in
+    the UI -- bulk changes are exactly the ones most worth tracing. Only the
+    demo seeders (backend/scripts/seed_sample_client.py,
+    backend/scripts/init_demo_database.py) suppress, because they generate
+    fixture data rather than a human decision.
     """
     total_rows = 0
     successful = 0
