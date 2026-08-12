@@ -1,5 +1,6 @@
 """Audit capture: diffs, redaction, suppression, transactionality."""
 
+import threading
 from datetime import datetime, timezone
 from decimal import Decimal
 
@@ -156,6 +157,38 @@ def test_password_hash_is_redacted(transactional_db):
     assert "argon2" not in str(updates[0].changes)
 
 
+def test_password_hash_is_redacted_on_the_delete_path(transactional_db):
+    """The DELETE snapshot records EVERY column, including the secret ones.
+
+    `_delete_changes` (unlike `_insert_changes`) deliberately does not skip
+    columns, because a delete's "before" snapshot is the last chance to record
+    what the row looked like. That makes it the one path where a redaction
+    miss would dump a live password hash into AUDIT_ENTRY -- and it was the
+    only one of the three paths with no redaction test. The insert path is
+    covered here too, since a USER delete implies a USER insert first.
+    """
+    register_audit_listener()
+    sentinel = "$argon2id$v=19$never-in-the-audit-trail"
+    user = TestDataFactory.create_user(
+        transactional_db, user_id="AUD-U2", username="aud_deleted", role="operator", client_id=None
+    )
+    user.password_hash = sentinel
+    transactional_db.flush()
+
+    transactional_db.delete(user)
+    transactional_db.flush()
+
+    deletes = [e for e in _entries(transactional_db) if e.table_name == "USER" and e.operation == AuditOperation.DELETE]
+    assert len(deletes) == 1
+    assert deletes[0].changes["password_hash"] == {"old": "[redacted]", "new": None}
+    # Not vacuous: the snapshot really is a full one (other columns are there),
+    # and no hash material of any kind reached the row.
+    assert deletes[0].changes["username"]["old"] == "aud_deleted"
+    serialized = str(deletes[0].changes)
+    assert sentinel not in serialized
+    assert "argon2" not in serialized
+
+
 def test_actor_is_system_when_unset(transactional_db):
     register_audit_listener()
     TestDataFactory.create_client(transactional_db, client_id="AUD-C4", client_name="No Actor")
@@ -163,6 +196,143 @@ def test_actor_is_system_when_unset(transactional_db):
     row = [e for e in _entries(transactional_db) if e.record_pk == "AUD-C4"][0]
     assert row.actor_user_id is None
     assert row.actor_username == "system"
+
+
+def test_actor_username_is_the_username_not_the_user_id(transactional_db):
+    """`actor_username` is a SNAPSHOT, and must hold the actual username.
+
+    It exists so history stays readable after a user is renamed or
+    deactivated (spec section 4, and the model's own comment). Writing the
+    user id into it makes it an exact duplicate of `actor_user_id` and
+    delivers none of that -- which is what shipped, because no test ever
+    asserted a real username landed. This is the test whose absence allowed
+    it; the value is not backfillable once rows exist.
+    """
+    register_audit_listener()
+    token = set_actor("USR-42", "maria.lopez")
+    try:
+        TestDataFactory.create_client(transactional_db, client_id="AUD-C6", client_name="Named Actor")
+        transactional_db.flush()
+    finally:
+        if token is not None:
+            current_actor.reset(token)
+
+    row = [e for e in _entries(transactional_db) if e.record_pk == "AUD-C6"][0]
+    assert row.actor_user_id == "USR-42"
+    assert row.actor_username == "maria.lopez"
+    assert row.actor_username != row.actor_user_id
+
+
+def test_non_request_write_records_no_request_method_or_path(transactional_db):
+    """Scheduler/CLI/migration writes have no request behind them.
+
+    NULL/NULL here is the meaningful "not driven by an HTTP request" value,
+    and is the counterpart to
+    test_audit_wiring.py::test_request_driven_write_records_username_method_and_path,
+    which asserts a real request DOES populate both. Together they prove the
+    columns carry information rather than being uniformly NULL (which is what
+    they were) or uniformly filled.
+    """
+    register_audit_listener()
+    TestDataFactory.create_client(transactional_db, client_id="AUD-C7", client_name="No Request")
+    transactional_db.flush()
+
+    row = [e for e in _entries(transactional_db) if e.record_pk == "AUD-C7"][0]
+    assert row.request_method is None
+    assert row.request_path is None
+
+
+def test_occurred_at_is_stored_as_naive_utc(transactional_db):
+    """The stated contract for `occurred_at` (see backend/orm/audit_entry.py).
+
+    The writer binds a tz-aware value stripped to naive UTC. Both SQLite and
+    pymysql would have dropped the offset anyway, so the point of this test is
+    not that the offset is absent -- it is that the value left behind is UTC,
+    not local time. A future "fix" that dropped the `.replace(tzinfo=None)`
+    and let the driver truncate would still pass an `is None` tzinfo check;
+    swapping in `datetime.now()` (local) would not pass the UTC comparison
+    below, which is the mistake Phase A2's range filters would be built on.
+    """
+    register_audit_listener()
+    before = datetime.now(tz=timezone.utc).replace(tzinfo=None)
+    TestDataFactory.create_client(transactional_db, client_id="AUD-C8", client_name="Clock")
+    transactional_db.flush()
+    after = datetime.now(tz=timezone.utc).replace(tzinfo=None)
+
+    row = [e for e in _entries(transactional_db) if e.record_pk == "AUD-C8"][0]
+    assert row.occurred_at.tzinfo is None
+    assert before <= row.occurred_at <= after
+
+
+def test_concurrent_writers_each_get_their_own_actor():
+    """Two overlapping "requests" must not cross-attribute.
+
+    Attribution lives in a ContextVar-held holder, and the reason that is
+    correct under concurrency is an argument, not something the rest of the
+    suite demonstrates: every other test is single-threaded, so a module-level
+    global would pass all of them. This makes it enforceable. Both threads set
+    their actor BEFORE either writes (first barrier) and both write before
+    either reads (second barrier), so a shared/last-writer-wins actor would
+    attribute both rows to the same person and fail here.
+
+    Each thread uses its own engine and Session: SQLite connections are not
+    shareable across threads, and separate engines also prove the two writes
+    are genuinely independent rather than serialized behind one connection.
+    """
+    register_audit_listener()
+    actors_ready = threading.Barrier(2, timeout=30)
+    writes_done = threading.Barrier(2, timeout=30)
+    observed = {}
+    errors = []
+
+    def writer(engine, user_id: str, username: str, threshold_id: str) -> None:
+        try:
+            # A fresh thread starts with its own empty context, so this binds a
+            # holder visible only to this thread -- the property under test.
+            set_actor(user_id, username)
+            actors_ready.wait()
+
+            session = SASession(bind=engine)
+            try:
+                session.add(KPIThreshold(threshold_id=threshold_id, kpi_key="oee", target_value=80.0))
+                session.flush()
+                writes_done.wait()
+                rows = session.query(AuditEntry).filter_by(record_pk=threshold_id).all()
+                observed[user_id] = [(r.actor_user_id, r.actor_username) for r in rows]
+            finally:
+                session.rollback()
+                session.close()
+        except BaseException as exc:  # noqa: BLE001 - surfaced via `errors` below
+            errors.append(exc)
+            # Never leave the peer thread blocked on a barrier this one will
+            # not reach; a broken barrier raises there instead of hanging.
+            actors_ready.abort()
+            writes_done.abort()
+
+    # Engines are built HERE, on the main thread: clone_template_engine()
+    # lazily builds the shared Alembic template DB on first use and that build
+    # is not thread-safe (two threads racing it produce "table alembic_version
+    # already exists"). Only the writes need to be concurrent, not the setup.
+    engines = [clone_template_engine(), clone_template_engine()]
+    try:
+        threads = [
+            threading.Thread(target=writer, args=(engines[0], "USR-A", "alice", "AUD-CONC-A")),
+            threading.Thread(target=writer, args=(engines[1], "USR-B", "bob", "AUD-CONC-B")),
+        ]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join(timeout=60)
+            assert not thread.is_alive(), "a writer thread did not finish"
+    finally:
+        for engine in engines:
+            engine.dispose()
+
+    assert errors == [], f"writer thread(s) raised: {errors}"
+    assert observed == {
+        "USR-A": [("USR-A", "alice")],
+        "USR-B": [("USR-B", "bob")],
+    }
 
 
 def test_autoincrement_pk_insert_records_real_pk_not_none(transactional_db):
@@ -188,12 +358,15 @@ def test_autoincrement_pk_insert_records_real_pk_not_none(transactional_db):
 def test_rollback_discards_autoincrement_insert_and_its_audit_row(transactional_db):
     """The core transactionality guarantee, exercised on the trickiest path.
 
-    The autoincrement-PK case defers building the audit row to an
-    ``after_flush`` handler that calls ``session.add()`` -- exactly the kind
-    of construct the brief warns is easy to get wrong in a way that lets an
-    audit row outlive the change it describes. Prove it does not: after a
-    rollback, neither the EMPLOYEE row nor its audit entry exists, and the
-    session is still usable afterward for a fresh write.
+    The autoincrement-PK case is the one where the audit row is written
+    latest -- from ``after_insert``, once the row's own INSERT has already
+    executed and the DB has assigned the PK. That is exactly where a
+    mis-wired implementation would let an audit row outlive the change it
+    describes (an earlier design deferred it to ``after_flush`` +
+    ``session.add()``, which did precisely that; see this module's other
+    regression test and capture.py's docstring). Prove the current one does
+    not: after a rollback, neither the EMPLOYEE row nor its audit entry
+    exists, and the session is still usable afterward for a fresh write.
     """
     register_audit_listener()
     employee = TestDataFactory.create_employee(transactional_db, employee_code="AUD-E2", employee_name="Rolled Back")

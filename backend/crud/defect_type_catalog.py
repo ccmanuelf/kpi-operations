@@ -202,10 +202,25 @@ def bulk_create_defect_types(
         verify_client_access(current_user, client_id)
 
     if replace_existing:
-        # Deactivate all existing defect types for this client
-        db.query(DefectTypeCatalog).filter(DefectTypeCatalog.client_id == client_id).update(
-            {"is_active": False, "updated_at": datetime.now(tz=timezone.utc)}
-        )
+        # Deactivate all existing defect types for this client.
+        #
+        # Loaded and mutated through the ORM rather than as a query-level
+        # `.update({...})`. A query-level update compiles to one bare UPDATE
+        # statement: no instances are loaded, so SQLAlchemy's mapper events
+        # never fire and the audit trail records nothing -- a whole client's
+        # defect taxonomy silently deactivated with no trail, on a table that
+        # is audited precisely because taxonomy edits reshape historical
+        # reporting. (The owner ruled CSV/XLSX uploads are NOT audit-
+        # suppressed, so this path is meant to be captured.) Bounded by one
+        # client's catalog, which is reference data, so the row-at-a-time cost
+        # is not meaningful next to losing the trail. Guarded against
+        # regression by tests/test_audit/test_no_bulk_writes_on_audited_tables.py.
+        now = datetime.now(tz=timezone.utc)
+        # Named distinctly from the per-row `existing` further down: reusing
+        # that name here rebinds it to a list and breaks its inferred type.
+        for previous_type in db.query(DefectTypeCatalog).filter(DefectTypeCatalog.client_id == client_id).all():
+            previous_type.is_active = False
+            previous_type.updated_at = now
         db.commit()
 
     created = 0

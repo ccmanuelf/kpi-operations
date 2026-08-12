@@ -51,7 +51,7 @@ from typing import Any, Dict, Optional
 from sqlalchemy import event, inspect
 from sqlalchemy.orm import configure_mappers
 
-from backend.audit.context import get_actor, is_suppressed
+from backend.audit.context import get_actor, get_actor_username, get_request_shape, is_suppressed
 from backend.audit.registry import REDACTED_FIELDS, is_audited
 from backend.database import Base
 from backend.orm.audit_entry import AuditEntry, AuditOperation
@@ -95,11 +95,15 @@ def _mask(field: str, value: Any) -> Any:
 def _require_pk(obj: Any) -> str:
     """Stringified primary key.
 
-    Every audited table was verified to have a single-column PK. Safe to
-    call unconditionally in all three handlers below: `after_insert` only
-    fires once the row's own INSERT has executed (autoincrement PKs are
-    populated by then), and `before_update`/`before_delete` only ever see
-    already-persisted rows, which always have an identity.
+    Every audited table was verified to have a single-column PK, and that
+    assumption is pinned by
+    tests/test_audit/test_registry_guards.py::test_every_audited_table_has_a_single_column_pk
+    so a future composite key fails CI rather than silently losing every
+    column after the first. Safe to call unconditionally in all three
+    handlers below: `after_insert` only fires once the row's own INSERT has
+    executed (autoincrement PKs are populated by then), and
+    `before_update`/`before_delete` only ever see already-persisted rows,
+    which always have an identity.
     """
     state = inspect(obj)
     identity = state.mapper.primary_key_from_instance(obj)
@@ -194,17 +198,39 @@ def _write_entry(connection: Any, obj: Any, operation: AuditOperation, changes: 
     session flushes, and this bypasses the ORM entirely.
     """
     actor = get_actor()
+    username = get_actor_username()
+    method, path = get_request_shape()
     connection.execute(
         AuditEntry.__table__.insert(),
         {
-            "occurred_at": datetime.now(tz=timezone.utc),
+            # Naive UTC, deliberately. AUDIT_ENTRY.occurred_at is a plain
+            # `DateTime` column, and neither SQLite nor pymysql/MariaDB can
+            # store a UTC offset in one -- both silently discard the tzinfo,
+            # so a tz-aware bind produced a naive-UTC row anyway, just via an
+            # implicit truncation nobody had stated. Truncating here makes the
+            # stored contract explicit and identical on both dialects: every
+            # occurred_at value is naive UTC. Range filters (Phase A2) must
+            # therefore compare against naive UTC datetimes, never against
+            # `datetime.now()` local time and never against an aware value.
+            "occurred_at": datetime.now(tz=timezone.utc).replace(tzinfo=None),
             "actor_user_id": actor,
-            "actor_username": actor if actor else "system",
+            # "system" means genuinely no actor. A known id with no username
+            # is left NULL rather than mislabelled "system" -- only reachable
+            # from a direct set_actor(user_id) call with no username (CLI /
+            # tests); the request path always carries both.
+            "actor_username": username if username else ("system" if actor is None else None),
             "table_name": obj.__tablename__,
             "record_pk": _require_pk(obj),
             "operation": operation,
             "changes": changes,
             "client_id": _client_id(obj),
+            # Truncated to the column widths: MariaDB in STRICT mode ERRORS on
+            # an over-long value rather than truncating, which would turn a
+            # long query string into a failed *business* write. Losing the
+            # tail of a path is acceptable; failing the user's request to
+            # record the audit of it is not.
+            "request_method": method[:8] if method else None,
+            "request_path": path[:255] if path else None,
         },
     )
 

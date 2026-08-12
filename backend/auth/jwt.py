@@ -221,7 +221,10 @@ def get_current_user(request: Request, token: str = Depends(oauth2_scheme), db: 
     request.state.user_id = user.user_id
     # ...and on the audit contextvar, which ORM flush hooks read (they have no
     # request object). Same point, so attribution has one source of truth.
-    set_actor(user.user_id)
+    # The username goes with it: AUDIT_ENTRY.actor_username is a snapshot so
+    # history stays readable after this user is renamed or deactivated, which
+    # only works if it is captured here, at write time. It is not backfillable.
+    set_actor(user.user_id, user.username)
 
     return user
 

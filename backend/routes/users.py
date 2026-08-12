@@ -14,6 +14,7 @@ from backend.schemas.user import UserCreate, UserUpdate, UserResponse
 from backend.auth.jwt import get_password_hash, get_current_user
 from backend.auth.role_rules import validate_role_client_assignment
 from backend.orm.user import User
+from backend.orm.user_client_assignment import UserClientAssignment
 from backend.utils.logging_utils import get_module_logger
 
 logger = get_module_logger(__name__)
@@ -123,6 +124,20 @@ def delete_user(user_id: str, db: Session = Depends(get_db), current_user: User 
     # Prevent deleting yourself
     if user.user_id == current_user.user_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot delete your own account")
+
+    # Delete this user's tenant-access grants through the ORM, explicitly.
+    # USER_CLIENT_ASSIGNMENT.user_id declares ondelete="CASCADE", and there is
+    # no ORM relationship between User and UserClientAssignment, so deleting
+    # the parent alone hands the child rows to the DATABASE to remove --
+    # SQLAlchemy never sees them, the audit mapper events never fire, and an
+    # audited access-control grant disappears with no trail. (The trail would
+    # record the grant being created and never record it being revoked, on the
+    # one table added specifically because it confers tenant reach.) Deleting
+    # them here puts them through the ORM unit of work, in this same
+    # transaction, so each one is captured. Pinned by
+    # tests/test_audit/test_capture.py::test_deleting_a_user_captures_its_client_assignment_deletes
+    for assignment in db.query(UserClientAssignment).filter(UserClientAssignment.user_id == user.user_id).all():
+        db.delete(assignment)
 
     db.delete(user)
     db.commit()

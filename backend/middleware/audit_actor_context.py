@@ -32,7 +32,16 @@ class AuditActorContextMiddleware:
             await self.app(scope, receive, send)
             return
 
-        token = seed_actor_context()
+        # method/path come straight from the ASGI scope, the only place they
+        # are available this early (no Request object is built yet, and the
+        # ORM flush hooks that consume them never see one at all). Seeded now
+        # rather than read later so an AUDIT_ENTRY row can be tied back to the
+        # request-level "[AUDIT] POST /api/... | user=42" log line
+        # AuditLogMiddleware writes. `scope["path"]` is the raw, pre-rewrite
+        # path: APIVersionMiddleware (inner) rewrites /api/v1/... -> /api/...
+        # afterwards, so what lands in AUDIT_ENTRY is what the client actually
+        # requested, which is the more useful thing to tie back to.
+        token = seed_actor_context(method=scope.get("method"), path=scope.get("path"))
         try:
             await self.app(scope, receive, send)
         finally:

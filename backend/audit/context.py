@@ -34,21 +34,46 @@ from typing import Iterator, Optional
 
 
 class _ActorHolder:
-    """Mutable box for the acting user id -- see module docstring for why a
-    bare ContextVar rebind is not enough."""
+    """Mutable box for the request's audit attribution -- see module docstring
+    for why a bare ContextVar rebind is not enough.
 
-    __slots__ = ("user_id",)
+    Carries four values, all of them things AUDIT_ENTRY records and none of
+    them reconstructable after the fact:
 
-    def __init__(self, user_id: Optional[str] = None) -> None:
+    - ``user_id`` / ``username``: who. Both, not just the id, because
+      ``AUDIT_ENTRY.actor_username`` is a deliberate *snapshot* -- its whole
+      reason to exist is that history stays readable after the user is renamed
+      or deactivated, which is exactly when it is read. Deriving it from
+      ``user_id`` at read time would defeat that; deriving it at write time
+      from a second query would be a query per audited row.
+    - ``method`` / ``path``: which HTTP request. Seeded by
+      `AuditActorContextMiddleware` from the ASGI scope (the ORM flush hooks
+      have no request object), so an AUDIT_ENTRY row can be tied back to the
+      request-level ``[AUDIT] POST /api/... | user=42`` middleware log line.
+      Both stay None for non-request writes (scheduler, CLI, migrations).
+    """
+
+    __slots__ = ("user_id", "username", "method", "path")
+
+    def __init__(
+        self,
+        user_id: Optional[str] = None,
+        username: Optional[str] = None,
+        method: Optional[str] = None,
+        path: Optional[str] = None,
+    ) -> None:
         self.user_id = user_id
+        self.username = username
+        self.method = method
+        self.path = path
 
 
 current_actor: ContextVar[Optional["_ActorHolder"]] = ContextVar("audit_current_actor", default=None)
 _suppressed: ContextVar[bool] = ContextVar("audit_suppressed", default=False)
 
 
-def seed_actor_context() -> Token:
-    """Bind a fresh, empty holder for this request/task.
+def seed_actor_context(method: Optional[str] = None, path: Optional[str] = None) -> Token:
+    """Bind a fresh holder for this request/task, carrying its request shape.
 
     Must be called exactly once, as early as possible in the ASGI stack --
     before FastAPI's dependency resolution (or any BaseHTTPMiddleware
@@ -56,18 +81,23 @@ def seed_actor_context() -> Token:
     is the only intended caller in the running app. Returns a Token; the
     caller resets it once the request is fully handled (mirrors
     `audit_suppressed` below).
+
+    ``method``/``path`` are known at seed time (they come from the ASGI scope)
+    whereas the actor is not known until authentication runs, which is why
+    they are seeded here and the actor is mutated in later by `set_actor`.
     """
-    return current_actor.set(_ActorHolder())
+    return current_actor.set(_ActorHolder(method=method, path=path))
 
 
-def set_actor(user_id: Optional[str]) -> Optional[Token]:
-    """Record the acting user.
+def set_actor(user_id: Optional[str], username: Optional[str] = None) -> Optional[Token]:
+    """Record the acting user (id and username snapshot).
 
     If a holder is already bound in this context (the real-request path,
     seeded by `seed_actor_context()`), mutates it in place so the value
     survives later context copies -- see module docstring. Returns None in
     that case: there is nothing new for the caller to reset, since the
-    holder's own seed/reset already brackets the whole request.
+    holder's own seed/reset already brackets the whole request. Mutating in
+    place also preserves the request method/path the middleware seeded.
 
     If no holder is bound (unit tests calling this directly with no
     middleware in the loop -- the shape every pre-existing caller of this
@@ -77,14 +107,37 @@ def set_actor(user_id: Optional[str]) -> Optional[Token]:
     holder = current_actor.get()
     if holder is not None:
         holder.user_id = user_id
+        holder.username = username
         return None
-    return current_actor.set(_ActorHolder(user_id))
+    return current_actor.set(_ActorHolder(user_id, username))
 
 
 def get_actor() -> Optional[str]:
-    """The acting user, or None for system-initiated writes."""
+    """The acting user's id, or None for system-initiated writes."""
     holder = current_actor.get()
     return holder.user_id if holder is not None else None
+
+
+def get_actor_username() -> Optional[str]:
+    """The acting user's username snapshot, or None when unknown.
+
+    Distinct from `get_actor()` on purpose: the id is a stable key, the
+    username is the human-readable value frozen at write time.
+    """
+    holder = current_actor.get()
+    return holder.username if holder is not None else None
+
+
+def get_request_shape() -> tuple:
+    """``(method, path)`` of the HTTP request this write belongs to.
+
+    ``(None, None)`` for writes with no request behind them -- scheduler jobs,
+    CLI scripts, migrations -- which is a meaningful value, not a gap.
+    """
+    holder = current_actor.get()
+    if holder is None:
+        return (None, None)
+    return (holder.method, holder.path)
 
 
 def is_suppressed() -> bool:

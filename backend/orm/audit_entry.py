@@ -32,6 +32,11 @@ class AuditEntry(Base):
 
     entry_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
+    #: Naive UTC, always. Neither SQLite nor pymysql/MariaDB can store a UTC
+    #: offset in a DATETIME column (both discard tzinfo on the way in), so the
+    #: writer in backend/audit/capture.py strips it explicitly rather than
+    #: letting the driver do it silently. Read and filter this column as naive
+    #: UTC; never compare it against a local-time or tz-aware datetime.
     occurred_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
 
     # Actor. NULL user id means system-initiated (scheduler, migration, CLI).
@@ -53,5 +58,12 @@ class AuditEntry(Base):
     # backfill over rows whose tenant can no longer be reconstructed.
     client_id: Mapped[Optional[str]] = mapped_column(String(50), nullable=True, index=True)
 
+    # The HTTP request behind the change, seeded from the ASGI scope by
+    # middleware/audit_actor_context.py. Ties an entry back to the existing
+    # request-level "[AUDIT] POST /api/... | user=42" log line. Both NULL for
+    # writes with no request behind them (scheduler, CLI, migrations) — a
+    # meaningful value, not a gap. Values are truncated to these widths by the
+    # writer, because MariaDB in STRICT mode errors on overflow instead of
+    # truncating, which would fail the business write itself.
     request_method: Mapped[Optional[str]] = mapped_column(String(8), nullable=True)
     request_path: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)

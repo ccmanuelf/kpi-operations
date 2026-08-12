@@ -65,19 +65,76 @@ def test_audited_tables_matches_the_spec():
 
 
 def test_no_audited_table_exposes_an_unredacted_secret():
-    """Redaction completeness: a FUTURE sensitive column must fail CI."""
+    """Redaction completeness: a FUTURE sensitive column must fail CI.
+
+    Checks BOTH `column.name` (the DB column) and `column.key` (the mapped
+    attribute). They are identical for all 14 audited tables today, but
+    capture.py's `_mask` keys off `column.key` while this guard originally
+    keyed off `column.name` alone: a future
+    `mapped_column("password_hash")` bound to an attribute named something
+    else -- or the reverse -- would let the guard pass while the mask misses,
+    writing the secret into AUDIT_ENTRY.changes. Requiring both names to be
+    listed closes that gap in whichever direction the alias points.
+    """
     leaks = []
     for table_name in AUDITED_TABLES:
         table = Base.metadata.tables.get(table_name)
         if table is None:
             continue
         for column in table.columns:
-            lowered = column.name.lower()
-            if any(p in lowered for p in SENSITIVE_PATTERN) and column.name not in REDACTED_FIELDS:
-                leaks.append(f"{table_name}.{column.name}")
-    assert sorted(leaks) == [], (
+            for identifier in {column.name, column.key}:
+                lowered = identifier.lower()
+                if any(p in lowered for p in SENSITIVE_PATTERN) and identifier not in REDACTED_FIELDS:
+                    leaks.append(f"{table_name}.{identifier}")
+    assert sorted(set(leaks)) == [], (
         "These columns look sensitive but are not in REDACTED_FIELDS, so their "
-        "values would be written into AUDIT_ENTRY.changes: " + ", ".join(sorted(leaks))
+        "values would be written into AUDIT_ENTRY.changes: " + ", ".join(sorted(set(leaks)))
+    )
+
+
+def test_redaction_covers_both_column_name_and_attribute_key():
+    """`_mask` masks on `column.key`; REDACTED_FIELDS must therefore list the
+    attribute key of every redacted column, not only its DB column name.
+
+    Non-vacuous check: it resolves each redacted field back to a real audited
+    column and asserts the *key* is what is listed. If someone renames the
+    attribute (`password_hash: Mapped[str] = mapped_column("password_hash")`
+    under a different Python name) and updates only the DB-name side of the
+    registry, this fails.
+    """
+    from backend.audit.capture import _mask
+
+    for field in REDACTED_FIELDS:
+        owners = [
+            t
+            for t in AUDITED_TABLES
+            if (table := Base.metadata.tables.get(t)) is not None and any(c.key == field for c in table.columns)
+        ]
+        assert owners, f"REDACTED_FIELDS names {field!r}, which is not the attribute key of any audited column"
+        assert _mask(field, "super-secret-value") == "[redacted]"
+
+
+def test_every_audited_table_has_a_single_column_pk():
+    """`capture._require_pk` takes `identity[0]` -- the single-column-PK
+    assumption the whole `record_pk` design rests on (spec section 4).
+
+    A composite PK added to an audited table would silently record only its
+    first component, aliasing every row that shares that component into one
+    apparent entity history. This turns that into a CI failure instead.
+    """
+    composite = []
+    for table_name in sorted(AUDITED_TABLES):
+        table = Base.metadata.tables.get(table_name)
+        if table is None:
+            continue
+        pk_columns = list(table.primary_key.columns)
+        if len(pk_columns) != 1:
+            composite.append(f"{table_name} ({', '.join(c.name for c in pk_columns)})")
+    assert composite == [], (
+        "AUDIT_ENTRY.record_pk stores ONE stringified PK value "
+        "(backend/audit/capture.py::_require_pk takes identity[0]). These audited "
+        "tables no longer have a single-column PK, so every row sharing the first "
+        "component would collapse into one entity history: " + "; ".join(composite)
     )
 
 

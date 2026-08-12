@@ -126,10 +126,11 @@ def configure_middleware(app: FastAPI) -> None:
     # rewrites the path before it reaches rate limiting, audit, and route handlers.
     app.add_middleware(APIVersionMiddleware)
 
-    # CORS middleware — added before AuditActorContextMiddleware so that CORS
-    # runs first among these two (outermost in LIFO order), ensuring CORS
-    # preflight OPTIONS requests are handled before rate limiting, audit
-    # logging, and the actor-context seed below process them.
+    # CORS middleware — added after APIVersionMiddleware so CORS runs first of
+    # the two, ensuring CORS preflight OPTIONS requests are handled before the
+    # path rewrite, rate limiting and audit logging see them. NOT the outermost
+    # layer overall: AuditActorContextMiddleware is added after this one and is
+    # therefore outside it (see the comment on that call below).
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins_list,

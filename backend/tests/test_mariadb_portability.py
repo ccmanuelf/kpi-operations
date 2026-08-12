@@ -542,3 +542,118 @@ def test_wip_aging_trend_average_is_correct_on_mariadb(mariadb_boundary_holds):
     )
     assert result is not None
     assert abs(float(result) - 20.5) < 0.001
+
+
+# ---------------------------------------------------------------------------
+# Audit-trail write path on real MariaDB. Everything above this point tested
+# the audit feature only on SQLite; three of its column types had never once
+# executed against MariaDB:
+#   * `changes` is a JSON column written by a Core insert with a nested dict
+#     (SQLite stores it as TEXT; MariaDB stores it as LONGTEXT + a JSON check
+#     constraint, and pymysql serializes it on a different code path),
+#   * `operation` is Enum(AuditOperation) — a native MariaDB ENUM, not the
+#     VARCHAR + CHECK that SQLite emits,
+#   * `occurred_at` binds a datetime that the writer strips to naive UTC.
+# This repo's portability history is a list of exactly this shape reaching
+# production (SQLite-only julianday(), Decimal-as-string, DateTime boundary
+# rounding), so the write path is exercised end-to-end here, through the real
+# production listeners rather than a re-implementation of them.
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def mariadb_audit_capture(mariadb_schema):
+    """Register the REAL capture listeners for one test, then remove them.
+
+    Mapper events attach process-wide, not per-Session, so leaving them on
+    would make every later test in this module (which commits WORK_ORDER and
+    HOLD_ENTRY rows — both audited) start writing AUDIT_ENTRY rows too.
+    """
+    from backend.audit.capture import register_audit_listener, unregister_audit_listener
+
+    register_audit_listener()
+    yield
+    unregister_audit_listener()
+
+
+@requires_mariadb
+def test_audit_capture_round_trips_on_mariadb(mariadb_audit_capture):
+    """A real audited INSERT, UPDATE and DELETE must execute on MariaDB and
+    read back with their `changes` diff, enum operation and actor intact.
+
+    Uses the production listeners (`register_audit_listener`) and a normal ORM
+    session, so this fails if the real write path stops working on MariaDB for
+    any reason — it is not a re-implementation that could drift green while
+    the shipped code breaks (the failure mode
+    test_wip_aging_top_query_shape_executes_on_mariadb documents).
+    """
+    from backend.audit.context import current_actor, set_actor
+    from backend.orm.audit_entry import AuditEntry, AuditOperation
+    from backend.orm.kpi_threshold import KPIThreshold
+
+    threshold_id = "MDB-AUD-1"
+    token = set_actor("MDB-USR-1", "mariadb_actor")
+    session = SessionLocal()
+    try:
+        before = datetime.utcnow().replace(microsecond=0)
+
+        session.add(KPIThreshold(threshold_id=threshold_id, kpi_key="oee", target_value=80.0))
+        session.commit()
+
+        threshold = session.query(KPIThreshold).filter_by(threshold_id=threshold_id).one()
+        threshold.target_value = 91.5
+        session.commit()
+
+        session.delete(threshold)
+        session.commit()
+
+        rows = (
+            session.query(AuditEntry)
+            .filter(AuditEntry.table_name == "KPI_THRESHOLD", AuditEntry.record_pk == threshold_id)
+            .order_by(AuditEntry.entry_id)
+            .all()
+        )
+
+        # Enum(AuditOperation) — a native MariaDB ENUM — round-trips as the
+        # Python enum member, in order.
+        assert [r.operation for r in rows] == [
+            AuditOperation.INSERT,
+            AuditOperation.UPDATE,
+            AuditOperation.DELETE,
+        ]
+
+        # JSON column: the nested {field: {old, new}} dict survives MariaDB's
+        # LONGTEXT+JSON storage, with numbers still numbers (not the "0.00"
+        # strings MariaDB has handed this codebase before).
+        insert_changes = rows[0].changes
+        assert insert_changes["kpi_key"] == {"old": None, "new": "oee"}
+        assert insert_changes["target_value"] == {"old": None, "new": 80.0}
+        assert rows[1].changes == {"target_value": {"old": 80.0, "new": 91.5}}
+        assert isinstance(rows[1].changes["target_value"]["new"], float)
+        # The DELETE snapshot is the widest JSON payload the writer produces:
+        # every column, including the ones that were never set.
+        delete_changes = rows[2].changes
+        assert delete_changes["target_value"] == {"old": 91.5, "new": None}
+        assert set(delete_changes) == {c.key for c in KPIThreshold.__table__.columns}
+
+        # Actor snapshot columns.
+        assert {r.actor_user_id for r in rows} == {"MDB-USR-1"}
+        assert {r.actor_username for r in rows} == {"mariadb_actor"}
+
+        # occurred_at binds naive UTC on pymysql too (MariaDB DATETIME has no
+        # offset; the writer strips tzinfo explicitly so the contract is the
+        # same on both dialects).
+        after = datetime.utcnow()
+        for row in rows:
+            assert row.occurred_at.tzinfo is None
+            assert before <= row.occurred_at <= after
+    finally:
+        try:
+            session.rollback()
+            session.query(AuditEntry).filter(AuditEntry.record_pk == threshold_id).delete()
+            session.query(KPIThreshold).filter(KPIThreshold.threshold_id == threshold_id).delete()
+            session.commit()
+        finally:
+            session.close()
+            if token is not None:
+                current_actor.reset(token)

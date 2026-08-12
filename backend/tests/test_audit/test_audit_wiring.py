@@ -36,17 +36,58 @@ copy and always sees an empty database. Discovered while writing this test.
 """
 
 from backend.audit import capture
-from backend.audit.context import current_actor, get_actor
+from backend.audit.context import current_actor, get_actor, get_actor_username
 from backend.auth.jwt import create_access_token, get_current_user
 from backend.database import get_db
-from backend.orm.audit_entry import AuditEntry
+from backend.orm.audit_entry import AuditEntry, AuditOperation
+from backend.orm.user import User
+from backend.orm.user_client_assignment import UserClientAssignment
 from backend.tests.fixtures.factories import TestDataFactory
 
 
 def test_listener_is_registered_at_app_startup():
-    from backend.main import app  # noqa: F401  (configure_middleware(app) already ran at import)
+    """Building the app must register the capture listeners.
 
-    assert capture._listener_registered is True
+    ORDER-ROBUSTNESS (fix round 2): an earlier version of this test just did
+    `import backend.main` and asserted `capture._listener_registered is True`.
+    That only proves anything when `backend.main` is not already in
+    `sys.modules` -- on a re-import Python returns the cached module without
+    re-running `configure_middleware(app)`, so the assertion was really
+    reading whatever global state an earlier test happened to leave behind.
+    It passed only because alphabetical collection put this file before
+    `test_capture.py`, whose autouse fixture calls `unregister_audit_listener()`
+    after every test; run this module second (`-p no:randomly` off, `-k`
+    selection, a future rename) and it failed on a flag that says nothing
+    about the wiring.
+
+    This version does not read the ambient flag at all. It forces the flag to
+    a known-false state, calls the real wiring function
+    (`configure_middleware`, the same one `backend.main` calls at import) on a
+    throwaway FastAPI app, and asserts the flag flipped -- so it exercises the
+    wiring on every run, in any order, and restores whatever state it found.
+    """
+    from fastapi import FastAPI
+
+    from backend.bootstrap.app_config import configure_middleware
+
+    original = capture._listener_registered
+    try:
+        # Start from a genuinely unregistered state so a leaked True from an
+        # earlier test cannot make this pass without the wiring running.
+        capture.unregister_audit_listener()
+        assert capture._listener_registered is False
+
+        configure_middleware(FastAPI())
+
+        assert capture._listener_registered is True, (
+            "configure_middleware() must call register_audit_listener(); "
+            "without it, nothing in the running app captures any change."
+        )
+    finally:
+        if original:
+            capture.register_audit_listener()
+        else:
+            capture.unregister_audit_listener()
 
 
 def test_real_auth_dependency_sets_the_audit_actor(transactional_db):
@@ -83,6 +124,11 @@ def test_real_auth_dependency_sets_the_audit_actor(transactional_db):
         assert get_actor() == "wire-u1", (
             "get_current_user must set the audit contextvar; ORM flush hooks "
             "have no request object and read it instead."
+        )
+        assert get_actor_username() == "wire_user", (
+            "get_current_user must also carry the USERNAME: AUDIT_ENTRY."
+            "actor_username is a snapshot taken at write time so history stays "
+            "readable after this user is renamed or deactivated."
         )
         # Same source of truth as the existing middleware attribution.
         assert request.state.user_id == "wire-u1"
@@ -133,3 +179,125 @@ def test_actor_context_survives_a_real_request_through_the_asgi_app(test_client,
         )
     finally:
         db_gen.close()
+
+
+def test_request_driven_write_records_username_method_and_path(test_client, admin_auth_headers):
+    """A real request must populate actor_username, request_method and
+    request_path -- the three columns that were being written as
+    id-duplicate / NULL / NULL.
+
+    None of the three is backfillable: `actor_username` is a snapshot whose
+    whole purpose is to survive the user being renamed or deactivated, and
+    the request method/path exist only for the duration of the request that
+    made the change. They are asserted here, through the real ASGI stack,
+    because that is the only place all three sources meet -- the middleware
+    (ASGI scope), the auth dependency (User row) and the mapper-level writer.
+
+    Was failing before this fix: actor_username held "USR-ADMINTEST" (the id
+    again) and both request columns were NULL for every row ever written.
+    """
+    client_id = "AUD-WIRE-REQ2"
+
+    response = test_client.post(
+        "/api/clients",
+        json={"client_id": client_id, "client_name": "Request Shape Test Co"},
+        headers=admin_auth_headers,
+    )
+    assert response.status_code == 201
+
+    db_override = test_client.app.dependency_overrides[get_db]
+    db_gen = db_override()
+    session = next(db_gen)
+    try:
+        row = (
+            session.query(AuditEntry)
+            .filter(AuditEntry.table_name == "CLIENT", AuditEntry.record_pk == client_id)
+            .order_by(AuditEntry.entry_id.desc())
+            .first()
+        )
+        assert row is not None, "expected an AUDIT_ENTRY row for the CLIENT insert"
+        assert row.actor_user_id == "USR-ADMINTEST"
+        assert row.actor_username == "admin_testuser", (
+            f"expected the admin's USERNAME snapshot, got {row.actor_username!r} -- "
+            "if this equals actor_user_id, the column is a duplicate and delivers nothing"
+        )
+        assert row.actor_username != row.actor_user_id
+        assert row.request_method == "POST"
+        assert row.request_path == "/api/clients"
+    finally:
+        db_gen.close()
+
+
+def test_deleting_a_user_captures_its_client_assignment_deletes(test_client, admin_auth_headers):
+    """DELETE /api/users/{id} must leave a trail for the tenant-access grants
+    it removes, not only for the USER row.
+
+    USER_CLIENT_ASSIGNMENT.user_id declares ondelete="CASCADE" and there is no
+    ORM relationship between User and UserClientAssignment, so before the fix
+    the child rows were removed by the DATABASE: SQLAlchemy never saw them,
+    the mapper events never fired, and an audited access-control grant vanished
+    with zero trail. The trail recorded the grant being created and never
+    recorded it being revoked -- on the one table added to the allow-list
+    specifically because it confers tenant reach.
+
+    Was failing before the fix: `assignment_deletes` was empty.
+    """
+    db_override = test_client.app.dependency_overrides[get_db]
+
+    # Seed a disposable user with two client grants, committed the same way a
+    # real one would be (through the app's own session factory).
+    setup_gen = db_override()
+    setup = next(setup_gen)
+    try:
+        client_a = TestDataFactory.create_client(setup, client_id="AUD-DELC-A", client_name="Grant A Co")
+        client_b = TestDataFactory.create_client(setup, client_id="AUD-DELC-B", client_name="Grant B Co")
+        victim = TestDataFactory.create_user(
+            setup, user_id="AUD-DELU-1", username="aud_del_user", role="operator", client_id=None
+        )
+        setup.add(UserClientAssignment(user_id=victim.user_id, client_id=client_a.client_id, assigned_by="seed"))
+        setup.add(UserClientAssignment(user_id=victim.user_id, client_id=client_b.client_id, assigned_by="seed"))
+        setup.commit()
+    finally:
+        setup_gen.close()
+
+    response = test_client.delete("/api/users/AUD-DELU-1", headers=admin_auth_headers)
+    assert response.status_code == 204
+
+    verify_gen = db_override()
+    verify = next(verify_gen)
+    try:
+        # The grants really are gone (so the trail is describing a real removal).
+        assert verify.query(UserClientAssignment).filter_by(user_id="AUD-DELU-1").count() == 0
+        assert verify.query(User).filter_by(user_id="AUD-DELU-1").count() == 0
+
+        assignment_deletes = (
+            verify.query(AuditEntry)
+            .filter(
+                AuditEntry.table_name == "USER_CLIENT_ASSIGNMENT",
+                AuditEntry.operation == AuditOperation.DELETE,
+            )
+            .all()
+        )
+        deleted_for_victim = [e for e in assignment_deletes if e.changes.get("user_id", {}).get("old") == "AUD-DELU-1"]
+        assert len(deleted_for_victim) == 2, (
+            "expected one AUDIT_ENTRY DELETE row per revoked tenant grant, got "
+            f"{len(deleted_for_victim)} -- the cascade removed them behind the ORM's back"
+        )
+        assert sorted(e.changes["client_id"]["old"] for e in deleted_for_victim) == ["AUD-DELC-A", "AUD-DELC-B"]
+        # Attributed like every other request-driven change, not to "system".
+        assert {e.actor_user_id for e in deleted_for_victim} == {"USR-ADMINTEST"}
+        assert {e.request_method for e in deleted_for_victim} == {"DELETE"}
+
+        # The USER row itself is still captured (the fix must not displace it).
+        user_deletes = (
+            verify.query(AuditEntry)
+            .filter(
+                AuditEntry.table_name == "USER",
+                AuditEntry.record_pk == "AUD-DELU-1",
+                AuditEntry.operation == AuditOperation.DELETE,
+            )
+            .count()
+        )
+        assert user_deletes == 1
+    finally:
+        verify_gen.close()
