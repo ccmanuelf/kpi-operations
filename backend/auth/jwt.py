@@ -15,6 +15,7 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import true
 from sqlalchemy.orm import Session
 
+from backend.audit.context import set_actor
 from backend.auth.password import hash_password as _hash_password
 from backend.auth.password import needs_rehash as _needs_rehash
 from backend.auth.password import verify_password as _verify_password
@@ -218,6 +219,9 @@ def get_current_user(request: Request, token: str = Depends(oauth2_scheme), db: 
 
     # Set user_id on request.state so AuditLogMiddleware can attribute actions correctly
     request.state.user_id = user.user_id
+    # ...and on the audit contextvar, which ORM flush hooks read (they have no
+    # request object). Same point, so attribution has one source of truth.
+    set_actor(user.user_id)
 
     return user
 

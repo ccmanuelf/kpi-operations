@@ -10,6 +10,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 
+from backend.audit.capture import register_audit_listener
 from backend.config import settings
 from backend.exceptions.domain_exceptions import (
     DomainException,
@@ -21,6 +22,32 @@ from backend.middleware.rate_limit import configure_rate_limiting
 from backend.middleware.security_headers import SecurityHeadersMiddleware
 
 logger = logging.getLogger(__name__)
+
+# Attach ORM-level audit capture (entity-level change capture into
+# AUDIT_ENTRY for the 14 tables in backend/audit/registry.py). Idempotent;
+# safe under test re-imports. Registered at module import time -- not inside
+# configure_middleware() -- so it is live as soon as anything imports the
+# app (main.py, or any test that does `from backend.main import app`),
+# without requiring the caller to remember an extra setup step.
+#
+# KNOWN PERMANENT SIDE EFFECT: register_audit_listener() also forces
+# `active_history=True` on every column of the 14 audited mappers (required
+# so UPDATE diffs see the real pre-expiry value instead of `old: None` under
+# SessionLocal's expire_on_commit=True -- see the docstring on
+# _force_active_history_for_audited_tables in backend/audit/capture.py for
+# the verified failure mode). That flag is process-wide and is NOT undone by
+# unregister_audit_listener(); once this module has been imported once in a
+# process, it stays on for the rest of that process's life. The concrete
+# consequence: setting an attribute on a DETACHED instance of one of the 14
+# audited tables (e.g. after `session.expunge(obj)`), where its attributes
+# were previously expired by a commit, now raises DetachedInstanceError
+# instead of silently reloading -- there was no live session to reload from.
+# Verified via `grep -rn "expunge\|make_transient" backend/` (excluding
+# tests) at wiring time: no application code does this today, so the blast
+# radius is nil, but a maintainer who adds such a pattern to one of the 14
+# audited tables' code paths later will hit this. Grep for `active_history`
+# in this repo before assuming a DetachedInstanceError here is unrelated.
+register_audit_listener()
 
 
 # =============================================================================

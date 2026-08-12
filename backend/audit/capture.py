@@ -251,6 +251,18 @@ def _force_active_history_for_audited_tables() -> None:
     programmatically here rather than by editing 14 ORM files' column
     definitions, since `active_history` isn't exposed as a `mapped_column()`
     kwarg and this keeps the change contained to the audit module.
+
+    PERMANENT, PROCESS-WIDE, NOT UNDONE BY `unregister_audit_listener()`: this
+    sets a flag on the class-level attribute implementation shared by every
+    instance of the 14 audited mappers, for the lifetime of the process --
+    unlike the event listeners themselves, there is no SQLAlchemy API to
+    reverse it. Consequence: setting an attribute on a *detached* instance of
+    an audited table whose attributes were expired by an earlier commit now
+    raises `DetachedInstanceError` (SQLAlchemy must reload the pre-change
+    value to record it, and a detached instance has no session to reload
+    from), where the same code previously succeeded silently. See the
+    registration-site comment in `backend/bootstrap/app_config.py` for the
+    blast-radius check performed when this was wired live.
     """
     configure_mappers()
     for mapper in Base.registry.mappers:
