@@ -28,6 +28,7 @@ from typing import Any, Dict, List, Optional, Tuple, cast
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
+from backend.audit import audit_suppressed  # noqa: E402
 from backend.database import SessionLocal  # noqa: E402
 from backend.db.factories import TestDataFactory  # noqa: E402
 from backend.orm.delay_taxonomy import DelayClassificationEnum, JustifiedDelayReasonEnum  # noqa: E402
@@ -312,12 +313,17 @@ for _prod in MASTER_PRODUCTS:
             }
 
 
+@audit_suppressed()
 def init_database() -> None:
     """Initialize the database with schema and comprehensive demo data.
 
     The single canonical demo seeder (Run 8 unification). Applies Alembic
     migrations to head, opens its own session, seeds all demo data, commits,
     and closes the session. Both callers invoke it with no arguments.
+
+    Wrapped in ``audit_suppressed()`` -- this writes thousands of rows of
+    machine-generated fixture data, not a human decision; see
+    backend/audit/context.py.
     """
     print("=" * 70)
     print("KPI Operations Platform - Comprehensive Database Initialization")

@@ -11,6 +11,7 @@ from pydantic import ValidationError
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from backend.audit import audit_suppressed
 from backend.orm.user import User
 from backend.schemas.production import CSVUploadResponse
 
@@ -52,6 +53,7 @@ def read_upload(content: bytes, filename: str, sheet_name: Optional[str] = None)
     return _read_upload_file(content, filename, sheet_name=sheet_name)
 
 
+@audit_suppressed()
 def process_csv_upload(
     rows: list[dict],
     db: Session,
@@ -61,7 +63,11 @@ def process_csv_upload(
     create_fn: Callable[[Session, Any, User], Any],
     id_getter: Callable[[Any], Any],
 ) -> CSVUploadResponse:
-    """Run each row through row_mapper → create_fn, collecting the same counts/errors as the legacy endpoints."""
+    """Run each row through row_mapper → create_fn, collecting the same counts/errors as the legacy endpoints.
+
+    Wrapped in ``audit_suppressed()`` -- bulk CSV/XLSX import is data
+    movement, not a per-row human decision; see backend/audit/context.py.
+    """
     total_rows = 0
     successful = 0
     failed = 0
