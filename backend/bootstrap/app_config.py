@@ -17,37 +17,12 @@ from backend.exceptions.domain_exceptions import (
     ResourceNotFoundError,
     ValidationError as DomainValidationError,
 )
+from backend.middleware.audit_actor_context import AuditActorContextMiddleware
 from backend.middleware.audit_log import AuditLogMiddleware
 from backend.middleware.rate_limit import configure_rate_limiting
 from backend.middleware.security_headers import SecurityHeadersMiddleware
 
 logger = logging.getLogger(__name__)
-
-# Attach ORM-level audit capture (entity-level change capture into
-# AUDIT_ENTRY for the 14 tables in backend/audit/registry.py). Idempotent;
-# safe under test re-imports. Registered at module import time -- not inside
-# configure_middleware() -- so it is live as soon as anything imports the
-# app (main.py, or any test that does `from backend.main import app`),
-# without requiring the caller to remember an extra setup step.
-#
-# KNOWN PERMANENT SIDE EFFECT: register_audit_listener() also forces
-# `active_history=True` on every column of the 14 audited mappers (required
-# so UPDATE diffs see the real pre-expiry value instead of `old: None` under
-# SessionLocal's expire_on_commit=True -- see the docstring on
-# _force_active_history_for_audited_tables in backend/audit/capture.py for
-# the verified failure mode). That flag is process-wide and is NOT undone by
-# unregister_audit_listener(); once this module has been imported once in a
-# process, it stays on for the rest of that process's life. The concrete
-# consequence: setting an attribute on a DETACHED instance of one of the 14
-# audited tables (e.g. after `session.expunge(obj)`), where its attributes
-# were previously expired by a commit, now raises DetachedInstanceError
-# instead of silently reloading -- there was no live session to reload from.
-# Verified via `grep -rn "expunge\|make_transient" backend/` (excluding
-# tests) at wiring time: no application code does this today, so the blast
-# radius is nil, but a maintainer who adds such a pattern to one of the 14
-# audited tables' code paths later will hit this. Grep for `active_history`
-# in this repo before assuming a DetachedInstanceError here is unrelated.
-register_audit_listener()
 
 
 # =============================================================================
@@ -106,6 +81,37 @@ class APIVersionMiddleware(BaseHTTPMiddleware):
 
 
 def configure_middleware(app: FastAPI) -> None:
+    # Attach ORM-level audit capture (entity-level change capture into
+    # AUDIT_ENTRY for the 14 tables in backend/audit/registry.py). Idempotent;
+    # safe under repeated calls. Registered HERE -- inside configure_middleware(),
+    # not at backend/bootstrap/app_config.py's module-import time -- so it only
+    # activates when something actually builds the app (main.py calls this
+    # unconditionally at import), not merely when something imports this
+    # module or package (e.g. a future script or alembic/env.py importing a
+    # sibling of app_config without needing the app itself). Fix round 1
+    # (2026-08-12): moved from module level per adversarial review, which
+    # confirmed nothing breaks today but noted the module-import trigger was
+    # incidental, not structural.
+    #
+    # KNOWN PERMANENT SIDE EFFECT: register_audit_listener() also forces
+    # `active_history=True` on every column of the 14 audited mappers (required
+    # so UPDATE diffs see the real pre-expiry value instead of `old: None` under
+    # SessionLocal's expire_on_commit=True -- see the docstring on
+    # _force_active_history_for_audited_tables in backend/audit/capture.py for
+    # the verified failure mode). That flag is process-wide and is NOT undone by
+    # unregister_audit_listener(); once this function has run once in a
+    # process, it stays on for the rest of that process's life. The concrete
+    # consequence: setting an attribute on a DETACHED instance of one of the 14
+    # audited tables (e.g. after `session.expunge(obj)`), where its attributes
+    # were previously expired by a commit, now raises DetachedInstanceError
+    # instead of silently reloading -- there was no live session to reload from.
+    # Verified via `grep -rn "expunge\|make_transient" backend/` (excluding
+    # tests) at wiring time: no application code does this today, so the blast
+    # radius is nil, but a maintainer who adds such a pattern to one of the 14
+    # audited tables' code paths later will hit this. Grep for `active_history`
+    # in this repo before assuming a DetachedInstanceError here is unrelated.
+    register_audit_listener()
+
     # Security headers middleware (SEC-010)
     app.add_middleware(SecurityHeadersMiddleware)
 
@@ -120,9 +126,10 @@ def configure_middleware(app: FastAPI) -> None:
     # rewrites the path before it reaches rate limiting, audit, and route handlers.
     app.add_middleware(APIVersionMiddleware)
 
-    # CORS middleware — added last so it runs first (outermost in LIFO order),
-    # ensuring CORS preflight OPTIONS requests are handled before rate limiting
-    # and audit logging middleware process them.
+    # CORS middleware — added before AuditActorContextMiddleware so that CORS
+    # runs first among these two (outermost in LIFO order), ensuring CORS
+    # preflight OPTIONS requests are handled before rate limiting, audit
+    # logging, and the actor-context seed below process them.
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins_list,
@@ -130,6 +137,18 @@ def configure_middleware(app: FastAPI) -> None:
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["Authorization", "Content-Type", "Accept", "X-Requested-With"],
     )
+
+    # Audit actor-context seed — added LAST so it is the true OUTERMOST
+    # layer (runs first on the way in, last on the way out), ahead of every
+    # other middleware above. It must seed backend.audit.context's holder
+    # before ANY of them calls call_next() -- SecurityHeaders, RateLimit,
+    # AuditLog and APIVersion are all BaseHTTPMiddleware, and each one's
+    # call_next forks the asyncio context (as does FastAPI's own dependency
+    # resolution, further in). A fork that happens before the seed would
+    # carry no reference to the holder at all. See
+    # backend/middleware/audit_actor_context.py and
+    # backend/audit/context.py (_ActorHolder) for the full mechanism.
+    app.add_middleware(AuditActorContextMiddleware)
 
 
 def register_exception_handlers(app: FastAPI) -> None:

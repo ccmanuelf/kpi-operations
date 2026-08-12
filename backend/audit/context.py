@@ -4,24 +4,87 @@ SQLAlchemy flush hooks run without a request object, so they cannot read
 ``request.state.user_id``. The acting user is carried here instead, set by the
 auth dependency at the same point ``request.state.user_id`` is assigned so
 attribution has one source of truth.
+
+FIX ROUND 1 (critical, found by adversarial review): a bare ``ContextVar``
+rebind here is NOT enough. FastAPI dispatches every sync dependency
+(``get_current_user`` included) and every sync path operation through
+``anyio.to_thread.run_sync``, and Starlette's ``BaseHTTPMiddleware`` drives
+``call_next`` through its own ``anyio`` task spawn -- both copy the current
+``contextvars.Context``. A ``.set()`` made inside one such copy is invisible
+everywhere else: not back in the caller, and not in a *different* copy taken
+from an earlier point (e.g. the ORM flush listener, which runs inside
+whichever copy hosts the sync endpoint function). Verified directly against
+the installed FastAPI/Starlette: a rebind inside ``get_current_user`` was
+silently discarded, and every audit row landed with ``actor_username="system"``.
+
+The fix mirrors why ``request.state.user_id`` already works: ``Request`` is a
+shared *mutable* object passed by reference, so a copy still points at the
+same object and mutating one of its fields is visible through every copy
+holding that reference. ``_ActorHolder`` is that same trick applied to the
+audit contextvar: `AuditActorContextMiddleware` (backend/middleware/
+audit_actor_context.py) seeds a fresh holder here, in the real per-request
+context, before any FastAPI/Starlette boundary can fork it away; `set_actor`
+then mutates that holder's field in place (from wherever it happens to run)
+instead of rebinding the ContextVar.
 """
 
 from contextlib import contextmanager
 from contextvars import ContextVar, Token
 from typing import Iterator, Optional
 
-current_actor: ContextVar[Optional[str]] = ContextVar("audit_current_actor", default=None)
+
+class _ActorHolder:
+    """Mutable box for the acting user id -- see module docstring for why a
+    bare ContextVar rebind is not enough."""
+
+    __slots__ = ("user_id",)
+
+    def __init__(self, user_id: Optional[str] = None) -> None:
+        self.user_id = user_id
+
+
+current_actor: ContextVar[Optional["_ActorHolder"]] = ContextVar("audit_current_actor", default=None)
 _suppressed: ContextVar[bool] = ContextVar("audit_suppressed", default=False)
 
 
-def set_actor(user_id: Optional[str]) -> Token:
-    """Record the acting user. Returns a token the caller may reset with."""
-    return current_actor.set(user_id)
+def seed_actor_context() -> Token:
+    """Bind a fresh, empty holder for this request/task.
+
+    Must be called exactly once, as early as possible in the ASGI stack --
+    before FastAPI's dependency resolution (or any BaseHTTPMiddleware
+    ``call_next``) can fork the context away from it. `AuditActorContextMiddleware`
+    is the only intended caller in the running app. Returns a Token; the
+    caller resets it once the request is fully handled (mirrors
+    `audit_suppressed` below).
+    """
+    return current_actor.set(_ActorHolder())
+
+
+def set_actor(user_id: Optional[str]) -> Optional[Token]:
+    """Record the acting user.
+
+    If a holder is already bound in this context (the real-request path,
+    seeded by `seed_actor_context()`), mutates it in place so the value
+    survives later context copies -- see module docstring. Returns None in
+    that case: there is nothing new for the caller to reset, since the
+    holder's own seed/reset already brackets the whole request.
+
+    If no holder is bound (unit tests calling this directly with no
+    middleware in the loop -- the shape every pre-existing caller of this
+    function uses), falls back to binding a fresh one, exactly as before.
+    Returns a Token the caller must reset.
+    """
+    holder = current_actor.get()
+    if holder is not None:
+        holder.user_id = user_id
+        return None
+    return current_actor.set(_ActorHolder(user_id))
 
 
 def get_actor() -> Optional[str]:
     """The acting user, or None for system-initiated writes."""
-    return current_actor.get()
+    holder = current_actor.get()
+    return holder.user_id if holder is not None else None
 
 
 def is_suppressed() -> bool:
