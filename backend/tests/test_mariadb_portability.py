@@ -827,3 +827,71 @@ def test_trail_started_at_is_none_empty_then_real_once_seeded_on_mariadb(mariadb
             session.commit()
         finally:
             session.close()
+
+
+@requires_mariadb
+def test_get_entity_history_returns_seeded_entity_on_mariadb(mariadb_schema):
+    """get_entity_history is the per-record read path -- the endpoint Project
+    B's widget hits hardest -- and had never been executed against MariaDB;
+    only list_audit_entries and _trail_started_at were covered above. Its
+    query differs from list_audit_entries only by dropping the date-range
+    filter, but that's a stated coverage goal, not an assumption to lean on.
+    """
+    from backend.orm.audit_entry import AuditEntry, AuditOperation
+    from backend.routes.audit import get_entity_history
+
+    record_pk = "HOLD-MDB-HISTORY"
+    other_pk = "HOLD-MDB-HISTORY-OTHER"
+    session = SessionLocal()
+    try:
+        session.add_all(
+            [
+                AuditEntry(
+                    occurred_at=datetime(2026, 8, 11, 8, 0),
+                    table_name="HOLD_ENTRY",
+                    record_pk=record_pk,
+                    operation=AuditOperation.INSERT,
+                    changes={"hold_status": {"old": None, "new": "ON_HOLD"}},
+                ),
+                AuditEntry(
+                    occurred_at=datetime(2026, 8, 11, 9, 0),
+                    table_name="HOLD_ENTRY",
+                    record_pk=record_pk,
+                    operation=AuditOperation.UPDATE,
+                    changes={"hold_status": {"old": "ON_HOLD", "new": "RELEASED"}},
+                ),
+                # A different record, same table: proves the filter is
+                # scoped to record_pk, not just returning everything.
+                AuditEntry(
+                    occurred_at=datetime(2026, 8, 11, 9, 30),
+                    table_name="HOLD_ENTRY",
+                    record_pk=other_pk,
+                    operation=AuditOperation.INSERT,
+                    changes={},
+                ),
+            ]
+        )
+        session.commit()
+
+        result = get_entity_history(
+            table_name="HOLD_ENTRY",
+            record_pk=record_pk,
+            limit=100,
+            offset=0,
+            db=session,
+            _admin=None,
+        )
+
+        assert result.total == 2
+        assert {e.record_pk for e in result.entries} == {record_pk}
+        assert [e.operation for e in result.entries] == [AuditOperation.UPDATE, AuditOperation.INSERT]
+        assert result.trail_started_at is not None
+    finally:
+        try:
+            session.rollback()
+            session.query(AuditEntry).filter(AuditEntry.record_pk.in_([record_pk, other_pk])).delete(
+                synchronize_session=False
+            )
+            session.commit()
+        finally:
+            session.close()
