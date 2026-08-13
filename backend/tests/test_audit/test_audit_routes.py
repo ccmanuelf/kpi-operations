@@ -1,6 +1,6 @@
 """Audit read API: behaviour and authorization."""
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 import pytest
 from fastapi import FastAPI
@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 from backend.auth.jwt import get_current_user
 from backend.database import get_db
 from backend.orm.audit_entry import AuditEntry, AuditOperation
+from backend.routes.audit import _end_of_day
 from backend.routes.audit import router as audit_router
 from backend.tests.fixtures.factories import TestDataFactory
 
@@ -206,6 +207,69 @@ def test_list_includes_entries_on_end_date_next_midnight_boundary(admin_audit_cl
 
     assert response.status_code == 200
     assert response.json()["total"] == 1
+
+
+def test_end_of_day_does_not_overflow_at_the_maximum_date():
+    """``end_date`` is a plain ``Optional[date]``, so FastAPI accepts every
+    representable date -- including ``date.max``, which is a legitimate
+    MariaDB DATETIME day and not a nonsense value the API should reject.
+
+    ``date.max`` has no next midnight: ``datetime.combine(date.max, time.min)
+    + timedelta(days=1)`` raises ``OverflowError: date value out of range``,
+    which no handler catches. The bound must clamp instead.
+    """
+    bound = _end_of_day(date.max)
+
+    assert bound == datetime.max
+    # Naive, matching AUDIT_ENTRY.occurred_at's naive-UTC contract: an aware
+    # bound compares wrongly (or raises) against a naive column.
+    assert bound.tzinfo is None
+
+
+def test_list_accepts_the_maximum_end_date(admin_audit_client):
+    """``GET /api/audit?end_date=9999-12-31`` must return that day's entries,
+    not crash. FastAPI validates the value happily, so before the clamp this
+    was an unhandled ``OverflowError`` -- a 500 on accepted input.
+    """
+    client, db = admin_audit_client
+    _seed_entry(db, record_pk="HOLD-1")
+
+    response = client.get("/api/audit?end_date=9999-12-31")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert [e["record_pk"] for e in body["entries"]] == ["HOLD-1"]
+    assert body["total"] == 1
+
+
+@pytest.mark.parametrize("path", ["/api/audit", "/api/audit/HOLD_ENTRY/HOLD-1"])
+def test_largest_accepted_offset_still_answers(admin_audit_client, path):
+    """The crash guard must not narrow what already worked: 2**63-1 is the
+    largest OFFSET both engines take, and it must still return a page (empty,
+    since nothing is that deep) rather than 422."""
+    client, db = admin_audit_client
+    _seed_entry(db, record_pk="HOLD-1")
+
+    response = client.get(f"{path}?offset=9223372036854775807")
+
+    assert response.status_code == 200
+    assert response.json()["entries"] == []
+
+
+@pytest.mark.parametrize("path", ["/api/audit", "/api/audit/HOLD_ENTRY/HOLD-1"])
+def test_offset_beyond_the_engine_limit_is_rejected_not_a_crash(admin_audit_client, path):
+    """Same defect class as the end_date overflow: ``offset`` had no upper
+    bound, so FastAPI accepted 2**63 and the driver then raised
+    ``OverflowError: Python int too large to convert to SQLite INTEGER`` --
+    an unhandled 500 on accepted input, on BOTH endpoints. It must be
+    rejected as invalid input instead.
+    """
+    client, db = admin_audit_client
+    _seed_entry(db, record_pk="HOLD-1")
+
+    response = client.get(f"{path}?offset=9223372036854775808")
+
+    assert response.status_code == 422
 
 
 def test_list_excludes_entries_after_end_date(admin_audit_client):

@@ -18,6 +18,21 @@ from backend.schemas.audit import AuditEntryResponse, AuditListResponse
 
 router = APIRouter(prefix="/api/audit", tags=["Audit"])
 
+#: Largest OFFSET both engines accept. Above it the driver raises rather than
+#: returning an empty page: SQLite gives
+#: `OverflowError: Python int too large to convert to SQLite INTEGER` (verified
+#: at exactly 2**63, on both endpoints), and MariaDB's LIMIT/OFFSET is
+#: BIGINT UNSIGNED. `offset` had no upper bound, so ?offset=9223372036854775808
+#: was accepted by FastAPI and 500'd — the same defect class as the
+#: `end_date=9999-12-31` overflow below: an unhandled crash on accepted input.
+#:
+#: This bound is a crash guard ONLY. It is the exact largest value that already
+#: worked, so no request that previously succeeded changes; what changes is
+#: that garbage now gets a 422 instead of a 500. It deliberately does NOT
+#: address deep-paging COST, which was triaged separately as ship-as-is
+#: (admin-only, negligible at projected volume).
+_MAX_SQL_OFFSET = 2**63 - 1
+
 #: Newest first, with a deterministic tiebreaker. Both endpoints MUST use this.
 #:
 #: occurred_at alone is not a total order on production: it is a plain
@@ -37,7 +52,7 @@ _NEWEST_FIRST = (AuditEntry.occurred_at.desc(), AuditEntry.entry_id.desc())
 
 
 def _end_of_day(value: date) -> datetime:
-    """Inclusive end bound for a DateTime column.
+    """Exclusive upper bound for an INCLUSIVE end date, on a DateTime column.
 
     occurred_at is a DateTime, so an inclusive end date must compare against
     the NEXT midnight. Comparing against the date at midnight silently drops
@@ -47,8 +62,26 @@ def _end_of_day(value: date) -> datetime:
     backend/orm/audit_entry.py — neither SQLite nor pymysql/MariaDB retain a
     UTC offset on a DATETIME column), so it must be filtered as naive UTC too.
     A tz-aware bound happens to compare correctly on SQLite but is not safe on
-    MariaDB.
+    MariaDB. datetime.max is likewise naive, so the clamp below keeps that
+    contract.
+
+    date.max has no next midnight. `end_date` is a plain Optional[date], so
+    FastAPI accepts ?end_date=9999-12-31 as valid input — and 9999-12-31 IS a
+    storable MariaDB DATETIME day, not a nonsense value to reject — but
+    `datetime.combine(date.max, time.min) + timedelta(days=1)` raises
+    `OverflowError: date value out of range`, which nothing catches: an
+    unhandled 500 on accepted input. Clamping to datetime.max is the correct
+    answer, not merely a crash guard: an inclusive end bound of date.max
+    excludes nothing that can exist.
+
+    The one value the clamped bound excludes is occurred_at == datetime.max
+    exactly (9999-12-31 23:59:59.999999), because the comparison stays `<`.
+    That row cannot exist: MariaDB's DATETIME here has whole-second precision
+    (max 9999-12-31 23:59:59), and the writer stamps
+    `datetime.now(tz=utc)`, which never reaches it.
     """
+    if value >= date.max:
+        return datetime.max
     return datetime.combine(value, time.min) + timedelta(days=1)
 
 
@@ -71,7 +104,7 @@ def list_audit_entries(
     start_date: Optional[date] = Query(None),
     end_date: Optional[date] = Query(None),
     limit: int = Query(100, ge=1, le=500),
-    offset: int = Query(0, ge=0),
+    offset: int = Query(0, ge=0, le=_MAX_SQL_OFFSET),
     db: Session = Depends(get_db),
     _admin: User = Depends(get_current_admin),
 ) -> AuditListResponse:
@@ -106,7 +139,7 @@ def get_entity_history(
     table_name: str,
     record_pk: str,
     limit: int = Query(100, ge=1, le=500),
-    offset: int = Query(0, ge=0),
+    offset: int = Query(0, ge=0, le=_MAX_SQL_OFFSET),
     db: Session = Depends(get_db),
     _admin: User = Depends(get_current_admin),
 ) -> AuditListResponse:
