@@ -226,9 +226,12 @@ def _write_entry(connection: Any, obj: Any, operation: AuditOperation, changes: 
             "client_id": _client_id(obj),
             # Truncated to the column widths: MariaDB in STRICT mode ERRORS on
             # an over-long value rather than truncating, which would turn a
-            # long query string into a failed *business* write. Losing the
-            # tail of a path is acceptable; failing the user's request to
-            # record the audit of it is not.
+            # long path into a failed *business* write. The value is
+            # scope["path"] only — the query string is NOT included — so
+            # overflow means a genuinely long path (deep prefixes, a long
+            # path parameter), not query parameters. Losing the tail of a path
+            # is acceptable; failing the user's request in order to record the
+            # audit of it is not.
             "request_method": method[:8] if method else None,
             "request_path": path[:255] if path else None,
         },

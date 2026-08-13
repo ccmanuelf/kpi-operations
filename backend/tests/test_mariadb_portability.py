@@ -315,9 +315,9 @@ def test_cast_date_regex_catches_aliased_imports(snippet, should_match):
 # reproduce that, so these run only in the mariadb-portability CI job.
 # ---------------------------------------------------------------------------
 
-from datetime import datetime  # noqa: E402
+from datetime import datetime, timedelta  # noqa: E402
 
-from sqlalchemy import func, literal  # noqa: E402
+from sqlalchemy import func, literal, text  # noqa: E402
 
 from backend.db.sql_functions import date_diff_days  # noqa: E402
 
@@ -657,3 +657,387 @@ def test_audit_capture_round_trips_on_mariadb(mariadb_audit_capture):
             session.close()
             if token is not None:
                 current_actor.reset(token)
+
+
+# ---------------------------------------------------------------------------
+# Audit-trail READ path on real MariaDB. The write path is covered above; the
+# read endpoints (backend/routes/audit.py) filter a naive-UTC DateTime column
+# by date range and this repo's portability failures have consistently lived
+# exactly there (SQLite-only julianday(), a DateTime-vs-date boundary bug
+# spanning 27 sites, Decimal serialising as "0.00" on MariaDB but as a number
+# on SQLite). _end_of_day()'s tz-aware-vs-naive-bound choice was never
+# executed against a live MariaDB before these tests.
+#
+# The PRODUCTION route functions are imported and called directly (not
+# through TestClient/HTTP), matching this file's convention elsewhere
+# (date_diff_days, active_as_of): a hand-copied query shape is exactly how
+# the mariadb-portability job previously went green while the real code
+# was broken (see test_wip_aging_top_query_shape_executes_on_mariadb).
+# ---------------------------------------------------------------------------
+
+
+@requires_mariadb
+def test_audit_date_range_boundary_is_inclusive_on_mariadb(mariadb_schema):
+    """An entry recorded late on the end date must be returned.
+
+    Proves _end_of_day()'s "compare against the NEXT midnight" fix actually
+    holds on MariaDB, not only on SQLite where a DateTime-vs-date mismatch
+    has silently passed before (the 27-site boundary bug class).
+    """
+    from backend.orm.audit_entry import AuditEntry, AuditOperation
+    from backend.routes.audit import list_audit_entries
+
+    late = datetime(2026, 8, 11, 23, 59)  # naive UTC, matching what the writer stores
+    record_pk = "HOLD-MDB-BOUNDARY"
+    session = SessionLocal()
+    try:
+        session.add(
+            AuditEntry(
+                occurred_at=late,
+                table_name="HOLD_ENTRY",
+                record_pk=record_pk,
+                operation=AuditOperation.INSERT,
+                changes={},
+            )
+        )
+        session.commit()
+
+        result = list_audit_entries(
+            table_name="HOLD_ENTRY",
+            actor_user_id=None,
+            client_id=None,
+            start_date=late.date(),
+            end_date=late.date(),
+            limit=100,
+            offset=0,
+            db=session,
+            _admin=None,
+        )
+
+        matches = [e for e in result.entries if e.record_pk == record_pk]
+        assert len(matches) == 1
+    finally:
+        try:
+            session.rollback()
+            session.query(AuditEntry).filter(AuditEntry.record_pk == record_pk).delete()
+            session.commit()
+        finally:
+            session.close()
+
+
+@requires_mariadb
+def test_audit_json_changes_round_trip_through_read_path_on_mariadb(mariadb_schema):
+    """The `changes` JSON column must survive MariaDB's LONGTEXT+JSON storage
+    AND the route's pydantic serialization with numeric values still numbers,
+    not the "0.00"-as-string shape MariaDB has handed this codebase before
+    (see the kpi-serialization Decimal-as-string fix). Read through the
+    production route function, not a raw query, so a regression in either the
+    ORM read or the response model is caught."""
+    from backend.orm.audit_entry import AuditEntry, AuditOperation
+    from backend.routes.audit import list_audit_entries
+
+    record_pk = "HOLD-MDB-JSON"
+    session = SessionLocal()
+    try:
+        session.add(
+            AuditEntry(
+                occurred_at=datetime(2026, 8, 11, 10, 0),
+                actor_user_id="u-json",
+                actor_username="json_actor",
+                table_name="HOLD_ENTRY",
+                record_pk=record_pk,
+                operation=AuditOperation.UPDATE,
+                changes={
+                    "hold_status": {"old": "ON_HOLD", "new": "RELEASED"},
+                    "target_value": {"old": 80.0, "new": 91.5},
+                },
+            )
+        )
+        session.commit()
+
+        result = list_audit_entries(
+            table_name="HOLD_ENTRY",
+            actor_user_id=None,
+            client_id=None,
+            start_date=None,
+            end_date=None,
+            limit=100,
+            offset=0,
+            db=session,
+            _admin=None,
+        )
+
+        matches = [e for e in result.entries if e.record_pk == record_pk]
+        assert len(matches) == 1
+        changes = matches[0].changes
+        assert changes["hold_status"] == {"old": "ON_HOLD", "new": "RELEASED"}
+        assert changes["target_value"] == {"old": 80.0, "new": 91.5}
+        # The specific failure mode this repo has hit before: MariaDB handing
+        # back a numeric-looking string instead of a JSON number.
+        assert isinstance(changes["target_value"]["new"], float)
+        assert isinstance(changes["target_value"]["old"], float)
+    finally:
+        try:
+            session.rollback()
+            session.query(AuditEntry).filter(AuditEntry.record_pk == record_pk).delete()
+            session.commit()
+        finally:
+            session.close()
+
+
+@requires_mariadb
+def test_trail_started_at_is_none_empty_then_real_once_seeded_on_mariadb(mariadb_schema):
+    """trail_started_at is the signal callers use to tell "nothing happened"
+    apart from "before we were watching" (there is no backfill -- see
+    routes/audit.py::get_entity_history). Both states must resolve correctly
+    against a real MariaDB DATETIME column, not just SQLite's typing.
+
+    Force-clears AUDIT_ENTRY immediately before the empty-table assertion
+    rather than relying on no earlier test in this module-scoped schema
+    having left rows behind -- that would make this test's correctness
+    depend on file ordering instead of proving the empty case itself.
+    """
+    from backend.orm.audit_entry import AuditEntry, AuditOperation
+    from backend.routes.audit import _trail_started_at
+
+    session = SessionLocal()
+    seeded_pk = "HOLD-MDB-TRAIL-START"
+    try:
+        session.query(AuditEntry).delete()
+        session.commit()
+        assert _trail_started_at(session) is None
+
+        seeded_at = datetime(2026, 8, 11, 9, 0)
+        session.add(
+            AuditEntry(
+                occurred_at=seeded_at,
+                table_name="HOLD_ENTRY",
+                record_pk=seeded_pk,
+                operation=AuditOperation.INSERT,
+                changes={},
+            )
+        )
+        session.commit()
+
+        assert _trail_started_at(session) == seeded_at
+    finally:
+        try:
+            session.rollback()
+            session.query(AuditEntry).filter(AuditEntry.record_pk == seeded_pk).delete()
+            session.commit()
+        finally:
+            session.close()
+
+
+@requires_mariadb
+def test_get_entity_history_returns_seeded_entity_on_mariadb(mariadb_schema):
+    """get_entity_history is the per-record read path -- the endpoint Project
+    B's widget hits hardest -- and had never been executed against MariaDB;
+    only list_audit_entries and _trail_started_at were covered above. Its
+    query differs from list_audit_entries only by dropping the date-range
+    filter, but that's a stated coverage goal, not an assumption to lean on.
+    """
+    from backend.orm.audit_entry import AuditEntry, AuditOperation
+    from backend.routes.audit import get_entity_history
+
+    record_pk = "HOLD-MDB-HISTORY"
+    other_pk = "HOLD-MDB-HISTORY-OTHER"
+    session = SessionLocal()
+    try:
+        session.add_all(
+            [
+                AuditEntry(
+                    occurred_at=datetime(2026, 8, 11, 8, 0),
+                    table_name="HOLD_ENTRY",
+                    record_pk=record_pk,
+                    operation=AuditOperation.INSERT,
+                    changes={"hold_status": {"old": None, "new": "ON_HOLD"}},
+                ),
+                AuditEntry(
+                    occurred_at=datetime(2026, 8, 11, 9, 0),
+                    table_name="HOLD_ENTRY",
+                    record_pk=record_pk,
+                    operation=AuditOperation.UPDATE,
+                    changes={"hold_status": {"old": "ON_HOLD", "new": "RELEASED"}},
+                ),
+                # A different record, same table: proves the filter is
+                # scoped to record_pk, not just returning everything.
+                AuditEntry(
+                    occurred_at=datetime(2026, 8, 11, 9, 30),
+                    table_name="HOLD_ENTRY",
+                    record_pk=other_pk,
+                    operation=AuditOperation.INSERT,
+                    changes={},
+                ),
+            ]
+        )
+        session.commit()
+
+        result = get_entity_history(
+            table_name="HOLD_ENTRY",
+            record_pk=record_pk,
+            limit=100,
+            offset=0,
+            db=session,
+            _admin=None,
+        )
+
+        assert result.total == 2
+        assert {e.record_pk for e in result.entries} == {record_pk}
+        assert [e.operation for e in result.entries] == [AuditOperation.UPDATE, AuditOperation.INSERT]
+        assert result.trail_started_at is not None
+    finally:
+        try:
+            session.rollback()
+            session.query(AuditEntry).filter(AuditEntry.record_pk.in_([record_pk, other_pk])).delete(
+                synchronize_session=False
+            )
+            session.commit()
+        finally:
+            session.close()
+
+
+@requires_mariadb
+def test_audit_newest_first_holds_for_entries_in_the_same_second_on_mariadb(mariadb_schema):
+    """The newest-first contract must survive MariaDB's whole-second DATETIME.
+
+    ``AuditEntry.occurred_at`` is a plain ``DateTime``, which MariaDB renders
+    as DATETIME with NO fractional-seconds precision: 20 rows written with 20
+    distinct microsecond values collapse to ONE distinct stored value. With
+    ``ORDER BY occurred_at DESC`` alone that makes the row order unspecified,
+    and in practice InnoDB returns the ties in insertion order -- i.e. the
+    trail comes back OLDEST-first, the exact reverse of what both endpoints
+    document. An admin reading a hold's history would conclude the FIRST
+    change was the last one.
+
+    Same-second writes are the normal case, not an edge case: one flush emits
+    several AUDIT_ENTRY rows and a CSV upload emits hundreds per second.
+
+    ``test_get_entity_history_returns_seeded_entity_on_mariadb`` above cannot
+    see this -- its two entries are an hour apart, so ``occurred_at`` alone is
+    already a total order there. This one writes them in the SAME second, which
+    is the only shape that exercises the tiebreaker, and it goes through the
+    production route functions so it fails if either endpoint loses it.
+
+    Each row is committed in its own transaction so they are genuinely written
+    in sequence, the way the capture engine writes them.
+
+    THE ROWS OF UNRELATED NOISE ARE LOAD-BEARING, not scene-setting. Against a
+    near-empty AUDIT_ENTRY the optimizer answers ``ORDER BY occurred_at DESC``
+    with a reverse scan of ``ix_AUDIT_ENTRY_occurred_at``, whose leaf entries
+    are (occurred_at, PK) -- so the ties come back entry_id-descending by
+    accident and the bug hides. Once the table looks like production (the
+    entity index becomes the selective one), the plan becomes a ref lookup +
+    filesort, and the filesort returns the ties in the order it read them:
+    OLDEST first. Measured on mariadb:11.4: with the tiebreaker removed and
+    50 noise rows present, both endpoints returned
+    ['actor-first', 'actor-second', 'actor-third'] -- fully reversed. The
+    filesort assertion below is a tripwire so a future optimizer change cannot
+    turn this test vacuously green without saying so.
+    """
+    from backend.orm.audit_entry import AuditEntry, AuditOperation
+    from backend.routes.audit import get_entity_history, list_audit_entries
+
+    record_pk = "HOLD-MDB-SAMESECOND"
+    noise_pks = [f"NOISE-SAMESECOND-{i}" for i in range(50)]
+    session = SessionLocal()
+    try:
+        noise_base = datetime(2026, 1, 1, 0, 0, 0)
+        session.add_all(
+            [
+                AuditEntry(
+                    occurred_at=noise_base + timedelta(seconds=i),
+                    table_name="WORK_ORDER",
+                    record_pk=pk,
+                    operation=AuditOperation.UPDATE,
+                    changes={},
+                )
+                for i, pk in enumerate(noise_pks)
+            ]
+        )
+        session.commit()
+
+        # One timestamp, three rows: MariaDB stores all three identically.
+        tied_at = datetime(2026, 8, 11, 14, 30, 15)
+        for actor in ("actor-first", "actor-second", "actor-third"):
+            session.add(
+                AuditEntry(
+                    occurred_at=tied_at,
+                    actor_user_id=actor,
+                    table_name="HOLD_ENTRY",
+                    record_pk=record_pk,
+                    operation=AuditOperation.UPDATE,
+                    changes={},
+                )
+            )
+            session.commit()
+
+        # The stored values really are indistinguishable — if MariaDB ever
+        # started keeping microseconds here, the ordering assertions below
+        # would stop testing the tiebreaker and quietly pass for free.
+        distinct = session.query(func.count(func.distinct(AuditEntry.occurred_at))).filter(
+            AuditEntry.record_pk == record_pk
+        )
+        assert distinct.scalar() == 1
+
+        # Tripwire: the ordering below only exercises the tiebreaker while the
+        # server is actually SORTING. If this ever stops being a filesort, the
+        # assertions pass for free and this test must be re-shaped.
+        plan = session.execute(
+            text(
+                "EXPLAIN SELECT * FROM AUDIT_ENTRY WHERE table_name = :t "
+                "AND record_pk = :pk ORDER BY occurred_at DESC LIMIT 100"
+            ),
+            {"t": "HOLD_ENTRY", "pk": record_pk},
+        ).first()
+        assert "Using filesort" in (plan[-1] or ""), (
+            "the entity-history query is no longer sorted by the server (plan: "
+            f"{plan[-1]!r}); it is answered in index order, so the same-second "
+            "assertions below no longer prove the entry_id tiebreaker exists"
+        )
+
+        history = get_entity_history(
+            table_name="HOLD_ENTRY",
+            record_pk=record_pk,
+            limit=100,
+            offset=0,
+            db=session,
+            _admin=None,
+        )
+        assert [e.actor_user_id for e in history.entries] == ["actor-third", "actor-second", "actor-first"]
+
+        listing = list_audit_entries(
+            table_name="HOLD_ENTRY",
+            actor_user_id=None,
+            client_id=None,
+            start_date=None,
+            end_date=None,
+            limit=100,
+            offset=0,
+            db=session,
+            _admin=None,
+        )
+        ours = [e.actor_user_id for e in listing.entries if e.record_pk == record_pk]
+        assert ours == ["actor-third", "actor-second", "actor-first"]
+
+        # Offset paging over a tied set must be stable, not just ordered:
+        # page 2 of 1 is the middle row, never a repeat of page 1.
+        page_two = get_entity_history(
+            table_name="HOLD_ENTRY",
+            record_pk=record_pk,
+            limit=1,
+            offset=1,
+            db=session,
+            _admin=None,
+        )
+        assert [e.actor_user_id for e in page_two.entries] == ["actor-second"]
+        assert page_two.total == 3
+    finally:
+        try:
+            session.rollback()
+            session.query(AuditEntry).filter(AuditEntry.record_pk.in_([record_pk] + noise_pks)).delete(
+                synchronize_session=False
+            )
+            session.commit()
+        finally:
+            session.close()

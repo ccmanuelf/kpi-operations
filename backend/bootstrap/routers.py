@@ -63,6 +63,7 @@ from backend.endpoints.csv_upload import router as csv_upload_router
 from backend.routes.calculation_assumptions import router as calculation_assumptions_router
 from backend.routes.metric_results import router as metric_results_router
 from backend.routes.dual_view_calculate import router as dual_view_calculate_router
+from backend.routes.audit import router as audit_router
 
 
 def register_routers(app: FastAPI) -> None:
@@ -303,6 +304,11 @@ def register_routers(app: FastAPI) -> None:
     # Dual-View Architecture Phase 4c: On-demand calculation endpoints
     # ============================================================================
     app.include_router(dual_view_calculate_router)
+
+    # ============================================================================
+    # Project A, Phase A2: Audit trail read API (admin-only)
+    # ============================================================================
+    app.include_router(audit_router)
 
     # ============================================================================
     # NOTE: Report routes are now in routes/reports.py with proper authentication

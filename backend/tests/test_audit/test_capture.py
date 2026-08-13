@@ -10,11 +10,13 @@ from sqlalchemy.orm import Session as SASession
 
 from backend.audit.capture import _jsonable, register_audit_listener, unregister_audit_listener
 from backend.audit.context import audit_suppressed, set_actor, current_actor
+from backend.crud.defect_type_catalog import bulk_create_defect_types
 from backend.orm.audit_entry import AuditEntry, AuditOperation
 from backend.orm.employee import Employee
 from backend.orm.kpi_threshold import KPIThreshold
 from backend.orm.metric_calculation_result import MetricCalculationResult
 from backend.orm.work_order import WorkOrder, WorkOrderStatus
+from backend.schemas.defect_type_catalog import DefectTypeCatalogCSVRow
 from backend.tests.conftest import clone_template_engine
 from backend.tests.fixtures.factories import TestDataFactory
 
@@ -137,6 +139,63 @@ def test_unsuppressed_bulk_write_is_still_captured(transactional_db):
     transactional_db.flush()
     rows = [e for e in _entries(transactional_db) if e.record_pk.startswith("AUD-B")]
     assert len(rows) == 3
+
+
+def test_bulk_create_replace_existing_deactivates_and_audits(transactional_db):
+    """bulk_create_defect_types(replace_existing=True) deactivation was
+    changed from a query-level `.update()` to an ORM loop specifically so
+    the audit trail would capture it (see the comment in
+    crud/defect_type_catalog.py). A reviewer verified that by hand and
+    test_no_bulk_writes_on_audited_tables.py structurally guards against
+    the query-level form coming back, but nothing proved the ORM loop
+    actually produces AUDIT_ENTRY rows -- this does, non-vacuously (it
+    asserts both the deactivation AND the specific old/new values on the
+    audit rows, not just that some row exists)."""
+    register_audit_listener()
+    TestDataFactory.create_client(transactional_db, client_id="DTC-RE-CL")
+    admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="DTC-RE-CL")
+    existing_1 = TestDataFactory.create_defect_type_catalog(
+        transactional_db, client_id="DTC-RE-CL", defect_code="OLD1", defect_name="Old One", is_active=True
+    )
+    existing_2 = TestDataFactory.create_defect_type_catalog(
+        transactional_db, client_id="DTC-RE-CL", defect_code="OLD2", defect_name="Old Two", is_active=True
+    )
+    transactional_db.commit()
+    existing_ids = {existing_1.defect_type_id, existing_2.defect_type_id}
+
+    token = set_actor(admin.user_id, admin.username)
+    try:
+        bulk_create_defect_types(
+            transactional_db,
+            client_id="DTC-RE-CL",
+            defect_types=[DefectTypeCatalogCSVRow(defect_code="NEW1", defect_name="New One")],
+            current_user=admin,
+            replace_existing=True,
+        )
+    finally:
+        current_actor.reset(token)
+
+    # (a) the previously-active rows are now deactivated.
+    transactional_db.refresh(existing_1)
+    transactional_db.refresh(existing_2)
+    assert existing_1.is_active is False
+    assert existing_2.is_active is False
+
+    # (b) the deactivations produced AUDIT_ENTRY UPDATE rows with the
+    # correct table_name/record_pk and the actual old/new values -- not just
+    # "a row exists somewhere".
+    audit_rows = (
+        transactional_db.query(AuditEntry)
+        .filter(
+            AuditEntry.table_name == "DEFECT_TYPE_CATALOG",
+            AuditEntry.record_pk.in_(existing_ids),
+            AuditEntry.operation == AuditOperation.UPDATE,
+        )
+        .all()
+    )
+    assert {r.record_pk for r in audit_rows} == existing_ids
+    for row in audit_rows:
+        assert row.changes["is_active"] == {"old": True, "new": False}
 
 
 def test_password_hash_is_redacted(transactional_db):

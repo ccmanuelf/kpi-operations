@@ -125,6 +125,16 @@ MATRIX = [
     # a supervisory-gated route — is covered at the CRUD layer by
     # test_work_order_delay_classification.py; this row pins the route guard.)
     ("PUT", "/api/work-orders/1", ["operator", "viewer"], "supervisor", 404),
+    # Audit trail reads (Phase A2), admin-only. Read endpoints rather than
+    # writes, so they sit outside the write-tier rows above, but they belong
+    # here for the reason this file exists: every other audit authz test
+    # builds its own FastAPI() and mounts the router itself, so none of them
+    # would notice audit_router being dropped from bootstrap/routers.py.
+    # These rows walk the LIVE backend.main.app, so they pin the wiring too.
+    # An admin GET over an empty AUDIT_ENTRY table is a legitimate 200
+    # ({"entries": [], "total": 0, "trail_started_at": null}).
+    ("GET", "/api/audit", ["operator", "viewer", "leader", "supervisor", "poweruser"], "admin", 200),
+    ("GET", "/api/audit/HOLD_ENTRY/HOLD-1", ["operator", "viewer", "leader", "supervisor", "poweruser"], "admin", 200),
 ]
 
 
