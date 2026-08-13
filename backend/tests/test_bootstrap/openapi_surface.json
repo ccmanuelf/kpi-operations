@@ -266,6 +266,10 @@
     ],
     [
       "GET",
+      "/api/audit"
+    ],
+    [
+      "GET",
       "/api/auth/me"
     ],
     [
