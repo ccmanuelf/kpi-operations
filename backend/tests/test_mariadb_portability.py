@@ -657,3 +657,173 @@ def test_audit_capture_round_trips_on_mariadb(mariadb_audit_capture):
             session.close()
             if token is not None:
                 current_actor.reset(token)
+
+
+# ---------------------------------------------------------------------------
+# Audit-trail READ path on real MariaDB. The write path is covered above; the
+# read endpoints (backend/routes/audit.py) filter a naive-UTC DateTime column
+# by date range and this repo's portability failures have consistently lived
+# exactly there (SQLite-only julianday(), a DateTime-vs-date boundary bug
+# spanning 27 sites, Decimal serialising as "0.00" on MariaDB but as a number
+# on SQLite). _end_of_day()'s tz-aware-vs-naive-bound choice was never
+# executed against a live MariaDB before these tests.
+#
+# The PRODUCTION route functions are imported and called directly (not
+# through TestClient/HTTP), matching this file's convention elsewhere
+# (date_diff_days, active_as_of): a hand-copied query shape is exactly how
+# the mariadb-portability job previously went green while the real code
+# was broken (see test_wip_aging_top_query_shape_executes_on_mariadb).
+# ---------------------------------------------------------------------------
+
+
+@requires_mariadb
+def test_audit_date_range_boundary_is_inclusive_on_mariadb(mariadb_schema):
+    """An entry recorded late on the end date must be returned.
+
+    Proves _end_of_day()'s "compare against the NEXT midnight" fix actually
+    holds on MariaDB, not only on SQLite where a DateTime-vs-date mismatch
+    has silently passed before (the 27-site boundary bug class).
+    """
+    from backend.orm.audit_entry import AuditEntry, AuditOperation
+    from backend.routes.audit import list_audit_entries
+
+    late = datetime(2026, 8, 11, 23, 59)  # naive UTC, matching what the writer stores
+    record_pk = "HOLD-MDB-BOUNDARY"
+    session = SessionLocal()
+    try:
+        session.add(
+            AuditEntry(
+                occurred_at=late,
+                table_name="HOLD_ENTRY",
+                record_pk=record_pk,
+                operation=AuditOperation.INSERT,
+                changes={},
+            )
+        )
+        session.commit()
+
+        result = list_audit_entries(
+            table_name="HOLD_ENTRY",
+            actor_user_id=None,
+            client_id=None,
+            start_date=late.date(),
+            end_date=late.date(),
+            limit=100,
+            offset=0,
+            db=session,
+            _admin=None,
+        )
+
+        matches = [e for e in result.entries if e.record_pk == record_pk]
+        assert len(matches) == 1
+    finally:
+        try:
+            session.rollback()
+            session.query(AuditEntry).filter(AuditEntry.record_pk == record_pk).delete()
+            session.commit()
+        finally:
+            session.close()
+
+
+@requires_mariadb
+def test_audit_json_changes_round_trip_through_read_path_on_mariadb(mariadb_schema):
+    """The `changes` JSON column must survive MariaDB's LONGTEXT+JSON storage
+    AND the route's pydantic serialization with numeric values still numbers,
+    not the "0.00"-as-string shape MariaDB has handed this codebase before
+    (see the kpi-serialization Decimal-as-string fix). Read through the
+    production route function, not a raw query, so a regression in either the
+    ORM read or the response model is caught."""
+    from backend.orm.audit_entry import AuditEntry, AuditOperation
+    from backend.routes.audit import list_audit_entries
+
+    record_pk = "HOLD-MDB-JSON"
+    session = SessionLocal()
+    try:
+        session.add(
+            AuditEntry(
+                occurred_at=datetime(2026, 8, 11, 10, 0),
+                actor_user_id="u-json",
+                actor_username="json_actor",
+                table_name="HOLD_ENTRY",
+                record_pk=record_pk,
+                operation=AuditOperation.UPDATE,
+                changes={
+                    "hold_status": {"old": "ON_HOLD", "new": "RELEASED"},
+                    "target_value": {"old": 80.0, "new": 91.5},
+                },
+            )
+        )
+        session.commit()
+
+        result = list_audit_entries(
+            table_name="HOLD_ENTRY",
+            actor_user_id=None,
+            client_id=None,
+            start_date=None,
+            end_date=None,
+            limit=100,
+            offset=0,
+            db=session,
+            _admin=None,
+        )
+
+        matches = [e for e in result.entries if e.record_pk == record_pk]
+        assert len(matches) == 1
+        changes = matches[0].changes
+        assert changes["hold_status"] == {"old": "ON_HOLD", "new": "RELEASED"}
+        assert changes["target_value"] == {"old": 80.0, "new": 91.5}
+        # The specific failure mode this repo has hit before: MariaDB handing
+        # back a numeric-looking string instead of a JSON number.
+        assert isinstance(changes["target_value"]["new"], float)
+        assert isinstance(changes["target_value"]["old"], float)
+    finally:
+        try:
+            session.rollback()
+            session.query(AuditEntry).filter(AuditEntry.record_pk == record_pk).delete()
+            session.commit()
+        finally:
+            session.close()
+
+
+@requires_mariadb
+def test_trail_started_at_is_none_empty_then_real_once_seeded_on_mariadb(mariadb_schema):
+    """trail_started_at is the signal callers use to tell "nothing happened"
+    apart from "before we were watching" (there is no backfill -- see
+    routes/audit.py::get_entity_history). Both states must resolve correctly
+    against a real MariaDB DATETIME column, not just SQLite's typing.
+
+    Force-clears AUDIT_ENTRY immediately before the empty-table assertion
+    rather than relying on no earlier test in this module-scoped schema
+    having left rows behind -- that would make this test's correctness
+    depend on file ordering instead of proving the empty case itself.
+    """
+    from backend.orm.audit_entry import AuditEntry, AuditOperation
+    from backend.routes.audit import _trail_started_at
+
+    session = SessionLocal()
+    seeded_pk = "HOLD-MDB-TRAIL-START"
+    try:
+        session.query(AuditEntry).delete()
+        session.commit()
+        assert _trail_started_at(session) is None
+
+        seeded_at = datetime(2026, 8, 11, 9, 0)
+        session.add(
+            AuditEntry(
+                occurred_at=seeded_at,
+                table_name="HOLD_ENTRY",
+                record_pk=seeded_pk,
+                operation=AuditOperation.INSERT,
+                changes={},
+            )
+        )
+        session.commit()
+
+        assert _trail_started_at(session) == seeded_at
+    finally:
+        try:
+            session.rollback()
+            session.query(AuditEntry).filter(AuditEntry.record_pk == seeded_pk).delete()
+            session.commit()
+        finally:
+            session.close()
