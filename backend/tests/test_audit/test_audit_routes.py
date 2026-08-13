@@ -186,6 +186,27 @@ def test_entity_history_returns_only_that_entity(admin_audit_client):
     assert [e["record_pk"] for e in body["entries"]] == ["HOLD-1"]
 
 
+def test_entity_history_filters_by_table_not_just_record_pk(admin_audit_client):
+    """record_pk is a stringified single-column PK, so collisions across
+    tables are realistic (e.g. EMPLOYEE.employee_id and
+    EMPLOYEE_CLIENT_ASSIGNMENT.assignment_id can both stringify to "1").
+    Seeding the SAME record_pk under two different table_names is the only
+    way to prove the table_name filter itself is doing something — a test
+    that varies record_pk alone (as in
+    test_entity_history_returns_only_that_entity) would still pass even if
+    the table_name clause were deleted."""
+    client, db = admin_audit_client
+    _seed_entry(db, record_pk="1", table_name="EMPLOYEE")
+    _seed_entry(db, record_pk="1", table_name="EMPLOYEE_CLIENT_ASSIGNMENT")
+
+    response = client.get("/api/audit/EMPLOYEE/1")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert [e["table_name"] for e in body["entries"]] == ["EMPLOYEE"]
+    assert body["total"] == 1
+
+
 def test_entity_history_of_unknown_record_is_empty_not_an_error(admin_audit_client):
     """No backfill: nothing recorded is a legitimate answer."""
     client, _db = admin_audit_client
