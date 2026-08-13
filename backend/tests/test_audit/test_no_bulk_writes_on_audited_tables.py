@@ -30,6 +30,37 @@ Deliberately AST-based, not regex-based, for the structural cases: a regex for
 ``db.delete(work_order)`` (the captured path), and this repo has already been
 bitten by a guard regex that a plain import alias evaded
 (``test_mariadb_portability.py::test_cast_date_regex_catches_aliased_imports``).
+
+WHAT THIS GUARD DOES NOT CATCH
+------------------------------
+The scan resolves table names *syntactically*, from a Name/Attribute node
+matched against ``MODEL_TO_TABLE``. Anything that hides the model behind
+another expression is a blind spot, and the guard reports it as clean:
+
+* an aliased import — ``from backend.orm import WorkOrder as WO`` then
+  ``db.query(WO).delete()`` (``WO`` is not a key in ``MODEL_TO_TABLE``);
+* a qualified Core call — ``sa.delete(Model)`` (only bare ``insert``/
+  ``update``/``delete`` ``Name`` nodes are recognised as Core DML);
+* ``Model.__table__.delete()`` (the ``.delete()`` branch only inspects a
+  ``.query(...)`` chain);
+* SQL assembled in a variable — ``stmt = "DELETE FROM WORK_ORDER ..."`` then
+  ``db.execute(text(stmt))`` (only *literal* strings inside an SQL-executing
+  call are scanned);
+* a model held in a variable or loop target — and this one is not
+  hypothetical: ``scripts/seed_sample_client.py::reset_client_data`` does
+  ``for cls, col in RESET_TABLE_ORDER: session.query(cls).…delete()`` over 39
+  models, 11 of them audited (WORK_ORDER, HOLD_ENTRY, EMPLOYEE, KPI_THRESHOLD,
+  …). It passes this guard by BLIND SPOT, not by reviewed exemption: it is
+  absent from ``ALLOWED_BYPASSES`` because the scan never saw it.
+
+  That code is safe today for a reason that lives elsewhere — its only caller,
+  ``seed_sample_client.main()``, is decorated ``@audit_suppressed()``, so the
+  writes are deliberately outside the trail rather than accidentally missing
+  from it. If that decorator is ever removed, this guard will NOT tell you.
+
+So: green here means "no bypass of the *recognised* shapes", not "no bypass".
+Closing a blind spot means teaching ``_scan`` the shape (and adding a
+self-test row below), not assuming the absence of offenders is proof.
 """
 
 import ast
@@ -152,7 +183,16 @@ def _scan(path: pathlib.Path) -> List[str]:
     """Return "<relpath>:<line> <what>" for each audit bypass in this file."""
     source = path.read_text(encoding="utf-8")
     tree = ast.parse(source, filename=str(path))
-    rel = path.relative_to(BACKEND_ROOT).as_posix()
+    try:
+        rel = path.relative_to(BACKEND_ROOT).as_posix()
+    except ValueError:
+        # Not under backend/ — only the self-test probe, which lives in
+        # pytest's tmp_path precisely so a SIGKILLed run cannot strand a .py
+        # file inside BACKEND_ROOT for _app_python_files() to pick up and
+        # report as a real offender on the next run. Fall back to the absolute
+        # path: ALLOWED_BYPASSES is keyed by repo-relative path, so an outside
+        # file can never accidentally match an exemption.
+        rel = path.as_posix()
     offenders: List[str] = []
 
     def report(line: int, table_or_symbol: str, what: str) -> None:
@@ -265,11 +305,14 @@ def test_guard_detects_bypasses_and_not_the_legitimate_orm_path(snippet, expect_
     Without this, a scanner that silently matched nothing (a typo'd method
     name, a wrong AST field) would report zero offenders forever and read as
     a passing gate.
+
+    The probe lives in pytest's per-test ``tmp_path``, NOT in BACKEND_ROOT: a
+    run killed between write and unlink used to strand a .py file that
+    ``_app_python_files()`` would then scan, failing the real guard above with
+    a bogus offender. ``_scan`` tolerates paths outside BACKEND_ROOT for
+    exactly this.
     """
-    probe = BACKEND_ROOT / "___guard_selftest_probe.py"
+    probe = tmp_path / "guard_selftest_probe.py"
     probe.write_text(snippet + "\n", encoding="utf-8")
-    try:
-        offenders = _scan(probe)
-    finally:
-        probe.unlink()
+    offenders = _scan(probe)
     assert bool(offenders) is expect_offense, f"{snippet!r} -> {offenders}"
