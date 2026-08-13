@@ -40,7 +40,12 @@ services:
     # gunicorn override lives HERE (not in the Dockerfile) so Render's plain
     # uvicorn CMD is untouched. The entrypoint still runs first:
     # DB wait -> fatal `alembic upgrade head` -> exec this command.
-    # --timeout 600: UvicornWorker only sends its first heartbeat to the arbiter
+    # -k uvicorn_worker.UvicornWorker: the worker class now lives in the separate
+# `uvicorn-worker` package. uvicorn 0.30 deprecated the in-tree
+# `uvicorn.workers`; it still ships in 0.52 but warns on import and will be
+# removed. Same class, same behaviour -- only the import path moved.
+#
+# --timeout 600: UvicornWorker only sends its first heartbeat to the arbiter
     # AFTER lifespan startup completes (uvicorn runs lifespan.startup() before
     # main_loop, and the arbiter heartbeat fires only inside main_loop's
     # on_tick). The serialized first-boot demo seed can exceed the 30s default on
@@ -60,7 +65,7 @@ services:
     # headers keep scope["scheme"]="http" (uvicorn ignores X-Forwarded-Proto from
     # an untrusted peer) even though the browser is on https — scheme-downgraded
     # redirect, blocked as mixed content (ISSUE-012).
-    command: ["gunicorn", "backend.main:app", "-w", "4", "-k", "uvicorn.workers.UvicornWorker", "-b", "0.0.0.0:8000", "--timeout", "600", "--graceful-timeout", "30", "--forwarded-allow-ips", "*"]
+    command: ["gunicorn", "backend.main:app", "-w", "4", "-k", "uvicorn_worker.UvicornWorker", "-b", "0.0.0.0:8000", "--timeout", "600", "--graceful-timeout", "30", "--forwarded-allow-ips", "*"]
     environment:
       - DATABASE_URL=mysql+pymysql://kpi_user:${DB_PASSWORD}@db:3306/kpi_platform
       - SECRET_KEY=${SECRET_KEY:?SECRET_KEY must be set in production}

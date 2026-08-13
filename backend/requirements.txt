@@ -4,7 +4,7 @@
 # Core Framework
 fastapi==0.138.1
 starlette==1.3.1       # PYSEC-2026-161 fix (transitive via fastapi; was 0.52.1)
-uvicorn[standard]==0.49.0
+uvicorn[standard]==0.52.1
 pydantic[email]==2.13.4
 pydantic-settings==2.14.2  # GHSA-4xgf-cpjx-pc3j (disclosed 2026-06-21); 2.14.1 vulnerable
 
@@ -49,4 +49,10 @@ qrcode[pil]==8.2
 simpy==4.1.2
 
 # Production WSGI/ASGI process manager (VM compose stack; Render stays on plain uvicorn)
-gunicorn==23.0.0
+gunicorn==26.0.0
+# The gunicorn worker class, split out of uvicorn itself. uvicorn 0.30
+# deprecated `uvicorn.workers` (it still ships in 0.52 but warns on import,
+# pointing here); the VM's docker-compose.prod.yml command uses
+# `-k uvicorn_worker.UvicornWorker`. Only the VM stack runs gunicorn --
+# Render uses the Dockerfile's plain-uvicorn CMD.
+uvicorn-worker==0.4.0
