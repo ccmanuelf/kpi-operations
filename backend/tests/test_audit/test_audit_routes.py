@@ -68,17 +68,24 @@ def operator_audit_client(transactional_db):
     return TestClient(app), transactional_db
 
 
-def _seed_entry(db, record_pk="HOLD-1", table_name="HOLD_ENTRY", actor="user-1"):
+def _seed_entry(
+    db,
+    record_pk="HOLD-1",
+    table_name="HOLD_ENTRY",
+    actor="user-1",
+    client_id="CLIENT-1",
+    occurred_at=datetime(2026, 8, 11, 12, 0, tzinfo=timezone.utc),
+):
     db.add(
         AuditEntry(
-            occurred_at=datetime(2026, 8, 11, 12, 0, tzinfo=timezone.utc),
+            occurred_at=occurred_at,
             actor_user_id=actor,
             actor_username="alice",
             table_name=table_name,
             record_pk=record_pk,
             operation=AuditOperation.UPDATE,
             changes={"hold_status": {"old": "ON_HOLD", "new": "RELEASED"}},
-            client_id="CLIENT-1",
+            client_id=client_id,
         )
     )
     db.flush()
@@ -95,6 +102,11 @@ def test_list_returns_entries_for_admin(admin_audit_client):
     assert body["total"] == 1
     assert body["entries"][0]["table_name"] == "HOLD_ENTRY"
     assert body["entries"][0]["changes"]["hold_status"]["new"] == "RELEASED"
+    # `operation` is an Enum(AuditOperation) column read into a `str` response
+    # field. Pinned because the serialized value is what every consumer reads
+    # and nothing else asserts it: a plain str(enum) anywhere on that path
+    # would emit "AuditOperation.UPDATE" and silently break them.
+    assert body["entries"][0]["operation"] == "UPDATE"
 
 
 def test_list_filters_by_table_name(admin_audit_client):
@@ -106,6 +118,37 @@ def test_list_filters_by_table_name(admin_audit_client):
 
     assert response.status_code == 200
     assert [e["record_pk"] for e in response.json()["entries"]] == ["WO-1"]
+
+
+def test_list_filters_by_actor_user_id(admin_audit_client):
+    """The actor filter had NO test: the review deleted the clause and the
+    whole audit suite stayed green. Two actors, one asked for, the other
+    must be absent."""
+    client, db = admin_audit_client
+    _seed_entry(db, record_pk="HOLD-1", actor="user-1")
+    _seed_entry(db, record_pk="HOLD-2", actor="user-2")
+
+    response = client.get("/api/audit?actor_user_id=user-2")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert [e["record_pk"] for e in body["entries"]] == ["HOLD-2"]
+    assert body["total"] == 1
+
+
+def test_list_filters_by_client_id(admin_audit_client):
+    """Same blind spot as the actor filter — deleting the client_id clause
+    left the suite green. Two tenants, only the requested one comes back."""
+    client, db = admin_audit_client
+    _seed_entry(db, record_pk="HOLD-1", client_id="CLIENT-1")
+    _seed_entry(db, record_pk="HOLD-2", client_id="CLIENT-2")
+
+    response = client.get("/api/audit?client_id=CLIENT-2")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert [e["record_pk"] for e in body["entries"]] == ["HOLD-2"]
+    assert body["total"] == 1
 
 
 def test_list_reports_when_the_trail_started(admin_audit_client):
@@ -163,6 +206,104 @@ def test_list_includes_entries_on_end_date_next_midnight_boundary(admin_audit_cl
 
     assert response.status_code == 200
     assert response.json()["total"] == 1
+
+
+def test_list_excludes_entries_after_end_date(admin_audit_client):
+    """The missing half of the end_date contract.
+
+    test_list_includes_entries_on_end_date_next_midnight_boundary is one-sided
+    by construction: it proves the bound is not too EARLY, so the entire
+    end_date clause could be deleted and it would still pass (it did — the
+    review removed the clause and the suite stayed green). This proves the
+    bound excludes something, which only a real filter can do.
+    """
+    client, db = admin_audit_client
+    _seed_entry(db, record_pk="HOLD-ON-DAY", occurred_at=datetime(2026, 8, 11, 23, 59))
+    _seed_entry(db, record_pk="HOLD-NEXT-DAY", occurred_at=datetime(2026, 8, 12, 0, 1))
+
+    response = client.get("/api/audit?end_date=2026-08-11")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert [e["record_pk"] for e in body["entries"]] == ["HOLD-ON-DAY"]
+    assert body["total"] == 1
+
+
+# ---------------------------------------------------------------------------
+# Pagination + ordering. Both endpoints sliced with .offset().limit() and had
+# NO test: the review deleted the slice from both and the suite stayed green,
+# so a caller asking for page 2 silently got page 1 (every row, in fact).
+#
+# These also pin the newest-first tiebreaker. On production MariaDB
+# occurred_at is a whole-second DATETIME, so rows written in the same second
+# (a single flush; a CSV upload writes hundreds per second) tie, and without
+# ORDER BY entry_id DESC the trail can come back oldest-first AND offset
+# paging over the tied set can repeat or skip rows. Seeded here in one second
+# on purpose — spread-out timestamps cannot see either defect.
+# ---------------------------------------------------------------------------
+
+
+def test_list_orders_newest_first_within_the_same_second(admin_audit_client):
+    same_second = datetime(2026, 8, 11, 12, 0, 0)
+    client, db = admin_audit_client
+    _seed_entry(db, record_pk="HOLD-OLDEST", occurred_at=same_second)
+    _seed_entry(db, record_pk="HOLD-MIDDLE", occurred_at=same_second)
+    _seed_entry(db, record_pk="HOLD-NEWEST", occurred_at=same_second)
+
+    response = client.get("/api/audit?table_name=HOLD_ENTRY")
+
+    assert response.status_code == 200
+    assert [e["record_pk"] for e in response.json()["entries"]] == [
+        "HOLD-NEWEST",
+        "HOLD-MIDDLE",
+        "HOLD-OLDEST",
+    ]
+
+
+def test_list_pagination_returns_the_second_row_and_keeps_total(admin_audit_client):
+    same_second = datetime(2026, 8, 11, 12, 0, 0)
+    client, db = admin_audit_client
+    _seed_entry(db, record_pk="HOLD-OLDER", occurred_at=same_second)
+    _seed_entry(db, record_pk="HOLD-NEWER", occurred_at=same_second)
+
+    response = client.get("/api/audit?table_name=HOLD_ENTRY&limit=1&offset=1")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert [e["record_pk"] for e in body["entries"]] == ["HOLD-OLDER"]
+    # total counts every MATCHING row, not the returned page.
+    assert body["total"] == 2
+
+
+def test_entity_history_orders_newest_first_within_the_same_second(admin_audit_client):
+    same_second = datetime(2026, 8, 11, 12, 0, 0)
+    client, db = admin_audit_client
+    _seed_entry(db, record_pk="HOLD-1", actor="user-first", occurred_at=same_second)
+    _seed_entry(db, record_pk="HOLD-1", actor="user-second", occurred_at=same_second)
+    _seed_entry(db, record_pk="HOLD-1", actor="user-third", occurred_at=same_second)
+
+    response = client.get("/api/audit/HOLD_ENTRY/HOLD-1")
+
+    assert response.status_code == 200
+    assert [e["actor_user_id"] for e in response.json()["entries"]] == [
+        "user-third",
+        "user-second",
+        "user-first",
+    ]
+
+
+def test_entity_history_pagination_returns_the_second_row_and_keeps_total(admin_audit_client):
+    same_second = datetime(2026, 8, 11, 12, 0, 0)
+    client, db = admin_audit_client
+    _seed_entry(db, record_pk="HOLD-1", actor="user-older", occurred_at=same_second)
+    _seed_entry(db, record_pk="HOLD-1", actor="user-newer", occurred_at=same_second)
+
+    response = client.get("/api/audit/HOLD_ENTRY/HOLD-1?limit=1&offset=1")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert [e["actor_user_id"] for e in body["entries"]] == ["user-older"]
+    assert body["total"] == 2
 
 
 def test_list_rejects_non_admin(operator_audit_client):
