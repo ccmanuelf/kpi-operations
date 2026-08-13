@@ -18,6 +18,23 @@ from backend.schemas.audit import AuditEntryResponse, AuditListResponse
 
 router = APIRouter(prefix="/api/audit", tags=["Audit"])
 
+#: Newest first, with a deterministic tiebreaker. Both endpoints MUST use this.
+#:
+#: occurred_at alone is not a total order on production: it is a plain
+#: `DateTime`, which MariaDB renders as DATETIME with WHOLE-SECOND precision.
+#: Verified against a live mariadb:11.4 — 20 rows written with 20 distinct
+#: microsecond values collapsed to ONE distinct stored occurred_at, and five
+#: changes committed in order then came back OLDEST-first, i.e. the exact
+#: reverse of this API's documented contract. Rows written in the same second
+#: are the normal case, not an edge case: a single flush writes several and a
+#: CSV upload writes hundreds per second. SQLite stores full microseconds, so
+#: the whole defect is invisible there.
+#:
+#: entry_id is a monotonic autoincrement PK, so it is both a correct
+#: chronological tiebreaker and what makes offset pagination stable (without
+#: it, two pages of a tied set can repeat or skip rows).
+_NEWEST_FIRST = (AuditEntry.occurred_at.desc(), AuditEntry.entry_id.desc())
+
 
 def _end_of_day(value: date) -> datetime:
     """Inclusive end bound for a DateTime column.
@@ -74,7 +91,7 @@ def list_audit_entries(
         query = query.filter(AuditEntry.occurred_at < _end_of_day(end_date))
 
     total = query.count()
-    rows = query.order_by(AuditEntry.occurred_at.desc()).offset(offset).limit(limit).all()
+    rows = query.order_by(*_NEWEST_FIRST).offset(offset).limit(limit).all()
     trail_started_at = _trail_started_at(db)
 
     return AuditListResponse(
@@ -104,7 +121,7 @@ def get_entity_history(
         AuditEntry.record_pk == record_pk,
     )
     total = query.count()
-    rows = query.order_by(AuditEntry.occurred_at.desc()).offset(offset).limit(limit).all()
+    rows = query.order_by(*_NEWEST_FIRST).offset(offset).limit(limit).all()
     trail_started_at = _trail_started_at(db)
 
     return AuditListResponse(
