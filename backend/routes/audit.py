@@ -82,3 +82,33 @@ def list_audit_entries(
         total=total,
         trail_started_at=trail_started_at,
     )
+
+
+@router.get("/{table_name}/{record_pk}", response_model=AuditListResponse)
+def get_entity_history(
+    table_name: str,
+    record_pk: str,
+    limit: int = Query(100, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    db: Session = Depends(get_db),
+    _admin: User = Depends(get_current_admin),
+) -> AuditListResponse:
+    """Full change history for one entity. Admin only.
+
+    An empty result is a legitimate answer: the trail has no backfill, so
+    changes made before it was deployed were never recorded. trail_started_at
+    lets callers tell "nothing happened" apart from "before we were watching".
+    """
+    query = db.query(AuditEntry).filter(
+        AuditEntry.table_name == table_name,
+        AuditEntry.record_pk == record_pk,
+    )
+    total = query.count()
+    rows = query.order_by(AuditEntry.occurred_at.desc()).offset(offset).limit(limit).all()
+    trail_started_at = _trail_started_at(db)
+
+    return AuditListResponse(
+        entries=[AuditEntryResponse.model_validate(r) for r in rows],
+        total=total,
+        trail_started_at=trail_started_at,
+    )

@@ -172,3 +172,43 @@ def test_list_rejects_non_admin(operator_audit_client):
     response = client.get("/api/audit")
 
     assert response.status_code == 403
+
+
+def test_entity_history_returns_only_that_entity(admin_audit_client):
+    client, db = admin_audit_client
+    _seed_entry(db, record_pk="HOLD-1")
+    _seed_entry(db, record_pk="HOLD-2")
+
+    response = client.get("/api/audit/HOLD_ENTRY/HOLD-1")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert [e["record_pk"] for e in body["entries"]] == ["HOLD-1"]
+
+
+def test_entity_history_of_unknown_record_is_empty_not_an_error(admin_audit_client):
+    """No backfill: nothing recorded is a legitimate answer."""
+    client, _db = admin_audit_client
+
+    response = client.get("/api/audit/HOLD_ENTRY/NEVER-TOUCHED")
+
+    assert response.status_code == 200
+    assert response.json()["total"] == 0
+
+
+@pytest.mark.parametrize("role", ["poweruser", "leader", "supervisor", "operator", "viewer"])
+def test_non_admin_roles_are_forbidden(transactional_db, role):
+    """Admin-only, pinned per role. One expected status per assertion."""
+    user = TestDataFactory.create_user(
+        transactional_db, user_id=f"aud-{role}", username=f"aud_{role}", role=role, client_id=None
+    )
+    transactional_db.commit()
+
+    app = FastAPI()
+    app.include_router(audit_router)
+    app.dependency_overrides[get_db] = lambda: transactional_db
+    app.dependency_overrides[get_current_user] = lambda: user
+    client = TestClient(app)
+
+    assert client.get("/api/audit").status_code == 403
+    assert client.get("/api/audit/HOLD_ENTRY/HOLD-1").status_code == 403

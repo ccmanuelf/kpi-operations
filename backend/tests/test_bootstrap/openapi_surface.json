@@ -270,6 +270,10 @@
     ],
     [
       "GET",
+      "/api/audit/{table_name}/{record_pk}"
+    ],
+    [
+      "GET",
       "/api/auth/me"
     ],
     [
