@@ -121,9 +121,9 @@ def active_as_of(as_of: date) -> ColumnElement[bool]:
     BOUNDARY (no backfill, three tiers). Status resolves in order: (1) the
     `to_status` of the latest transition strictly before the cutoff -- the
     hold's actual recorded state at `as_of`; (2) else the `from_status` of
-    the earliest transition at or after the cutoff -- what the hold
-    provably was immediately beforehand, since that state extends backwards
-    over all prior time; (3) else the hold's current `hold_status`, the
+    the earliest transition at or after the cutoff -- the best evidence the
+    stored data supports for what the hold was then, assuming no unrecorded
+    transition preceded it; (3) else the hold's current `hold_status`, the
     pre-PR-C1 behaviour. Tier 3 now covers exactly two cases: a hold with no
     recorded transitions at all, and a hold whose earliest transition is its
     creation row, whose `from_status` is NULL by construction and so cannot
