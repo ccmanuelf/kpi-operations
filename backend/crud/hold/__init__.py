@@ -37,6 +37,11 @@ from backend.crud.hold.aging import (
     bulk_update_aging,
 )
 
+# Transition history (Cycle 4 PR-C1)
+from backend.crud.hold.transition_log import (
+    record_hold_transition,
+)
+
 __all__ = [
     # Core
     "create_wip_hold",
@@ -52,4 +57,6 @@ __all__ = [
     "release_hold",
     # Aging
     "bulk_update_aging",
+    # Transition history
+    "record_hold_transition",
 ]

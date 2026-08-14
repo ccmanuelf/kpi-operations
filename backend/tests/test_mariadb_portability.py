@@ -37,12 +37,14 @@ def test_register_all_models_populates_full_metadata():
     creates/drops tables (backend/alembic/versions/0001_real_baseline.py
     has 57 `op.create_table(` calls; 0004_labor_hours_columns.py adds
     ATTENDANCE_HOUR_ALLOCATION, bringing the total to 58;
-    0005_audit_trail.py adds AUDIT_ENTRY, bringing the total to 59).
+    0005_audit_trail.py adds AUDIT_ENTRY, bringing the total to 59;
+    0006_hold_status_history.py adds HOLD_STATUS_TRANSITION, bringing the
+    total to 60).
     """
     from backend.orm import register_all_models
 
     register_all_models()
-    assert len(Base.metadata.tables) == 59
+    assert len(Base.metadata.tables) == 60
 
 
 # ---------------------------------------------------------------------------
@@ -315,7 +317,7 @@ def test_cast_date_regex_catches_aliased_imports(snippet, should_match):
 # reproduce that, so these run only in the mariadb-portability CI job.
 # ---------------------------------------------------------------------------
 
-from datetime import datetime, timedelta  # noqa: E402
+from datetime import date, datetime, timedelta  # noqa: E402
 
 from sqlalchemy import func, literal, text  # noqa: E402
 
@@ -1041,3 +1043,260 @@ def test_audit_newest_first_holds_for_entries_in_the_same_second_on_mariadb(mari
             session.commit()
         finally:
             session.close()
+
+
+# ---------------------------------------------------------------------------
+# Hold-status-history lookup on real MariaDB (Cycle 4 PR-C1, Task 6).
+# `active_as_of` (backend/calculations/wip_aging.py) was rewritten in Task 4
+# to read a hold's status AS OF a past date from HOLD_STATUS_TRANSITION via a
+# correlated scalar subquery (ORDER BY transitioned_at DESC, transition_id
+# DESC LIMIT 1), rather than trusting HOLD_ENTRY's CURRENT status. SQLite
+# cannot catch this repo's recurring bug class: holds.py's func.julianday()
+# reached production and 500'd on MariaDB while the whole SQLite suite stayed
+# green (see the top-of-file comment on date_diff_days). The SQLite-side
+# equivalents of these tests live in
+# backend/tests/test_calculations/test_hold_status_history.py.
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def mariadb_hold_history(mariadb_schema):
+    """Seed holds + explicit HOLD_STATUS_TRANSITION rows on live MariaDB,
+    mirroring `hold_with_history` + `same_second_hold` from
+    test_calculations/test_hold_status_history.py.
+
+    MariaDB DATETIME stores WHOLE SECONDS -- every timestamp below is built
+    without a microsecond component (matches every other fixture in this
+    file). `same_second`'s pair is the one whose entire point is the
+    transition_id tiebreak that whole-second storage forces: two transitions
+    sharing one instant, inserted as separate rows so they get distinct
+    auto-assigned transition_ids -- asserted explicitly below so a future
+    change that collapses them into one INSERT can't silently defeat the test.
+    """
+    from backend.orm.client import Client
+    from backend.orm.hold_entry import HoldEntry, HoldStatus
+    from backend.orm.hold_status_transition import HoldStatusTransition
+    from backend.orm.work_order import WorkOrder
+
+    session = SessionLocal()
+    try:
+        session.add(Client(client_id="MDBHIST", client_name="MariaDB Hold History"))
+        session.flush()
+
+        session.add_all(
+            [
+                WorkOrder(
+                    work_order_id=f"WO-MDBHIST-{suffix}",
+                    client_id="MDBHIST",
+                    style_model="MDB-HIST-STYLE",
+                    planned_quantity=1,
+                )
+                for suffix in ("PENDING", "CANCELLED", "SAMESEC")
+            ]
+        )
+        session.flush()
+
+        # pending_then_approved: PENDING_HOLD_APPROVAL through day 4, approved
+        # into ON_HOLD at 10:00 on day 5 -- NOT active WIP on 2026-03-03. Its
+        # presence is what proves the day-3 assertion below is a real filter,
+        # not an unfiltered table that happens to contain one row.
+        pending_then_approved = HoldEntry(
+            hold_entry_id="MDBHIST-PENDING",
+            client_id="MDBHIST",
+            work_order_id="WO-MDBHIST-PENDING",
+            hold_status=HoldStatus.ON_HOLD,
+            hold_date=datetime(2026, 3, 1, 8, 0, 0),
+            resume_date=None,
+            hold_reason_category="QUALITY",
+        )
+        # held_then_cancelled: ON_HOLD from day 1, cancelled at 11:00 on day 8
+        # -- active WIP on 2026-03-03, the only member of the expected set.
+        held_then_cancelled = HoldEntry(
+            hold_entry_id="MDBHIST-CANCELLED",
+            client_id="MDBHIST",
+            work_order_id="WO-MDBHIST-CANCELLED",
+            hold_status=HoldStatus.CANCELLED,
+            hold_date=datetime(2026, 3, 1, 9, 0, 0),
+            resume_date=None,
+            hold_reason_category="QUALITY",
+        )
+        # same_second: current status is ON_HOLD -- the OPPOSITE of the
+        # correct as-of answer (CANCELLED, per the transition chain below).
+        # If the transition_id tiebreak is broken, COALESCE's fallback would
+        # land on (or the subquery could resolve to) ON_HOLD, which is active
+        # WIP -- masking the bug instead of catching it.
+        #
+        # hold_date is 2026-03-04 (the SAME day as its transitions), not
+        # 2026-03-01 like the other two holds. All three holds share one
+        # table across all three tests below (unlike the SQLite fixtures,
+        # which isolate same_second_hold in its own fixture). Dating the hold
+        # itself to day 4 excludes it from day 3 via the *hold_date* arm of
+        # active_as_of, independent of status, so the ON_HOLD "opposite" trap
+        # above stays intact for the day-5 same-second assertion. This keeps
+        # the hold out of that day's scope regardless of any status query logic.
+        same_second_hold = HoldEntry(
+            hold_entry_id="MDBHIST-SAMESEC",
+            client_id="MDBHIST",
+            work_order_id="WO-MDBHIST-SAMESEC",
+            hold_status=HoldStatus.ON_HOLD,
+            hold_date=datetime(2026, 3, 4, 6, 0, 0),
+            resume_date=None,
+            hold_reason_category="QUALITY",
+        )
+        session.add_all([pending_then_approved, held_then_cancelled, same_second_hold])
+        session.flush()
+
+        session.add_all(
+            [
+                HoldStatusTransition(
+                    hold_entry_id="MDBHIST-PENDING",
+                    client_id="MDBHIST",
+                    from_status=None,
+                    to_status="PENDING_HOLD_APPROVAL",
+                    transitioned_at=datetime(2026, 3, 1, 8, 0, 0),
+                ),
+                HoldStatusTransition(
+                    hold_entry_id="MDBHIST-PENDING",
+                    client_id="MDBHIST",
+                    from_status="PENDING_HOLD_APPROVAL",
+                    to_status="ON_HOLD",
+                    transitioned_at=datetime(2026, 3, 5, 10, 0, 0),
+                ),
+                HoldStatusTransition(
+                    hold_entry_id="MDBHIST-CANCELLED",
+                    client_id="MDBHIST",
+                    from_status=None,
+                    to_status="ON_HOLD",
+                    transitioned_at=datetime(2026, 3, 1, 9, 0, 0),
+                ),
+                HoldStatusTransition(
+                    hold_entry_id="MDBHIST-CANCELLED",
+                    client_id="MDBHIST",
+                    from_status="ON_HOLD",
+                    to_status="CANCELLED",
+                    transitioned_at=datetime(2026, 3, 8, 11, 0, 0),
+                ),
+            ]
+        )
+        session.flush()
+
+        # The same-second pair: two separate INSERTs sharing one
+        # `transitioned_at`, so MariaDB's whole-second DATETIME stores them
+        # identically and only the auto-assigned transition_id can order them.
+        same_instant = datetime(2026, 3, 4, 12, 0, 0)
+        first = HoldStatusTransition(
+            hold_entry_id="MDBHIST-SAMESEC",
+            client_id="MDBHIST",
+            from_status=None,
+            to_status="ON_HOLD",
+            transitioned_at=same_instant,
+        )
+        session.add(first)
+        session.flush()
+        second = HoldStatusTransition(
+            hold_entry_id="MDBHIST-SAMESEC",
+            client_id="MDBHIST",
+            from_status="ON_HOLD",
+            to_status="CANCELLED",
+            transitioned_at=same_instant,
+        )
+        session.add(second)
+        session.flush()
+        assert first.transition_id != second.transition_id
+
+        session.commit()
+
+        ids = {
+            "pending_then_approved": "MDBHIST-PENDING",
+            "held_then_cancelled": "MDBHIST-CANCELLED",
+            "same_second": "MDBHIST-SAMESEC",
+        }
+        yield session, ids
+    finally:
+        try:
+            # A failed assertion query leaves the session pending-rollback;
+            # without this the teardown DELETEs would fail too and the seeded
+            # rows would survive into later tests (mariadb_boundary_holds's
+            # own teardown comment documents the same hazard).
+            session.rollback()
+            session.query(HoldStatusTransition).filter(HoldStatusTransition.client_id == "MDBHIST").delete()
+            session.query(HoldEntry).filter(HoldEntry.client_id == "MDBHIST").delete()
+            session.query(WorkOrder).filter(WorkOrder.client_id == "MDBHIST").delete()
+            session.query(Client).filter(Client.client_id == "MDBHIST").delete()
+            session.commit()
+        finally:
+            session.close()
+
+
+@requires_mariadb
+def test_active_as_of_history_lookup_executes_on_mariadb(mariadb_hold_history):
+    """The correlated scalar subquery with ORDER BY + LIMIT must execute on
+    MariaDB, not just SQLite."""
+    from backend.calculations.wip_aging import HoldEntry, active_as_of
+
+    session, ids = mariadb_hold_history
+
+    # Scoped to this fixture's client for the same reason the boundary test
+    # above scopes its query (lines 510-514): `mariadb_schema` is
+    # module-scoped, so rows from other tests in this file survive between
+    # tests, and an unscoped read here would take whatever they left behind
+    # into this equality assertion.
+    active = {
+        h.hold_entry_id
+        for h in session.query(HoldEntry)
+        .filter(active_as_of(date(2026, 3, 3)))
+        .filter(HoldEntry.client_id == "MDBHIST")
+        .all()
+    }
+
+    assert active == {ids["held_then_cancelled"]}
+
+
+@requires_mariadb
+def test_same_second_transitions_resolve_on_mariadb(mariadb_hold_history):
+    """MariaDB DATETIME truncates to whole seconds, so the tie-break on
+    transition_id is load-bearing here in a way it is not on SQLite."""
+    from backend.calculations.wip_aging import HoldEntry, active_as_of
+
+    session, ids = mariadb_hold_history
+
+    active = {h.hold_entry_id for h in session.query(HoldEntry).filter(active_as_of(date(2026, 3, 5))).all()}
+
+    assert ids["same_second"] not in active
+
+
+@requires_mariadb
+def test_top_n_with_history_predicate_uses_index_on_mariadb(mariadb_hold_history):
+    """Explains the query built WITH active_as_of, not a hand-written string --
+    a literal SQL string would pass regardless of what the predicate does.
+
+    The assertion is scoped to the PRIMARY (outer HOLD_ENTRY) row of the
+    plan, not every row EXPLAIN returns. Verified against live mariadb:11.4:
+    once any hold has 2+ HOLD_STATUS_TRANSITION rows -- which the same-second
+    pair in `mariadb_hold_history` requires -- the DEPENDENT SUBQUERY row
+    also reports "Using filesort", but that is a real, bounded, per-hold sort
+    over at most a couple of candidate rows. MariaDB's classic EXPLAIN format
+    puts `table` and `Extra` in separate columns, so an unscoped "Using filesort"
+    check would fire on the subquery's per-hold sort as well -- unrelated to
+    what `active_as_of`'s docstring promises callers ("index-assisted ORDER BY
+    ... LIMIT instead of loading every candidate hold into memory"), which is
+    about the OUTER top-N/aggregate query never degrading into a full HOLD_ENTRY
+    scan. That promise is what the PRIMARY row's plan actually proves, and it
+    never showed a filesort in any fixture shape tried here.
+    """
+    from backend.calculations.wip_aging import HoldEntry, active_as_of
+
+    session, _ = mariadb_hold_history
+
+    query = (
+        session.query(HoldEntry.hold_entry_id)
+        .filter(active_as_of(date(2026, 3, 10)))
+        .order_by(HoldEntry.hold_date)
+        .limit(5)
+    )
+    compiled = query.statement.compile(session.bind, compile_kwargs={"literal_binds": True})
+    plan = session.execute(text(f"EXPLAIN {compiled}")).fetchall()
+
+    outer_rows = [row for row in plan if row.table == "HOLD_ENTRY"]
+    assert len(outer_rows) == 1
+    assert "Using filesort" not in (outer_rows[0].Extra or "")

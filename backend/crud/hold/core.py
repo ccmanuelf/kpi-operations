@@ -15,6 +15,7 @@ from backend.schemas.hold import (
     WIPHoldUpdate,
     WIPHoldResponse,
 )
+from backend.crud.hold.transition_log import record_hold_transition
 from backend.middleware.client_auth import verify_client_access
 from backend.orm.user import User
 from backend.utils.soft_delete import soft_delete
@@ -75,6 +76,23 @@ def create_wip_hold(db: Session, hold: WIPHoldCreate, current_user: User) -> WIP
     db.flush()
     db.refresh(db_hold)
 
+    # Stamp the OPENING transition at hold_date, not import time: the CSV
+    # importer routinely supplies a past hold_date for back-dated holds, and
+    # an append-only history that claims 500 back-dated holds all entered
+    # hold "now" is factually false -- every as-of date before the import
+    # would then miss them and silently fall into active_as_of's no-history
+    # COALESCE fallback. Falls back to the current instant only if hold_date
+    # somehow ended up None (it should always be populated above).
+    record_hold_transition(
+        db,
+        db_hold,
+        to_status=db_hold.hold_status,
+        current_user=current_user,
+        from_status=None,
+        notes="Hold created",
+        transitioned_at=db_hold.hold_date or datetime.now(tz=timezone.utc),
+    )
+
     return WIPHoldResponse.model_validate(db_hold)
 
 
@@ -119,6 +137,13 @@ def update_wip_hold(
             # subtype mismatch the previous code had.
             update_data["aging_days"] = (datetime.now(tz=db_hold.hold_date.tzinfo) - db_hold.hold_date).days
 
+    # No record_hold_transition call here: WIPHoldUpdate has no field that
+    # maps to hold_status, so this loop can never write that column. If a
+    # future WIPHoldUpdate field ever does map to hold_status, this dynamic
+    # setattr would write it silently -- the static write-site guard
+    # (test_every_hold_status_write_site_is_instrumented) does not scan
+    # dynamic setattr-over-dict loops like this one, so it would not catch
+    # the gap either.
     for field, value in update_data.items():
         setattr(db_hold, field, value)
 

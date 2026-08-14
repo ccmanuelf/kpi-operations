@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from fastapi import HTTPException
 
+from backend.crud.hold.transition_log import record_hold_transition
 from backend.orm.hold_entry import HoldEntry as WIPHold, HoldStatus
 from backend.schemas.hold import WIPHoldResponse, TotalHoldDurationResponse
 from backend.middleware.client_auth import verify_client_access, build_client_filter_clause
@@ -52,6 +53,7 @@ def resume_hold(
     resume_time = datetime.now(tz=timezone.utc)
     db_hold.resume_date = resume_time
     db_hold.resumed_by = resumed_by
+    record_hold_transition(db, db_hold, to_status=HoldStatus.RESUMED, current_user=current_user)
     db_hold.hold_status = HoldStatus.RESUMED
 
     # AUTO-CALCULATE hold duration from hold_date (P2-001)
@@ -165,6 +167,7 @@ def release_hold(
     # Set release info
     now = datetime.now(tz=timezone.utc)
     db_hold.resume_date = now
+    record_hold_transition(db, db_hold, to_status=HoldStatus.RESUMED, current_user=current_user)
     db_hold.hold_status = HoldStatus.RESUMED
 
     # Calculate final duration if not already calculated

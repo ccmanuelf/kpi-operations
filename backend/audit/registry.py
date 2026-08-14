@@ -68,6 +68,10 @@ EXCLUDED_TABLES: Dict[str, str] = {
     "WORKFLOW_TRANSITION_LOG": (
         "own append-only audit trail for WORK_ORDER status transitions; auditing it would double-log"
     ),
+    "HOLD_STATUS_TRANSITION": (
+        "own append-only audit trail for HOLD_ENTRY.hold_status changes "
+        "(mirrors WORKFLOW_TRANSITION_LOG); auditing it would double-log"
+    ),
     "ASSUMPTION_CHANGE": (
         "own append-only audit log for CALCULATION_ASSUMPTION (mirrors WORKFLOW_TRANSITION_LOG); would double-log"
     ),

@@ -127,14 +127,16 @@ class TestModelMetadata:
         creates/drops tables (backend/alembic/versions/0001_real_baseline.py
         has 57 `op.create_table(` calls; 0004_labor_hours_columns.py adds
         ATTENDANCE_HOUR_ALLOCATION, bringing the total to 58;
-        0005_audit_trail.py adds AUDIT_ENTRY, bringing the total to 59).
+        0005_audit_trail.py adds AUDIT_ENTRY, bringing the total to 59;
+        0006_hold_status_history.py adds HOLD_STATUS_TRANSITION, bringing
+        the total to 60).
         """
         from backend.database import Base
 
         import backend.orm  # noqa: F401
         import backend.orm.capacity  # noqa: F401
 
-        assert len(Base.metadata.tables) == 59, f"Expected == 59 tables, got {len(Base.metadata.tables)}"
+        assert len(Base.metadata.tables) == 60, f"Expected == 60 tables, got {len(Base.metadata.tables)}"
 
 
 # ---------------------------------------------------------------------------
@@ -242,7 +244,9 @@ class TestAlembicCLI:
         """``alembic heads`` should list the current head revision."""
         result = _run_alembic("heads")
         assert result.returncode == 0, f"alembic heads failed: {result.stderr}"
-        assert "0005_audit_trail" in result.stdout, f"0005_audit_trail not in heads output: {result.stdout}"
+        assert (
+            "0006_hold_status_history" in result.stdout
+        ), f"0006_hold_status_history not in heads output: {result.stdout}"
 
     def test_alembic_history(self):
         """``alembic history`` should contain the baseline entry."""
@@ -278,4 +282,6 @@ class TestAlembicCLI:
         assert stamp.returncode == 0, f"alembic stamp head failed: {stamp.stderr}"
         result = _run_alembic("current", db_url=url)
         assert result.returncode == 0, f"alembic current failed: {result.stderr}"
-        assert "0005_audit_trail" in result.stdout, f"Expected 0005_audit_trail in current output: {result.stdout}"
+        assert (
+            "0006_hold_status_history" in result.stdout
+        ), f"Expected 0006_hold_status_history in current output: {result.stdout}"
