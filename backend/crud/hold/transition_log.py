@@ -1,0 +1,50 @@
+"""Append-only recorder for HOLD_ENTRY.hold_status changes.
+
+Mirrors backend/crud/workflow/transition_log.py. Every hold_status write in
+the codebase pairs with a call here, in the same transaction, so the history
+cannot disagree with the hold row it describes.
+"""
+
+from datetime import datetime
+from typing import Optional
+
+from sqlalchemy.orm import Session
+
+from backend.orm.hold_entry import HoldEntry
+from backend.orm.hold_status_transition import HoldStatusTransition
+from backend.orm.user import User
+
+_UNSET = object()
+
+
+def record_hold_transition(
+    db: Session,
+    hold: HoldEntry,
+    to_status: str,
+    current_user: Optional[User] = None,
+    from_status: object = _UNSET,
+    notes: Optional[str] = None,
+    transitioned_at: Optional[datetime] = None,
+) -> HoldStatusTransition:
+    """Record one hold_status change.
+
+    Call BEFORE assigning the new status, so the default `from_status` reads
+    the value being replaced. Pass `from_status=None` explicitly for the row
+    that records hold creation.
+
+    `transitioned_at` defaults to now; callers that write historical rows
+    (the demo seeder) always pass an explicit instant.
+    """
+    resolved_from = hold.hold_status if from_status is _UNSET else from_status
+
+    row = HoldStatusTransition(
+        hold_entry_id=hold.hold_entry_id,
+        client_id=hold.client_id,
+        from_status=resolved_from,
+        to_status=to_status,
+        transitioned_by=getattr(current_user, "user_id", None),
+        transitioned_at=transitioned_at or datetime.utcnow(),
+        notes=notes,
+    )
+    db.add(row)
+    return row
