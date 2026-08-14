@@ -130,3 +130,60 @@ kind; changes to `NON_WIP_HOLD_STATUSES` membership, which was settled by owner 
 The rewrite touches the predicate four endpoints depend on. The invariance test in section 4 is
 the control: as-of-now behaviour must be bit-identical, so any movement in today's dashboards
 signals a defect rather than the intended improvement.
+
+---
+
+## Amendment (2026-08-14): earliest-transition fallback — PR-C1b
+
+**Status:** Owner-accepted 2026-08-14, after an adversarial cross-model review of PR-C1 raised it.
+**Supersedes:** §3.4's two-tier fallback.
+
+### The observation
+
+§3.4 falls back to the hold's **current** `hold_status` whenever no transition exists at or before
+the cutoff. For a hold that has *some* history but none before the cutoff, a strictly better answer
+is already stored: the **earliest** transition's `from_status` is the state the hold held
+immediately before that transition, and because it is the earliest, that state extends backwards
+over all prior time — including the as-of date.
+
+Falling back to current status in that case is not merely imprecise, it can be actively wrong in a
+way the stored data contradicts. A hold that was `ON_HOLD` throughout June and was cancelled in
+August has an August transition reading `from_status = ON_HOLD`; §3.4 nonetheless judged June by
+today's `CANCELLED` and dropped the hold from June's snapshot.
+
+This is not backfill. No history is synthesised; the amendment reads a column already written.
+
+### Resolution order
+
+`active_as_of` resolves a hold's status at the cutoff in three tiers:
+
+1. `to_status` of the **latest** transition strictly before the cutoff.
+2. Otherwise `from_status` of the **earliest** transition at or after the cutoff.
+3. Otherwise the hold's current `hold_status`.
+
+Expressed as `func.coalesce(tier1, tier2, HoldEntry.hold_status)` over two correlated scalar
+subqueries — the second ordered ascending, tie-breaking on `(transitioned_at ASC, transition_id
+ASC)` for the same whole-second reason tier 1 orders descending. The existing composite index
+`ix_hold_transition_hold_asof (hold_entry_id, transitioned_at, transition_id)` serves both
+directions; no new index is required.
+
+### Why tier 3 still exists
+
+Two cases reach it. A hold with **no transitions at all** — every hold predating PR-C1 — behaves
+exactly as it does today. And a hold whose earliest transition is its **creation row**, whose
+`from_status` is `NULL` by construction: the hold did not exist before that instant, so there is no
+prior status to report. That case is already excluded by the date arm, since PR-C1 stamps the
+creation row at the hold's own `hold_date`; tier 3 is its correct resting place regardless.
+
+### Effect on the boundary
+
+The no-backfill boundary narrows rather than moves. Exactness still begins at a hold's first
+recorded transition for tier 1, but tier 2 now extends *correct* answers backwards from that
+transition for the one status it can prove. `hold_status_history_started_at` continues to report
+where tier-1 exactness begins and its contract is unchanged.
+
+### As-of-now behaviour must not move
+
+For `as_of = today`, tier 2 can only match a transition dated in the future, which does not occur,
+so the predicate reduces to tiers 1 and 3 — PR-C1's exact behaviour. This is asserted, not assumed:
+the golden-master invariance test from PR-C1 must continue to pass unchanged.
