@@ -181,8 +181,12 @@ services:
       - DB_NAME=kpi_platform
       - RETENTION_DAYS=${BACKUP_RETENTION_DAYS:-14}
       - BACKUP_HOUR=${BACKUP_HOUR:-02}
-      # Container clock is UTC by default; set TZ (e.g. America/Monterrey) so
-      # BACKUP_HOUR fires at local wall-clock time.
+      # Container clock is UTC by default; set TZ (e.g. America/Matamoros) so
+      # BACKUP_HOUR fires at local wall-clock time. Use America/Matamoros, not
+      # America/Monterrey: the border municipalities kept DST after Mexico's 2022
+      # nationwide repeal, so Monterrey sits an hour behind local time all summer.
+      # Only this backup sidecar may set TZ -- the backend must stay UTC, see the
+      # CLOCK INVARIANT in backend/calculations/wip_aging.py:active_as_of.
       - TZ=${TZ:-UTC}
     volumes:
       - ./deploy/backup/backup-loop.sh:/backup-loop.sh:ro
