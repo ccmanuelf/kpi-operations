@@ -172,18 +172,38 @@ def test_hold_without_history_falls_back_to_current_status(db_session, hold_with
 
 def test_no_transition_before_cutoff_falls_back_to_current_status(db_session, hold_with_only_future_history):
     """The BOUNDARY case the docstring documents: both holds HAVE recorded
-    transitions, but none of them predate the as-of cutoff, so the
-    correlated subquery returns NULL and COALESCE falls back to each hold's
-    current `hold_status`. This is different from
+    transitions, but none of them predate the as-of cutoff, so tier 1's
+    correlated subquery returns NULL. This is different from
     `hold_without_history_falls_back_to_current_status`, which has no
     transition rows at all; here rows exist but are filtered out by date,
     exercising the actual NULL-subquery path rather than an
     absent-correlation path.
 
-    Two assertions, not one: `cancelled_id` alone would pass even if
-    COALESCE were removed entirely (NULL NOT IN (...) is also excluded), so
+    Two assertions, not one: `cancelled_id` alone would pass even if the
+    fallback were removed entirely (NULL NOT IN (...) is also excluded), so
     `on_hold_id` -- present only because the fallback reached its ACTIVE
     current status -- is what proves the fallback actually ran.
+
+    Cycle 4 PR-C1b: this is now also the genuine tier-2-NULL -> tier-3
+    fall-through proof, not just a tier-1-NULL one. Both holds' ONLY
+    transition is their creation row (`None -> <status>`), recorded at
+    2026-03-08 -- more than a MONTH after `hold_date` (2026-02-01) -- so at
+    `as_of=2026-02-15` (cutoff 2026-02-16) that creation row satisfies tier
+    2's `transitioned_at >= cutoff` and is the earliest (only) candidate;
+    its `from_status` is NULL by construction, so tier 2 also yields NULL
+    and tier 3 -- current `hold_status` -- is what actually decides both
+    assertions here.
+
+    A hold whose creation row is stamped AT `hold_date` (the case PR-C1
+    guarantees for holds created going forward) can NEVER reach tier 3,
+    which is why a dedicated "creation-row" fixture for that shape would be
+    unable to test anything past tier 1: for any `as_of >= hold_date`,
+    `cutoff > hold_date`, so that very row already satisfies tier 1's
+    `transitioned_at < cutoff` and resolves the status via its `to_status`
+    before tier 2 is ever evaluated; for `as_of < hold_date` the date arm
+    (`hold_date < cutoff`) excludes the hold regardless of status. Tier 2
+    and tier 3 are reachable only when the FIRST transition lands strictly
+    after `hold_date`, as it does here.
     """
     assert hold_with_only_future_history.cancelled_id not in _active_ids(db_session, date(2026, 2, 15))
     assert hold_with_only_future_history.on_hold_id in _active_ids(db_session, date(2026, 2, 15))
@@ -466,15 +486,59 @@ def test_after_that_transition_tier_one_takes_over(db_session, hold_with_only_la
     assert hold_with_only_later_history.later_reopened in active
 
 
-def test_creation_row_from_status_null_falls_through_to_tier_three(db_session, sample_client):
-    """A hold whose earliest transition is its creation row has from_status
-    NULL by construction, so tier 2 yields NULL and tier 3 must decide."""
-    hold = _make_hold(db_session, sample_client, "H-CREATION-ONLY", datetime(2026, 5, 1, 8, 0, 0), "ON_HOLD")
+def test_earliest_of_two_later_transitions_beats_the_later_one(db_session, sample_client):
+    """Finding 1(a): every other tier-2 fixture in this file has exactly ONE
+    transition at or after the cutoff, so "earliest" is indistinguishable
+    from "latest" or "any" of them -- flipping tier 2's `.asc()` to `.desc()`
+    would leave those green. This hold has TWO, with opposing meanings:
+    ON_HOLD->CANCELLED on 8/8, then CANCELLED->ON_HOLD on 8/10. The earliest
+    (correct, ASC) one's `from_status` is ON_HOLD -- active. The latest
+    (wrong, DESC) one's `from_status` is CANCELLED -- absent. Distinct
+    outcomes, so this discriminates the ordering direction.
+    """
+    hold = _make_hold(db_session, sample_client, "H-TWO-LATER", datetime(2026, 2, 1, 8, 0, 0), "ON_HOLD")
     db_session.flush()
-    _t(db_session, hold.hold_entry_id, hold.client_id, None, "ON_HOLD", datetime(2026, 5, 1, 8, 0, 0))
+    _t(db_session, hold.hold_entry_id, hold.client_id, "ON_HOLD", "CANCELLED", datetime(2026, 8, 8, 10, 0, 0))
+    _t(db_session, hold.hold_entry_id, hold.client_id, "CANCELLED", "ON_HOLD", datetime(2026, 8, 10, 10, 0, 0))
     db_session.flush()
 
-    # Before the hold existed: the date arm excludes it regardless of status.
-    assert hold.hold_entry_id not in _active_ids(db_session, date(2026, 4, 1))
-    # After: tier 1 governs.
-    assert hold.hold_entry_id in _active_ids(db_session, date(2026, 5, 2))
+    assert hold.hold_entry_id in _active_ids(db_session, date(2026, 3, 3))
+
+
+def test_earliest_of_same_second_later_transitions_breaks_tie_by_insertion_order(db_session, sample_client):
+    """Finding 1(b): mirrors `same_second_hold` (which pins tier 1's
+    transition_id DESC tie-break) but for tier 2's transition_id ASC
+    tie-break. Two transitions share ONE instant, both at or after the
+    cutoff, with opposing `from_status`: the first-inserted (lower
+    transition_id) has from_status=ON_HOLD, the second-inserted (higher
+    transition_id) has from_status=CANCELLED. Correct tie-break
+    (transitioned_at ASC, transition_id ASC) picks the first-inserted row --
+    active. Deleting the transition_id tie-break clause risks the wrong row
+    (or a dialect-dependent one) winning instead.
+    """
+    hold = _make_hold(db_session, sample_client, "H-TIE-LATER", datetime(2026, 2, 1, 8, 0, 0), "CANCELLED")
+    db_session.flush()
+    same = datetime(2026, 8, 10, 10, 0, 0)
+    _t(db_session, hold.hold_entry_id, hold.client_id, "ON_HOLD", "CANCELLED", same)
+    _t(db_session, hold.hold_entry_id, hold.client_id, "CANCELLED", "ON_HOLD", same)
+    db_session.flush()
+
+    assert hold.hold_entry_id in _active_ids(db_session, date(2026, 3, 3))
+
+
+def test_tier_two_matches_a_transition_exactly_at_the_cutoff_instant(db_session, sample_client):
+    """Finding 3: tier 2's bound is `transitioned_at >= cutoff` (inclusive).
+    No other fixture has a transition at exactly the cutoff instant, so a
+    silent `> cutoff` regression (missed by both tiers, falling through to
+    tier 3) would leave every other test green. `as_of=2026-03-03` has
+    cutoff `2026-03-04 00:00:00` -- exactly this hold's sole transition.
+    `from_status` there is ON_HOLD (tier 2, correct); current `hold_status`
+    is CANCELLED (tier 3, wrong), so the two tiers disagree and the
+    assertion pins which one actually decided.
+    """
+    hold = _make_hold(db_session, sample_client, "H-AT-CUTOFF", datetime(2026, 2, 1, 8, 0, 0), "CANCELLED")
+    db_session.flush()
+    _t(db_session, hold.hold_entry_id, hold.client_id, "ON_HOLD", "CANCELLED", datetime(2026, 3, 4, 0, 0, 0))
+    db_session.flush()
+
+    assert hold.hold_entry_id in _active_ids(db_session, date(2026, 3, 3))

@@ -114,9 +114,9 @@ def active_as_of(as_of: date) -> ColumnElement[bool]:
     Portable by construction: plain comparisons against a bound datetime, no
     dialect-specific date arithmetic and no fractional seconds.
 
-    Status is read from HOLD_STATUS_TRANSITION -- the `to_status` of the
-    latest transition before the cutoff -- so a past `as_of` is judged by what
-    the hold actually was then, not by what it looks like today.
+    Status is read from HOLD_STATUS_TRANSITION via a three-tier resolution
+    (see BOUNDARY below) -- so a past `as_of` is judged by what the hold
+    actually was then, not by what it looks like today.
 
     BOUNDARY (no backfill, three tiers). Status resolves in order: (1) the
     `to_status` of the latest transition strictly before the cutoff -- the
@@ -178,9 +178,13 @@ def active_as_of(as_of: date) -> ColumnElement[bool]:
         .scalar_subquery()
     )
 
-    # No backfill: holds predating this table have no transitions, so they
-    # fall back to current status -- exactly the pre-PR-C1 behaviour, rather
-    # than vanishing from history entirely.
+    # Three-tier COALESCE: tier 1 (status_as_of) if a transition predates the
+    # cutoff, else tier 2 (status_before_history) if the earliest transition
+    # at/after the cutoff records a non-NULL prior state, else tier 3
+    # (current hold_status) -- exactly the pre-PR-C1 behaviour, for holds
+    # predating this table or whose earliest transition is their creation
+    # row (from_status NULL by construction). No backfill: this never
+    # reconstructs history that was not recorded.
     effective_status = func.coalesce(status_as_of, status_before_history, HoldEntry.hold_status)
 
     return and_(
