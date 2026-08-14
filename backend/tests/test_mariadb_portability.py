@@ -1241,7 +1241,18 @@ def test_active_as_of_history_lookup_executes_on_mariadb(mariadb_hold_history):
 
     session, ids = mariadb_hold_history
 
-    active = {h.hold_entry_id for h in session.query(HoldEntry).filter(active_as_of(date(2026, 3, 3))).all()}
+    # Scoped to this fixture's client for the same reason the boundary test
+    # above scopes its query (lines 510-514): `mariadb_schema` is
+    # module-scoped, so rows from other tests in this file survive between
+    # tests, and an unscoped read here would take whatever they left behind
+    # into this equality assertion.
+    active = {
+        h.hold_entry_id
+        for h in session.query(HoldEntry)
+        .filter(active_as_of(date(2026, 3, 3)))
+        .filter(HoldEntry.client_id == "MDBHIST")
+        .all()
+    }
 
     assert active == {ids["held_then_cancelled"]}
 
