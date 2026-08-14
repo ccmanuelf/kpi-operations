@@ -23,10 +23,12 @@ class HoldStatusTransition(Base):
         Index("ix_hold_transition_hold", "hold_entry_id"),
         Index("ix_hold_transition_client_date", "client_id", "transitioned_at"),
         Index("ix_hold_transition_status", "to_status", "transitioned_at"),
-        # Covers active_as_of's correlated subquery (ORDER BY transitioned_at
-        # DESC, transition_id DESC LIMIT 1 per hold_entry_id) -- observed as
-        # a per-hold filesort on live MariaDB without it; /wip-aging/trend
-        # runs one correlated evaluation per hold PER DAY in the range.
+        # Covers active_as_of's two correlated subqueries -- tier 1 (ORDER BY
+        # transitioned_at DESC, transition_id DESC LIMIT 1) and tier 2 (same
+        # columns, ASC, LIMIT 1), both per hold_entry_id -- observed as a
+        # per-hold filesort on live MariaDB without it; /wip-aging/trend runs
+        # one correlated evaluation per hold PER DAY in the range. A single
+        # ascending btree index serves both scan directions.
         Index("ix_hold_transition_hold_asof", "hold_entry_id", "transitioned_at", "transition_id"),
         {"extend_existing": True},
     )

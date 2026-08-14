@@ -164,3 +164,7 @@ marketing/
 
 # MiniZinc temp data files written by simulation_v2 optimizer runs
 backend/simulation_v2/optimization/tmp*.dzn
+
+# memsearch daemon local index state (machine-absolute path, rewrites on
+# every indexing run -- not project source)
+.memsearch/

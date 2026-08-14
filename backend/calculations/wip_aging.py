@@ -114,14 +114,20 @@ def active_as_of(as_of: date) -> ColumnElement[bool]:
     Portable by construction: plain comparisons against a bound datetime, no
     dialect-specific date arithmetic and no fractional seconds.
 
-    Status is read from HOLD_STATUS_TRANSITION -- the `to_status` of the
-    latest transition before the cutoff -- so a past `as_of` is judged by what
-    the hold actually was then, not by what it looks like today.
+    Status is read from HOLD_STATUS_TRANSITION via a three-tier resolution
+    (see BOUNDARY below) -- so a past `as_of` is judged by what the hold
+    actually was then, not by what it looks like today.
 
-    BOUNDARY (no backfill). Holds with no recorded transition before the
-    cutoff fall back to their current `hold_status`, which is the pre-PR-C1
-    behaviour: correct for live holds, approximate for history that predates
-    the table. `hold_status_history_started_at` reports where exactness
+    BOUNDARY (no backfill, three tiers). Status resolves in order: (1) the
+    `to_status` of the latest transition strictly before the cutoff -- the
+    hold's actual recorded state at `as_of`; (2) else the `from_status` of
+    the earliest transition at or after the cutoff -- the best evidence the
+    stored data supports for what the hold was then, assuming no unrecorded
+    transition preceded it; (3) else the hold's current `hold_status`, the
+    pre-PR-C1 behaviour. Tier 3 now covers exactly two cases: a hold with no
+    recorded transitions at all, and a hold whose earliest transition is its
+    creation row, whose `from_status` is NULL by construction and so cannot
+    answer tier 2. `hold_status_history_started_at` reports where exactness
     begins. Backfill was ruled out deliberately (2026-08-12); do not
     reconstruct history retroactively.
 
@@ -129,6 +135,21 @@ def active_as_of(as_of: date) -> ColumnElement[bool]:
     HOLD_ENTRY.hold_status no longer decides WIP-aging by itself -- not even
     at as_of=today -- so a manual/runbook status correction on such a hold
     must insert a paired HOLD_STATUS_TRANSITION row or the KPI will not move.
+
+    CLOCK INVARIANT: `HoldStatusTransition.transitioned_at` is stamped with
+    `datetime.utcnow()` (backend/crud/hold/transition_log.py), while callers
+    derive `as_of` from a server-local calendar date (`date.today()` in
+    backend/routes/holds.py and backend/calculations/wip_aging.py's own
+    identify_chronic_holds). Tiers 1 and 2 compare a UTC-stamped column
+    against a cutoff built from that local date, so the two must share one
+    clock: the backend container must run with TZ=UTC. If it did not, a
+    transition recorded after local evening (local midnight has already
+    passed in UTC) would land `>= cutoff` a day early, so for a hold whose
+    only recorded transition is that day's change, tier 1 finds nothing and
+    tier 2 returns the PRE-change status until local midnight -- where
+    pre-PR-C1b tier-3 behaviour would already have shown the new one. This
+    is a documented assumption, not a code guard: do not set TZ on the
+    backend service.
     """
     cutoff = snapshot_cutoff(as_of)
 
@@ -151,10 +172,35 @@ def active_as_of(as_of: date) -> ColumnElement[bool]:
         .scalar_subquery()
     )
 
-    # No backfill: holds predating this table have no transitions, so they
-    # fall back to current status -- exactly the pre-PR-C1 behaviour, rather
-    # than vanishing from history entirely.
-    effective_status = func.coalesce(status_as_of, HoldEntry.hold_status)
+    # Tier 2: no transition before the cutoff, but the EARLIEST transition
+    # records what the hold was immediately before it -- and because it is the
+    # earliest, that state extends backwards over all prior time, including
+    # `as_of`. Reads a column already written; this is not backfill.
+    # Ascending mirror of tier 1, tie-breaking on transition_id for the same
+    # MariaDB whole-second reason.
+    status_before_history = (
+        select(HoldStatusTransition.from_status)
+        .where(
+            HoldStatusTransition.hold_entry_id == HoldEntry.hold_entry_id,
+            HoldStatusTransition.transitioned_at >= cutoff,
+        )
+        .correlate(HoldEntry)
+        .order_by(
+            HoldStatusTransition.transitioned_at.asc(),
+            HoldStatusTransition.transition_id.asc(),
+        )
+        .limit(1)
+        .scalar_subquery()
+    )
+
+    # Three-tier COALESCE: tier 1 (status_as_of) if a transition predates the
+    # cutoff, else tier 2 (status_before_history) if the earliest transition
+    # at/after the cutoff records a non-NULL prior state, else tier 3
+    # (current hold_status) -- exactly the pre-PR-C1 behaviour, for holds
+    # predating this table or whose earliest transition is their creation
+    # row (from_status NULL by construction). No backfill: this never
+    # reconstructs history that was not recorded.
+    effective_status = func.coalesce(status_as_of, status_before_history, HoldEntry.hold_status)
 
     return and_(
         HoldEntry.hold_date < cutoff,
