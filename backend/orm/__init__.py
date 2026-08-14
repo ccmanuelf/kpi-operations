@@ -85,6 +85,9 @@ from .saved_filter import SavedFilter, FilterHistory
 # Phase 10: Workflow Foundation
 from .workflow import WorkflowTransitionLog
 
+# Cycle 4 PR-C1: Hold-status transition history
+from .hold_status_transition import HoldStatusTransition
+
 # Dual-View Architecture Phase 2: Calculation Assumption Registry
 from .calculation_assumption import (
     AssumptionChange,
@@ -201,6 +204,8 @@ __all__ = [
     "FilterHistory",
     # Phase 10
     "WorkflowTransitionLog",
+    # Cycle 4 PR-C1
+    "HoldStatusTransition",
     # Dual-View Phase 2
     "AssumptionChange",
     "AssumptionStatus",
