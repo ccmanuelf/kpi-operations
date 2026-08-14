@@ -103,7 +103,7 @@ scaffold_env() { # scaffold_env <dir with .env.prod.example> — writes <dir>/.e
         -e "s|^DB_ROOT_PASSWORD=.*|DB_ROOT_PASSWORD=${root_pw}|" \
         -e "s|^CORS_ORIGINS=.*|CORS_ORIGINS=https://${HOST_IP}|" \
         "$dir/.env.prod.example" > "$env_file" \
-      && printf 'TZ=America/Monterrey\n' >> "$env_file" \
+      && printf 'TZ=America/Matamoros\n' >> "$env_file" \
       && printf 'KPI_DATA_ROOT=%s\n' "$ROOT" >> "$env_file"
     # docker-compose.prod.yml falls back to /opt/kpi-operations if unset;
     # writing it unconditionally keeps a non-default --root coherent with
