@@ -1300,3 +1300,279 @@ def test_top_n_with_history_predicate_uses_index_on_mariadb(mariadb_hold_history
     outer_rows = [row for row in plan if row.table == "HOLD_ENTRY"]
     assert len(outer_rows) == 1
     assert "Using filesort" not in (outer_rows[0].Extra or "")
+
+
+# ---------------------------------------------------------------------------
+# Cycle 4 PR-C1b Task 2: tier 2 (earliest-transition from_status fallback) on
+# live MariaDB. Task 1 proved this tier on SQLite only. SQLite's
+# transition_id is INTEGER PRIMARY KEY AUTOINCREMENT (the ROWID), so
+# insertion order and ascending transition_id coincide by construction and
+# same-timestamp ties already come back ascending from B-tree physical
+# order -- no SQLite fixture can defeat the tie-break. InnoDB (MariaDB) has
+# no such guarantee for same-timestamp rows without an explicit ORDER BY, so
+# the tie-break's load-bearing-ness can only be shown here.
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def mariadb_earliest_fallback(mariadb_schema):
+    """Mirrors `hold_with_only_later_history` from
+    test_calculations/test_hold_status_history.py against live MariaDB.
+
+    Two client-scoped holds, no transition before the 2026-03-03 cutoff
+    (2026-03-04 00:00:00) -- tier 1 is empty for both, so tier 2 alone
+    decides, and it disagrees with current status in both directions:
+      MDBEARLY-CANCELLED  current CANCELLED, single transition 2026-08-08
+                          from_status=ON_HOLD   -> WAS on hold on 2026-03-03
+      MDBEARLY-REOPENED   current ON_HOLD,     single transition 2026-08-08
+                          from_status=CANCELLED -> WAS cancelled on 2026-03-03
+    """
+    from backend.orm.client import Client
+    from backend.orm.hold_entry import HoldEntry, HoldStatus
+    from backend.orm.hold_status_transition import HoldStatusTransition
+    from backend.orm.work_order import WorkOrder
+
+    session = SessionLocal()
+    try:
+        session.add(Client(client_id="MDBEARLY", client_name="MariaDB Earliest Fallback"))
+        session.flush()
+
+        session.add_all(
+            [
+                WorkOrder(
+                    work_order_id=f"WO-MDBEARLY-{suffix}",
+                    client_id="MDBEARLY",
+                    style_model="MDB-EARLY-STYLE",
+                    planned_quantity=1,
+                )
+                for suffix in ("CANCELLED", "REOPENED")
+            ]
+        )
+        session.flush()
+
+        later_cancelled = HoldEntry(
+            hold_entry_id="MDBEARLY-CANCELLED",
+            client_id="MDBEARLY",
+            work_order_id="WO-MDBEARLY-CANCELLED",
+            hold_status=HoldStatus.CANCELLED,
+            hold_date=datetime(2026, 2, 1, 8, 0, 0),
+            resume_date=None,
+            hold_reason_category="QUALITY",
+        )
+        later_reopened = HoldEntry(
+            hold_entry_id="MDBEARLY-REOPENED",
+            client_id="MDBEARLY",
+            work_order_id="WO-MDBEARLY-REOPENED",
+            hold_status=HoldStatus.ON_HOLD,
+            hold_date=datetime(2026, 2, 1, 9, 0, 0),
+            resume_date=None,
+            hold_reason_category="QUALITY",
+        )
+        session.add_all([later_cancelled, later_reopened])
+        session.flush()
+
+        session.add_all(
+            [
+                HoldStatusTransition(
+                    hold_entry_id="MDBEARLY-CANCELLED",
+                    client_id="MDBEARLY",
+                    from_status="ON_HOLD",
+                    to_status="CANCELLED",
+                    transitioned_at=datetime(2026, 8, 8, 10, 0, 0),
+                ),
+                HoldStatusTransition(
+                    hold_entry_id="MDBEARLY-REOPENED",
+                    client_id="MDBEARLY",
+                    from_status="CANCELLED",
+                    to_status="ON_HOLD",
+                    transitioned_at=datetime(2026, 8, 8, 11, 0, 0),
+                ),
+            ]
+        )
+        session.flush()
+        session.commit()
+
+        ids = {
+            "later_cancelled": "MDBEARLY-CANCELLED",
+            "later_reopened": "MDBEARLY-REOPENED",
+        }
+        yield session, ids
+    finally:
+        try:
+            # A failed assertion query leaves the session pending-rollback;
+            # without this the teardown DELETEs would fail too and the seeded
+            # rows would survive into later tests (mariadb_boundary_holds's
+            # own teardown comment documents the same hazard).
+            session.rollback()
+            session.query(HoldStatusTransition).filter(HoldStatusTransition.client_id == "MDBEARLY").delete()
+            session.query(HoldEntry).filter(HoldEntry.client_id == "MDBEARLY").delete()
+            session.query(WorkOrder).filter(WorkOrder.client_id == "MDBEARLY").delete()
+            session.query(Client).filter(Client.client_id == "MDBEARLY").delete()
+            session.commit()
+        finally:
+            session.close()
+
+
+@requires_mariadb
+def test_earliest_from_status_fallback_executes_on_mariadb(mariadb_earliest_fallback):
+    """Tier 2 adds a second correlated subquery with ORDER BY + LIMIT; it must
+    execute and resolve correctly on MariaDB, not only SQLite.
+
+    Scoped to this fixture's client (lines 510-514's convention): `mariadb_schema`
+    is module-scoped, so rows from other tests in this file survive between
+    tests, and an unscoped read here would take whatever they left behind
+    into this equality assertion.
+    """
+    from backend.calculations.wip_aging import HoldEntry, active_as_of
+
+    session, ids = mariadb_earliest_fallback
+
+    active = {
+        h.hold_entry_id
+        for h in session.query(HoldEntry)
+        .filter(active_as_of(date(2026, 3, 3)))
+        .filter(HoldEntry.client_id == "MDBEARLY")
+        .all()
+    }
+
+    assert active == {ids["later_cancelled"]}
+
+
+@requires_mariadb
+def test_three_tier_predicate_keeps_outer_index_on_mariadb(mariadb_earliest_fallback):
+    """Two correlated subqueries must not cost the outer top-N its index.
+
+    Explains the query built WITH active_as_of, not a hand-written SQL
+    string -- a literal SQL string would pass regardless of what the
+    predicate does. Unscoped by client_id like its tier-1 sibling
+    (test_top_n_with_history_predicate_uses_index_on_mariadb): this is a
+    structural check of the plan shape, not of row content.
+    """
+    from backend.calculations.wip_aging import HoldEntry, active_as_of
+
+    session, _ = mariadb_earliest_fallback
+
+    query = (
+        session.query(HoldEntry.hold_entry_id)
+        .filter(active_as_of(date(2026, 3, 10)))
+        .order_by(HoldEntry.hold_date)
+        .limit(5)
+    )
+    compiled = query.statement.compile(session.bind, compile_kwargs={"literal_binds": True})
+    plan = session.execute(text(f"EXPLAIN {compiled}")).fetchall()
+
+    outer = [row for row in plan if row.table == "HOLD_ENTRY"]
+    assert len(outer) == 1
+    assert "Using filesort" not in str(outer[0].Extra or "")
+
+
+@pytest.fixture
+def mariadb_earliest_tie_break(mariadb_schema):
+    """A single client-scoped hold with TWO transitions sharing one
+    whole-second instant, both at or after the cutoff, with OPPOSITE
+    `from_status` -- proving tier 2's `transition_id.asc()` tie-break is
+    load-bearing on MariaDB, the way `mariadb_hold_history`'s same-second
+    pair already does for tier 1.
+
+    MDBEARTIE-TIE: current status CANCELLED, hold_date well before the
+    2026-03-03 cutoff so tier 1 finds nothing (no transition precedes it).
+    Two transitions at 2026-08-10 10:00:00 (no microseconds -- MariaDB
+    DATETIME truncates to whole seconds), inserted as separate rows so they
+    get distinct auto-assigned transition_ids: first-inserted from_status
+    is ON_HOLD, second-inserted is CANCELLED. Correct tie-break
+    (transitioned_at ASC, transition_id ASC) picks the first-inserted row,
+    so the hold reads active; the opposite pick would read inactive.
+    """
+    from backend.orm.client import Client
+    from backend.orm.hold_entry import HoldEntry, HoldStatus
+    from backend.orm.hold_status_transition import HoldStatusTransition
+    from backend.orm.work_order import WorkOrder
+
+    session = SessionLocal()
+    try:
+        session.add(Client(client_id="MDBEARTIE", client_name="MariaDB Earliest Tie-Break"))
+        session.flush()
+        session.add(
+            WorkOrder(
+                work_order_id="WO-MDBEARTIE-TIE",
+                client_id="MDBEARTIE",
+                style_model="MDB-EARTIE-STYLE",
+                planned_quantity=1,
+            )
+        )
+        session.flush()
+
+        hold = HoldEntry(
+            hold_entry_id="MDBEARTIE-TIE",
+            client_id="MDBEARTIE",
+            work_order_id="WO-MDBEARTIE-TIE",
+            hold_status=HoldStatus.CANCELLED,
+            hold_date=datetime(2026, 2, 1, 8, 0, 0),
+            resume_date=None,
+            hold_reason_category="QUALITY",
+        )
+        session.add(hold)
+        session.flush()
+
+        same_instant = datetime(2026, 8, 10, 10, 0, 0)
+        first = HoldStatusTransition(
+            hold_entry_id="MDBEARTIE-TIE",
+            client_id="MDBEARTIE",
+            from_status="ON_HOLD",
+            to_status="CANCELLED",
+            transitioned_at=same_instant,
+        )
+        session.add(first)
+        session.flush()
+        second = HoldStatusTransition(
+            hold_entry_id="MDBEARTIE-TIE",
+            client_id="MDBEARTIE",
+            from_status="CANCELLED",
+            to_status="ON_HOLD",
+            transitioned_at=same_instant,
+        )
+        session.add(second)
+        session.flush()
+        assert first.transition_id != second.transition_id
+
+        session.commit()
+        yield session, "MDBEARTIE-TIE"
+    finally:
+        try:
+            session.rollback()
+            session.query(HoldStatusTransition).filter(HoldStatusTransition.client_id == "MDBEARTIE").delete()
+            session.query(HoldEntry).filter(HoldEntry.client_id == "MDBEARTIE").delete()
+            session.query(WorkOrder).filter(WorkOrder.client_id == "MDBEARTIE").delete()
+            session.query(Client).filter(Client.client_id == "MDBEARTIE").delete()
+            session.commit()
+        finally:
+            session.close()
+
+
+@requires_mariadb
+def test_earliest_tier_same_second_transitions_break_tie_by_insertion_order_on_mariadb(mariadb_earliest_tie_break):
+    """Tier 2's `transition_id.asc()` tie-break, proven on MariaDB rather
+    than SQLite (see the module comment above this fixture for why SQLite
+    structurally cannot make this assertion).
+
+    This test is also the harness for a deliberate mutation experiment
+    (Cycle 4 PR-C1b Task 2): with `HoldStatusTransition.transition_id.asc()`
+    temporarily deleted from tier 2's `order_by` in
+    backend/calculations/wip_aging.py, this test was re-run against this
+    same live MariaDB fixture and the result recorded in
+    .superpowers/sdd/2026-08-14-hold-history-earliest-fallback/task-2-report.md
+    before the clause was restored.
+    """
+    from backend.calculations.wip_aging import HoldEntry, active_as_of
+
+    session, hold_id = mariadb_earliest_tie_break
+
+    active = {
+        h.hold_entry_id
+        for h in session.query(HoldEntry)
+        .filter(active_as_of(date(2026, 3, 3)))
+        .filter(HoldEntry.client_id == "MDBEARTIE")
+        .all()
+    }
+
+    assert active == {hold_id}
