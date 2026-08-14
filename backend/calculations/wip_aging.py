@@ -135,6 +135,21 @@ def active_as_of(as_of: date) -> ColumnElement[bool]:
     HOLD_ENTRY.hold_status no longer decides WIP-aging by itself -- not even
     at as_of=today -- so a manual/runbook status correction on such a hold
     must insert a paired HOLD_STATUS_TRANSITION row or the KPI will not move.
+
+    CLOCK INVARIANT: `HoldStatusTransition.transitioned_at` is stamped with
+    `datetime.utcnow()` (backend/crud/hold/transition_log.py), while callers
+    derive `as_of` from a server-local calendar date (`date.today()` in
+    backend/routes/holds.py and backend/calculations/wip_aging.py's own
+    identify_chronic_holds). Tiers 1 and 2 compare a UTC-stamped column
+    against a cutoff built from that local date, so the two must share one
+    clock: the backend container must run with TZ=UTC. If it did not, a
+    transition recorded after local evening (local midnight has already
+    passed in UTC) would land `>= cutoff` a day early, so for a hold whose
+    only recorded transition is that day's change, tier 1 finds nothing and
+    tier 2 returns the PRE-change status until local midnight -- where
+    pre-PR-C1b tier-3 behaviour would already have shown the new one. This
+    is a documented assumption, not a code guard: do not set TZ on the
+    backend service.
     """
     cutoff = snapshot_cutoff(as_of)
 

@@ -1466,6 +1466,62 @@ def test_three_tier_predicate_keeps_outer_index_on_mariadb(mariadb_earliest_fall
     assert "Using filesort" not in str(outer[0].Extra or "")
 
 
+@requires_mariadb
+def test_tier_two_subquery_uses_composite_index_on_mariadb(mariadb_earliest_fallback):
+    """backend/orm/hold_status_transition.py:26-31 claims
+    ix_hold_transition_hold_asof (hold_entry_id, transitioned_at,
+    transition_id) already serves tier 2's ascending scan, so no dedicated
+    index is needed for it. Nothing asserted that until now:
+    test_three_tier_predicate_keeps_outer_index_on_mariadb only looks at the
+    PRIMARY (outer HOLD_ENTRY) row and deliberately ignores both DEPENDENT
+    SUBQUERY rows.
+
+    `active_as_of`'s COALESCE has tier 1 (status_as_of, descending) as its
+    first argument and tier 2 (status_before_history, ascending) as its
+    second, so MariaDB's classic EXPLAIN consistently numbers tier 1's
+    DEPENDENT SUBQUERY row `id=2` and tier 2's `id=3` (verified against live
+    mariadb:11.4 with this fixture's exact data/as_of: id=2 comes back
+    type=range key=ix_HOLD_STATUS_TRANSITION_transitioned_at, id=3 comes
+    back type=ref key=ix_hold_transition_hold_asof, ref=<...>.hold_entry_id).
+    That id-ordering is an artifact of the optimizer, not a documented
+    contract, so this assertion does not lean on it: it identifies the
+    tier-2 row structurally instead -- the DEPENDENT SUBQUERY row whose
+    access `type` is `ref` on `HOLD_ENTRY.hold_entry_id` (an equality
+    lookup, which is what an ascending per-hold LIMIT 1 scan against the
+    composite index produces; tier 1's descending scan came back as a
+    `range` scan on the single-column transitioned_at index instead in the
+    same plan, so `type` reliably tells the two apart here). Falls back to
+    the ambiguity-tolerant check the task allows if that ever stops holding:
+    at least one HOLD_STATUS_TRANSITION row uses the composite index and
+    none does a full ALL scan.
+    """
+    from backend.calculations.wip_aging import HoldEntry, active_as_of
+
+    session, _ = mariadb_earliest_fallback
+
+    query = (
+        session.query(HoldEntry.hold_entry_id)
+        .filter(active_as_of(date(2026, 3, 10)))
+        .order_by(HoldEntry.hold_date)
+        .limit(5)
+    )
+    compiled = query.statement.compile(session.bind, compile_kwargs={"literal_binds": True})
+    plan = session.execute(text(f"EXPLAIN {compiled}")).fetchall()
+
+    subquery_rows = [row for row in plan if row.table == "HOLD_STATUS_TRANSITION"]
+    assert len(subquery_rows) == 2
+    assert not any(row.type == "ALL" for row in subquery_rows)
+
+    ref_rows = [row for row in subquery_rows if row.type == "ref" and (row.ref or "").endswith("hold_entry_id")]
+    if len(ref_rows) == 1:
+        assert ref_rows[0].key == "ix_hold_transition_hold_asof"
+    else:
+        # Ambiguous which row is tier 2 -- fall back to the weaker but still
+        # meaningful claim: the composite index is in play for this table
+        # at all, and nothing degraded into a full scan.
+        assert any(row.key == "ix_hold_transition_hold_asof" for row in subquery_rows)
+
+
 @pytest.fixture
 def mariadb_earliest_tie_break(mariadb_schema):
     """A single client-scoped hold with TWO transitions sharing one

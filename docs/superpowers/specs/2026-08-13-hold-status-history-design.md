@@ -143,8 +143,12 @@ signals a defect rather than the intended improvement.
 §3.4 falls back to the hold's **current** `hold_status` whenever no transition exists at or before
 the cutoff. For a hold that has *some* history but none before the cutoff, a strictly better answer
 is already stored: the **earliest** transition's `from_status` is the state the hold held
-immediately before that transition, and because it is the earliest, that state extends backwards
-over all prior time — including the as-of date.
+immediately before that transition, and it is the best evidence the stored data supports for every
+earlier instant, including the as-of date — not proof of it. That reading holds only if no
+*unrecorded* transition preceded the first recorded one; for a hold whose history predates this
+table (or any gap in what was captured), an earlier change could have happened that this data
+cannot show, and tier 2 would then report the wrong status without any way to detect it. The
+wording here must not be read as license to treat tier 2's output as exact.
 
 Falling back to current status in that case is not merely imprecise, it can be actively wrong in a
 way the stored data contradicts. A hold that was `ON_HOLD` throughout June and was cancelled in

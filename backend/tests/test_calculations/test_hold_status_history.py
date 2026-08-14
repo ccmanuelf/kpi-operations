@@ -495,8 +495,14 @@ def test_earliest_of_two_later_transitions_beats_the_later_one(db_session, sampl
     (correct, ASC) one's `from_status` is ON_HOLD -- active. The latest
     (wrong, DESC) one's `from_status` is CANCELLED -- absent. Distinct
     outcomes, so this discriminates the ordering direction.
+
+    Current status is deliberately set to CANCELLED -- the opposite of tier
+    2's correct answer (ON_HOLD) -- so this also discriminates tier 2's
+    existence: with tier 2 removed from the COALESCE, resolution would fall
+    through to tier 3 (current status CANCELLED, inactive) and the single
+    assertion below would fail instead of passing vacuously.
     """
-    hold = _make_hold(db_session, sample_client, "H-TWO-LATER", datetime(2026, 2, 1, 8, 0, 0), "ON_HOLD")
+    hold = _make_hold(db_session, sample_client, "H-TWO-LATER", datetime(2026, 2, 1, 8, 0, 0), "CANCELLED")
     db_session.flush()
     _t(db_session, hold.hold_entry_id, hold.client_id, "ON_HOLD", "CANCELLED", datetime(2026, 8, 8, 10, 0, 0))
     _t(db_session, hold.hold_entry_id, hold.client_id, "CANCELLED", "ON_HOLD", datetime(2026, 8, 10, 10, 0, 0))
