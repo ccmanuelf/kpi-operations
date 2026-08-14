@@ -40,7 +40,11 @@ services_with_tz=$(awk '
   in_services && /^  [a-zA-Z0-9_-]+:/ {
       svc = $1; sub(/:$/, "", svc); next
   }
-  in_services && /^[[:space:]]*-[[:space:]]*TZ=/ { print svc }
+  # Both YAML environment styles: list item (`- TZ=...`, what this file uses
+  # throughout) and mapping (`TZ: ...`), optionally quoted. Matching only the
+  # list form would let a mapping-style TZ through unseen.
+  in_services && /^[[:space:]]*-[[:space:]]*["'"'"']?TZ["'"'"']?[=:]/ { print svc }
+  in_services && /^[[:space:]]+["'"'"']?TZ["'"'"']?:[[:space:]]/       { print svc }
 ' "$COMPOSE" | sort -u)
 
 [ "$services_with_tz" = "backup" ]
@@ -57,5 +61,22 @@ assert "backend does not declare TZ (CLOCK INVARIANT: it must stay UTC)" $?
 # and it is an hour off local time for the whole DST half of the year.
 grep -q 'America/Matamoros' "$COMPOSE"
 assert "compose comment names the border DST zone" $?
+
+# No service may pull environment from a file: this guard reads the compose
+# source, so a TZ smuggled in via env_file would be invisible to it. The stack
+# uses inline `environment:` blocks throughout; if that ever changes, this
+# guard must be reworked rather than quietly narrowed.
+! grep -qE '^[[:space:]]+env_file:' "$COMPOSE"
+assert "no service uses env_file (would hide TZ from this guard)" $?
+
+# SCOPE, stated so nobody mistakes this for more than it is: the guard checks
+# WHICH services may carry TZ, not WHAT zone resolves. The compose line is
+# `TZ=${TZ:-UTC}`, so the value comes from .env at runtime, and .env is not in
+# git. The zone written at provisioning time is pinned by
+# tests/scripts/test_vm_bootstrap.sh; an ALREADY-provisioned host that predates
+# that change keeps its old value silently, so a live host must be checked --
+# and corrected -- by hand at deploy time. `docker exec kpi-backup date` is the
+# one-command check: it must report CDT in summer and CST in winter, matching
+# Brownsville/Matamoros local time, never a fixed CST year-round.
 
 exit $failed
