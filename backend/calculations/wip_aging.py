@@ -124,6 +124,11 @@ def active_as_of(as_of: date) -> ColumnElement[bool]:
     the table. `hold_status_history_started_at` reports where exactness
     begins. Backfill was ruled out deliberately (2026-08-12); do not
     reconstruct history retroactively.
+
+    OPERATIONAL CONSEQUENCE: for a hold that already has history rows,
+    HOLD_ENTRY.hold_status no longer decides WIP-aging by itself -- not even
+    at as_of=today -- so a manual/runbook status correction on such a hold
+    must insert a paired HOLD_STATUS_TRANSITION row or the KPI will not move.
     """
     cutoff = snapshot_cutoff(as_of)
 
