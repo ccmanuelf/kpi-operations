@@ -32,13 +32,12 @@ def record_hold_transition(
     the value being replaced. Pass `from_status=None` explicitly for the row
     that records hold creation.
 
-    `transitioned_at` defaults to now; callers that write historical rows
-    (the demo seeder) always pass an explicit instant. `create_wip_hold`'s
-    OPENING transition is the one production write site that also passes an
-    explicit instant (the hold's own `hold_date`) rather than accepting the
-    default: a back-dated CSV import must have its history agree with the
-    hold_date it imported, not with the moment the import ran. Every other
-    write site records something happening right now, so it takes the
+    `transitioned_at` defaults to now. The parameter exists for callers that
+    write historical rows; the one production caller that passes an explicit
+    instant is `create_wip_hold`'s OPENING transition (stamped at the hold's
+    own `hold_date`), so that a back-dated CSV import has its history agree
+    with the hold_date it imported, not with the moment the import ran. Every
+    other write site records something happening right now, so it takes the
     default.
     """
     resolved_from = hold.hold_status if from_status is _UNSET else from_status

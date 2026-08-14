@@ -1129,16 +1129,11 @@ def mariadb_hold_history(mariadb_schema):
         # hold_date is 2026-03-04 (the SAME day as its transitions), not
         # 2026-03-01 like the other two holds. All three holds share one
         # table across all three tests below (unlike the SQLite fixtures,
-        # which isolate same_second_hold in its own fixture), and
-        # test_active_as_of_history_lookup_executes_on_mariadb queries the
-        # whole table unscoped at 2026-03-03. A 2026-03-01 hold_date would
-        # make this hold predate its own first transition by 3 days, so at
-        # 2026-03-03 (before either transition) it falls back to its current
-        # ON_HOLD status -- active WIP -- and leaks into a result that must
-        # contain only `held_then_cancelled`. Dating the hold itself to day 4
-        # excludes it from day 3 via the *hold_date* arm of active_as_of,
-        # independent of status, so the ON_HOLD "opposite" trap above stays
-        # intact for the day-5 same-second assertion.
+        # which isolate same_second_hold in its own fixture). Dating the hold
+        # itself to day 4 excludes it from day 3 via the *hold_date* arm of
+        # active_as_of, independent of status, so the ON_HOLD "opposite" trap
+        # above stays intact for the day-5 same-second assertion. This keeps
+        # the hold out of that day's scope regardless of any status query logic.
         same_second_hold = HoldEntry(
             hold_entry_id="MDBHIST-SAMESEC",
             client_id="MDBHIST",
@@ -1279,16 +1274,15 @@ def test_top_n_with_history_predicate_uses_index_on_mariadb(mariadb_hold_history
     plan, not every row EXPLAIN returns. Verified against live mariadb:11.4:
     once any hold has 2+ HOLD_STATUS_TRANSITION rows -- which the same-second
     pair in `mariadb_hold_history` requires -- the DEPENDENT SUBQUERY row
-    legitimately reports "Using filesort" too, because HOLD_STATUS_TRANSITION
-    has no composite index covering (hold_entry_id, transitioned_at,
-    transition_id) to serve that inner ORDER BY ... LIMIT 1 without a sort.
-    That is a real, bounded, per-hold sort over at most a couple of candidate
-    rows -- unrelated to what `active_as_of`'s docstring promises callers
-    ("index-assisted ORDER BY ... LIMIT instead of loading every candidate
-    hold into memory"), which is about the OUTER top-N/aggregate query never
-    degrading into a full HOLD_ENTRY scan. That promise is what the PRIMARY
-    row's plan actually proves, and it never showed a filesort in any
-    fixture shape tried here.
+    also reports "Using filesort", but that is a real, bounded, per-hold sort
+    over at most a couple of candidate rows. MariaDB's classic EXPLAIN format
+    puts `table` and `Extra` in separate columns, so an unscoped "Using filesort"
+    check would fire on the subquery's per-hold sort as well -- unrelated to
+    what `active_as_of`'s docstring promises callers ("index-assisted ORDER BY
+    ... LIMIT instead of loading every candidate hold into memory"), which is
+    about the OUTER top-N/aggregate query never degrading into a full HOLD_ENTRY
+    scan. That promise is what the PRIMARY row's plan actually proves, and it
+    never showed a filesort in any fixture shape tried here.
     """
     from backend.calculations.wip_aging import HoldEntry, active_as_of
 
