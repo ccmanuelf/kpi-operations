@@ -166,26 +166,58 @@ def test_resume_records_transition_to_resumed(db_session, sample_hold, sample_us
 
 
 def test_every_hold_status_write_site_is_instrumented():
-    """Static guard: a hold_status assignment with no recorder call nearby is a
+    """Static guard: a hold_status write with no recorder call nearby is a
     hole in the history, and holes are invisible until a trend query is wrong.
 
-    Scans for `hold_status =` assignments in production modules and requires
-    `record_hold_transition` to appear in the same file.
+    Three write forms exist in this codebase and all three must be caught:
+      - attribute assignment:   db_hold.hold_status = ...
+      - dict/bracket-key assignment: hold_data["hold_status"] = ...   (crud/hold/core.py)
+      - setattr-style:          setattr(db_hold, "hold_status", ...)
+
+    Presence-in-file is not enough (that was the bug in the first version of
+    this guard): it can't tell a real recorder call for site A from silence
+    at site B in the same file. So this checks PROXIMITY per site — each
+    matching write line must have a `record_hold_transition(` call within
+    WINDOW lines of it, in the same file.
+
+    WINDOW = 30. The largest legitimate gap among the seven real sites is
+    crud/hold/core.py's create_wip_hold: Task 2's contract requires the
+    recorder to run AFTER the flush that assigns hold_entry_id/client_id,
+    so its one recorder call sits ~22 lines below the status write it
+    describes (and covers both if/else branches, which sit even closer to
+    it). Every other site calls the recorder immediately before the
+    assignment (0-1 line gap). 30 lines comfortably covers the widest real
+    gap while staying far short of a typical file's length, so a stray
+    unrecorded write elsewhere in the same file still gets caught.
     """
     import pathlib
     import re
 
     root = pathlib.Path(__file__).resolve().parents[2]
-    assignment = re.compile(r"^\s*[\w.]*hold_status\s*=\s*(?!=)")
+    WINDOW = 30
+
+    # Anchored at line-start (after leading whitespace) so this only matches
+    # writes, not reads like `x = db_hold.hold_status`.
+    attribute_write = re.compile(r"^\s*[\w.]*hold_status\s*=\s*(?!=)")
+    # Requires the assignment `=` to follow the closing bracket, so a read
+    # like `x = hold_data["hold_status"]` does not match.
+    bracket_write = re.compile(r"""\[\s*['"]hold_status['"]\s*\]\s*=\s*(?!=)""")
+    setattr_write = re.compile(r"""setattr\(\s*[\w.]+\s*,\s*['"]hold_status['"]\s*,""")
+
     offenders = []
 
     for path in root.rglob("*.py"):
         rel = path.relative_to(root).as_posix()
         if rel.startswith(("tests/", "orm/", "schemas/", "scripts/", "db/", "alembic/")):
             continue
-        text = path.read_text()
-        if any(assignment.match(line) for line in text.splitlines()):
-            if "record_hold_transition" not in text:
-                offenders.append(rel)
+        lines = path.read_text().splitlines()
+        recorder_lines = [i for i, line in enumerate(lines) if "record_hold_transition(" in line]
+
+        for i, line in enumerate(lines):
+            is_write = attribute_write.match(line) or bracket_write.search(line) or setattr_write.search(line)
+            if not is_write:
+                continue
+            if not any(abs(i - r) <= WINDOW for r in recorder_lines):
+                offenders.append(f"{rel}:{i + 1}")
 
     assert offenders == []
