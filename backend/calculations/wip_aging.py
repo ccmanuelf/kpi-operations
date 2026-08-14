@@ -55,10 +55,11 @@ DEFAULT_CRITICAL_THRESHOLD_DAYS = 14
 # stopped and is waiting for permission to restart.
 #
 # Deliberately an exclusion list, not an allow-list of (ON_HOLD,
-# PENDING_RESUME_APPROVAL): `hold_status` is CURRENT state, so a hold that
-# reads RESUMED today was still on hold at a past `as_of`. An allow-list
-# would drop it from every historical snapshot; the `resume_date` comparison
-# is what dates that correctly.
+# PENDING_RESUME_APPROVAL): on the no-history fallback path (see
+# active_as_of's BOUNDARY paragraph), `hold_status` is CURRENT state, so a
+# hold that reads RESUMED today was still on hold at a past `as_of`. An
+# allow-list would drop it from every historical snapshot; the `resume_date`
+# comparison is what dates that correctly.
 NON_WIP_HOLD_STATUSES = (
     HoldStatus.CANCELLED,
     HoldStatus.RELEASED,
