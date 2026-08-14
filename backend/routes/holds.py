@@ -22,6 +22,7 @@ from backend.services.hold_service import (
     validate_reason_for_client as validate_hold_reason_for_client,
 )
 from backend.calculations.wip_aging import active_as_of, identify_chronic_holds
+from backend.crud.hold.transition_log import record_hold_transition
 from backend.auth.jwt import (
     get_current_active_supervisor,
     get_current_contributor,
@@ -193,6 +194,7 @@ def approve_hold(
         )
 
     # Approve the hold
+    record_hold_transition(db, db_hold, to_status=HoldStatus.ON_HOLD, current_user=current_user)
     db_hold.hold_status = HoldStatus.ON_HOLD
     db_hold.hold_approved_by = current_user.user_id
     db_hold.updated_by = current_user.user_id
@@ -228,6 +230,7 @@ def request_resume(
         )
 
     # Request resume
+    record_hold_transition(db, db_hold, to_status=HoldStatus.PENDING_RESUME_APPROVAL, current_user=current_user)
     db_hold.hold_status = HoldStatus.PENDING_RESUME_APPROVAL
     db_hold.resumed_by = current_user.user_id  # Track who requested
     db_hold.updated_by = current_user.user_id
@@ -268,6 +271,7 @@ def approve_resume(
         )
 
     # Approve the resume
+    record_hold_transition(db, db_hold, to_status=HoldStatus.RESUMED, current_user=current_user)
     db_hold.hold_status = HoldStatus.RESUMED
     db_hold.resume_date = datetime.now(tz=timezone.utc)
     db_hold.updated_by = current_user.user_id

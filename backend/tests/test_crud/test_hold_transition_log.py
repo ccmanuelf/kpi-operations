@@ -4,9 +4,11 @@ from datetime import datetime, timedelta
 
 import pytest
 
+from backend.crud.hold import create_wip_hold, resume_hold
 from backend.crud.hold.transition_log import record_hold_transition
 from backend.orm.hold_entry import HoldStatus
 from backend.orm.hold_status_transition import HoldStatusTransition
+from backend.schemas.hold import WIPHoldCreate
 from backend.tests.fixtures.factories import TestDataFactory
 
 
@@ -119,3 +121,71 @@ def test_rows_are_queryable_in_recorded_order(db_session, sample_hold, sample_us
     )
 
     assert [r.to_status for r in rows] == ["PENDING_HOLD_APPROVAL", "ON_HOLD"]
+
+
+def _hold_create_payload(client, work_order_id):
+    return WIPHoldCreate(
+        client_id=client.client_id,
+        work_order_id=work_order_id,
+        hold_reason_category="quality",
+        hold_reason="QUALITY_ISSUE",
+    )
+
+
+def test_hold_creation_records_opening_row(db_session, sample_client, sample_user):
+    """Every hold begins with a from_status=None row, so its history is complete."""
+    work_order = TestDataFactory.create_work_order(db_session, client_id=sample_client.client_id)
+    db_session.commit()
+
+    hold = create_wip_hold(db_session, _hold_create_payload(sample_client, work_order.work_order_id), sample_user)
+    db_session.flush()
+
+    rows = db_session.query(HoldStatusTransition).filter(HoldStatusTransition.hold_entry_id == hold.hold_entry_id).all()
+
+    assert len(rows) == 1
+    assert rows[0].from_status is None
+    assert rows[0].to_status == hold.hold_status
+
+
+def test_resume_records_transition_to_resumed(db_session, sample_hold, sample_user):
+    sample_hold.hold_status = "ON_HOLD"
+    db_session.flush()
+
+    resume_hold(db_session, sample_hold.hold_entry_id, sample_user.user_id, sample_user)
+    db_session.flush()
+
+    rows = (
+        db_session.query(HoldStatusTransition)
+        .filter(HoldStatusTransition.hold_entry_id == sample_hold.hold_entry_id)
+        .order_by(HoldStatusTransition.transition_id)
+        .all()
+    )
+
+    assert rows[-1].from_status == "ON_HOLD"
+    assert rows[-1].to_status == "RESUMED"
+
+
+def test_every_hold_status_write_site_is_instrumented():
+    """Static guard: a hold_status assignment with no recorder call nearby is a
+    hole in the history, and holes are invisible until a trend query is wrong.
+
+    Scans for `hold_status =` assignments in production modules and requires
+    `record_hold_transition` to appear in the same file.
+    """
+    import pathlib
+    import re
+
+    root = pathlib.Path(__file__).resolve().parents[2]
+    assignment = re.compile(r"^\s*[\w.]*hold_status\s*=\s*(?!=)")
+    offenders = []
+
+    for path in root.rglob("*.py"):
+        rel = path.relative_to(root).as_posix()
+        if rel.startswith(("tests/", "orm/", "schemas/", "scripts/", "db/", "alembic/")):
+            continue
+        text = path.read_text()
+        if any(assignment.match(line) for line in text.splitlines()):
+            if "record_hold_transition" not in text:
+                offenders.append(rel)
+
+    assert offenders == []

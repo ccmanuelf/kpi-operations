@@ -15,6 +15,7 @@ from backend.schemas.hold import (
     WIPHoldUpdate,
     WIPHoldResponse,
 )
+from backend.crud.hold.transition_log import record_hold_transition
 from backend.middleware.client_auth import verify_client_access
 from backend.orm.user import User
 from backend.utils.soft_delete import soft_delete
@@ -74,6 +75,15 @@ def create_wip_hold(db: Session, hold: WIPHoldCreate, current_user: User) -> WIP
     db.add(db_hold)
     db.flush()
     db.refresh(db_hold)
+
+    record_hold_transition(
+        db,
+        db_hold,
+        to_status=db_hold.hold_status,
+        current_user=current_user,
+        from_status=None,
+        notes="Hold created",
+    )
 
     return WIPHoldResponse.model_validate(db_hold)
 
