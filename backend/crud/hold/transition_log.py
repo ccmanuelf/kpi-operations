@@ -42,13 +42,25 @@ def record_hold_transition(
     """
     resolved_from = hold.hold_status if from_status is _UNSET else from_status
 
+    # Truncate to whole seconds (both the caller-supplied value and the
+    # default): MariaDB DATETIME columns are declared without fractional
+    # seconds and ROUND rather than truncate on store, so a value like
+    # 23:59:59.500000 on day D would be persisted as 00:00:00 on day D+1 --
+    # silently moving the transition across a day boundary and making
+    # active_as_of attribute the wrong day's status. SQLite stores the
+    # microseconds verbatim, so this also keeps the two dialects agreeing.
+    # snapshot_cutoff (calculations/wip_aging.py) avoids fractional seconds
+    # for this same reason, and the (transitioned_at, transition_id)
+    # tie-break in active_as_of already assumes whole-second resolution.
+    resolved_at = (transitioned_at or datetime.utcnow()).replace(microsecond=0)
+
     row = HoldStatusTransition(
         hold_entry_id=hold.hold_entry_id,
         client_id=hold.client_id,
         from_status=resolved_from,
         to_status=to_status,
         transitioned_by=getattr(current_user, "user_id", None),
-        transitioned_at=transitioned_at or datetime.utcnow(),
+        transitioned_at=resolved_at,
         notes=notes,
     )
     db.add(row)

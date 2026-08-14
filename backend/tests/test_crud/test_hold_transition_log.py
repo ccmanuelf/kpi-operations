@@ -99,6 +99,34 @@ def test_defaults_transitioned_at_to_now_when_not_given(db_session, sample_hold,
     assert row.transitioned_at >= before
 
 
+def test_explicit_transitioned_at_is_truncated_to_whole_seconds(db_session, sample_hold, sample_user):
+    """MariaDB DATETIME columns round (not truncate) on store, so a
+    microsecond-bearing instant close to midnight can be persisted on the
+    NEXT day. The recorder must truncate before the value ever reaches the
+    dialect, keeping the row on the day the transition actually happened."""
+    when = datetime(2026, 3, 5, 23, 59, 59, 500000)
+
+    row = record_hold_transition(
+        db_session,
+        sample_hold,
+        to_status="ON_HOLD",
+        current_user=sample_user,
+        from_status="PENDING_HOLD_APPROVAL",
+        transitioned_at=when,
+    )
+    db_session.flush()
+
+    assert row.transitioned_at.microsecond == 0
+    assert row.transitioned_at == datetime(2026, 3, 5, 23, 59, 59)
+
+
+def test_default_transitioned_at_is_truncated_to_whole_seconds(db_session, sample_hold, sample_user):
+    row = record_hold_transition(db_session, sample_hold, to_status="RESUMED", current_user=sample_user)
+    db_session.flush()
+
+    assert row.transitioned_at.microsecond == 0
+
+
 def test_rows_are_queryable_in_recorded_order(db_session, sample_hold, sample_user):
     day1 = datetime(2026, 3, 1, 8, 0, 0)
     day5 = datetime(2026, 3, 5, 8, 0, 0)
