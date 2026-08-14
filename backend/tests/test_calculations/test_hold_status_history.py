@@ -419,3 +419,62 @@ def test_top_n_query_still_uses_an_index(db_session, seeded_holds):
     plan = db_session.execute(text(f"EXPLAIN QUERY PLAN {compiled}")).fetchall()
 
     assert not any("SCAN HOLD_ENTRY" in str(row) for row in plan)
+
+
+# =============================================================================
+# Cycle 4 PR-C1b Task 1: three-tier resolution (earliest from_status fallback)
+# =============================================================================
+
+
+@pytest.fixture
+def hold_with_only_later_history(db_session, sample_client):
+    """Two holds, each with history that begins AFTER the as-of date.
+
+    Their earliest transition's `from_status` proves what they were before it,
+    and it disagrees with their current status in both directions -- so tier 2
+    and tier 3 cannot produce the same answer.
+    """
+    # Was ON_HOLD through March; cancelled in August.
+    a = _make_hold(db_session, sample_client, "H-LATER-CANCELLED", datetime(2026, 2, 1, 8, 0, 0), "CANCELLED")
+    # Was CANCELLED through March; re-opened in August.
+    b = _make_hold(db_session, sample_client, "H-LATER-REOPENED", datetime(2026, 2, 1, 9, 0, 0), "ON_HOLD")
+    db_session.flush()
+
+    _t(db_session, a.hold_entry_id, a.client_id, "ON_HOLD", "CANCELLED", datetime(2026, 8, 8, 10, 0, 0))
+    _t(db_session, b.hold_entry_id, b.client_id, "CANCELLED", "ON_HOLD", datetime(2026, 8, 8, 11, 0, 0))
+    db_session.flush()
+
+    return SimpleNamespace(later_cancelled=a.hold_entry_id, later_reopened=b.hold_entry_id)
+
+
+def test_earliest_from_status_wins_over_current_status(db_session, hold_with_only_later_history):
+    """Tier 2: no transition before the cutoff, but the earliest one records
+    what the hold WAS. Current status is the wrong answer in both directions."""
+    active = _active_ids(db_session, date(2026, 3, 3))
+
+    # Was ON_HOLD in March even though it reads CANCELLED today.
+    assert hold_with_only_later_history.later_cancelled in active
+    # Was CANCELLED in March even though it reads ON_HOLD today.
+    assert hold_with_only_later_history.later_reopened not in active
+
+
+def test_after_that_transition_tier_one_takes_over(db_session, hold_with_only_later_history):
+    """Past the August transition, tier 1 governs again and the answers flip."""
+    active = _active_ids(db_session, date(2026, 8, 9))
+
+    assert hold_with_only_later_history.later_cancelled not in active
+    assert hold_with_only_later_history.later_reopened in active
+
+
+def test_creation_row_from_status_null_falls_through_to_tier_three(db_session, sample_client):
+    """A hold whose earliest transition is its creation row has from_status
+    NULL by construction, so tier 2 yields NULL and tier 3 must decide."""
+    hold = _make_hold(db_session, sample_client, "H-CREATION-ONLY", datetime(2026, 5, 1, 8, 0, 0), "ON_HOLD")
+    db_session.flush()
+    _t(db_session, hold.hold_entry_id, hold.client_id, None, "ON_HOLD", datetime(2026, 5, 1, 8, 0, 0))
+    db_session.flush()
+
+    # Before the hold existed: the date arm excludes it regardless of status.
+    assert hold.hold_entry_id not in _active_ids(db_session, date(2026, 4, 1))
+    # After: tier 1 governs.
+    assert hold.hold_entry_id in _active_ids(db_session, date(2026, 5, 2))
