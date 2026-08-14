@@ -8,14 +8,20 @@ fixture from backend/tests/conftest.py -- `sample_client`/`sample_hold` are
 not shared fixtures in this repo).
 """
 
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from types import SimpleNamespace
 
 import pytest
+from fastapi.testclient import TestClient
+from sqlalchemy import text
 
+from backend.auth.jwt import get_current_user
 from backend.calculations.wip_aging import active_as_of, hold_status_history_started_at
+from backend.crud.hold.transition_log import record_hold_transition
+from backend.database import get_db
 from backend.db.factories import TestDataFactory
-from backend.orm.hold_entry import HoldEntry
+from backend.main import app
+from backend.orm.hold_entry import HoldEntry, HoldStatus
 from backend.orm.hold_status_transition import HoldStatusTransition
 
 
@@ -191,3 +197,225 @@ def test_same_second_transitions_resolve_by_insertion_order(db_session, same_sec
 
 def test_history_boundary_reports_first_recorded_transition(db_session, hold_with_history):
     assert hold_status_history_started_at(db_session) == datetime(2026, 3, 1, 8, 0, 0)
+
+
+# =============================================================================
+# Task 5: as-of-now invariance, trend-endpoint regression, query-plan guard
+# =============================================================================
+
+# Golden master captured at c138616 (branch tip immediately before Task 4's
+# rewrite -- see .superpowers/sdd/2026-08-13-hold-status-history/golden-master.md),
+# against the UNMODIFIED `active_as_of` (current-status logic, no transition
+# table involved). `as_of` is pinned to the date it was captured at rather
+# than re-derived from `date.today()`, so this assertion doesn't depend on
+# which day the suite happens to run (golden-master.md's own recommendation).
+GOLDEN_MASTER_AS_OF = date(2026, 8, 14)
+GOLDEN_ACTIVE_IDS_TODAY = {"GM-ONHOLD", "GM-PENDRES"}
+
+
+@pytest.fixture
+def seeded_holds(db_session):
+    """7 holds, one per `HoldStatus` value, reproducing the fixture used to
+    capture the golden master (golden-master.md) at c138616. 3 carry no
+    transition history at all (current status is the only signal the OLD
+    predicate ever had); the other 4 each carry a transition chain --
+    `None -> ON_HOLD` at `hold_date`, then `ON_HOLD -> <target>` on
+    2026-01-05 -- that ENDS at the hold's current `hold_status`, so the
+    rewritten predicate's history read must agree with the old current-status
+    read for `as_of = GOLDEN_MASTER_AS_OF` on every one of these holds. That
+    agreement is precisely the "today's dashboards are unmoved" property
+    Task 5 exists to prove.
+    """
+    client = TestDataFactory.create_client(db_session, client_id="GM-CLIENT")
+    hold_date = datetime(2026, 1, 1, 8, 0, 0, tzinfo=timezone.utc)
+
+    def _wo(suffix):
+        return TestDataFactory.create_work_order(
+            db_session, client_id=client.client_id, work_order_id=f"GM-WO-{suffix}"
+        )
+
+    holds = []
+
+    # No-history holds (3): current status is the only signal available.
+    for suffix, status in (
+        ("PENDING", HoldStatus.PENDING_HOLD_APPROVAL),
+        ("ONHOLD", HoldStatus.ON_HOLD),
+        ("PENDRES", HoldStatus.PENDING_RESUME_APPROVAL),
+    ):
+        wo = _wo(suffix)
+        hold = HoldEntry(
+            hold_entry_id=f"GM-{suffix}",
+            client_id=client.client_id,
+            work_order_id=wo.work_order_id,
+            hold_status=status,
+            hold_date=hold_date,
+            resume_date=None,
+            hold_reason="golden master fixture",
+        )
+        db_session.add(hold)
+        holds.append(hold)
+
+    db_session.flush()
+
+    # History-bearing holds (4): each carries a transition chain that ENDS at
+    # its current status.
+    def _hold_with_history(suffix, current_status, resume_date=None):
+        wo = _wo(suffix)
+        hold = HoldEntry(
+            hold_entry_id=f"GM-{suffix}",
+            client_id=client.client_id,
+            work_order_id=wo.work_order_id,
+            hold_status=current_status,
+            hold_date=hold_date,
+            resume_date=resume_date,
+            hold_reason="golden master fixture",
+        )
+        db_session.add(hold)
+        db_session.flush()
+        record_hold_transition(
+            db_session, hold, to_status=HoldStatus.ON_HOLD, from_status=None, transitioned_at=hold_date
+        )
+        if current_status != HoldStatus.ON_HOLD:
+            record_hold_transition(
+                db_session,
+                hold,
+                to_status=current_status,
+                from_status=HoldStatus.ON_HOLD,
+                transitioned_at=datetime(2026, 1, 5, 9, 0, 0, tzinfo=timezone.utc),
+            )
+        db_session.flush()
+        return hold
+
+    resumed = _hold_with_history(
+        "RESUMED", HoldStatus.RESUMED, resume_date=datetime(2026, 1, 5, 9, 0, 0, tzinfo=timezone.utc)
+    )
+    cancelled = _hold_with_history("CANCELLED", HoldStatus.CANCELLED)
+    released = _hold_with_history("RELEASED", HoldStatus.RELEASED)
+    scrapped = _hold_with_history("SCRAPPED", HoldStatus.SCRAPPED)
+
+    holds.extend([resumed, cancelled, released, scrapped])
+    db_session.commit()
+    return holds
+
+
+def test_as_of_today_is_unchanged_by_the_history_rewrite(db_session, seeded_holds):
+    """The fix targets historical as-of dates. Today's dashboards must not move.
+
+    Golden values captured against active_as_of at c138616, before the status
+    arm was rewritten (golden-master.md).
+    """
+    active = _active_ids(db_session, GOLDEN_MASTER_AS_OF)
+
+    assert active == GOLDEN_ACTIVE_IDS_TODAY
+
+
+# --- Trend-endpoint regression -----------------------------------------
+
+
+@pytest.fixture
+def endpoint_db(transactional_db):
+    """Bind get_db to the isolated in-memory session for TestClient requests.
+
+    D3/#130 pattern (see backend/tests/test_kpi/test_trend_endpoints_ppm_throughput.py):
+    `transactional_db` is bound to `get_db` so writes land in the
+    function-scoped in-memory SQLite the TestClient reads from. A separate
+    fixture name from `db_session` (rather than overriding it) so the
+    conftest `db_session` used by every other test in this file keeps its
+    own semantics.
+    """
+    app.dependency_overrides[get_db] = lambda: transactional_db
+    yield transactional_db
+    app.dependency_overrides.pop(get_db, None)
+
+
+@pytest.fixture
+def endpoint_client(endpoint_db):
+    """TestClient authenticated as an admin, bound to endpoint_db."""
+    admin = TestDataFactory.create_user(endpoint_db, username="trend_admin", role="admin")
+    endpoint_db.commit()
+    app.dependency_overrides[get_current_user] = lambda: admin
+    yield TestClient(app)
+    app.dependency_overrides.pop(get_current_user, None)
+
+
+def test_trend_reflects_history_not_current_status(endpoint_client, endpoint_db):
+    """GET /api/kpi/wip-aging/trend is the one caller that walks past dates.
+
+    Real response shape (backend/routes/holds.py:514 get_wip_aging_trend):
+    a bare list of `{"date": iso, "value": avg_age_in_days}` points -- NOT
+    the `{"trend": [...], "active_holds": ...}` shape the brief guessed.
+
+    H-TREND-HIST was only PENDING_HOLD_APPROVAL (excluded --
+    NON_WIP_HOLD_STATUSES, nothing has stopped yet) through 2026-03-04, and
+    was approved into ON_HOLD at 2026-03-05 10:00. Before this change the
+    trend read today's ON_HOLD status for every point on the line, so it
+    counted the hold as active on 2026-03-03 too and reported a nonzero
+    average age; the rewrite correctly reports no active WIP that day (the
+    average of an empty set is 0), then a genuine 5-day average once the
+    hold is actually on hold.
+    """
+    client = TestDataFactory.create_client(endpoint_db, client_id="TREND-HIST")
+    work_order = TestDataFactory.create_work_order(
+        endpoint_db, client_id=client.client_id, work_order_id="WO-TREND-HIST"
+    )
+    hold = HoldEntry(
+        hold_entry_id="H-TREND-HIST",
+        client_id=client.client_id,
+        work_order_id=work_order.work_order_id,
+        hold_status=HoldStatus.ON_HOLD,
+        hold_date=datetime(2026, 3, 1, 8, 0, 0),
+        resume_date=None,
+        hold_reason="trend regression fixture",
+    )
+    endpoint_db.add(hold)
+    endpoint_db.flush()
+    record_hold_transition(
+        endpoint_db,
+        hold,
+        to_status=HoldStatus.PENDING_HOLD_APPROVAL,
+        from_status=None,
+        transitioned_at=datetime(2026, 3, 1, 8, 0, 0),
+    )
+    record_hold_transition(
+        endpoint_db,
+        hold,
+        to_status=HoldStatus.ON_HOLD,
+        from_status=HoldStatus.PENDING_HOLD_APPROVAL,
+        transitioned_at=datetime(2026, 3, 5, 10, 0, 0),
+    )
+    endpoint_db.commit()
+
+    response = endpoint_client.get(
+        "/api/kpi/wip-aging/trend",
+        params={"start_date": "2026-03-02", "end_date": "2026-03-07", "client_id": "TREND-HIST"},
+    )
+
+    assert response.status_code == 200
+
+    points = {p["date"]: p["value"] for p in response.json()}
+
+    assert points["2026-03-03"] == 0
+    assert points["2026-03-06"] == 5.0
+
+
+# --- Query-plan guard -----------------------------------------------------
+
+
+def test_top_n_query_still_uses_an_index(db_session, seeded_holds):
+    """active_as_of's docstring promises callers keep index-assisted
+    ORDER BY ... LIMIT. A correlated subquery must not cost them that.
+
+    The plan is taken from a query built WITH the predicate -- explaining a
+    hand-written SQL string instead would pass no matter what active_as_of
+    does, which is no test at all.
+    """
+    query = (
+        db_session.query(HoldEntry.hold_entry_id)
+        .filter(active_as_of(date(2026, 3, 10)))
+        .order_by(HoldEntry.hold_date)
+        .limit(5)
+    )
+    compiled = query.statement.compile(db_session.bind, compile_kwargs={"literal_binds": True})
+    plan = db_session.execute(text(f"EXPLAIN QUERY PLAN {compiled}")).fetchall()
+
+    assert not any("SCAN HOLD_ENTRY" in str(row) for row in plan)
