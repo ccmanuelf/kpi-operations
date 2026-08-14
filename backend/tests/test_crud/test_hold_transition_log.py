@@ -1,6 +1,6 @@
 """Tests for record_hold_transition (backend/crud/hold/transition_log.py)."""
 
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
 import pytest
 
@@ -144,7 +144,37 @@ def test_hold_creation_records_opening_row(db_session, sample_client, sample_use
 
     assert len(rows) == 1
     assert rows[0].from_status is None
-    assert rows[0].to_status == hold.hold_status
+    # Concrete expected status, not `== hold.hold_status` -- that tautology
+    # passes even if create_wip_hold and the recorder silently diverged,
+    # since both sides would read the same (possibly wrong) value.
+    assert rows[0].to_status == HoldStatus.ON_HOLD
+
+
+def test_backdated_hold_opening_transition_is_stamped_at_hold_date(db_session, sample_client, sample_user):
+    """A CSV import routinely supplies a past hold_date. The opening
+    transition must record history AS OF that date, not the moment the
+    import ran -- otherwise every as-of date before the import falls into
+    active_as_of's no-history COALESCE fallback and the whole point of this
+    branch fails for the primary bulk-ingestion path."""
+    work_order = TestDataFactory.create_work_order(db_session, client_id=sample_client.client_id)
+    db_session.commit()
+
+    backdated = date(2020, 1, 15)
+    payload = WIPHoldCreate(
+        client_id=sample_client.client_id,
+        work_order_id=work_order.work_order_id,
+        hold_reason_category="quality",
+        hold_reason="QUALITY_ISSUE",
+        hold_date=backdated,
+    )
+
+    hold = create_wip_hold(db_session, payload, sample_user)
+    db_session.flush()
+
+    rows = db_session.query(HoldStatusTransition).filter(HoldStatusTransition.hold_entry_id == hold.hold_entry_id).all()
+
+    assert len(rows) == 1
+    assert rows[0].transitioned_at == datetime.combine(backdated, datetime.min.time())
 
 
 def test_resume_records_transition_to_resumed(db_session, sample_hold, sample_user):
@@ -165,14 +195,111 @@ def test_resume_records_transition_to_resumed(db_session, sample_hold, sample_us
     assert rows[-1].to_status == "RESUMED"
 
 
+def test_approve_hold_records_transition_to_on_hold(db_session, sample_hold, sample_user):
+    """approve_hold (backend/routes/holds.py) must record the PENDING_HOLD_APPROVAL
+    -> ON_HOLD transition it performs, not some other pair."""
+    from backend.routes.holds import approve_hold
+
+    assert sample_hold.hold_status == HoldStatus.PENDING_HOLD_APPROVAL
+
+    approve_hold(sample_hold.hold_entry_id, db=db_session, current_user=sample_user)
+
+    rows = (
+        db_session.query(HoldStatusTransition)
+        .filter(HoldStatusTransition.hold_entry_id == sample_hold.hold_entry_id)
+        .order_by(HoldStatusTransition.transition_id)
+        .all()
+    )
+
+    assert rows[-1].from_status == HoldStatus.PENDING_HOLD_APPROVAL
+    assert rows[-1].to_status == HoldStatus.ON_HOLD
+
+
+def test_request_resume_records_transition_to_pending_resume_approval(db_session, sample_hold, sample_user):
+    """request_resume (backend/routes/holds.py) must record the ON_HOLD ->
+    PENDING_RESUME_APPROVAL transition it performs. A mutant that instead
+    records `to_status=RELEASED` stays undetected by the static write-site
+    guard (which only checks a recorder call exists nearby, not what it
+    records) while silently dropping the hold from every WIP-aging
+    aggregate/top-N/trend/chronic list, since RELEASED is in
+    NON_WIP_HOLD_STATUSES."""
+    from backend.routes.holds import request_resume
+
+    sample_hold.hold_status = HoldStatus.ON_HOLD
+    db_session.flush()
+
+    request_resume(sample_hold.hold_entry_id, db=db_session, current_user=sample_user)
+
+    rows = (
+        db_session.query(HoldStatusTransition)
+        .filter(HoldStatusTransition.hold_entry_id == sample_hold.hold_entry_id)
+        .order_by(HoldStatusTransition.transition_id)
+        .all()
+    )
+
+    assert rows[-1].from_status == HoldStatus.ON_HOLD
+    assert rows[-1].to_status == HoldStatus.PENDING_RESUME_APPROVAL
+
+
+def test_approve_resume_records_transition_to_resumed(db_session, sample_hold, sample_user):
+    """approve_resume (backend/routes/holds.py) must record the
+    PENDING_RESUME_APPROVAL -> RESUMED transition it performs."""
+    from backend.routes.holds import approve_resume
+
+    sample_hold.hold_status = HoldStatus.PENDING_RESUME_APPROVAL
+    db_session.flush()
+
+    approve_resume(sample_hold.hold_entry_id, db=db_session, current_user=sample_user)
+
+    rows = (
+        db_session.query(HoldStatusTransition)
+        .filter(HoldStatusTransition.hold_entry_id == sample_hold.hold_entry_id)
+        .order_by(HoldStatusTransition.transition_id)
+        .all()
+    )
+
+    assert rows[-1].from_status == HoldStatus.PENDING_RESUME_APPROVAL
+    assert rows[-1].to_status == HoldStatus.RESUMED
+
+
+def test_release_hold_records_transition_to_resumed(db_session, sample_hold, sample_user):
+    """release_hold (backend/crud/hold/duration.py) must record the ON_HOLD
+    -> RESUMED transition it performs."""
+    from backend.crud.hold.duration import release_hold
+
+    sample_hold.hold_status = HoldStatus.ON_HOLD
+    db_session.flush()
+
+    release_hold(db_session, sample_hold.hold_entry_id, sample_user)
+
+    rows = (
+        db_session.query(HoldStatusTransition)
+        .filter(HoldStatusTransition.hold_entry_id == sample_hold.hold_entry_id)
+        .order_by(HoldStatusTransition.transition_id)
+        .all()
+    )
+
+    assert rows[-1].from_status == HoldStatus.ON_HOLD
+    assert rows[-1].to_status == HoldStatus.RESUMED
+
+
 def test_every_hold_status_write_site_is_instrumented():
     """Static guard: a hold_status write with no recorder call nearby is a
     hole in the history, and holes are invisible until a trend query is wrong.
 
-    Three write forms exist in this codebase and all three must be caught:
+    Four write forms exist or are guarded against in this codebase and all
+    four must be caught:
       - attribute assignment:   db_hold.hold_status = ...
       - dict/bracket-key assignment: hold_data["hold_status"] = ...   (crud/hold/core.py)
       - setattr-style:          setattr(db_hold, "hold_status", ...)
+      - bulk-update forms:      .update({HoldEntry.hold_status: X}) /
+                                 update(HoldEntry).values(hold_status=X)
+                                 (no writer uses this shape today; this guard
+                                 is the branch's stated defence against a
+                                 future one, and a bulk path is exactly the
+                                 shape a future writer takes -- it bypasses
+                                 setattr entirely, so the three per-line
+                                 patterns above cannot see it)
 
     Presence-in-file is not enough (that was the bug in the first version of
     this guard): it can't tell a real recorder call for site A from silence
@@ -203,6 +330,12 @@ def test_every_hold_status_write_site_is_instrumented():
     # like `x = hold_data["hold_status"]` does not match.
     bracket_write = re.compile(r"""\[\s*['"]hold_status['"]\s*\]\s*=\s*(?!=)""")
     setattr_write = re.compile(r"""setattr\(\s*[\w.]+\s*,\s*['"]hold_status['"]\s*,""")
+    # `.update({HoldEntry.hold_status: X})` (Query.update dict form) and
+    # `update(HoldEntry).values(hold_status=X)` (Core update().values() form).
+    # Scanned over the whole file text rather than per-line, since the
+    # dict/kwargs argument routinely wraps onto its own line(s) in this
+    # codebase's formatting.
+    bulk_write = re.compile(r"\.(?:update|values)\([^)]{0,200}?hold_status", re.DOTALL)
 
     offenders = []
 
@@ -210,7 +343,8 @@ def test_every_hold_status_write_site_is_instrumented():
         rel = path.relative_to(root).as_posix()
         if rel.startswith(("tests/", "orm/", "schemas/", "scripts/", "db/", "alembic/")):
             continue
-        lines = path.read_text().splitlines()
+        text = path.read_text()
+        lines = text.splitlines()
         recorder_lines = [i for i, line in enumerate(lines) if "record_hold_transition(" in line]
 
         for i, line in enumerate(lines):
@@ -219,5 +353,10 @@ def test_every_hold_status_write_site_is_instrumented():
                 continue
             if not any(abs(i - r) <= WINDOW for r in recorder_lines):
                 offenders.append(f"{rel}:{i + 1}")
+
+        for match in bulk_write.finditer(text):
+            line_no = text.count("\n", 0, match.start())
+            if not any(abs(line_no - r) <= WINDOW for r in recorder_lines):
+                offenders.append(f"{rel}:{line_no + 1}")
 
     assert offenders == []
