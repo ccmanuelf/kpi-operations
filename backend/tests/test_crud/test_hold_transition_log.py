@@ -72,6 +72,22 @@ def test_from_status_defaults_to_holds_current_status(db_session, sample_hold, s
     assert row.from_status == "ON_HOLD"
 
 
+def test_explicit_none_from_status_is_preserved(db_session, sample_hold, sample_user):
+    """Explicit from_status=None (the hold-creation row) must not be silently
+    overwritten by the hold's current status. This is only distinguishable
+    from "not passed" because the implementation compares against the
+    `_UNSET` sentinel by identity rather than treating `from_status` as
+    falsy."""
+    sample_hold.hold_status = "ON_HOLD"
+
+    row = record_hold_transition(
+        db_session, sample_hold, to_status="ON_HOLD", current_user=sample_user, from_status=None
+    )
+    db_session.flush()
+
+    assert row.from_status is None
+
+
 def test_defaults_transitioned_at_to_now_when_not_given(db_session, sample_hold, sample_user):
     before = datetime.utcnow() - timedelta(seconds=5)
 
