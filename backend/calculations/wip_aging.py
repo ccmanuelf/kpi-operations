@@ -8,7 +8,7 @@ Tracks how long inventory sits in hold status
 """
 
 from sqlalchemy.orm import Session
-from sqlalchemy import and_, or_
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.sql.elements import ColumnElement
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
@@ -16,6 +16,7 @@ from typing import Dict, List, Optional, Sequence, Tuple
 import logging
 
 from backend.orm.hold_entry import HoldEntry, HoldStatus
+from backend.orm.hold_status_transition import HoldStatusTransition
 from backend.orm.work_order import WorkOrder
 from backend.crud.client_config import get_client_config_or_defaults
 
@@ -112,28 +113,61 @@ def active_as_of(as_of: date) -> ColumnElement[bool]:
     Portable by construction: plain comparisons against a bound datetime, no
     dialect-specific date arithmetic and no fractional seconds.
 
-    KNOWN LIMITATION (historical snapshots). `hold_status` is CURRENT state,
-    so a past `as_of` is judged partly by what the hold looks like TODAY: a
-    hold that was only PENDING_HOLD_APPROVAL back then but has since been
-    approved counts for that date, and one still pending now is absent from
-    every past date. Dates and resume-state ARE evaluated correctly (that is
-    what `resume_date` does), so this is confined to the status arm and only
-    bites callers that walk past dates -- `/wip-aging/trend`. As-of-now
-    callers pass today's date and are unaffected.
+    Status is read from HOLD_STATUS_TRANSITION -- the `to_status` of the
+    latest transition before the cutoff -- so a past `as_of` is judged by what
+    the hold actually was then, not by what it looks like today.
 
-    This is inherited, not introduced -- the previous `hold_status ==
-    ON_HOLD` filter was strictly worse, dropping every since-resumed hold
-    out of history altogether. Fixing it properly needs a status-transition
-    history to ask "what was this hold's status on date D", which is exactly
-    the transitions dataset scoped for Cycle 4 PR-C. Do not paper over it
-    with more current-status logic.
+    BOUNDARY (no backfill). Holds with no recorded transition before the
+    cutoff fall back to their current `hold_status`, which is the pre-PR-C1
+    behaviour: correct for live holds, approximate for history that predates
+    the table. `hold_status_history_started_at` reports where exactness
+    begins. Backfill was ruled out deliberately (2026-08-12); do not
+    reconstruct history retroactively.
     """
     cutoff = snapshot_cutoff(as_of)
+
+    # The hold's status AS OF the cutoff: the `to_status` of its latest
+    # transition strictly before the cutoff. Ordered by (transitioned_at,
+    # transition_id) because MariaDB DATETIME stores whole seconds -- two
+    # transitions can share an instant, and the later-inserted row wins.
+    status_as_of = (
+        select(HoldStatusTransition.to_status)
+        .where(
+            HoldStatusTransition.hold_entry_id == HoldEntry.hold_entry_id,
+            HoldStatusTransition.transitioned_at < cutoff,
+        )
+        .correlate(HoldEntry)
+        .order_by(
+            HoldStatusTransition.transitioned_at.desc(),
+            HoldStatusTransition.transition_id.desc(),
+        )
+        .limit(1)
+        .scalar_subquery()
+    )
+
+    # No backfill: holds predating this table have no transitions, so they
+    # fall back to current status -- exactly the pre-PR-C1 behaviour, rather
+    # than vanishing from history entirely.
+    effective_status = func.coalesce(status_as_of, HoldEntry.hold_status)
+
     return and_(
         HoldEntry.hold_date < cutoff,
         or_(HoldEntry.resume_date.is_(None), HoldEntry.resume_date >= cutoff),
-        HoldEntry.hold_status.notin_(NON_WIP_HOLD_STATUSES),
+        effective_status.notin_(NON_WIP_HOLD_STATUSES),
     )
+
+
+def hold_status_history_started_at(db: Session) -> Optional[datetime]:
+    """Earliest recorded hold-status transition, or None when none exist.
+
+    `active_as_of` is exact from a hold's first recorded transition onward and
+    falls back to current status before it (there is no backfill, by owner
+    ruling). Callers that present historical series use this to say honestly
+    from when the series is exact -- the same role `_trail_started_at` plays
+    for the audit read API in backend/routes/audit.py.
+    """
+    result = db.query(func.min(HoldStatusTransition.transitioned_at)).scalar()
+    return result if isinstance(result, datetime) else None
 
 
 def get_client_wip_thresholds(db: Session, client_id: Optional[str] = None) -> Tuple[int, int]:
