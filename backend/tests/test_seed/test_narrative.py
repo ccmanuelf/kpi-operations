@@ -84,6 +84,45 @@ def test_labor_disruption_drops_demo_hybrid_attendance(events):
     assert avg_headcount(-4, -2) < avg_headcount(-2, -1)
 
 
+# Every client with a narrative, and the window that narrative covers.
+_NARRATIVE_WINDOWS = (
+    ("DEMO-PIECE", -8, -6),
+    ("DEMO-HOURLY", -5, -3),
+    ("DEMO-HYBRID", -4, -2),
+)
+
+# Floors on how many DISTINCT values each drawn quantity must take inside a
+# window. Set well below what the generator actually produces at FULL/1234
+# (units_produced 67-72, units_defective 7-18, downtime_minutes 36,
+# attendance_headcount 4-5) so ordinary re-tuning of a range does not trip
+# them, but far enough above 1 that any collapse to a constant does.
+_MIN_DISTINCT_IN_WINDOW = {
+    "units_produced": 20,
+    "units_defective": 5,
+    "downtime_minutes": 10,
+    "attendance_headcount": 3,
+}
+
+
+def test_each_narrative_window_still_varies_day_to_day(events):
+    """The three scale tests above compare a window against a baseline, and
+    multiplication preserves that ratio whether or not the underlying series
+    varies -- replacing all three drawn quantities with constants and keeping
+    only the `* scale[...]` multipliers left every one of them green. So the
+    ratio is not evidence that a statistical baseline exists.
+
+    Spec section 3.3 chose hybrid shaping precisely because "purely scripted
+    data makes every day mechanically regular", so assert the variation
+    directly, INSIDE each window, where a scripted episode is most likely to
+    have flattened it. This is what would have caught attendance_headcount
+    being a constant."""
+    for client_id, lo, hi in _NARRATIVE_WINDOWS:
+        rows = _shift_events(events, client_id, lo, hi)
+        for field, floor in _MIN_DISTINCT_IN_WINDOW.items():
+            distinct = len({getattr(r, field) for r in rows})
+            assert distinct >= floor, f"{client_id} {field}: only {distinct} distinct values across {len(rows)} shifts"
+
+
 def test_sample_ref_has_no_episode(events):
     """The control client must stay in specification all year, so a demo can
     show one healthy client beside three troubled ones."""
