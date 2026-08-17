@@ -219,9 +219,29 @@ def _generate_client(
         )
         minute_cursor += 1
 
+    # --- Setup is finished. Everything below references entities created
+    # above, so it must be stamped strictly later than ALL of them.
+    #
+    # Hour/minute arithmetic alone cannot guarantee that: the shift-hour and
+    # line-minute steps are modular, so some (line, shift) index always wraps
+    # back toward 00:00 -- at 2 lines `(30 + 1*30) % 60` is minute 0, and at 4
+    # shifts `(6 + 3*6) % 24` is hour 0, both of which land BEFORE the 06:00
+    # setup block on the same calendar day. The setup cursor can also grow past
+    # 07:00 (and past midnight) once a profile declares enough entities,
+    # colliding with the fixed 07:00 WorkOrderReceived instant.
+    #
+    # Bands, not arithmetic, are the fix: setup owns whole calendar days, and
+    # all activity starts on the day AFTER the last setup instant. No
+    # (lines, shifts, employees, products) a Profile can express can then place
+    # an activity event before the entity it references, because the day
+    # boundary dominates every hour and minute offset.
+    setup_end = day0 + timedelta(minutes=minute_cursor - 1)
+    activity_start = setup_end.date() + timedelta(days=1)
+    activity_days = (as_of - activity_start).days
+
     # --- daily shift activity, Mon-Fri only
-    for offset in range(profile.days):
-        day = start + timedelta(days=offset)
+    for offset in range(max(0, activity_days)):
+        day = activity_start + timedelta(days=offset)
         if day.weekday() >= 5:
             continue
         scale = _narrative_scale(scenario, day, as_of)
@@ -249,11 +269,15 @@ def _generate_client(
                     attendance_headcount=max(1, int(profile.employees_per_client / len(lines) * scale["attendance"])),
                 )
 
-    # --- work orders spread across the window, each with a real chain
-    span = max(1, profile.days - 10)
+    # --- work orders spread across the window, each with a real chain.
+    # Anchored on activity_start for the same reason the shift loop is: a
+    # WorkOrderReceived is stamped 07:00, which the setup cursor reaches once
+    # a client declares ~54 entities, and a work order must never precede the
+    # ProductDefined it references.
+    span = max(1, activity_days - 10)
     for i in range(profile.work_orders_per_client):
         wo = f"{cid}-WO-{i + 1:04d}"
-        opened = start + timedelta(days=rng.randrange(span))
+        opened = activity_start + timedelta(days=rng.randrange(span))
         emit(
             WorkOrderReceived,
             datetime.combine(opened, time(7, 0)),

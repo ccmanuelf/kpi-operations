@@ -1,10 +1,13 @@
-from datetime import date, timedelta
+from datetime import date, datetime, time, timedelta
 
 from backend.seed.events import (
     ClientCreated,
     EmployeeHired,
     HoldOpened,
     HoldStatusChanged,
+    LineCommissioned,
+    ProductDefined,
+    ShiftDefined,
     ShiftWorked,
     WorkOrderReceived,
     WorkOrderStatusChanged,
@@ -31,8 +34,29 @@ WIDE_SHIFTS = Profile(
 )
 
 
+MANY_ENTITIES = Profile(
+    name="many-entities-test",
+    days=30,
+    lines_per_client=20,
+    shifts_per_client=12,
+    employees_per_client=60,
+    work_orders_per_client=6,
+)
+
+
 def _gen(seed=1234):
     return generate(SCENARIOS, SMOKE, seed=seed, as_of=AS_OF)
+
+
+def _activity_start(profile, start):
+    """Independent restatement of the generator's setup band: ClientCreated at
+    06:00, then one minute per remaining setup event (1 user + lines + shifts
+    + 3 products + employees), and activity begins the day after the last of
+    them. Recomputed here rather than read off the stream so a regression that
+    moved the band would fail the test instead of being absorbed by it."""
+    setup_minutes = 1 + profile.lines_per_client + profile.shifts_per_client + 3 + profile.employees_per_client
+    setup_end = datetime.combine(start, time(6, 0)) + timedelta(minutes=setup_minutes)
+    return setup_end.date() + timedelta(days=1)
 
 
 def test_same_inputs_produce_an_identical_stream():
@@ -101,6 +125,48 @@ def test_no_event_precedes_its_client_creation():
             assert created_at[e.client_id] < e.order_key
 
 
+# Which attribute on an event names an entity of each creating type. An event
+# carrying one of these must come after the event that created that entity.
+_REFERENCED_ENTITIES = (
+    (LineCommissioned, "line_id"),
+    (ShiftDefined, "shift_id"),
+    (ProductDefined, "product_id"),
+)
+
+
+def test_no_event_precedes_the_line_shift_or_product_it_references():
+    """Clients were the only entity this suite checked, so a ShiftWorked
+    stamped before its own line/shift went unnoticed: the modular hour/minute
+    steps wrap the highest line index back to minute 0 and (at 4 shifts) the
+    highest shift index back to hour 0, landing activity BELOW the 06:00 setup
+    block on the same day. Measured before the fix: 8 violations on SMOKE and
+    FULL, 32 on WIDE_SHIFTS.
+
+    Checked over three profiles that stress different arithmetic:
+    WIDE_SHIFTS wraps the shift HOUR to 0, and MANY_ENTITIES declares enough
+    entities (96) that the setup minute cursor runs past the fixed 07:00
+    WorkOrderReceived instant."""
+    for profile in (SMOKE, WIDE_SHIFTS, MANY_ENTITIES):
+        events = generate(SCENARIOS, profile, seed=1234, as_of=AS_OF)
+        created_at: dict = {}
+        checked = 0
+        for e in events:
+            for cls, attr in _REFERENCED_ENTITIES:
+                if isinstance(e, cls):
+                    created_at[(attr, getattr(e, attr))] = e.order_key
+            for _, attr in _REFERENCED_ENTITIES:
+                referenced = getattr(e, attr, None)
+                if referenced is None or isinstance(e, tuple(c for c, a in _REFERENCED_ENTITIES if a == attr)):
+                    continue
+                key = (attr, referenced)
+                assert key in created_at, f"{profile.name}: {type(e).__name__} references uncreated {key}"
+                assert (
+                    created_at[key] < e.order_key
+                ), f"{profile.name}: {type(e).__name__} at {e.at} precedes creation of {key}"
+                checked += 1
+        assert checked, f"{profile.name} produced no referencing events; the assertions above would be vacuous"
+
+
 def test_work_order_events_follow_the_work_order_receipt():
     seen = set()
     for e in _gen():
@@ -151,9 +217,15 @@ def test_shift_events_cover_the_profile_window():
     one day would still match on cardinality alone."""
     days = {e.at.date() for e in _gen() if isinstance(e, ShiftWorked)}
     start = AS_OF - timedelta(days=SMOKE.days)
+    # Day 0 (and any further day the setup band spills onto) belongs to setup
+    # alone, so activity runs [activity_start, as_of) -- see _activity_start.
+    activity_start = _activity_start(SMOKE, start)
     expected_days = {
-        start + timedelta(days=offset) for offset in range(SMOKE.days) if (start + timedelta(days=offset)).weekday() < 5
+        activity_start + timedelta(days=offset)
+        for offset in range((AS_OF - activity_start).days)
+        if (activity_start + timedelta(days=offset)).weekday() < 5
     }
+    assert expected_days, "expected-day set is empty; the comparison below would be vacuous"
     assert days == expected_days
 
 
