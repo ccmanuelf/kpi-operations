@@ -74,16 +74,17 @@ def test_stream_is_ordered_by_at_then_seq():
     assert events == sorted(events, key=lambda e: e.order_key)
 
 
-def test_seq_is_strictly_increasing_across_the_whole_stream():
-    """This is a construction check, not a coverage test: seq is reassigned
-    as final stream position (1..n) by generate() itself, so it cannot fail
-    on its own -- and neither can order_key uniqueness, since order_key is
-    (at, seq) and seq alone is already guaranteed unique here. The property
-    that can actually fail -- real timestamp collisions within a day's
-    ShiftWorked events -- is asserted separately below."""
+def test_seq_is_contiguous_from_one_across_the_whole_stream():
+    """Sortedness and uniqueness alone cannot fail here -- generate() assigns
+    seq as final stream position -- which is why this test used to say so in
+    its own docstring and assert nothing else. CONTIGUITY can fail, and S1b
+    depends on it: it walks the stream expecting seq to be a dense 1..n index
+    into insertion order, and a gap would mean events were dropped after
+    renumbering (the as_of clamp runs BEFORE renumbering precisely so this
+    holds)."""
     seqs = [e.seq for e in _gen()]
-    assert seqs == sorted(seqs)
-    assert len(seqs) == len(set(seqs))
+    assert seqs, "fixture produced no events; the comparison below would be vacuous"
+    assert seqs == list(range(1, len(seqs) + 1))
 
 
 def test_shift_worked_timestamps_are_distinct_within_a_client_day():
