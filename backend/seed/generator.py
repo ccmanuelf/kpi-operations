@@ -260,7 +260,16 @@ def _generate_client(
                 )
                 prev_h = None
                 hwhen = hold_day
+                # Bounded by the same window_end the opening used: without this,
+                # a status step could land after the order's own terminal
+                # transition (order CLOSED, hold still reaching ON_HOLD weeks
+                # later). If a step would exceed the bound, stop the chain
+                # there rather than piling every remaining step onto the
+                # boundary day -- a truncated chain is realistic, a pile-up is
+                # not.
                 for step in HOLD_FLOW[: rng.randint(1, len(HOLD_FLOW))]:
+                    if hwhen > window_end:
+                        break
                     emit(
                         HoldStatusChanged,
                         datetime.combine(hwhen, time(10, 0)),
