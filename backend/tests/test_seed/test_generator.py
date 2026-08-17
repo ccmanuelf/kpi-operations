@@ -38,20 +38,29 @@ def test_stream_is_ordered_by_at_then_seq():
 def test_seq_is_strictly_increasing_across_the_whole_stream():
     """This is a construction check, not a coverage test: seq is reassigned
     as final stream position (1..n) by generate() itself, so it cannot fail
-    on its own. The property the materializer actually depends on -- that no
-    two events share an (at, seq) position -- is order_key uniqueness,
-    asserted separately below."""
+    on its own -- and neither can order_key uniqueness, since order_key is
+    (at, seq) and seq alone is already guaranteed unique here. The property
+    that can actually fail -- real timestamp collisions within a day's
+    ShiftWorked events -- is asserted separately below."""
     seqs = [e.seq for e in _gen()]
     assert seqs == sorted(seqs)
     assert len(seqs) == len(set(seqs))
 
 
-def test_order_keys_are_unique_across_the_whole_stream():
-    """Ties within a second must be resolved by data, not by sort stability:
-    two events sharing an (at, seq) order_key would make stream position
-    ambiguous for the materializer."""
-    order_keys = [e.order_key for e in _gen()]
-    assert len(order_keys) == len(set(order_keys))
+def test_shift_worked_timestamps_are_distinct_within_a_client_day():
+    """order_key uniqueness is guaranteed by construction (seq is reassigned
+    1..n), so it cannot catch a real ambiguity defect: collapsing every
+    ShiftWorked event to one instant per day still passes it. There is one
+    ShiftWorked event per (line, shift) pair per day, deliberately
+    staggered by hour/minute -- assert they stay distinct within each
+    (client_id, date) group, which is the property a collapse would break."""
+    groups: dict = {}
+    for e in _gen():
+        if isinstance(e, ShiftWorked):
+            groups.setdefault((e.client_id, e.at.date()), []).append(e.at)
+    assert groups, "fixture produced no ShiftWorked events; the assertion below would be vacuous"
+    for key, times in groups.items():
+        assert len(set(times)) == len(times), f"{key} has colliding ShiftWorked instants"
 
 
 def test_every_timestamp_is_whole_seconds_and_naive():
