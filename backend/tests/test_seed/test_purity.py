@@ -22,35 +22,48 @@ SEED_PACKAGE = ("backend", "seed")
 
 
 def _engine_modules():
-    """Globbed, not hardcoded. The previous 4-tuple gave any NEW module under
-    backend/seed zero coverage, which is precisely where an accidental import
-    would land.
+    """Globbed recursively, not hardcoded and not shallow. The previous
+    4-tuple gave any NEW module under backend/seed zero coverage; a
+    non-recursive glob repeated the same hole one level down -- a module
+    dropped into a subpackage (e.g. backend/seed/subpkg/evil.py) carrying a DB
+    import, a clock read and module-level randomness passed every guard
+    clean, because none of them ever looked past the top level.
 
     ALLOWLIST: S1b adds backend/seed/materialize.py, which by design DOES talk
     to the database. When it lands, exempt it here by name -- do not weaken the
     checks themselves, and do not go back to an opt-in list.
     """
-    return sorted(p for p in SEED_DIR.glob("*.py") if p.name != "__init__.py")
+    return sorted(p for p in SEED_DIR.rglob("*.py") if p.name != "__init__.py")
 
 
 def _imported_modules(node, module_path):
     """Every module name an import node pulls in, with relative imports
-    resolved to absolute.
+    resolved to absolute -- including names imported FROM a package, not just
+    the package path itself.
 
     `from ..orm import work_order` has ImportFrom.module == "orm" and level 2,
-    so a plain prefix match against "backend.orm" finds nothing -- the guard's
-    most dangerous hole, since a relative database import is the one violation
-    that nothing else on the branch would surface.
+    so a plain prefix match against "backend.orm" finds nothing -- a relative
+    database import is a violation that nothing else on the branch would
+    surface. Resolving the base module handles that case, but the base alone
+    still misses `from backend import orm` (module == "backend", the forbidden
+    package arrives as a NAME in node.names) and `from .. import orm` (same
+    shape, relative). Joining each imported name onto the resolved base closes
+    both: the prefix check then sees "backend.orm" either way.
     """
     if isinstance(node, ast.Import):
         return [a.name for a in node.names]
     if not isinstance(node, ast.ImportFrom):
         return []
     if not node.level:
-        return [node.module or ""]
-    # level 1 == this package, level 2 == its parent, and so on.
-    base = list(module_path[: len(module_path) - (node.level - 1)])
-    return [".".join(base + ([node.module] if node.module else []))]
+        base = node.module or ""
+    else:
+        # level 1 == this package, level 2 == its parent, and so on.
+        base = ".".join(module_path[: len(module_path) - (node.level - 1)])
+        if node.module:
+            base = f"{base}.{node.module}" if base else node.module
+    modules = [base] if base else []
+    modules += [f"{base}.{a.name}" if base else a.name for a in node.names]
+    return modules
 
 
 def test_engine_modules_import_no_database_machinery():
