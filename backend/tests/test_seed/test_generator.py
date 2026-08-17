@@ -10,10 +10,25 @@ from backend.seed.events import (
     WorkOrderStatusChanged,
 )
 from backend.seed.generator import generate, stream_digest
-from backend.seed.profiles import FULL, SMOKE
+from backend.seed.profiles import FULL, SMOKE, Profile
 from backend.seed.scenarios import SCENARIOS
 
 AS_OF = date(2026, 8, 14)
+
+# shifts_per_client=4 is the minimum that exposes the old (6 + si * 8) % 24
+# aliasing (shift index 0 landed on the same hour as shift index 3): under
+# the pre-fix formula, 40 of 40 client-days in a SMOKE-sized run had
+# colliding ShiftWorked instants, but SMOKE/FULL's own shifts_per_client=2
+# never reaches that collision, so neither profile can catch a regression on
+# its own.
+WIDE_SHIFTS = Profile(
+    name="wide-shifts-test",
+    days=SMOKE.days,
+    lines_per_client=SMOKE.lines_per_client,
+    shifts_per_client=4,
+    employees_per_client=SMOKE.employees_per_client,
+    work_orders_per_client=SMOKE.work_orders_per_client,
+)
 
 
 def _gen(seed=1234):
@@ -53,14 +68,20 @@ def test_shift_worked_timestamps_are_distinct_within_a_client_day():
     ShiftWorked event to one instant per day still passes it. There is one
     ShiftWorked event per (line, shift) pair per day, deliberately
     staggered by hour/minute -- assert they stay distinct within each
-    (client_id, date) group, which is the property a collapse would break."""
-    groups: dict = {}
-    for e in _gen():
-        if isinstance(e, ShiftWorked):
-            groups.setdefault((e.client_id, e.at.date()), []).append(e.at)
-    assert groups, "fixture produced no ShiftWorked events; the assertion below would be vacuous"
-    for key, times in groups.items():
-        assert len(set(times)) == len(times), f"{key} has colliding ShiftWorked instants"
+    (client_id, date) group, which is the property a collapse would break.
+
+    SMOKE alone can't catch the aliasing this guards against: its
+    shifts_per_client=2 never reaches the modulus where `si * step` wraps
+    around and re-collides with a lower si. WIDE_SHIFTS (shifts_per_client=4)
+    is the smallest profile that does, so check both."""
+    for profile in (SMOKE, WIDE_SHIFTS):
+        groups: dict = {}
+        for e in generate(SCENARIOS, profile, seed=1234, as_of=AS_OF):
+            if isinstance(e, ShiftWorked):
+                groups.setdefault((e.client_id, e.at.date()), []).append(e.at)
+        assert groups, "fixture produced no ShiftWorked events; the assertion below would be vacuous"
+        for key, times in groups.items():
+            assert len(set(times)) == len(times), f"{profile.name}/{key} has colliding ShiftWorked instants"
 
 
 def test_every_timestamp_is_whole_seconds_and_naive():
