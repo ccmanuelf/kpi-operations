@@ -95,7 +95,11 @@ def stream_digest(events: Iterable[Event]) -> str:
         h.update(f"{type(e).__name__}|{e.at.isoformat()}|{e.seq}|{e.client_id}".encode())
         for f in sorted(fields(e), key=lambda f: f.name):
             if f.name not in ("at", "seq", "client_id"):
-                h.update(f"|{f.name}={getattr(e, f.name)}".encode())
+                # repr() escapes special characters to prevent separator-injection
+                # collisions where | or = in a field value could imitate a boundary.
+                value = repr(getattr(e, f.name))
+                h.update(f"|{f.name}={value}".encode())
+        h.update(b"\n")  # Record terminator to separate events
     return h.hexdigest()
 
 
