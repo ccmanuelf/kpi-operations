@@ -10,7 +10,7 @@ from backend.seed.events import (
     WorkOrderStatusChanged,
 )
 from backend.seed.generator import generate, stream_digest
-from backend.seed.profiles import SMOKE
+from backend.seed.profiles import FULL, SMOKE
 from backend.seed.scenarios import SCENARIOS
 
 AS_OF = date(2026, 8, 14)
@@ -36,10 +36,22 @@ def test_stream_is_ordered_by_at_then_seq():
 
 
 def test_seq_is_strictly_increasing_across_the_whole_stream():
-    """Ties within a second must be resolved by data, not by sort stability."""
+    """This is a construction check, not a coverage test: seq is reassigned
+    as final stream position (1..n) by generate() itself, so it cannot fail
+    on its own. The property the materializer actually depends on -- that no
+    two events share an (at, seq) position -- is order_key uniqueness,
+    asserted separately below."""
     seqs = [e.seq for e in _gen()]
     assert seqs == sorted(seqs)
     assert len(seqs) == len(set(seqs))
+
+
+def test_order_keys_are_unique_across_the_whole_stream():
+    """Ties within a second must be resolved by data, not by sort stability:
+    two events sharing an (at, seq) order_key would make stream position
+    ambiguous for the materializer."""
+    order_keys = [e.order_key for e in _gen()]
+    assert len(order_keys) == len(set(order_keys))
 
 
 def test_every_timestamp_is_whole_seconds_and_naive():
@@ -74,6 +86,7 @@ def test_every_work_order_gets_an_opening_status_row():
     """The gap that made the old seeder's transition log unusable: 60 of 100
     orders had no chain at all."""
     received = {e.work_order_id for e in _gen() if isinstance(e, WorkOrderReceived)}
+    assert received, "fixture produced no work orders; the equality below would be vacuous"
     opened = {e.work_order_id for e in _gen() if isinstance(e, WorkOrderStatusChanged) and e.from_status is None}
     assert received == opened
 
@@ -103,12 +116,50 @@ def test_hold_status_changes_follow_their_hold():
 def test_shift_events_cover_the_profile_window():
     """The brief's flat "- 4 for weekends" slack is brittle against the
     SMOKE window's actual weekday composition, so compute the exact expected
-    working-day count (Mon-Fri, mirroring the generator's own day loop) and
-    assert equality rather than a hand-picked slack constant."""
+    working-day set (Mon-Fri, mirroring the generator's own day loop) and
+    compare the actual dates, not just their count -- a window shifted by
+    one day would still match on cardinality alone."""
     days = {e.at.date() for e in _gen() if isinstance(e, ShiftWorked)}
     start = AS_OF - timedelta(days=SMOKE.days)
-    expected_working_days = sum(1 for offset in range(SMOKE.days) if (start + timedelta(days=offset)).weekday() < 5)
-    assert len(days) == expected_working_days
+    expected_days = {
+        start + timedelta(days=offset) for offset in range(SMOKE.days) if (start + timedelta(days=offset)).weekday() < 5
+    }
+    assert days == expected_days
+
+
+def test_no_event_is_dated_after_as_of():
+    """FINDING 1: work-order and hold chains walk forward with no clamp, so
+    every run emitted future-dated events past as_of. A dataset generated
+    "as of" a date must not contain events after it, or a materialized
+    "current status" taken from the newest transition would report a
+    closure or resume that hasn't happened (spec section 3)."""
+    for profile in (SMOKE, FULL):
+        events = generate(SCENARIOS, profile, seed=1234, as_of=AS_OF)
+        assert max(e.at for e in events).date() <= AS_OF
+
+
+def test_holds_open_within_their_work_orders_active_window():
+    """FINDING 2: holds were scheduled off the work order's bare receipt
+    date, independent of its status chain, so a hold could open on an order
+    already CLOSED or resume before the order progressed. Every HoldOpened
+    must fall on/after its work order's RELEASED transition and on/before
+    its terminal transition (or as_of, if the chain hasn't reached CLOSED)."""
+    events = _gen()
+    steps_by_wo = {}
+    for e in events:
+        if isinstance(e, WorkOrderStatusChanged):
+            steps_by_wo.setdefault(e.work_order_id, []).append((e.at.date(), e.to_status))
+
+    checked = 0
+    for e in events:
+        if isinstance(e, HoldOpened):
+            steps = sorted(steps_by_wo[e.work_order_id])
+            released_day = next(d for d, status in steps if status == "RELEASED")
+            terminal_day, terminal_status = steps[-1]
+            window_end = terminal_day if terminal_status == "CLOSED" else AS_OF
+            assert released_day <= e.at.date() <= window_end
+            checked += 1
+    assert checked, "fixture produced no holds; the assertion above would be vacuous"
 
 
 def test_each_client_gets_its_declared_employee_count():
