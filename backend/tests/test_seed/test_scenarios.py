@@ -1,5 +1,5 @@
 from backend.seed.profiles import FULL, PROFILES, SMOKE
-from backend.seed.scenarios import SCENARIOS
+from backend.seed.scenarios import SCENARIOS, NarrativeWindow
 
 
 def test_full_profile_covers_twelve_months():
@@ -30,6 +30,7 @@ def test_pay_models_are_distinct_where_the_spec_says_so():
     assert by_id["DEMO-PIECE"].pay_model == "piece"
     assert by_id["DEMO-HOURLY"].pay_model == "hourly"
     assert by_id["DEMO-HYBRID"].pay_model == "hybrid"
+    assert by_id["SAMPLE_REF"].pay_model == "hourly"
 
 
 def test_sample_ref_is_the_healthy_control():
@@ -51,6 +52,21 @@ def test_narrative_windows_are_ordered_and_in_the_past():
         for w in scenario.narrative:
             assert w.start_month < 0
             assert w.start_month < w.end_month
+
+
+def test_each_clients_narrative_window_matches_its_declared_episode():
+    """Pins the exact (kind, start_month, end_month) triple per client, not
+    just pooled invariants. Task 4's injection keys on `kind` per client, so
+    swapping episodes between clients (or shifting their months) must fail
+    here even though the generic ordering checks above would stay green."""
+    by_id = {s.client_id: s for s in SCENARIOS}
+    assert by_id["DEMO-PIECE"].narrative == (
+        NarrativeWindow(kind="supplier_quality_crisis", start_month=-8, end_month=-6),
+    )
+    assert by_id["DEMO-HOURLY"].narrative == (
+        NarrativeWindow(kind="equipment_reliability_decline", start_month=-5, end_month=-3),
+    )
+    assert by_id["DEMO-HYBRID"].narrative == (NarrativeWindow(kind="labor_disruption", start_month=-4, end_month=-2),)
 
 
 def test_scenarios_are_immutable():

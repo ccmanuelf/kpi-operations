@@ -23,7 +23,7 @@ class ClientScenario:
     client_id: str
     name: str
     pay_model: str
-    narrative: tuple
+    narrative: tuple[NarrativeWindow, ...]
 
 
 SCENARIOS = (
