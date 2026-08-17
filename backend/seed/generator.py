@@ -43,6 +43,12 @@ ATTENDANCE_DISRUPTION_SCALE = 2.0 / 3.0  # "reduce by roughly a third"
 HOLD_RATE_BASELINE = 0.15
 HOLD_RATE_QUALITY_CRISIS = 0.5
 
+# Reason pools for a hold. The crisis pool is the baseline with QUALITY
+# weighted up, not replaced -- a crisis makes quality holds dominant, it does
+# not make every other cause vanish.
+BASELINE_REASONS = ("QUALITY", "MATERIAL", "ENGINEERING")
+QUALITY_CRISIS_REASONS = ("QUALITY", "QUALITY", "QUALITY", "MATERIAL", "ENGINEERING")
+
 
 def generate(
     scenarios: Sequence[ClientScenario],
@@ -128,12 +134,13 @@ def _narrative_scale(scenario: ClientScenario, day: date, as_of: date) -> dict:
     return scale
 
 
-def _hold_rate(scenario: ClientScenario, opened: date, as_of: date) -> float:
+def _hold_rate(in_quality_crisis: bool) -> float:
     """Baseline hold probability, raised while a supplier-quality-crisis
-    window covers the order's receipt date."""
-    if _window_active(scenario, opened, as_of, "supplier_quality_crisis"):
-        return HOLD_RATE_QUALITY_CRISIS
-    return HOLD_RATE_BASELINE
+    window covers the date the HOLD would fall on -- not the date its order
+    was received. A hold is caused by conditions at the moment it is placed;
+    keying on receipt spread the elevation across the whole year and left the
+    crisis window statistically indistinguishable."""
+    return HOLD_RATE_QUALITY_CRISIS if in_quality_crisis else HOLD_RATE_BASELINE
 
 
 def _generate_client(
@@ -330,35 +337,44 @@ def _generate_client(
                 if terminated
                 else datetime.combine(window_end, time(23, 59, 59))
             )
-            # rng.random() is drawn unconditionally *relative to the hold
-            # rate* -- once depth >= 2 has gated us into this branch (a
-            # structural fact about the order, unrelated to any rate), the
-            # draw always happens before _hold_rate is consulted. That's what
-            # lets Task 4 vary the rate by narrative window without shifting
-            # the draw count between a window with a hold and one without.
-            # Do not restructure into `if _hold_rate(...) > 0 and rng.random() < ...`
-            # -- that would make the draw count depend on the rate's value.
-            draw = rng.random()
-            if span_days >= 1 and draw < _hold_rate(scenario, opened, as_of):
+            # Three draws, taken unconditionally and in a fixed order before
+            # any narrative state is consulted: WHEN a hold would fall, WHETHER
+            # it opens, and WHICH reason it carries. Drawing all three up front
+            # is what lets the narrative vary the rate and the reason pool
+            # without changing how much of the RNG stream this order consumes.
+            #
+            # `rng.random()` rather than `rng.randrange`/`rng.choice` for the
+            # day and reason: randrange(0) raises, and choice() consumes a
+            # variable number of bits via _randbelow's rejection sampling, so
+            # picking between a 3-entry and a 5-entry pool with choice() would
+            # itself perturb the stream. Do not restructure into
+            # `if _hold_rate(...) > 0 and rng.random() < ...` either -- that
+            # would make the draw count depend on the rate's value.
+            day_draw = rng.random()
+            open_draw = rng.random()
+            reason_draw = rng.random()
+            # The hold's OWN date, not the order's receipt date, is what the
+            # narrative keys on below. Receipt-keying was the defect: receipts
+            # are uniform over the year but a hold lands anywhere in an active
+            # window up to ~350 days wide, so at FULL/1234 only 1 of DEMO-PIECE's
+            # 17 holds actually fell inside the crisis window it was supposedly
+            # caused by, and every QUALITY-biased hold landed outside it.
+            hold_day = released_day + timedelta(days=int(day_draw * span_days)) if span_days >= 1 else released_day
+            in_quality_crisis = _window_active(scenario, hold_day, as_of, "supplier_quality_crisis")
+            if span_days >= 1 and open_draw < _hold_rate(in_quality_crisis):
                 hold_id = f"{cid}-HOLD-{i + 1:04d}"
-                hold_day = released_day + timedelta(days=rng.randrange(span_days))
                 # Inside a supplier-quality-crisis window, holds should read
                 # as caused by that crisis: bias the reason pool toward
                 # QUALITY rather than forcing it, so the RNG still varies
-                # which holds get QUALITY vs. an unrelated cause. Both
-                # branches draw exactly once, so the choice of pool doesn't
-                # add or remove a draw relative to the non-crisis path.
-                if _window_active(scenario, opened, as_of, "supplier_quality_crisis"):
-                    reason_pool = ["QUALITY", "QUALITY", "QUALITY", "MATERIAL", "ENGINEERING"]
-                else:
-                    reason_pool = ["QUALITY", "MATERIAL", "ENGINEERING"]
+                # which holds get QUALITY vs. an unrelated cause.
+                reason_pool = QUALITY_CRISIS_REASONS if in_quality_crisis else BASELINE_REASONS
                 emit(
                     HoldOpened,
                     datetime.combine(hold_day, time(9, 0)),
                     cid,
                     hold_entry_id=hold_id,
                     work_order_id=wo,
-                    reason_category=rng.choice(reason_pool),
+                    reason_category=reason_pool[int(reason_draw * len(reason_pool))],
                 )
                 prev_h = None
                 hwhen_at = datetime.combine(hold_day, time(10, 0))
