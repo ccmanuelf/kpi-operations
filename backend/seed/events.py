@@ -36,6 +36,9 @@ class Event:
     def order_key(self) -> tuple:
         return (self.at, self.seq)
 
+    def microsecond_free(self) -> bool:
+        return self.at.microsecond == 0 and self.at.tzinfo is None
+
 
 @dataclass(frozen=True)
 class ClientCreated(Event):
