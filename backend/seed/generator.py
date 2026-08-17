@@ -320,6 +320,16 @@ def _generate_client(
             terminated = depth == len(WORK_ORDER_FLOW)
             window_end = transition_days[-1] if terminated else as_of
             span_days = (window_end - released_day).days
+            # The bound has to be an INSTANT, not a date. Transitions are
+            # stamped 08:00 and hold status changes 10:00, so a date-granular
+            # `hwhen > window_end` lets a hold reach ON_HOLD two hours after
+            # its order was CLOSED on the same day -- 2 such escapes at
+            # FULL/seed=7, invisible at seed 1234.
+            window_end_at = (
+                datetime.combine(window_end, time(8, 0))
+                if terminated
+                else datetime.combine(window_end, time(23, 59, 59))
+            )
             # rng.random() is drawn unconditionally *relative to the hold
             # rate* -- once depth >= 2 has gated us into this branch (a
             # structural fact about the order, unrelated to any rate), the
@@ -351,24 +361,24 @@ def _generate_client(
                     reason_category=rng.choice(reason_pool),
                 )
                 prev_h = None
-                hwhen = hold_day
-                # Bounded by the same window_end the opening used: without this,
-                # a status step could land after the order's own terminal
+                hwhen_at = datetime.combine(hold_day, time(10, 0))
+                # Bounded by the same window_end_at the opening used: without
+                # this, a status step could land after the order's own terminal
                 # transition (order CLOSED, hold still reaching ON_HOLD weeks
                 # later). If a step would exceed the bound, stop the chain
                 # there rather than piling every remaining step onto the
                 # boundary day -- a truncated chain is realistic, a pile-up is
                 # not.
                 for step in HOLD_FLOW[: rng.randint(1, len(HOLD_FLOW))]:
-                    if hwhen > window_end:
+                    if hwhen_at > window_end_at:
                         break
                     emit(
                         HoldStatusChanged,
-                        datetime.combine(hwhen, time(10, 0)),
+                        hwhen_at,
                         cid,
                         hold_entry_id=hold_id,
                         from_status=prev_h,
                         to_status=step,
                     )
                     prev_h = step
-                    hwhen = hwhen + timedelta(days=rng.randint(2, 15))
+                    hwhen_at = hwhen_at + timedelta(days=rng.randint(2, 15))

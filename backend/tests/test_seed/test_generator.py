@@ -257,34 +257,44 @@ def test_holds_stay_within_their_work_orders_active_window():
     the escape needs a chain that both terminates well before as_of AND
     has enough runway afterward for a status step to land beyond its
     terminal day yet still under as_of. FULL is where the review measured
-    it (23 violations), so check both profiles."""
-    for profile in (SMOKE, FULL):
-        events = generate(SCENARIOS, profile, seed=1234, as_of=AS_OF)
+    it (23 violations), so check both profiles.
+
+    Compared at INSTANT resolution, not date. Transitions are stamped 08:00
+    and hold status changes 10:00, so a date-granular comparison silently
+    accepts a hold reaching ON_HOLD two hours after its order was CLOSED the
+    same day. Seed 1234 happens to be clean of that; seed 7 is not (2
+    escapes on FULL), so it is pinned here explicitly."""
+    for profile, seed in ((SMOKE, 1234), (FULL, 1234), (FULL, 7)):
+        events = generate(SCENARIOS, profile, seed=seed, as_of=AS_OF)
         steps_by_wo = {}
         wo_by_hold = {}
         for e in events:
             if isinstance(e, WorkOrderStatusChanged):
-                steps_by_wo.setdefault(e.work_order_id, []).append((e.at.date(), e.to_status))
+                steps_by_wo.setdefault(e.work_order_id, []).append((e.at, e.to_status))
             elif isinstance(e, HoldOpened):
                 wo_by_hold[e.hold_entry_id] = e.work_order_id
 
         def active_window(work_order_id, steps_by_wo=steps_by_wo):
             steps = sorted(steps_by_wo[work_order_id])
-            released_day = next(d for d, status in steps if status == "RELEASED")
-            terminal_day, terminal_status = steps[-1]
-            window_end = terminal_day if terminal_status == "CLOSED" else AS_OF
-            return released_day, window_end
+            released_at = next(t for t, status in steps if status == "RELEASED")
+            terminal_at, terminal_status = steps[-1]
+            window_end_at = terminal_at if terminal_status == "CLOSED" else datetime.combine(AS_OF, time(23, 59, 59))
+            return released_at, window_end_at
 
         opened_checked = 0
         status_checked = 0
         for e in events:
             if isinstance(e, HoldOpened):
-                released_day, window_end = active_window(e.work_order_id)
-                assert released_day <= e.at.date() <= window_end
+                released_at, window_end_at = active_window(e.work_order_id)
+                assert (
+                    released_at <= e.at <= window_end_at
+                ), f"{profile.name}/{seed}: {e.hold_entry_id} opened at {e.at}"
                 opened_checked += 1
             elif isinstance(e, HoldStatusChanged):
-                released_day, window_end = active_window(wo_by_hold[e.hold_entry_id])
-                assert released_day <= e.at.date() <= window_end
+                released_at, window_end_at = active_window(wo_by_hold[e.hold_entry_id])
+                assert (
+                    released_at <= e.at <= window_end_at
+                ), f"{profile.name}/{seed}: {e.hold_entry_id} -> {e.to_status} at {e.at} exceeds {window_end_at}"
                 status_checked += 1
         assert opened_checked, "fixture produced no holds; the assertion above would be vacuous"
         assert status_checked, "fixture produced no hold status changes; the assertion above would be vacuous"
