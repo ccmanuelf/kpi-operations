@@ -241,6 +241,21 @@ def test_no_event_is_dated_after_as_of():
         assert max(e.at for e in events).date() <= AS_OF
 
 
+# Seeds swept by test_holds_stay_within_their_work_orders_active_window,
+# rather than a pinned tuple: pinning a single seed (as this test originally
+# did with FULL/seed=7) is fragile against RNG *stream* changes, not just
+# generator-logic changes. 1debf7e reshuffled the hold draws onto three
+# unconditional rng.random() calls in the same wave that pinned seed=7 --
+# reshuffling which seeds land the chain past the boundary -- and seed=7 no
+# longer escapes even with the instant bound reverted, silently turning the
+# regression guard into a no-op. A ~20-seed sweep is well within the seed
+# suite's budget (the whole sweep runs in well under a second) and, per the
+# re-review's own measurement, finds 29 escapes across 22 seeds once the
+# bound is date-granular -- so it stays non-vacuous across draw-structure
+# changes that a single pinned seed cannot survive.
+HOLD_WINDOW_SWEEP_SEEDS = range(1, 21)
+
+
 def test_holds_stay_within_their_work_orders_active_window():
     """FINDING 2: holds were scheduled off the work order's bare receipt
     date, independent of its status chain, so a hold could open on an order
@@ -254,51 +269,62 @@ def test_holds_stay_within_their_work_orders_active_window():
 
     SMOKE alone doesn't exercise this: its short window means the escape
     (a hold advancing past its order's own terminal transition while
-    staying under the global as_of clamp) rarely has room to occur --
-    the escape needs a chain that both terminates well before as_of AND
-    has enough runway afterward for a status step to land beyond its
-    terminal day yet still under as_of. FULL is where the review measured
-    it (23 violations), so check both profiles.
+    staying under the global as_of clamp) rarely has room to occur -- the
+    escape needs a chain that both terminates well before as_of AND has
+    enough runway afterward for a status step to land beyond its terminal
+    day yet still under as_of. FULL is where the review measured it, so it
+    stays in the sweep -- SMOKE alone would never expose this class.
 
     Compared at INSTANT resolution, not date. Transitions are stamped 08:00
     and hold status changes 10:00, so a date-granular comparison silently
     accepts a hold reaching ON_HOLD two hours after its order was CLOSED the
-    same day. Seed 1234 happens to be clean of that; seed 7 is not (2
-    escapes on FULL), so it is pinned here explicitly."""
-    for profile, seed in ((SMOKE, 1234), (FULL, 1234), (FULL, 7)):
-        events = generate(SCENARIOS, profile, seed=seed, as_of=AS_OF)
-        steps_by_wo = {}
-        wo_by_hold = {}
-        for e in events:
-            if isinstance(e, WorkOrderStatusChanged):
-                steps_by_wo.setdefault(e.work_order_id, []).append((e.at, e.to_status))
-            elif isinstance(e, HoldOpened):
-                wo_by_hold[e.hold_entry_id] = e.work_order_id
+    same day.
 
-        def active_window(work_order_id, steps_by_wo=steps_by_wo):
-            steps = sorted(steps_by_wo[work_order_id])
-            released_at = next(t for t, status in steps if status == "RELEASED")
-            terminal_at, terminal_status = steps[-1]
-            window_end_at = terminal_at if terminal_status == "CLOSED" else datetime.combine(AS_OF, time(23, 59, 59))
-            return released_at, window_end_at
-
+    The vacuous-fixture guard is aggregated across the whole sweep per
+    profile, not asserted per seed: SMOKE/seed=10 happens to produce zero
+    holds on its own (a small profile with only 6 work orders per client),
+    which is a fine outcome for one seed among twenty and not evidence the
+    check is vacuous."""
+    for profile in (SMOKE, FULL):
         opened_checked = 0
         status_checked = 0
-        for e in events:
-            if isinstance(e, HoldOpened):
-                released_at, window_end_at = active_window(e.work_order_id)
-                assert (
-                    released_at <= e.at <= window_end_at
-                ), f"{profile.name}/{seed}: {e.hold_entry_id} opened at {e.at}"
-                opened_checked += 1
-            elif isinstance(e, HoldStatusChanged):
-                released_at, window_end_at = active_window(wo_by_hold[e.hold_entry_id])
-                assert (
-                    released_at <= e.at <= window_end_at
-                ), f"{profile.name}/{seed}: {e.hold_entry_id} -> {e.to_status} at {e.at} exceeds {window_end_at}"
-                status_checked += 1
-        assert opened_checked, "fixture produced no holds; the assertion above would be vacuous"
-        assert status_checked, "fixture produced no hold status changes; the assertion above would be vacuous"
+        for seed in HOLD_WINDOW_SWEEP_SEEDS:
+            events = generate(SCENARIOS, profile, seed=seed, as_of=AS_OF)
+            steps_by_wo = {}
+            wo_by_hold = {}
+            for e in events:
+                if isinstance(e, WorkOrderStatusChanged):
+                    steps_by_wo.setdefault(e.work_order_id, []).append((e.at, e.to_status))
+                elif isinstance(e, HoldOpened):
+                    wo_by_hold[e.hold_entry_id] = e.work_order_id
+
+            def active_window(work_order_id, steps_by_wo=steps_by_wo):
+                steps = sorted(steps_by_wo[work_order_id])
+                released_at = next(t for t, status in steps if status == "RELEASED")
+                terminal_at, terminal_status = steps[-1]
+                window_end_at = (
+                    terminal_at if terminal_status == "CLOSED" else datetime.combine(AS_OF, time(23, 59, 59))
+                )
+                return released_at, window_end_at
+
+            for e in events:
+                if isinstance(e, HoldOpened):
+                    released_at, window_end_at = active_window(e.work_order_id)
+                    assert (
+                        released_at <= e.at <= window_end_at
+                    ), f"{profile.name}/{seed}: {e.hold_entry_id} opened at {e.at}"
+                    opened_checked += 1
+                elif isinstance(e, HoldStatusChanged):
+                    released_at, window_end_at = active_window(wo_by_hold[e.hold_entry_id])
+                    assert released_at <= e.at <= window_end_at, (
+                        f"{profile.name}/{seed}: {e.hold_entry_id} -> {e.to_status} "
+                        f"at {e.at} exceeds {window_end_at}"
+                    )
+                    status_checked += 1
+        assert opened_checked, f"{profile.name}: swept seeds produced no holds; the assertion above is vacuous"
+        assert (
+            status_checked
+        ), f"{profile.name}: swept seeds produced no hold status changes; the assertion above is vacuous"
 
 
 def test_each_client_gets_its_declared_employee_count():
