@@ -252,10 +252,26 @@ def _generate_client(
         if day.weekday() >= 5:
             continue
         scale = _narrative_scale(scenario, day, as_of)
+        # Nominal crew size per line. The DRAW around it happens per shift
+        # below; a line's roster does not change hour to hour, but who shows
+        # up does.
+        nominal_crew = max(1, profile.employees_per_client // len(lines))
+        crew_low = max(1, nominal_crew - 2)
+        crew_high = nominal_crew + 2
         for li, line_id in enumerate(lines):
             for si, shift_id in enumerate(shifts):
                 produced = rng.randint(180, 260)
                 defect_rate = rng.uniform(0.01, 0.03) * scale["defects"]
+                # Attendance is a DRAWN baseline like every other quantity
+                # here, not a constant. It used to be
+                # int(employees / lines * scale), which draws no RNG at all
+                # and produced Counter({4: 4004, 2: 172}) across the whole
+                # year -- one value everywhere and zero variance inside
+                # DEMO-HYBRID's labor-disruption window, which is that
+                # client's headline observable. Drawn unconditionally, before
+                # the narrative multiplier is applied, so the draw count never
+                # depends on whether a window is active.
+                attendance = max(1, int(rng.randint(crew_low, crew_high) * scale["attendance"]))
                 # shift_hour_step / line_minute_step are sized to this
                 # client's actual shift/line counts (see where they're
                 # computed above), so distinct si and distinct li can never
@@ -273,7 +289,7 @@ def _generate_client(
                     units_produced=produced,
                     units_defective=int(produced * defect_rate),
                     downtime_minutes=int(rng.randint(5, 40) * scale["downtime"]),
-                    attendance_headcount=max(1, int(profile.employees_per_client / len(lines) * scale["attendance"])),
+                    attendance_headcount=attendance,
                 )
 
     # --- work orders spread across the window, each with a real chain.
