@@ -140,7 +140,10 @@ def _generate_client(
             cid,
             shift_id=shift_id,
             name=f"Shift {i + 1}",
-            start_hour=6 + i * 8,
+            # Same % 24 the ShiftWorked hour below uses (si there == i here,
+            # both index the same shifts list): the declared start_hour must
+            # not diverge from the hour events are actually stamped at.
+            start_hour=(6 + i * 8) % 24,
         )
         minute_cursor += 1
 
