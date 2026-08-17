@@ -71,3 +71,13 @@ def test_every_event_type_subclasses_event_and_is_registered():
     for t in EVENT_TYPES:
         assert issubclass(t, Event)
     assert len(EVENT_TYPES) == len(set(EVENT_TYPES))
+
+
+def test_event_types_registry_is_complete():
+    """EVENT_TYPES is what the materializer dispatches on. A subclass defined
+    in this module but left out of the tuple would be generated and silently
+    never written -- so the registered set must equal the defined set, not
+    just be internally consistent."""
+    defined = set(Event.__subclasses__())
+    registered = set(EVENT_TYPES)
+    assert defined == registered
