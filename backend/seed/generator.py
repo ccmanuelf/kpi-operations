@@ -244,9 +244,12 @@ def _generate_client(
             terminated = depth == len(WORK_ORDER_FLOW)
             window_end = transition_days[-1] if terminated else as_of
             span_days = (window_end - released_day).days
-            # rng.random() is drawn unconditionally here, before _hold_rate is
-            # consulted, so Task 4 varying the rate by narrative window won't
-            # shift the draw count relative to a window with no hold at all.
+            # rng.random() is drawn unconditionally *relative to the hold
+            # rate* -- once depth >= 2 has gated us into this branch (a
+            # structural fact about the order, unrelated to any rate), the
+            # draw always happens before _hold_rate is consulted. That's what
+            # lets Task 4 vary the rate by narrative window without shifting
+            # the draw count between a window with a hold and one without.
             # Do not restructure into `if _hold_rate(...) > 0 and rng.random() < ...`
             # -- that would make the draw count depend on the rate's value.
             draw = rng.random()
