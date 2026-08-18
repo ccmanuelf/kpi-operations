@@ -74,7 +74,6 @@ def emit_setup(
     profile: Profile,
     start: date,
     as_of: date,
-    is_first: bool,
 ) -> ClientSetup:
     cid = scenario.client_id
 
@@ -190,14 +189,19 @@ def emit_setup(
             is_floating_pool=False,
         )
 
-    if is_first:
-        for kpi_key, target_value in THRESHOLDS:
-            setup(
-                ThresholdSet,
-                threshold_id=f"THR-{kpi_key.upper()}",
-                kpi_key=kpi_key,
-                target_value=target_value,
-            )
+    # Per client, not global: KPI_THRESHOLD.client_id is a real nullable FK
+    # under UniqueConstraint(client_id, kpi_key) (materialize.py's
+    # CLIENT_SCOPE_COLUMN maps the table to it), so emitting these once under
+    # the first scenario would mean a --reset of that one client deletes the
+    # "global" defaults for the other three. threshold_id carries the client
+    # id so each client's four rows get distinct primary keys.
+    for kpi_key, target_value in THRESHOLDS:
+        setup(
+            ThresholdSet,
+            threshold_id=f"{cid}-THR-{kpi_key.upper()}",
+            kpi_key=kpi_key,
+            target_value=target_value,
+        )
 
     # --- Setup is finished. Everything the operations emitters produce
     # references entities created above, so all of it must be stamped

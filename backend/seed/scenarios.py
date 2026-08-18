@@ -88,7 +88,10 @@ HOLD_STATUSES = (
     ("RESUMED", "Resumed", False),
 )
 
-#: kpi_key -> target. Global (KPI_THRESHOLD has no NOT NULL client column).
+#: kpi_key -> target, emitted once per client. KPI_THRESHOLD.client_id is a
+#: real (nullable, but populated here) FK under
+#: UniqueConstraint(client_id, kpi_key) -- these are per-tenant defaults, not
+#: global rows, so emitters_master.py emits one full set for every scenario.
 THRESHOLDS = (
     ("efficiency", 85.0),
     ("otd", 95.0),

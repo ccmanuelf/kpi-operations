@@ -135,6 +135,13 @@ def materialize(conn: Connection, events: Iterable[Event], profile: Profile) -> 
     import backend.seed.writers_master as writers_master
     import backend.seed.writers_operations as writers_operations
 
+    # writers_operations keeps module-level state (_open_rows) for the
+    # in-place WORK_ORDER/HOLD_ENTRY mutation pattern -- a Core insert()
+    # cannot UPDATE an accumulated row, so a later status-change event amends
+    # the same dict object the opening event handed to the sink. Without this
+    # reset, a second materialize() call in the same process would carry the
+    # previous run's stale entries forward.
+    writers_operations.reset()
     sink = RowSink()
     ids = IdMap()
     allocators = writers_master.build_allocators(conn)

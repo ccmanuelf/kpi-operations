@@ -47,10 +47,7 @@ def generate(
     _generate_platform(emit, start)
 
     for scenario in scenarios:
-        # KPI_THRESHOLD has no client column -- the targets are global -- so
-        # they ride under the FIRST scenario's client rather than being emitted
-        # once per client and writing four copies of each.
-        _generate_client(emit, rng, scenario, profile, start, as_of, is_first=scenario is scenarios[0])
+        _generate_client(emit, rng, scenario, profile, start, as_of)
 
     events.sort(key=lambda e: e.order_key)
     # Clamp to the seeded window: a dataset generated "as of" a date must not
@@ -134,7 +131,6 @@ def _generate_client(
     profile: Profile,
     start: date,
     as_of: date,
-    is_first: bool,
 ) -> None:
     """One client's three bands, in the order the stream needs them.
 
@@ -145,6 +141,6 @@ def _generate_client(
     setup band's activity_start, and generate() sorts the whole stream on
     order_key and renumbers seq afterwards.
     """
-    setup = emit_setup(emit, scenario, profile, start, as_of, is_first)
+    setup = emit_setup(emit, scenario, profile, start, as_of)
     received = emit_work_orders(emit, rng, scenario, profile, setup, as_of)
     emit_shifts(emit, rng, scenario, profile, setup, received, as_of)

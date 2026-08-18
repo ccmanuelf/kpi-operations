@@ -28,8 +28,14 @@ SEED_PACKAGE = ("backend", "seed")
 # integer PKs and map event keys. materialize.py itself talks to the database
 # by design too -- it takes a live Connection, executes Core bulk inserts
 # against it, and derives INSERT_ORDER from Base.metadata -- so it needs the
-# same exemption identity.py has.
-EXEMPTED_MODULE_PATHS = {"identity.py", "materialize.py"}
+# same exemption identity.py has. writers_master.py needs it for the same
+# reason again: it takes IntPkAllocator instances (which hold a live
+# Connection), imports Base.metadata to build them, and turns master-data
+# events into Core bulk-insert rows -- the write side of the same boundary
+# materialize.py sits on. writers_operations.py is the operations-band half
+# of that same write side: it imports backend.orm.work_order for
+# WorkOrderStatus and turns operational events into Core bulk-insert rows.
+EXEMPTED_MODULE_PATHS = {"identity.py", "materialize.py", "writers_master.py", "writers_operations.py"}
 
 
 def _engine_modules():

@@ -67,10 +67,10 @@ def _activity_start(profile, start, scenario_index):
     absorbed by it.
 
     The band is ClientConfigured (1) + hold reasons (3) + hold statuses (4) +
-    defect types (5) + lines + shifts + products (3) + employees, plus the four
-    global KPI thresholds, which the generator emits under the FIRST scenario's
-    client only -- so the bands differ in length by client and this has to know
-    which client it is being asked about."""
+    defect types (5) + lines + shifts + products (3) + employees + the four
+    KPI thresholds, emitted once per client (S1b correction: the generator
+    used to ride them under only the first scenario, which was wrong --
+    KPI_THRESHOLD.client_id is a real per-client FK, not a global row)."""
     setup_minutes = (
         1
         + len(HOLD_REASONS)
@@ -80,7 +80,7 @@ def _activity_start(profile, start, scenario_index):
         + profile.shifts_per_client
         + len(SCENARIOS[scenario_index].products)
         + profile.employees_per_client
-        + (len(THRESHOLDS) if scenario_index == 0 else 0)
+        + len(THRESHOLDS)
     )
     setup_end = datetime.combine(start, time(6, 0)) + timedelta(minutes=setup_minutes)
     return setup_end.date() + timedelta(days=1)
@@ -273,10 +273,9 @@ def test_shift_events_cover_the_profile_window():
     compare the actual dates, not just their count -- a window shifted by
     one day would still match on cardinality alone.
 
-    Compared PER CLIENT rather than over the union: the first scenario's setup
-    band carries four extra minutes (the global KPI thresholds), so its
-    activity window is the one that could drift first, and a union would let
-    the other three clients paper over it.
+    Compared PER CLIENT rather than over the union: a per-client comparison
+    catches a client-specific drift in any one client's band, which a union
+    over all four could paper over.
 
     Swept over seven consecutive as_of dates rather than the pinned one. On
     AS_OF the band opens on a Saturday, so the Mon-Fri filter absorbs a band
