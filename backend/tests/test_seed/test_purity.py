@@ -20,6 +20,11 @@ SEED_DIR = pathlib.Path(__file__).resolve().parents[2] / "seed"
 # import x` inside backend/seed resolves to backend.orm.
 SEED_PACKAGE = ("backend", "seed")
 
+# Modules exempt from purity checks because they intentionally interface with
+# the database layer. identity.py talks to a live Connection by design; the
+# materializer will consume it to allocate integer PKs and map event keys.
+EXEMPTED_MODULES = {"identity.py"}
+
 
 def _engine_modules():
     """Globbed recursively, not hardcoded and not shallow. The previous
@@ -29,11 +34,12 @@ def _engine_modules():
     import, a clock read and module-level randomness passed every guard
     clean, because none of them ever looked past the top level.
 
-    ALLOWLIST: S1b adds backend/seed/materialize.py, which by design DOES talk
-    to the database. When it lands, exempt it here by name -- do not weaken the
-    checks themselves, and do not go back to an opt-in list.
+    ALLOWLIST: Modules in EXEMPTED_MODULES are exempt from purity checks
+    because they intentionally talk to the database. When adding a module to
+    EXEMPTED_MODULES, add a comment saying why -- do not weaken the checks
+    themselves, and do not go back to an opt-in list.
     """
-    return sorted(p for p in SEED_DIR.rglob("*.py") if p.name != "__init__.py")
+    return sorted(p for p in SEED_DIR.rglob("*.py") if p.name != "__init__.py" and p.name not in EXEMPTED_MODULES)
 
 
 def _imported_modules(node, module_path):
