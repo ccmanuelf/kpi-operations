@@ -23,6 +23,7 @@ LINE_TYPE = "DEDICATED"
 UNIT_OF_MEASURE = "units"
 WORK_ORDER_ORIGINS = ("AD_HOC", "CAPACITY_PLAN")
 DOWNTIME_REASONS = (
+    "EQUIPMENT_FAILURE",
     "MAINTENANCE",
     "MATERIAL_SHORTAGE",
     "OPERATOR_UNAVAILABLE",
@@ -53,6 +54,28 @@ REASON_BY_ROOT_CAUSE = {
     "scheduling": "SETUP_CHANGEOVER",
 }
 
+#: The same map with the machine category written as a FAILURE rather than as
+#: routine maintenance, used while an equipment-reliability-decline window is
+#: open.
+#:
+#: MAINTENANCE and SETUP_CHANGEOVER are the two members of
+#: PLANNED_DOWNTIME_REASONS (backend/orm/downtime_taxonomy.py:53). The one
+#: consumer that filters on that set is calculate_mtbf
+#: (backend/calculations/availability.py:87), which excludes them because it
+#: counts FAILURES and planned work is not one. (calculate_availability and
+#: calculate_mttr do NOT filter -- checked, not assumed -- so the x3 minute
+#: scale does reach Availability either way.) A reliability decline recorded
+#: entirely as MAINTENANCE therefore produces ZERO failures: MTBF, the metric
+#: named for the thing the narrative is about, cannot move at all, and the
+#: decline reads as scheduled servicing -- the opposite of the story spec
+#: section 6 asks DEMO-HOURLY to tell. EQUIPMENT_FAILURE is the same `machine`
+#: category (the first entry of DEFAULT_CATEGORY_BY_REASON) and is unplanned,
+#: so the 1:1 map above cannot reach it and needs this override.
+UNPLANNED_REASON_BY_ROOT_CAUSE = {
+    **REASON_BY_ROOT_CAUSE,
+    "machine": "EQUIPMENT_FAILURE",
+}
+
 HOLD_REASONS = (
     ("QUALITY", "Quality Issue", True),
     ("MATERIAL", "Material Shortage", False),
@@ -80,7 +103,14 @@ DEMO_PASSWORD = "DemoSeed#2026"  # pragma: allowlist secret
 #: to. A real user_id, not a literal sprinkled through the generator: the
 #: column is a foreign key to USER, and a string that resolves to no user
 #: leaves the "who entered this" column pointing at nobody.
-SUPERVISOR_USER_ID = "USR-DEMO-SUP"
+#:
+#: PLATFORM-SCOPED deliberately, and renamed from SUPERVISOR_USER_ID for it.
+#: The demo supervisor is granted DEMO-PIECE alone, so attributing all four
+#: tenants' production to them puts "Demo Supervisor" on SAMPLE_REF rows --
+#: not a foreign-key error, but in a product whose client-scope authorization
+#: was just made uniform it reads as a tenant-isolation bug. The admin belongs
+#: to no tenant (client_ids == ()), so attributing to them crosses no scope.
+ATTRIBUTION_USER_ID = "USR-DEMO-ADMIN"
 
 
 @dataclass(frozen=True)

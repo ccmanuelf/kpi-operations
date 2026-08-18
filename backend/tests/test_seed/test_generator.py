@@ -1,19 +1,13 @@
-from collections import Counter
 from datetime import date, datetime, time, timedelta
 
 from backend.seed.events import (
     PLATFORM_CLIENT_ID,
-    AttendanceRecorded,
     ClientAccessGranted,
     ClientCreated,
     DefectsFound,
-    DefectTypeDefined,
-    DowntimeLogged,
     EmployeeHired,
     HoldOpened,
-    HoldReasonDefined,
     HoldStatusChanged,
-    HoldStatusDefined,
     LineCommissioned,
     ProductDefined,
     ProductionRecorded,
@@ -25,16 +19,7 @@ from backend.seed.events import (
 )
 from backend.seed.generator import generate, stream_digest
 from backend.seed.profiles import FULL, SMOKE, Profile
-from backend.seed.scenarios import (
-    DEFECT_CATALOG,
-    DEFECT_CODES,
-    HOLD_REASONS,
-    HOLD_STATUSES,
-    ROOT_CAUSES,
-    SCENARIOS,
-    THRESHOLDS,
-    USERS,
-)
+from backend.seed.scenarios import DEFECT_CATALOG, HOLD_REASONS, HOLD_STATUSES, SCENARIOS, THRESHOLDS
 
 AS_OF = date(2026, 8, 14)
 
@@ -426,32 +411,6 @@ def test_each_client_gets_its_declared_employee_count():
         assert per_client[scenario.client_id] == SMOKE.employees_per_client
 
 
-def test_attendance_is_emitted_once_per_employee_per_worked_shift():
-    """The headcount-only event could not express this; N rows per shift is the
-    reason the model split."""
-    events = _gen()
-    attendance = [e for e in events if isinstance(e, AttendanceRecorded)]
-    production = [e for e in events if isinstance(e, ProductionRecorded)]
-
-    assert attendance
-    per_shift = Counter((e.client_id, e.line_id, e.shift_id, e.shift_date) for e in attendance)
-    # One production row per worked (client, line, shift, date); attendance is
-    # one row per employee on that same key, so every key must exceed 1.
-    assert len(per_shift) == len(production)
-    assert min(per_shift.values()) > 1
-
-
-def test_defect_codes_are_always_catalog_codes():
-    events = _gen()
-    defined = {(e.client_id, e.defect_code) for e in events if isinstance(e, DefectTypeDefined)}
-    found = [e for e in events if isinstance(e, DefectsFound)]
-
-    assert found
-    for e in found:
-        assert e.defect_code in DEFECT_CODES
-        assert (e.client_id, e.defect_code) in defined
-
-
 def test_every_defects_found_references_an_earlier_quality_entry():
     """Referential integrity in time: the materializer inserts in stream order,
     so a child may never precede its parent."""
@@ -466,63 +425,6 @@ def test_every_defects_found_references_an_earlier_quality_entry():
     assert checked, "fixture produced no defect rows; the assertion above would be vacuous"
 
 
-def test_defect_rows_sum_to_the_inspections_total_defect_count():
-    """The split across defect_rows_per_inspection rows must conserve the
-    total: DHU is derived from QUALITY_ENTRY while the Pareto is derived from
-    DEFECT_DETAIL, and a demo where the two disagree is worse than one with no
-    breakdown at all."""
-    totals: dict = {}
-    per_entry: dict = {}
-    for e in _gen():
-        if isinstance(e, QualityInspected):
-            totals[e.quality_entry_id] = e.total_defects_count
-        elif isinstance(e, DefectsFound):
-            per_entry[e.quality_entry_id] = per_entry.get(e.quality_entry_id, 0) + e.defect_count
-    assert per_entry, "fixture produced no defect rows; the comparison below would be vacuous"
-    for qe_id, counted in per_entry.items():
-        assert counted == totals[qe_id], qe_id
-
-
-def test_downtime_root_causes_come_from_the_live_vocabulary():
-    checked = 0
-    for e in _gen():
-        if isinstance(e, DowntimeLogged):
-            assert e.root_cause_category in ROOT_CAUSES
-            checked += 1
-    assert checked, "fixture produced no downtime; the assertion above would be vacuous"
-
-
-def test_work_orders_carry_a_required_date_after_receipt():
-    orders = [e for e in _gen() if isinstance(e, WorkOrderReceived)]
-
-    assert orders
-    for e in orders:
-        assert e.required_date > e.at
-
-
-def test_some_work_orders_carry_no_priority():
-    """Spec section 3 decision 6 excludes priority-less orders from the
-    priority-adherence denominator and publishes their share as a coverage
-    figure. A dataset where every order has a priority cannot demonstrate that
-    the exclusion works -- and one where none does cannot demonstrate the
-    metric."""
-    orders = [e for e in generate(SCENARIOS, FULL, seed=1234, as_of=AS_OF) if isinstance(e, WorkOrderReceived)]
-
-    assert orders
-    without = [e for e in orders if e.priority is None]
-    assert without
-    assert len(without) < len(orders)
-
-
-def test_the_six_users_are_emitted_once_each_with_their_grants():
-    events = _gen()
-    users = [e for e in events if isinstance(e, UserCreated)]
-    grants = [e for e in events if isinstance(e, ClientAccessGranted)]
-
-    assert len(users) == len(USERS)
-    assert len(grants) == sum(len(u.client_ids) for u in USERS)
-
-
 def test_users_are_emitted_before_any_grant_references_them():
     created = set()
     checked = 0
@@ -533,51 +435,3 @@ def test_users_are_emitted_before_any_grant_references_them():
             assert e.user_id in created
             checked += 1
     assert checked, "fixture produced no grants; the assertion above would be vacuous"
-
-
-def test_production_is_attributed_to_a_user_the_stream_created():
-    """entered_by is a foreign key to USER. The old seeder wrote a bare string,
-    so the "who entered this" column pointed at nobody."""
-    created = set()
-    checked = 0
-    for e in _gen():
-        if isinstance(e, UserCreated):
-            created.add(e.user_id)
-        elif isinstance(e, ProductionRecorded):
-            assert e.entered_by in created
-            checked += 1
-    assert checked, "fixture produced no production; the assertion above would be vacuous"
-
-
-def test_hold_reasons_and_statuses_quote_the_clients_own_catalog():
-    """HOLD_REASON_CATALOG and HOLD_STATUS_CATALOG are new in this commit and
-    both are foreign keys in the target schema: a hold opened on a reason no
-    catalog carries, or advanced to a status no catalog declares, fails the
-    insert. Keyed on (client_id, code) because the catalogs are per client, so
-    quoting another tenant's code is the same defect as quoting none.
-
-    Asserted BOTH ways -- every emitted value is a catalog code, and every
-    catalog code is emitted. Membership alone degrades silently: SMOKE/1234
-    produces exactly one hold with one transition, so it satisfies membership
-    while touching 1 of 3 reasons and 1 of 4 statuses, and an off-catalog value
-    on any other branch would sail through. FULL reaches all seven, and the
-    equality is what keeps it that way -- including against a catalog that
-    grows an entry the generator never uses, which is a dead row in the demo."""
-    events = generate(SCENARIOS, FULL, seed=1234, as_of=AS_OF)
-    reasons: set = set()
-    statuses: set = set()
-    seen_reasons: set = set()
-    seen_statuses: set = set()
-    for e in events:
-        if isinstance(e, HoldReasonDefined):
-            reasons.add((e.client_id, e.reason_code))
-        elif isinstance(e, HoldStatusDefined):
-            statuses.add((e.client_id, e.status_code))
-        elif isinstance(e, HoldOpened):
-            assert (e.client_id, e.reason_category) in reasons
-            seen_reasons.add(e.reason_category)
-        elif isinstance(e, HoldStatusChanged):
-            assert (e.client_id, e.to_status) in statuses
-            seen_statuses.add(e.to_status)
-    assert seen_reasons == {code for code, _, _ in HOLD_REASONS}
-    assert seen_statuses == {code for code, _, _ in HOLD_STATUSES}

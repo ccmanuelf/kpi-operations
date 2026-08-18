@@ -104,6 +104,7 @@ def test_defect_codes_are_catalog_codes_not_display_names():
 
 def test_downtime_and_root_cause_vocabularies_are_the_live_ones():
     assert DOWNTIME_REASONS == (
+        "EQUIPMENT_FAILURE",
         "MAINTENANCE",
         "MATERIAL_SHORTAGE",
         "OPERATOR_UNAVAILABLE",
@@ -158,12 +159,38 @@ def test_password_is_a_single_documented_constant():
     assert DEMO_PASSWORD == "DemoSeed#2026"  # pragma: allowlist secret
 
 
-def test_the_attribution_user_is_one_of_the_seeded_users():
-    """entered_by is a foreign key to USER. A literal that resolves to no user
-    leaves every 'who entered this' column pointing at nobody."""
-    from backend.seed.scenarios import SUPERVISOR_USER_ID
+def test_the_attribution_user_is_a_platform_scoped_seeded_user():
+    """entered_by is a foreign key to USER, so the id has to resolve -- but
+    resolving is not enough. Every client's production is attributed to this
+    one user, so a user granted a single tenant puts that tenant's supervisor
+    on all four clients' rows: not an FK error, but in a product whose
+    client-scope authorization was just made uniform it reads as a
+    tenant-isolation bug. The attribution user must belong to NO tenant."""
+    from backend.seed.scenarios import ATTRIBUTION_USER_ID
 
-    assert SUPERVISOR_USER_ID in {u.user_id for u in USERS}
+    by_id = {u.user_id: u for u in USERS}
+    assert ATTRIBUTION_USER_ID in by_id
+    assert by_id[ATTRIBUTION_USER_ID].client_ids == ()
+
+
+def test_the_unplanned_override_stays_inside_the_canonical_taxonomy():
+    """The override exists so an equipment-reliability decline produces
+    FAILURES rather than scheduled maintenance. Both halves are asserted
+    against backend/orm/downtime_taxonomy.py, the single source of truth, so
+    this cannot drift into a reason the application does not recognise or into
+    a reason that is still planned."""
+    from backend.orm.downtime_taxonomy import DEFAULT_CATEGORY_BY_REASON, PLANNED_DOWNTIME_REASONS
+    from backend.seed.scenarios import REASON_BY_ROOT_CAUSE, UNPLANNED_REASON_BY_ROOT_CAUSE
+
+    assert REASON_BY_ROOT_CAUSE["machine"] in PLANNED_DOWNTIME_REASONS
+    assert UNPLANNED_REASON_BY_ROOT_CAUSE["machine"] not in PLANNED_DOWNTIME_REASONS
+    # Same management category on both sides: the override changes whether the
+    # stop was planned, never what it is attributed to.
+    for cause, reason in UNPLANNED_REASON_BY_ROOT_CAUSE.items():
+        assert DEFAULT_CATEGORY_BY_REASON[reason] == cause
+    for cause, reason in REASON_BY_ROOT_CAUSE.items():
+        assert DEFAULT_CATEGORY_BY_REASON[reason] == cause
+    assert set(UNPLANNED_REASON_BY_ROOT_CAUSE) == set(REASON_BY_ROOT_CAUSE)
 
 
 def test_every_scenario_declares_products():

@@ -109,16 +109,6 @@ def test_every_event_type_subclasses_event_and_is_registered():
     assert len(EVENT_TYPES) == len(set(EVENT_TYPES))
 
 
-def test_event_types_registry_is_complete():
-    """EVENT_TYPES is what the materializer dispatches on. A subclass defined
-    in this module but left out of the tuple would be generated and silently
-    never written -- so the registered set must equal the defined set, not
-    just be internally consistent."""
-    defined = set(Event.__subclasses__())
-    registered = set(EVENT_TYPES)
-    assert defined == registered
-
-
 def _base(**kw):
     b = dict(at=datetime(2026, 3, 2, 6, 30, 0), seq=1, client_id="DEMO-PIECE")
     b.update(kw)
@@ -245,8 +235,17 @@ def test_platform_users_carry_the_sentinel_client():
 
 
 def test_event_types_is_exhaustive():
-    """EVENT_TYPES drives the coverage and purity guards; a type missing from it
-    is a type nothing checks."""
+    """EVENT_TYPES drives the coverage and purity guards, and it is what the
+    materializer dispatches on: a subclass defined in this module but left out
+    of the tuple would be generated and silently never written, so the
+    registered set must EQUAL the defined set rather than merely be internally
+    consistent.
+
+    Walks vars(module) rather than Event.__subclasses__(), which is why the
+    __subclasses__ variant of this test was dropped instead of this one:
+    __subclasses__() returns only DIRECT subclasses, so an event that ever
+    specialises another event would vanish from the "defined" side and the
+    equality would pass while the registry was wrong."""
     import backend.seed.events as events_mod
     from backend.seed.events import Event
 

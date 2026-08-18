@@ -11,7 +11,8 @@ from backend.seed.events import (
     QualityInspected,
     WorkOrderStatusChanged,
 )
-from backend.seed.generator import _window_active, generate
+from backend.seed.generator import generate
+from backend.seed.narrative import window_active
 from backend.seed.profiles import FULL
 from backend.seed.scenarios import SCENARIOS
 
@@ -86,25 +87,68 @@ def test_equipment_decline_lifts_demo_hourly_downtime(events):
     assert crisis_avg > baseline_avg * 1.5
 
 
+def _hourly_downtime_split(events):
+    """DEMO-HOURLY's downtime rows, partitioned by whether the
+    equipment-reliability-decline window covers the shift."""
+    hourly = next(s for s in SCENARIOS if s.client_id == "DEMO-HOURLY")
+    rows = [e for e in events if isinstance(e, DowntimeLogged) and e.client_id == "DEMO-HOURLY"]
+    inside = [e for e in rows if window_active(hourly, e.shift_date.date(), AS_OF, "equipment_reliability_decline")]
+    outside = [
+        e for e in rows if not window_active(hourly, e.shift_date.date(), AS_OF, "equipment_reliability_decline")
+    ]
+    assert inside and outside, "one side of the window is empty; the comparisons below would be vacuous"
+    return inside, outside
+
+
 def test_equipment_decline_biases_the_root_cause_toward_machine(events):
     """Spec section 6: DEMO-HOURLY must read as equipment reliability. Scaling
     only downtime MINUTES leaves Q2 an undifferentiated total."""
-    hourly = next(s for s in SCENARIOS if s.client_id == "DEMO-HOURLY")
-    rows = [e for e in events if isinstance(e, DowntimeLogged) and e.client_id == "DEMO-HOURLY"]
+    inside, outside = _hourly_downtime_split(events)
+    inside_share = Counter(e.root_cause_category for e in inside)
+    outside_share = Counter(e.root_cause_category for e in outside)
 
-    inside = Counter(
-        e.root_cause_category
-        for e in rows
-        if _window_active(hourly, e.shift_date.date(), AS_OF, "equipment_reliability_decline")
-    )
-    outside = Counter(
-        e.root_cause_category
-        for e in rows
-        if not _window_active(hourly, e.shift_date.date(), AS_OF, "equipment_reliability_decline")
-    )
-    assert inside and outside, "one side of the window is empty; the shares below would be vacuous"
+    assert inside_share["machine"] / len(inside) > 2 * (outside_share["machine"] / len(outside))
 
-    assert inside["machine"] / sum(inside.values()) > 2 * (outside["machine"] / sum(outside.values()))
+
+def test_equipment_decline_lands_as_UNPLANNED_downtime(events):
+    """The root_cause_category column alone is not enough, and asserting only
+    on it hid this: every machine-category stop was written
+    downtime_reason=MAINTENANCE, which is one of the two members of
+    PLANNED_DOWNTIME_REASONS. calculate_mtbf (backend/calculations/availability
+    .py:87) excludes that set because it counts FAILURES -- so a reliability
+    decline made entirely of maintenance produced ZERO failures and MTBF, the
+    metric named for the very thing the episode is about, could not move.
+    (calculate_availability and calculate_mttr do not filter, so raw minutes
+    always landed; the reliability reading is what was lost.)
+
+    Imported from the live taxonomy rather than restated here, so a change to
+    what counts as planned reaches this assertion instead of drifting past it.
+    Measured on FULL/1234: 69.99 unplanned minutes per shift inside the window
+    against 12.48 outside, ratio 5.6, with the in-window unplanned share at
+    1.000 versus 0.575."""
+    from backend.orm.downtime_taxonomy import PLANNED_DOWNTIME_REASONS
+
+    inside, outside = _hourly_downtime_split(events)
+
+    def unplanned_minutes_per_shift(rows):
+        return sum(e.downtime_minutes for e in rows if e.downtime_reason not in PLANNED_DOWNTIME_REASONS) / len(rows)
+
+    assert unplanned_minutes_per_shift(inside) > 2 * unplanned_minutes_per_shift(outside)
+
+
+def test_every_downtime_reason_agrees_with_its_root_cause_category(events):
+    """The two columns are written from one map, so they can never disagree --
+    but only if that map stays the canonical one. DEFAULT_CATEGORY_BY_REASON in
+    backend/orm/downtime_taxonomy.py is the single source of truth the schemas,
+    the ORM validators and the reference endpoint all read; asserting against
+    it is what keeps the EQUIPMENT_FAILURE override honest rather than merely
+    self-consistent."""
+    from backend.orm.downtime_taxonomy import DEFAULT_CATEGORY_BY_REASON
+
+    rows = [e for e in events if isinstance(e, DowntimeLogged)]
+    assert rows, "fixture produced no downtime; the assertion below would be vacuous"
+    for e in rows:
+        assert DEFAULT_CATEGORY_BY_REASON[e.downtime_reason] == e.root_cause_category
 
 
 def test_labor_disruption_drops_demo_hybrid_attendance(events):

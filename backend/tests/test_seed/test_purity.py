@@ -124,4 +124,16 @@ def test_the_guard_actually_covers_every_engine_module():
     """The check above globs; assert the glob is non-empty and reaches the
     modules that matter, so a rename cannot silently empty it."""
     names = {p.name for p in _engine_modules()}
-    assert {"events.py", "scenarios.py", "profiles.py", "generator.py"} <= names
+    assert {
+        "events.py",
+        "scenarios.py",
+        "profiles.py",
+        "generator.py",
+        # The generator's split (I4): a module that carries emission logic out
+        # of generator.py must be named here too, or a future rename could
+        # quietly drop the biggest source files from the guard while the
+        # subset assertion above stayed green on the four originals.
+        "narrative.py",
+        "emitters_master.py",
+        "emitters_operations.py",
+    } <= names
