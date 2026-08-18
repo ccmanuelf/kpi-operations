@@ -50,7 +50,7 @@ def test_allocator_starts_above_the_existing_maximum():
     engine = create_engine("sqlite://")
     md = MetaData()
     t = Table("T", md, Column("id", Integer, primary_key=True), Column("name", String(10)))
-    md.create_all(engine)
+    md.create_all(engine)  # schema-guard: allow — throwaway in-memory SQLite fixture
 
     with engine.begin() as conn:
         conn.execute(insert(t), [{"id": 41, "name": "existing"}])
@@ -64,7 +64,7 @@ def test_allocator_starts_at_one_on_an_empty_table():
     engine = create_engine("sqlite://")
     md = MetaData()
     t = Table("T", md, Column("id", Integer, primary_key=True))
-    md.create_all(engine)
+    md.create_all(engine)  # schema-guard: allow — throwaway in-memory SQLite fixture
 
     with engine.begin() as conn:
         assert IntPkAllocator(conn, t).next() == 1
