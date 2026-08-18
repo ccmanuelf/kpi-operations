@@ -23,6 +23,17 @@ from backend.seed.events import Event
 from backend.seed.identity import IdMap
 from backend.seed.profiles import Profile
 
+# Base.metadata only carries the tables whose ORM classes have actually been
+# imported somewhere in the process -- registration is a side effect of
+# importing backend.orm, not of importing backend.database. Every test in
+# this repo happens to trigger that import first (backend/tests/conftest.py
+# does it), which hid this: import materialize.py as the FIRST thing in a
+# fresh process (e.g. `python -m backend.seed.cli`) and Base.metadata is
+# empty, so INSERT_ORDER below computes to [] and flush() silently writes
+# nothing. Import backend.orm here, for its registration side effect, before
+# reading sorted_tables.
+import backend.orm  # noqa: F401  (import side effect: registers every ORM class on Base.metadata)
+
 #: Rows per executemany chunk. Bounded so a 32-column table cannot build a
 #: statement past MariaDB's max_allowed_packet on the FULL profile.
 BATCH_SIZE = 500
@@ -40,7 +51,10 @@ INSERT_ORDER = [t.name for t in Base.metadata.sorted_tables]
 CLIENT_SCOPE_COLUMN = {
     "CLIENT": "client_id",
     "CLIENT_CONFIG": "client_id",
-    "KPI_THRESHOLD": None,  # global; not client-scoped
+    # Client-scoped, not global: KPI_THRESHOLD.client_id is nullable but real,
+    # unique per (client_id, kpi_key), and the retiring seed_sample_client.py
+    # (the source this map was salvaged from) already lists it client-scoped.
+    "KPI_THRESHOLD": "client_id",
     "HOLD_REASON_CATALOG": "client_id",
     "HOLD_STATUS_CATALOG": "client_id",
     "DEFECT_TYPE_CATALOG": "client_id",
@@ -94,9 +108,13 @@ def flush(conn: Connection, sink: RowSink) -> dict[str, int]:
     # test_the_materializer_writes_nothing_outside_the_contract asserts exactly
     # this against materialize()'s returned counts.
     #
-    # Note also what NOT to check: INSERT_ORDER covers every table in the
-    # metadata, so `set(sink.tables()) - set(INSERT_ORDER)` is empty by
-    # construction and could never fire.
+    # Note also what this loop does NOT check: it walks INSERT_ORDER, not
+    # sink.tables(), so a typo'd table name added to the sink (one that never
+    # matches any key in INSERT_ORDER) is silently DROPPED here rather than
+    # raising -- `set(sink.tables()) - set(INSERT_ORDER)` being non-empty
+    # produces no error at this layer. Task 8's coverage check is what catches
+    # that, by comparing materialize()'s returned counts against the writer
+    # contract; it is not caught here.
     counts: dict[str, int] = {}
     for name in INSERT_ORDER:
         rows = sink.rows(name)

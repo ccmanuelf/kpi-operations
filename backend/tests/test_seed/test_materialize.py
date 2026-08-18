@@ -1,4 +1,7 @@
+import subprocess
+import sys
 from datetime import date, datetime
+from pathlib import Path
 
 from sqlalchemy import func, select
 
@@ -11,11 +14,59 @@ from backend.seed.scenarios import SCENARIOS
 
 AS_OF = date(2026, 8, 18)
 
+#: .../backend/tests/test_seed/test_materialize.py -> repo root, four parents up.
+_REPO_ROOT = Path(__file__).resolve().parents[3]
 
-def test_insert_order_is_derived_from_metadata_not_hand_written():
-    """A hand-maintained FK order rots the first time a table is added. This
-    one cannot: SQLAlchemy topologically sorts by foreign key."""
-    assert INSERT_ORDER == [t.name for t in Base.metadata.sorted_tables]
+
+def test_insert_order_respects_every_foreign_key():
+    """INSERT_ORDER exists to satisfy one property: every table a foreign key
+    points AT is inserted before the table that points to it. Comparing
+    INSERT_ORDER against `[t.name for t in Base.metadata.sorted_tables]` (the
+    identical expression that DEFINES it) does not prove that -- it would
+    pass just as well for a hand-written list pasted from today's output,
+    which is exactly the failure mode this module's docstring warns against.
+    Prove the actual invariant instead, against Base.metadata directly."""
+    assert INSERT_ORDER  # a hand-written [] would trivially pass an FK-order check below
+
+    position = {name: i for i, name in enumerate(INSERT_ORDER)}
+    violations = []
+    for table in Base.metadata.tables.values():
+        for fk in table.foreign_keys:
+            parent, child = fk.column.table.name, table.name
+            if parent == child:
+                continue  # self-referential FK: no cross-table ordering to satisfy
+            if position[parent] >= position[child]:
+                violations.append(
+                    f"{child} (pos {position[child]}) references {parent} (pos {position[parent]}) out of order"
+                )
+    assert violations == []
+
+
+def test_insert_order_is_populated_in_a_fresh_process():
+    """Base.metadata only carries tables whose ORM classes were imported
+    somewhere in the process -- that registration is a side effect of
+    importing backend.orm, not of importing backend.database. Every test in
+    this suite (including this file's own `from backend.orm import ...`
+    above) triggers that import before materialize.py's module body runs,
+    which would hide a materialize.py that forgot to import backend.orm
+    itself: INSERT_ORDER would silently compute to [] and flush() would
+    silently write nothing. Only a genuinely fresh subprocess -- where
+    nothing else touches backend.orm first -- reproduces that."""
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "from backend.database import Base\n"
+            "from backend.seed.materialize import INSERT_ORDER\n"
+            "import sys\n"
+            "sys.exit(0 if INSERT_ORDER and 'WORK_ORDER' in INSERT_ORDER else 1)\n",
+        ],
+        cwd=str(_REPO_ROOT),
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert result.returncode == 0, f"stdout={result.stdout!r} stderr={result.stderr!r}"
 
 
 def test_every_client_scoped_table_declares_its_scope_column():
