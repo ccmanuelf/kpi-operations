@@ -10,7 +10,18 @@ from sqlalchemy import Connection, Table, func, select
 
 
 class UnknownEntity(KeyError):
-    """A foreign key referenced an entity the stream never created."""
+    """A foreign key referenced an entity the stream never created.
+
+    Overrides __str__ to return the message unwrapped: KeyError's __str__
+    special-cases single-argument exceptions by returning repr(args[0]),
+    which would double-quote the message. That defeats the purpose of
+    naming both halves legibly when the error surfaces thousands of rows
+    later in a log or traceback.
+    """
+
+    def __str__(self) -> str:
+        """Return the message unwrapped, not repr-quoted."""
+        return self.args[0] if self.args else ""
 
 
 class IdMap:

@@ -7,15 +7,19 @@ from backend.seed.identity import IdMap, IntPkAllocator, UnknownEntity
 def test_resolve_names_the_missing_entity_instead_of_raising_a_bare_keyerror():
     """A silent miss becomes a NULL foreign key thousands of rows later. The
     error has to say which table and which key, or a stream-ordering bug is
-    unreadable."""
+    unreadable. The message must render unwrapped, not double-quoted."""
     m = IdMap()
     m.assign("PRODUCTION_LINE", "DEMO-PIECE-LINE-01", 7)
 
     with pytest.raises(UnknownEntity) as exc:
         m.resolve("PRODUCTION_LINE", "DEMO-PIECE-LINE-99")
 
-    assert "PRODUCTION_LINE" in str(exc.value)
-    assert "DEMO-PIECE-LINE-99" in str(exc.value)
+    rendered = str(exc.value)
+    # Verify message is not double-quoted (KeyError default behavior).
+    assert not rendered.startswith('"')
+    # Verify both halves are named.
+    assert "PRODUCTION_LINE" in rendered
+    assert "DEMO-PIECE-LINE-99" in rendered
 
 
 def test_assigning_the_same_key_twice_is_rejected():
@@ -24,6 +28,20 @@ def test_assigning_the_same_key_twice_is_rejected():
 
     with pytest.raises(ValueError):
         m.assign("SHIFT", "S1", 2)
+
+
+def test_has_discriminates_assigned_and_unassigned_keys():
+    """has() must return True for assigned keys, False for unassigned ones, and
+    not raise on unknown tables."""
+    m = IdMap()
+    m.assign("PRODUCT", "SKU-001", 99)
+
+    # Assigned key in known table returns True.
+    assert m.has("PRODUCT", "SKU-001") is True
+    # Unassigned key in known table returns False.
+    assert m.has("PRODUCT", "SKU-999") is False
+    # Unknown table returns False, does not raise.
+    assert m.has("UNKNOWN_TABLE", "any_key") is False
 
 
 def test_allocator_starts_above_the_existing_maximum():

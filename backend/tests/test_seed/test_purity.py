@@ -21,9 +21,12 @@ SEED_DIR = pathlib.Path(__file__).resolve().parents[2] / "seed"
 SEED_PACKAGE = ("backend", "seed")
 
 # Modules exempt from purity checks because they intentionally interface with
-# the database layer. identity.py talks to a live Connection by design; the
-# materializer will consume it to allocate integer PKs and map event keys.
-EXEMPTED_MODULES = {"identity.py"}
+# the database layer. These are matched by relative path from SEED_DIR to
+# preserve the recursive-glob invariant: a module in a subpackage is still
+# caught, so only legitimate exemptions reach this set. identity.py talks to
+# a live Connection by design; the materializer will consume it to allocate
+# integer PKs and map event keys.
+EXEMPTED_MODULE_PATHS = {"identity.py"}
 
 
 def _engine_modules():
@@ -34,12 +37,15 @@ def _engine_modules():
     import, a clock read and module-level randomness passed every guard
     clean, because none of them ever looked past the top level.
 
-    ALLOWLIST: Modules in EXEMPTED_MODULES are exempt from purity checks
-    because they intentionally talk to the database. When adding a module to
-    EXEMPTED_MODULES, add a comment saying why -- do not weaken the checks
-    themselves, and do not go back to an opt-in list.
+    ALLOWLIST: Modules in EXEMPTED_MODULE_PATHS are exempt from purity checks
+    because they intentionally talk to the database. Exemptions match by
+    relative path (not basename) to preserve the recursive-glob invariant: a
+    module in a subpackage is still caught. When adding a module to
+    EXEMPTED_MODULE_PATHS, add a comment saying why -- do not weaken the
+    checks themselves, and do not go back to an opt-in list.
     """
-    return sorted(p for p in SEED_DIR.rglob("*.py") if p.name != "__init__.py" and p.name not in EXEMPTED_MODULES)
+    all_modules = [p for p in SEED_DIR.rglob("*.py") if p.name != "__init__.py"]
+    return sorted(p for p in all_modules if p.relative_to(SEED_DIR).as_posix() not in EXEMPTED_MODULE_PATHS)
 
 
 def _imported_modules(node, module_path):
@@ -143,3 +149,43 @@ def test_the_guard_actually_covers_every_engine_module():
         "emitters_master.py",
         "emitters_operations.py",
     } <= names
+
+
+def test_exemption_does_not_fail_open_to_subpackages(tmp_path):
+    """Exemptions match by relative path, not basename. A module in a subpackage
+    bearing the same name as an exempted file is NOT automatically exempted --
+    the recursive glob invariant is preserved. This test temporarily plants a
+    SQLAlchemy import in a subpackage and verifies the guard catches it."""
+    # Create a temporary backend/seed structure.
+    temp_seed = tmp_path / "seed"
+    temp_seed.mkdir()
+    (temp_seed / "__init__.py").touch()
+
+    # Create a subpackage with a file named identity.py containing an import.
+    subpkg = temp_seed / "subpkg"
+    subpkg.mkdir()
+    (subpkg / "__init__.py").touch()
+    (subpkg / "identity.py").write_text("import sqlalchemy\n")
+
+    # Temporarily replace SEED_DIR and re-run the glob.
+    # We cannot directly patch SEED_DIR because it is evaluated at module load time,
+    # so we work around by creating a local _engine_modules with the temp dir.
+    def _temp_engine_modules():
+        all_modules = [p for p in temp_seed.rglob("*.py") if p.name != "__init__.py"]
+        return sorted(p for p in all_modules if p.relative_to(temp_seed).as_posix() not in EXEMPTED_MODULE_PATHS)
+
+    # The subpackage module should be included (not exempted by basename).
+    modules = _temp_engine_modules()
+    found_subpkg = any(p.as_posix().endswith("subpkg/identity.py") for p in modules)
+    assert found_subpkg, "Guard failed open: subpkg/identity.py was exempted by basename"
+
+    # Now verify the guard catches the SQLAlchemy import.
+    offenders = []
+    for path in modules:
+        for node in ast.walk(ast.parse(path.read_text())):
+            for m in _imported_modules(node, ("temp", "seed")):
+                if any(m == f or m.startswith(f + ".") for f in FORBIDDEN_IMPORTS):
+                    offenders.append(f"{path.relative_to(temp_seed).as_posix()}: {m}")
+
+    assert offenders, "Guard failed to catch SQLAlchemy import in subpkg/identity.py"
+    assert "subpkg/identity.py" in offenders[0]
