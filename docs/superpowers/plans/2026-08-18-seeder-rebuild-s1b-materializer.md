@@ -66,10 +66,13 @@ Read off the live VM (2026-08-17). Inventing a synonym here is how the current d
 ```
 backend/seed/
   __init__.py            (unchanged, empty)
-  events.py              MODIFY  — widened event model                     Task 1
-  scenarios.py           MODIFY  — vocabulary, users/roles, catalogs       Task 2
-  profiles.py            MODIFY  — one field added                         Task 2
-  generator.py           MODIFY  — emits the widened stream                Task 3
+  events.py              MODIFY  — widened event model                     Task 1  [LANDED]
+  scenarios.py           MODIFY  — vocabulary, users/roles, catalogs       Task 2  [LANDED]
+  profiles.py            MODIFY  — one field added, now required           Task 2  [LANDED]
+  generator.py           MODIFY  — orchestrator only, ~150 lines           Task 3  [LANDED]
+  narrative.py           CREATE  — which distribution a client-day draws   Task 3  [LANDED]
+  emitters_master.py     CREATE  — setup-band event emission               Task 3  [LANDED]
+  emitters_operations.py CREATE  — work-order/hold/shift event emission    Task 3  [LANDED]
   identity.py            CREATE  — event key -> DB primary key             Task 4
   materialize.py         CREATE  — orchestrator, bulk insert, flush order  Task 5
   writers_master.py      CREATE  — client, users, employees, lines, ...    Task 6
@@ -83,7 +86,12 @@ backend/tests/test_seed/
   test_purity.py         MODIFY   test_identity.py     CREATE
   test_materialize.py    CREATE   test_coverage.py     CREATE
   test_cli.py            CREATE   test_seed_gates.py   CREATE
+  test_generator_stream.py CREATE (Task 3 split)
 ```
+
+> **Amended during execution (Task 3).** The split produced three engine modules rather than one `generator.py`. The narrative helpers had to leave `generator.py` outright: the emitters consume them, so leaving them behind would have made `generator → emitters → generator` a cycle. The resulting chain `generator → emitters → narrative` is acyclic, and every module lands under the 500-line cap (largest: `emitters_operations.py` at 435). The purity guard globs `backend/seed/` recursively and asserts a subset, so the new modules are covered with no gate change.
+>
+> **Interface rename, binding on Tasks 6 and 7.** `SUPERVISOR_USER_ID` is now **`ATTRIBUTION_USER_ID = "USR-DEMO-ADMIN"`**, a platform-scoped user (`client_ids=()`). The old constant named a DEMO-PIECE-only supervisor, so attributing all four tenants' rows to it put "Demo Supervisor" on `SAMPLE_REF` data — not a foreign-key error, but indistinguishable from a tenant-isolation bug in a product whose client-scope authorization was just made uniform. Every `entered_by` / `transitioned_by` below has been updated to the new name.
 
 **Deviation from spec §5, stated up front:** the spec names a single `materialize.py`. Twenty-three tables of column mapping does not fit in 500 lines, and the 500-line rule is the binding constraint (spec §2 goal 5). `materialize.py` keeps the orchestration, the bulk-insert primitive, and the flush order; the per-table column mapping lives in two writer modules split by lifecycle — master data written once per client, versus operational rows written per event.
 
@@ -91,7 +99,7 @@ backend/tests/test_seed/
 
 ### Task 1: Widen the event model
 
-> **Execution note (added during execution, 2026-08-18).** Tasks 1 and 3 are implemented and committed **together**, in the order Task 2 → Task 1+3. The whole-package `mypy` pre-commit hook refuses any commit that leaves a dangling import in `backend/`, and deleting `ShiftWorked` here breaks `generator.py` until Task 3 repairs it — so no commit can exist between them. Task 2 is unaffected (it only adds to `scenarios.py`/`profiles.py`, which import no events) and therefore goes first, unblocking Task 3's references to `USERS`, `SUPERVISOR_USER_ID`, `DEMO_PASSWORD`, `REASON_BY_ROOT_CAUSE`, `DEFECT_CODES`, `WORK_ORDER_ORIGINS`, and `PRIORITIES`. Task 1's Step 4 and Step 5 below are superseded: the green bar and the commit both move to the end of Task 3.
+> **Execution note (added during execution, 2026-08-18).** Tasks 1 and 3 are implemented and committed **together**, in the order Task 2 → Task 1+3. The whole-package `mypy` pre-commit hook refuses any commit that leaves a dangling import in `backend/`, and deleting `ShiftWorked` here breaks `generator.py` until Task 3 repairs it — so no commit can exist between them. Task 2 is unaffected (it only adds to `scenarios.py`/`profiles.py`, which import no events) and therefore goes first, unblocking Task 3's references to `USERS`, `ATTRIBUTION_USER_ID`, `DEMO_PASSWORD`, `REASON_BY_ROOT_CAUSE`, `DEFECT_CODES`, `WORK_ORDER_ORIGINS`, and `PRIORITIES`. Task 1's Step 4 and Step 5 below are superseded: the green bar and the commit both move to the end of Task 3.
 
 The stream cannot currently express what the target tables require. Measured against `Base.metadata`, `PRODUCTION_ENTRY` needs `product_id`, `run_time_hours`, `entered_by`; `QUALITY_ENTRY` needs `work_order_id`; `DEFECT_DETAIL` needs a `defect_type`; and `ATTENDANCE_ENTRY` needs one row **per employee** with `employee_id` and `scheduled_hours`, where `ShiftWorked` carries only a headcount.
 
@@ -632,9 +640,9 @@ def test_password_is_a_single_documented_constant():
 def test_the_attribution_user_is_one_of_the_seeded_users():
     """entered_by is a foreign key to USER. A literal that resolves to no user
     leaves every 'who entered this' column pointing at nobody."""
-    from backend.seed.scenarios import SUPERVISOR_USER_ID
+    from backend.seed.scenarios import ATTRIBUTION_USER_ID
 
-    assert SUPERVISOR_USER_ID in {u.user_id for u in USERS}
+    assert ATTRIBUTION_USER_ID in {u.user_id for u in USERS}
 
 
 def test_every_scenario_declares_products():
@@ -719,7 +727,7 @@ DEMO_PASSWORD = "DemoSeed#2026"  # pragma: allowlist secret
 #: to. A real user_id, not a literal sprinkled through the generator: the
 #: column is a foreign key to USER, and a string that resolves to no user
 #: leaves the "who entered this" column pointing at nobody.
-SUPERVISOR_USER_ID = "USR-DEMO-SUP"
+ATTRIBUTION_USER_ID = "USR-DEMO-ADMIN"
 
 
 @dataclass(frozen=True)
@@ -1048,7 +1056,7 @@ Replace the inner shift body. The RNG draw ORDER and COUNT are load-bearing — 
                     run_time_hours=run_time,
                     scrap_count=scrap,
                     employees_assigned=max(1, present),
-                    entered_by=SUPERVISOR_USER_ID,
+                    entered_by=ATTRIBUTION_USER_ID,
                 )
 
                 # --- downtime, root cause first: the narrative biases the
@@ -1979,7 +1987,7 @@ Same dispatch shape as Task 6. Notes on the ones with a trap:
 
 `_work_order_received` writes `WORK_ORDER` with `received_date=e.at`, `required_date=e.required_date`, `status` set to the enum's `RECEIVED` member, `origin=e.origin`, `priority=e.priority`, `style_model=e.style_model`, `created_at=e.at`, `updated_at=e.at`.
 
-`_work_order_status_changed` writes one `WORKFLOW_TRANSITION_LOG` row with **`transitioned_at=e.at` supplied explicitly** — this column has a server default and omitting it is the original defect — and `transitioned_by=SUPERVISOR_USER_ID`. It also updates the parent order's `status`. A Core `insert()` cannot update an already-accumulated row, so keep the order's row dict in a local `dict[str, dict]` keyed by `work_order_id` and mutate it in place; the sink holds the same object, so the final flush writes the last status the stream reached. Add a comment saying so — it is the one place in the materializer where a row is mutated after being handed to the sink.
+`_work_order_status_changed` writes one `WORKFLOW_TRANSITION_LOG` row with **`transitioned_at=e.at` supplied explicitly** — this column has a server default and omitting it is the original defect — and `transitioned_by=ATTRIBUTION_USER_ID`. It also updates the parent order's `status`. A Core `insert()` cannot update an already-accumulated row, so keep the order's row dict in a local `dict[str, dict]` keyed by `work_order_id` and mutate it in place; the sink holds the same object, so the final flush writes the last status the stream reached. Add a comment saying so — it is the one place in the materializer where a row is mutated after being handed to the sink.
 
 `_hold_opened` writes `HOLD_ENTRY` with `hold_date=e.at`, `hold_status` left at the value the first `HoldStatusChanged` will set, `hold_reason_category=e.reason_category`, `created_at=e.at`. Same in-place-mutation pattern for `hold_status` and `resume_date`.
 
@@ -2035,7 +2043,7 @@ def _work_order_status_changed(e, sink, ids):
             "client_id": e.client_id,
             "from_status": e.from_status,
             "to_status": e.to_status,
-            "transitioned_by": SUPERVISOR_USER_ID,
+            "transitioned_by": ATTRIBUTION_USER_ID,
             "transitioned_at": e.at,
             "trigger_source": "SEED",
         },
@@ -2066,7 +2074,7 @@ def _hold_status_changed(e, sink, ids):
             "client_id": e.client_id,
             "from_status": e.from_status,
             "to_status": e.to_status,
-            "transitioned_by": SUPERVISOR_USER_ID,
+            "transitioned_by": ATTRIBUTION_USER_ID,
             "transitioned_at": e.at,
         },
     )
