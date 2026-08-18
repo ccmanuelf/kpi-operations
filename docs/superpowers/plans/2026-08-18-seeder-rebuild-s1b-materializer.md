@@ -40,6 +40,7 @@ This is a recommendation, not a settled ruling. Merging the two plans back into 
 - Backend tests run as `pytest tests/` from `backend/`. Run them in the FOREGROUND — the Bash tool defaults to a 120s timeout, so pass `timeout: 900000` explicitly for the full suite.
 - A test counts as evidence only after you have watched it fail for the reason it exists.
 - **Every `DEMO_PASSWORD` literal needs a trailing `# pragma: allowlist secret`.** The blocking `detect-secrets` pre-commit hook flags the string otherwise and the commit is refused. This applies in `scenarios.py` and in every test that asserts on it — it already bit this plan's own commit.
+- **Every commit must leave the whole backend package typechecking.** `.pre-commit-config.yaml`'s `mypy` hook runs `python -m mypy backend` with `pass_filenames: false` on any `backend/**.py` change — the whole package, not the staged files. A commit that leaves a dangling import anywhere in `backend/` is refused. This is why **Tasks 1 and 3 are executed and committed as one unit** (see the note on Task 1): deleting `ShiftWorked` from `events.py` breaks `generator.py`, `test_generator.py`, and `test_narrative.py`, and no intermediate commit can exist between the two. Do not reach for `--no-verify` or `SKIP=mypy`; the hook is a gate this repo deliberately keeps closed.
 - **Nothing in this PR changes runtime behaviour.** `backend/seed/` must remain unreachable from `backend.main`'s import graph, exactly as S1a verified. Task 10 re-proves it.
 
 ### Real vocabulary — take these, do not invent
@@ -89,6 +90,8 @@ backend/tests/test_seed/
 ---
 
 ### Task 1: Widen the event model
+
+> **Execution note (added during execution, 2026-08-18).** Tasks 1 and 3 are implemented and committed **together**, in the order Task 2 → Task 1+3. The whole-package `mypy` pre-commit hook refuses any commit that leaves a dangling import in `backend/`, and deleting `ShiftWorked` here breaks `generator.py` until Task 3 repairs it — so no commit can exist between them. Task 2 is unaffected (it only adds to `scenarios.py`/`profiles.py`, which import no events) and therefore goes first, unblocking Task 3's references to `USERS`, `SUPERVISOR_USER_ID`, `DEMO_PASSWORD`, `REASON_BY_ROOT_CAUSE`, `DEFECT_CODES`, `WORK_ORDER_ORIGINS`, and `PRIORITIES`. Task 1's Step 4 and Step 5 below are superseded: the green bar and the commit both move to the end of Task 3.
 
 The stream cannot currently express what the target tables require. Measured against `Base.metadata`, `PRODUCTION_ENTRY` needs `product_id`, `run_time_hours`, `entered_by`; `QUALITY_ENTRY` needs `work_order_id`; `DEFECT_DETAIL` needs a `defect_type`; and `ATTENDANCE_ENTRY` needs one row **per employee** with `employee_id` and `scheduled_hours`, where `ShiftWorked` carries only a headcount.
 
@@ -506,7 +509,7 @@ class DowntimeLogged(Event):
     downtime_minutes: int
 ```
 
-Delete `ShiftWorked` entirely and rebuild `EVENT_TYPES` to list all 20 classes above.
+Delete `ShiftWorked` entirely and rebuild `EVENT_TYPES` to list all 21 classes above (12 master + 9 operational — the plan first said 20, which was a miscount; `test_event_types_is_exhaustive` makes the number self-enforcing either way).
 
 - [ ] **Step 4: Run the tests and watch them pass**
 
