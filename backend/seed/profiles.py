@@ -13,6 +13,10 @@ class Profile:
     shifts_per_client: int
     employees_per_client: int
     work_orders_per_client: int
+    # Defaulted, not required: test_generator.py (owned by a separate task)
+    # builds ad-hoc Profile instances that predate this field, and this
+    # module must stay purely additive to them.
+    defect_rows_per_inspection: int = 2
 
 
 # 365 days x 4 clients x 2 lines x 2 shifts is the density the pivot layer
@@ -24,6 +28,7 @@ FULL = Profile(
     shifts_per_client=2,
     employees_per_client=8,
     work_orders_per_client=100,
+    defect_rows_per_inspection=2,
 )
 
 SMOKE = Profile(
@@ -33,6 +38,7 @@ SMOKE = Profile(
     shifts_per_client=2,
     employees_per_client=4,
     work_orders_per_client=6,
+    defect_rows_per_inspection=1,
 )
 
 PROFILES = {p.name: p for p in (FULL, SMOKE)}

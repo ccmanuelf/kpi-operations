@@ -1,5 +1,14 @@
 from backend.seed.profiles import FULL, PROFILES, SMOKE
-from backend.seed.scenarios import SCENARIOS, NarrativeWindow
+from backend.seed.scenarios import (
+    CLIENT_TYPE_BY_PAY_MODEL,
+    DEFECT_CODES,
+    DEMO_PASSWORD,
+    DOWNTIME_REASONS,
+    ROOT_CAUSES,
+    SCENARIOS,
+    USERS,
+    NarrativeWindow,
+)
 
 
 def test_full_profile_covers_twelve_months():
@@ -76,3 +85,87 @@ def test_scenarios_are_immutable():
 
     with pytest.raises(dataclasses.FrozenInstanceError):
         SCENARIOS[0].client_id = "X"
+
+
+def test_client_type_uses_the_live_vocabulary():
+    """Read off the VM. A synonym here is how the current dataset ended up with
+    a defect taxonomy nothing joins to."""
+    assert set(CLIENT_TYPE_BY_PAY_MODEL.values()) == {"Piece Rate", "Hourly Rate", "Hybrid"}
+
+
+def test_every_scenario_resolves_to_a_client_type():
+    for s in SCENARIOS:
+        assert s.client_type == CLIENT_TYPE_BY_PAY_MODEL[s.pay_model]
+
+
+def test_defect_codes_are_catalog_codes_not_display_names():
+    assert DEFECT_CODES == ("COLOR", "FABRIC", "MEASURE", "STAIN", "STITCH")
+
+
+def test_downtime_and_root_cause_vocabularies_are_the_live_ones():
+    assert DOWNTIME_REASONS == (
+        "MAINTENANCE",
+        "MATERIAL_SHORTAGE",
+        "OPERATOR_UNAVAILABLE",
+        "QUALITY_HOLD",
+        "SETUP_CHANGEOVER",
+    )
+    assert ROOT_CAUSES == ("attendance", "machine", "materials", "other", "scheduling")
+
+
+def test_all_six_roles_have_a_credential():
+    """Spec section 9: the documented set covers all six roles, so the
+    permission model is demonstrable rather than described."""
+    assert {u.role for u in USERS} == {
+        "admin",
+        "poweruser",
+        "leader",
+        "supervisor",
+        "operator",
+        "viewer",
+    }
+
+
+def test_the_leader_reaches_several_clients_and_the_supervisor_one():
+    leader = next(u for u in USERS if u.role == "leader")
+    supervisor = next(u for u in USERS if u.role == "supervisor")
+
+    assert len(leader.client_ids) == 3
+    assert len(supervisor.client_ids) == 1
+
+
+def test_platform_roles_are_scoped_to_no_client():
+    for role in ("admin", "poweruser"):
+        user = next(u for u in USERS if u.role == role)
+        assert user.client_ids == ()
+
+
+def test_every_user_client_id_is_a_real_scenario():
+    known = {s.client_id for s in SCENARIOS}
+    for u in USERS:
+        for cid in u.client_ids:
+            assert cid in known
+
+
+def test_usernames_are_unique():
+    names = [u.username for u in USERS]
+    assert len(names) == len(set(names))
+
+
+def test_password_is_a_single_documented_constant():
+    """One constant, referenced by the runbook. Per-user passwords in a demo
+    are a documentation burden with no security benefit."""
+    assert DEMO_PASSWORD == "DemoSeed#2026"  # pragma: allowlist secret
+
+
+def test_the_attribution_user_is_one_of_the_seeded_users():
+    """entered_by is a foreign key to USER. A literal that resolves to no user
+    leaves every 'who entered this' column pointing at nobody."""
+    from backend.seed.scenarios import SUPERVISOR_USER_ID
+
+    assert SUPERVISOR_USER_ID in {u.user_id for u in USERS}
+
+
+def test_every_scenario_declares_products():
+    for s in SCENARIOS:
+        assert len(s.products) == 3
