@@ -13,10 +13,11 @@ class Profile:
     shifts_per_client: int
     employees_per_client: int
     work_orders_per_client: int
-    # Defaulted, not required: test_generator.py (owned by a separate task)
-    # builds ad-hoc Profile instances that predate this field, and this
-    # module must stay purely additive to them.
-    defect_rows_per_inspection: int = 2
+    # Required, deliberately undefaulted. A default would let a new profile
+    # omit the field and silently inherit whichever density happened to be the
+    # default -- FULL's two rows per inspection for a smoke-sized profile, say.
+    # Every profile states its own defect density.
+    defect_rows_per_inspection: int
 
 
 # 365 days x 4 clients x 2 lines x 2 shifts is the density the pivot layer

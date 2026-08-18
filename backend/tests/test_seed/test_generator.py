@@ -1,27 +1,47 @@
+from collections import Counter
 from datetime import date, datetime, time, timedelta
 
 from backend.seed.events import (
+    PLATFORM_CLIENT_ID,
+    AttendanceRecorded,
+    ClientAccessGranted,
     ClientCreated,
+    DefectsFound,
+    DefectTypeDefined,
+    DowntimeLogged,
     EmployeeHired,
     HoldOpened,
+    HoldReasonDefined,
     HoldStatusChanged,
+    HoldStatusDefined,
     LineCommissioned,
     ProductDefined,
+    ProductionRecorded,
+    QualityInspected,
     ShiftDefined,
-    ShiftWorked,
+    UserCreated,
     WorkOrderReceived,
     WorkOrderStatusChanged,
 )
 from backend.seed.generator import generate, stream_digest
 from backend.seed.profiles import FULL, SMOKE, Profile
-from backend.seed.scenarios import SCENARIOS
+from backend.seed.scenarios import (
+    DEFECT_CATALOG,
+    DEFECT_CODES,
+    HOLD_REASONS,
+    HOLD_STATUSES,
+    ROOT_CAUSES,
+    SCENARIOS,
+    THRESHOLDS,
+    USERS,
+)
 
 AS_OF = date(2026, 8, 14)
 
 # shifts_per_client=4 is the minimum that exposes the old (6 + si * 8) % 24
 # aliasing (shift index 0 landed on the same hour as shift index 3): under
 # the pre-fix formula, 40 of 40 client-days in a SMOKE-sized run had
-# colliding ShiftWorked instants, but SMOKE/FULL's own shifts_per_client=2
+# colliding per-shift instants, but SMOKE/FULL's own shifts_per_client=2
 # never reaches that collision, so neither profile can catch a regression on
 # its own.
 WIDE_SHIFTS = Profile(
@@ -31,6 +51,11 @@ WIDE_SHIFTS = Profile(
     shifts_per_client=4,
     employees_per_client=SMOKE.employees_per_client,
     work_orders_per_client=SMOKE.work_orders_per_client,
+    # Stated, not defaulted. profiles.Profile deliberately has no default for
+    # this field: a profile that omitted it would silently inherit some other
+    # profile's defect density, and the DefectsFound row count per inspection
+    # is a property these structural profiles must pin for themselves.
+    defect_rows_per_inspection=SMOKE.defect_rows_per_inspection,
 )
 
 
@@ -41,6 +66,7 @@ MANY_ENTITIES = Profile(
     shifts_per_client=12,
     employees_per_client=60,
     work_orders_per_client=6,
+    defect_rows_per_inspection=SMOKE.defect_rows_per_inspection,
 )
 
 
@@ -48,13 +74,29 @@ def _gen(seed=1234):
     return generate(SCENARIOS, SMOKE, seed=seed, as_of=AS_OF)
 
 
-def _activity_start(profile, start):
+def _activity_start(profile, start, scenario_index):
     """Independent restatement of the generator's setup band: ClientCreated at
-    06:00, then one minute per remaining setup event (1 user + lines + shifts
-    + 3 products + employees), and activity begins the day after the last of
-    them. Recomputed here rather than read off the stream so a regression that
-    moved the band would fail the test instead of being absorbed by it."""
-    setup_minutes = 1 + profile.lines_per_client + profile.shifts_per_client + 3 + profile.employees_per_client
+    06:00, then one minute per remaining setup event, and activity begins the
+    day after the last of them. Recomputed here rather than read off the stream
+    so a regression that moved the band would fail the test instead of being
+    absorbed by it.
+
+    The band is ClientConfigured (1) + hold reasons (3) + hold statuses (4) +
+    defect types (5) + lines + shifts + products (3) + employees, plus the four
+    global KPI thresholds, which the generator emits under the FIRST scenario's
+    client only -- so the bands differ in length by client and this has to know
+    which client it is being asked about."""
+    setup_minutes = (
+        1
+        + len(HOLD_REASONS)
+        + len(HOLD_STATUSES)
+        + len(DEFECT_CATALOG)
+        + profile.lines_per_client
+        + profile.shifts_per_client
+        + len(SCENARIOS[scenario_index].products)
+        + profile.employees_per_client
+        + (len(THRESHOLDS) if scenario_index == 0 else 0)
+    )
     setup_end = datetime.combine(start, time(6, 0)) + timedelta(minutes=setup_minutes)
     return setup_end.date() + timedelta(days=1)
 
@@ -87,13 +129,19 @@ def test_seq_is_contiguous_from_one_across_the_whole_stream():
     assert seqs == list(range(1, len(seqs) + 1))
 
 
-def test_shift_worked_timestamps_are_distinct_within_a_client_day():
+def test_production_timestamps_are_distinct_within_a_client_day():
     """order_key uniqueness is guaranteed by construction (seq is reassigned
     1..n), so it cannot catch a real ambiguity defect: collapsing every
-    ShiftWorked event to one instant per day still passes it. There is one
-    ShiftWorked event per (line, shift) pair per day, deliberately
+    per-shift event to one instant per day still passes it. There is one
+    ProductionRecorded event per (line, shift) pair per day, deliberately
     staggered by hour/minute -- assert they stay distinct within each
     (client_id, date) group, which is the property a collapse would break.
+
+    ProductionRecorded rather than the retired ShiftWorked: it is the event
+    emitted exactly once per worked (line, shift, day), so it carries the same
+    staggering the old headcount event did. Attendance/quality/defect events
+    deliberately SHARE that instant (they describe the same shift), so they
+    cannot stand in for this check.
 
     SMOKE alone can't catch the aliasing this guards against: its
     shifts_per_client=2 never reaches the modulus where `si * step` wraps
@@ -102,11 +150,11 @@ def test_shift_worked_timestamps_are_distinct_within_a_client_day():
     for profile in (SMOKE, WIDE_SHIFTS):
         groups: dict = {}
         for e in generate(SCENARIOS, profile, seed=1234, as_of=AS_OF):
-            if isinstance(e, ShiftWorked):
+            if isinstance(e, ProductionRecorded):
                 groups.setdefault((e.client_id, e.at.date()), []).append(e.at)
-        assert groups, "fixture produced no ShiftWorked events; the assertion below would be vacuous"
+        assert groups, "fixture produced no ProductionRecorded events; the assertion below would be vacuous"
         for key, times in groups.items():
-            assert len(set(times)) == len(times), f"{profile.name}/{key} has colliding ShiftWorked instants"
+            assert len(set(times)) == len(times), f"{profile.name}/{key} has colliding production instants"
 
 
 def test_every_timestamp_is_whole_seconds_and_naive():
@@ -116,14 +164,25 @@ def test_every_timestamp_is_whole_seconds_and_naive():
 
 def test_no_event_precedes_its_client_creation():
     """Referential integrity in time: the materializer inserts in stream order
-    and would hit an FK violation otherwise."""
+    and would hit an FK violation otherwise.
+
+    PLATFORM_CLIENT_ID is exempt and must be: the six demo users belong to no
+    tenant, so there is no CLIENT row for the sentinel to precede. Every event
+    carrying a REAL client_id still has to fall after that client's creation --
+    including ClientAccessGranted, which names a user AND a client and so
+    cannot sit on the platform day beside the users it grants."""
     created_at = {}
+    checked = 0
     for e in _gen():
         if isinstance(e, ClientCreated):
             created_at[e.client_id] = e.order_key
+        elif e.client_id == PLATFORM_CLIENT_ID:
+            continue
         else:
             assert e.client_id in created_at
             assert created_at[e.client_id] < e.order_key
+            checked += 1
+    assert checked, "fixture produced no tenant-scoped events; the assertions above would be vacuous"
 
 
 # Which attribute on an event names an entity of each creating type. An event
@@ -169,7 +228,15 @@ def test_no_event_precedes_the_line_shift_or_product_it_references():
 
 
 def test_work_order_events_follow_the_work_order_receipt():
+    """QualityInspected is in this list deliberately. A shift is stamped at its
+    own start hour -- 06:30 for shift 0, and as early as 00:30 once the modular
+    hour step wraps -- while a WorkOrderReceived is stamped 07:00. So an
+    inspection may only reach for an order received on a STRICTLY EARLIER day;
+    "on or before today" puts the 06:30 inspection thirty minutes ahead of the
+    07:00 receipt it names, and the materializer inserting in stream order
+    would hit the FK before the parent row exists."""
     seen = set()
+    inspections = 0
     for e in _gen():
         if isinstance(e, WorkOrderReceived):
             seen.add(e.work_order_id)
@@ -177,6 +244,10 @@ def test_work_order_events_follow_the_work_order_receipt():
             assert e.work_order_id in seen
         elif isinstance(e, HoldOpened):
             assert e.work_order_id in seen
+        elif isinstance(e, QualityInspected):
+            assert e.work_order_id in seen
+            inspections += 1
+    assert inspections, "fixture produced no inspections; the assertion above would be vacuous"
 
 
 def test_every_work_order_gets_an_opening_status_row():
@@ -215,19 +286,38 @@ def test_shift_events_cover_the_profile_window():
     SMOKE window's actual weekday composition, so compute the exact expected
     working-day set (Mon-Fri, mirroring the generator's own day loop) and
     compare the actual dates, not just their count -- a window shifted by
-    one day would still match on cardinality alone."""
-    days = {e.at.date() for e in _gen() if isinstance(e, ShiftWorked)}
-    start = AS_OF - timedelta(days=SMOKE.days)
-    # Day 0 (and any further day the setup band spills onto) belongs to setup
-    # alone, so activity runs [activity_start, as_of) -- see _activity_start.
-    activity_start = _activity_start(SMOKE, start)
-    expected_days = {
-        activity_start + timedelta(days=offset)
-        for offset in range((AS_OF - activity_start).days)
-        if (activity_start + timedelta(days=offset)).weekday() < 5
-    }
-    assert expected_days, "expected-day set is empty; the comparison below would be vacuous"
-    assert days == expected_days
+    one day would still match on cardinality alone.
+
+    Compared PER CLIENT rather than over the union: the first scenario's setup
+    band carries four extra minutes (the global KPI thresholds), so its
+    activity window is the one that could drift first, and a union would let
+    the other three clients paper over it.
+
+    Swept over seven consecutive as_of dates rather than the pinned one. On
+    AS_OF the band opens on a Saturday, so the Mon-Fri filter absorbs a band
+    shifted by a day or two and the comparison stays green against a generator
+    that moved it -- measured: pushing activity_start forward a day left this
+    test passing. Seven consecutive dates put activity_start on every weekday
+    phase, so a shifted band always drops or gains a working day somewhere."""
+    for k in range(7):
+        as_of = AS_OF + timedelta(days=k)
+        events = generate(SCENARIOS, SMOKE, seed=1234, as_of=as_of)
+        start = as_of - timedelta(days=SMOKE.days)
+        for index, scenario in enumerate(SCENARIOS):
+            days = {
+                e.at.date() for e in events if isinstance(e, ProductionRecorded) and e.client_id == scenario.client_id
+            }
+            # Day 0 (and any further day the setup band spills onto) belongs to
+            # setup alone, so activity runs [activity_start, as_of) -- see
+            # _activity_start.
+            activity_start = _activity_start(SMOKE, start, index)
+            expected_days = {
+                activity_start + timedelta(days=offset)
+                for offset in range((as_of - activity_start).days)
+                if (activity_start + timedelta(days=offset)).weekday() < 5
+            }
+            assert expected_days, "expected-day set is empty; the comparison below would be vacuous"
+            assert days == expected_days, (as_of, scenario.client_id)
 
 
 def test_no_event_is_dated_after_as_of():
@@ -334,3 +424,160 @@ def test_each_client_gets_its_declared_employee_count():
             per_client[e.client_id] = per_client.get(e.client_id, 0) + 1
     for scenario in SCENARIOS:
         assert per_client[scenario.client_id] == SMOKE.employees_per_client
+
+
+def test_attendance_is_emitted_once_per_employee_per_worked_shift():
+    """The headcount-only event could not express this; N rows per shift is the
+    reason the model split."""
+    events = _gen()
+    attendance = [e for e in events if isinstance(e, AttendanceRecorded)]
+    production = [e for e in events if isinstance(e, ProductionRecorded)]
+
+    assert attendance
+    per_shift = Counter((e.client_id, e.line_id, e.shift_id, e.shift_date) for e in attendance)
+    # One production row per worked (client, line, shift, date); attendance is
+    # one row per employee on that same key, so every key must exceed 1.
+    assert len(per_shift) == len(production)
+    assert min(per_shift.values()) > 1
+
+
+def test_defect_codes_are_always_catalog_codes():
+    events = _gen()
+    defined = {(e.client_id, e.defect_code) for e in events if isinstance(e, DefectTypeDefined)}
+    found = [e for e in events if isinstance(e, DefectsFound)]
+
+    assert found
+    for e in found:
+        assert e.defect_code in DEFECT_CODES
+        assert (e.client_id, e.defect_code) in defined
+
+
+def test_every_defects_found_references_an_earlier_quality_entry():
+    """Referential integrity in time: the materializer inserts in stream order,
+    so a child may never precede its parent."""
+    seen = set()
+    checked = 0
+    for e in _gen():
+        if isinstance(e, QualityInspected):
+            seen.add(e.quality_entry_id)
+        elif isinstance(e, DefectsFound):
+            assert e.quality_entry_id in seen
+            checked += 1
+    assert checked, "fixture produced no defect rows; the assertion above would be vacuous"
+
+
+def test_defect_rows_sum_to_the_inspections_total_defect_count():
+    """The split across defect_rows_per_inspection rows must conserve the
+    total: DHU is derived from QUALITY_ENTRY while the Pareto is derived from
+    DEFECT_DETAIL, and a demo where the two disagree is worse than one with no
+    breakdown at all."""
+    totals: dict = {}
+    per_entry: dict = {}
+    for e in _gen():
+        if isinstance(e, QualityInspected):
+            totals[e.quality_entry_id] = e.total_defects_count
+        elif isinstance(e, DefectsFound):
+            per_entry[e.quality_entry_id] = per_entry.get(e.quality_entry_id, 0) + e.defect_count
+    assert per_entry, "fixture produced no defect rows; the comparison below would be vacuous"
+    for qe_id, counted in per_entry.items():
+        assert counted == totals[qe_id], qe_id
+
+
+def test_downtime_root_causes_come_from_the_live_vocabulary():
+    checked = 0
+    for e in _gen():
+        if isinstance(e, DowntimeLogged):
+            assert e.root_cause_category in ROOT_CAUSES
+            checked += 1
+    assert checked, "fixture produced no downtime; the assertion above would be vacuous"
+
+
+def test_work_orders_carry_a_required_date_after_receipt():
+    orders = [e for e in _gen() if isinstance(e, WorkOrderReceived)]
+
+    assert orders
+    for e in orders:
+        assert e.required_date > e.at
+
+
+def test_some_work_orders_carry_no_priority():
+    """Spec section 3 decision 6 excludes priority-less orders from the
+    priority-adherence denominator and publishes their share as a coverage
+    figure. A dataset where every order has a priority cannot demonstrate that
+    the exclusion works -- and one where none does cannot demonstrate the
+    metric."""
+    orders = [e for e in generate(SCENARIOS, FULL, seed=1234, as_of=AS_OF) if isinstance(e, WorkOrderReceived)]
+
+    assert orders
+    without = [e for e in orders if e.priority is None]
+    assert without
+    assert len(without) < len(orders)
+
+
+def test_the_six_users_are_emitted_once_each_with_their_grants():
+    events = _gen()
+    users = [e for e in events if isinstance(e, UserCreated)]
+    grants = [e for e in events if isinstance(e, ClientAccessGranted)]
+
+    assert len(users) == len(USERS)
+    assert len(grants) == sum(len(u.client_ids) for u in USERS)
+
+
+def test_users_are_emitted_before_any_grant_references_them():
+    created = set()
+    checked = 0
+    for e in _gen():
+        if isinstance(e, UserCreated):
+            created.add(e.user_id)
+        elif isinstance(e, ClientAccessGranted):
+            assert e.user_id in created
+            checked += 1
+    assert checked, "fixture produced no grants; the assertion above would be vacuous"
+
+
+def test_production_is_attributed_to_a_user_the_stream_created():
+    """entered_by is a foreign key to USER. The old seeder wrote a bare string,
+    so the "who entered this" column pointed at nobody."""
+    created = set()
+    checked = 0
+    for e in _gen():
+        if isinstance(e, UserCreated):
+            created.add(e.user_id)
+        elif isinstance(e, ProductionRecorded):
+            assert e.entered_by in created
+            checked += 1
+    assert checked, "fixture produced no production; the assertion above would be vacuous"
+
+
+def test_hold_reasons_and_statuses_quote_the_clients_own_catalog():
+    """HOLD_REASON_CATALOG and HOLD_STATUS_CATALOG are new in this commit and
+    both are foreign keys in the target schema: a hold opened on a reason no
+    catalog carries, or advanced to a status no catalog declares, fails the
+    insert. Keyed on (client_id, code) because the catalogs are per client, so
+    quoting another tenant's code is the same defect as quoting none.
+
+    Asserted BOTH ways -- every emitted value is a catalog code, and every
+    catalog code is emitted. Membership alone degrades silently: SMOKE/1234
+    produces exactly one hold with one transition, so it satisfies membership
+    while touching 1 of 3 reasons and 1 of 4 statuses, and an off-catalog value
+    on any other branch would sail through. FULL reaches all seven, and the
+    equality is what keeps it that way -- including against a catalog that
+    grows an entry the generator never uses, which is a dead row in the demo."""
+    events = generate(SCENARIOS, FULL, seed=1234, as_of=AS_OF)
+    reasons: set = set()
+    statuses: set = set()
+    seen_reasons: set = set()
+    seen_statuses: set = set()
+    for e in events:
+        if isinstance(e, HoldReasonDefined):
+            reasons.add((e.client_id, e.reason_code))
+        elif isinstance(e, HoldStatusDefined):
+            statuses.add((e.client_id, e.status_code))
+        elif isinstance(e, HoldOpened):
+            assert (e.client_id, e.reason_category) in reasons
+            seen_reasons.add(e.reason_category)
+        elif isinstance(e, HoldStatusChanged):
+            assert (e.client_id, e.to_status) in statuses
+            seen_statuses.add(e.to_status)
+    assert seen_reasons == {code for code, _, _ in HOLD_REASONS}
+    assert seen_statuses == {code for code, _, _ in HOLD_STATUSES}
