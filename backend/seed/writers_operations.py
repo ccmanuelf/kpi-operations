@@ -164,18 +164,39 @@ def _hold_status_changed(e: ev.HoldStatusChanged, sink: RowSink, ids: IdMap) -> 
 
 
 def _attendance_recorded(e: ev.AttendanceRecorded, sink: RowSink, ids: IdMap) -> None:
+    shift_pk = ids.resolve("SHIFT", e.shift_id)
+    employee_pk = ids.resolve("EMPLOYEE", e.employee_id)
     sink.add(
         "ATTENDANCE_ENTRY",
         {
-            # One row per employee per shift per day -- the natural key.
-            "attendance_entry_id": f"{e.client_id}-AE-{e.shift_date:%Y%m%d}-{e.shift_id}-{e.employee_id}",
+            # One row per employee per shift per day -- built from the
+            # RESOLVED INTEGER pks, not the business-id strings. e.shift_id
+            # and e.employee_id already embed the client id (e.g.
+            # "DEMO-HOURLY-SHIFT-01"), so a key built from those strings plus
+            # e.client_id repeated it and overflowed this column's
+            # VARCHAR(50) on every row under MariaDB's strict sql_mode --
+            # SQLite enforces no such limit, which is why this passed every
+            # test until it was checked against real column lengths. The
+            # resolved ints are already globally unique per their own table
+            # for this run, so (day, shift_pk, employee_pk) alone is
+            # collision-free without the client prefix.
+            "attendance_entry_id": f"AE-{e.shift_date:%Y%m%d}-{shift_pk}-{employee_pk}",
             "client_id": e.client_id,
             "line_id": ids.resolve("PRODUCTION_LINE", e.line_id),
-            "employee_id": ids.resolve("EMPLOYEE", e.employee_id),
+            "employee_id": employee_pk,
             "shift_date": e.shift_date,
-            "shift_id": ids.resolve("SHIFT", e.shift_id),
+            "shift_id": shift_pk,
             "scheduled_hours": e.scheduled_hours,
             "actual_hours": e.hours_worked,
+            # Arithmetic over two fields the event already carries -- not a
+            # new fact and not a new RNG draw, so it does not breach the "no
+            # generation in the write layer" rule the way fabricating an
+            # absence would. This is the Absenteeism KPI's numerator
+            # (routes/kpi/dashboard.py:246, routes/kpi/trends.py:425,
+            # reports/pdf_generator.py:432,545 all sum it directly); left at
+            # the column default of 0 it renders every client's absenteeism
+            # as 0.00% despite is_absent rows existing.
+            "absence_hours": e.scheduled_hours - e.hours_worked,
             "is_absent": int(e.is_absent),
             "created_at": e.at,
             "updated_at": e.at,
@@ -250,12 +271,17 @@ def _defects_found(e: ev.DefectsFound, sink: RowSink, ids: IdMap) -> None:
 
 
 def _downtime_logged(e: ev.DowntimeLogged, sink: RowSink, ids: IdMap) -> None:
+    line_pk = ids.resolve("PRODUCTION_LINE", e.line_id)
+    shift_pk = ids.resolve("SHIFT", e.shift_id)
     sink.add(
         "DOWNTIME_ENTRY",
         {
-            "downtime_entry_id": f"{e.client_id}-DT-{e.shift_date:%Y%m%d}-{e.line_id}-{e.shift_id}",
+            # Same rationale as ATTENDANCE_ENTRY.attendance_entry_id above:
+            # built from the resolved integer pks, not the client-id-bearing
+            # business-id strings, to stay well inside VARCHAR(50).
+            "downtime_entry_id": f"DT-{e.shift_date:%Y%m%d}-{line_pk}-{shift_pk}",
             "client_id": e.client_id,
-            "line_id": ids.resolve("PRODUCTION_LINE", e.line_id),
+            "line_id": line_pk,
             "shift_date": e.shift_date,
             "downtime_reason": e.downtime_reason,
             "downtime_duration_minutes": e.downtime_minutes,

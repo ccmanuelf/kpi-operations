@@ -9,7 +9,7 @@ from backend.database import Base
 from backend.orm import HoldStatusTransition, WorkflowTransitionLog, WorkOrder
 from backend.seed.generator import generate
 from backend.seed.materialize import CLIENT_SCOPE_COLUMN, INSERT_ORDER, RowSink, materialize
-from backend.seed.profiles import SMOKE
+from backend.seed.profiles import FULL, SMOKE
 from backend.seed.scenarios import SCENARIOS
 
 AS_OF = date(2026, 8, 18)
@@ -125,26 +125,64 @@ def test_transition_timestamps_are_not_all_the_seed_run_instant(seed_engine):
     assert earliest < datetime.now() - timedelta(days=1)
 
 
-def test_created_at_is_back_dated_too(seed_engine):
-    """created_at carries a server_default on every seeded table. A row whose
-    created_at is the seed-run instant is a row the materializer forgot."""
+def test_created_at_is_back_dated_on_every_seeded_table(seed_engine):
+    """created_at carries a server_default on every seeded table -- not just
+    WorkOrder. Checking WorkOrder alone is vacuous for every OTHER table:
+    dropping created_at/updated_at from _production_recorded (4160 rows at
+    FULL -- the exact defect this rebuild exists to remove) left this test
+    green when it checked only WorkOrder. Sweep every table the writers
+    actually populated (materialize()'s own returned counts, keyed the same
+    as RowSink.tables()) that declares a created_at column.
+
+    Per-table MIN, not per-row: a systematic omission (a handler that always
+    forgets the column) still makes every row in that table land at "now",
+    so MIN alone catches it -- and it's the failure mode the mutation below
+    proves. See test_transition_timestamps_are_not_all_the_seed_run_instant
+    above for why this compares against the real run instant rather than a
+    fixed calendar-date literal.
+    """
     events = generate(SCENARIOS, SMOKE, seed=1234, as_of=AS_OF)
     with seed_engine.begin() as conn:
-        materialize(conn, events, SMOKE)
+        counts = materialize(conn, events, SMOKE)
+
+    assert counts  # sanity: materialize() wrote something at all
+    cutoff = datetime.now() - timedelta(days=1)
 
     with seed_engine.connect() as conn:
-        earliest = conn.execute(select(func.min(WorkOrder.created_at))).scalar_one()
+        checked = 0
+        for table_name in counts:
+            table = Base.metadata.tables[table_name]
+            if "created_at" not in table.c:
+                continue
+            checked += 1
+            earliest = conn.execute(select(func.min(table.c.created_at))).scalar_one()
+            assert earliest is not None, f"{table_name}.created_at is NULL"
+            assert earliest < cutoff, f"{table_name}.created_at is not backdated: {earliest}"
+            if "updated_at" in table.c:
+                earliest_u = conn.execute(select(func.min(table.c.updated_at))).scalar_one()
+                assert earliest_u is not None, f"{table_name}.updated_at is NULL"
+                assert earliest_u < cutoff, f"{table_name}.updated_at is not backdated: {earliest_u}"
 
-    # See test_transition_timestamps_are_not_all_the_seed_run_instant above
-    # for why this compares against the real run instant rather than a fixed
-    # calendar-date literal.
-    assert earliest < datetime.now() - timedelta(days=1)
+    # 21 of the 23 tables the writers touch carry created_at (the other two,
+    # WORKFLOW_TRANSITION_LOG and HOLD_STATUS_TRANSITION, carry
+    # transitioned_at instead -- covered by their own dedicated tests). A
+    # count far below that would mean this loop silently stopped covering
+    # tables it used to.
+    assert checked >= 20, f"only swept {checked} tables with a created_at column"
 
 
 def test_hold_status_history_is_monotonic_per_hold(seed_engine):
-    events = generate(SCENARIOS, SMOKE, seed=1234, as_of=AS_OF)
+    """FULL/seed=1234, not SMOKE: SMOKE's short window and low hold rate
+    produces at most a handful of hold status rows total (seed=7 yields zero
+    holds outright; seed=1234 yields exactly one), so the `if hold_id in
+    seen:` branch below would rarely or never execute and the assertion
+    would prove nothing -- the multi > 0 guard is what catches that, the
+    same way test_transition_chains_strictly_increase_per_order's sibling
+    guard does for work orders. FULL/1234 produces 21 multi-step holds
+    (checked directly against the generator), comfortably non-vacuous."""
+    events = generate(SCENARIOS, FULL, seed=1234, as_of=AS_OF)
     with seed_engine.begin() as conn:
-        materialize(conn, events, SMOKE)
+        materialize(conn, events, FULL)
 
     with seed_engine.connect() as conn:
         rows = conn.execute(
@@ -157,10 +195,14 @@ def test_hold_status_history_is_monotonic_per_hold(seed_engine):
 
     assert rows
     seen: dict = {}
+    multi = 0
     for hold_id, _tid, at in rows:
         if hold_id in seen:
             assert at >= seen[hold_id]
+            multi += 1
         seen[hold_id] = at
+
+    assert multi > 0, "no hold had more than one transition -- the monotonicity assertion proved nothing"
 
 
 def test_users_cover_all_six_roles_and_can_authenticate(seed_engine):
@@ -226,18 +268,39 @@ def test_the_leader_reaches_three_clients_through_the_real_scope_resolver(seed_e
 
 
 def test_integer_pks_are_assigned_and_resolvable(seed_engine):
-    from backend.orm import ProductionLine, Shift
+    """Uniqueness alone is a property the database's own PRIMARY KEY
+    constraint already guarantees -- asserting it exercises nothing about
+    IdMap/IntPkAllocator. "Resolvable" means a LATER event's foreign-key
+    reference (a production entry's line_id, an attendance row's shift_id)
+    actually lands on the integer PRODUCTION_LINE/SHIFT row an EARLIER event
+    minted in this same run, not a stale or swapped one.
+
+    seed_engine now enforces foreign keys (PRAGMA foreign_keys=ON, see
+    conftest.py) -- materialize() completing here at all is direct proof
+    every resolved id landed on a real row: a swapped id source (line_id
+    resolved where product_id belongs, the classic copy-paste bug) raises
+    sqlite3.IntegrityError instead of silently inserting. The subset checks
+    below additionally confirm the FK columns are actually POPULATED with
+    resolved ids, not merely absent (nullable columns pass FK enforcement
+    trivially when NULL)."""
+    from backend.orm import AttendanceEntry, ProductionEntry, ProductionLine, Shift
 
     events = generate(SCENARIOS, SMOKE, seed=1234, as_of=AS_OF)
     with seed_engine.begin() as conn:
-        materialize(conn, events, SMOKE)
+        materialize(conn, events, SMOKE)  # would raise IntegrityError on any dangling FK
 
     with seed_engine.connect() as conn:
-        lines = conn.execute(select(ProductionLine.line_id, ProductionLine.line_code)).all()
-        shifts = conn.execute(select(Shift.shift_id, Shift.client_id)).all()
+        line_ids = {r.line_id for r in conn.execute(select(ProductionLine.line_id)).all()}
+        shift_ids = {r.shift_id for r in conn.execute(select(Shift.shift_id)).all()}
+        production_lines_used = {r.line_id for r in conn.execute(select(ProductionEntry.line_id)).all()}
+        attendance_shifts_used = {
+            r.shift_id for r in conn.execute(select(AttendanceEntry.shift_id)).all() if r.shift_id is not None
+        }
 
-    assert len({r.line_id for r in lines}) == len(lines)
-    assert len({r.shift_id for r in shifts}) == len(shifts)
+    assert production_lines_used, "no PRODUCTION_ENTRY.line_id was populated -- the check below would be vacuous"
+    assert production_lines_used <= line_ids
+    assert attendance_shifts_used, "no ATTENDANCE_ENTRY.shift_id was populated -- the check below would be vacuous"
+    assert attendance_shifts_used <= shift_ids
 
 
 def test_defect_catalog_covers_every_code_per_client(seed_engine):
@@ -287,22 +350,69 @@ def test_kpi_thresholds_are_scoped_per_client_not_shared(seed_engine):
 
 def test_every_work_order_has_an_opening_transition(seed_engine):
     """60 of 100 orders had no chain at all in the old dataset, so 'what status
-    was this on date D' was unanswerable -- the premise of PR-C."""
+    was this on date D' was unanswerable -- the premise of PR-C.
+
+    Checks POSITION, not just presence: a NULL from_status row must be the
+    FIRST transition (lowest transition_id) for its order, not merely
+    present somewhere in the chain. A presence-only check (`orders -
+    opening == set()`) would still pass if a mid-chain row were NULL and the
+    genuine opening row were not -- transition_id is autoincrement in
+    insertion/stream order, so grouping by work_order_id after an ORDER BY
+    transition_id and taking the first row per group is the real "opens the
+    chain" check.
+    """
     events = generate(SCENARIOS, SMOKE, seed=1234, as_of=AS_OF)
     with seed_engine.begin() as conn:
         materialize(conn, events, SMOKE)
 
     with seed_engine.connect() as conn:
         orders = {r.work_order_id for r in conn.execute(select(WorkOrder.work_order_id)).all()}
-        opening = {
-            r.work_order_id
-            for r in conn.execute(
-                select(WorkflowTransitionLog.work_order_id).where(WorkflowTransitionLog.from_status.is_(None))
-            ).all()
-        }
+        rows = conn.execute(
+            select(WorkflowTransitionLog.work_order_id, WorkflowTransitionLog.from_status).order_by(
+                WorkflowTransitionLog.work_order_id, WorkflowTransitionLog.transition_id
+            )
+        ).all()
 
     assert orders
-    assert orders - opening == set()
+    assert rows
+    first_from_status_by_order: dict = {}
+    for work_order_id, from_status in rows:
+        first_from_status_by_order.setdefault(work_order_id, from_status)
+
+    assert set(first_from_status_by_order) == orders
+    for work_order_id, from_status in first_from_status_by_order.items():
+        assert from_status is None, f"{work_order_id}: opening transition has from_status={from_status!r}, not NULL"
+
+
+def test_every_hold_has_an_opening_transition_with_a_null_from_status(seed_engine):
+    """Hold-side sibling of test_every_work_order_has_an_opening_transition.
+    active_as_of's pre-history resolution reads a NULL from_status to mean
+    'this hold began here' (PR-C1b) -- the same invariant, same positional
+    check, for HOLD_ENTRY / HOLD_STATUS_TRANSITION instead of WORK_ORDER /
+    WORKFLOW_TRANSITION_LOG."""
+    from backend.orm import HoldEntry
+
+    events = generate(SCENARIOS, SMOKE, seed=1234, as_of=AS_OF)
+    with seed_engine.begin() as conn:
+        materialize(conn, events, SMOKE)
+
+    with seed_engine.connect() as conn:
+        holds = {r.hold_entry_id for r in conn.execute(select(HoldEntry.hold_entry_id)).all()}
+        rows = conn.execute(
+            select(HoldStatusTransition.hold_entry_id, HoldStatusTransition.from_status).order_by(
+                HoldStatusTransition.hold_entry_id, HoldStatusTransition.transition_id
+            )
+        ).all()
+
+    assert holds
+    assert rows
+    first_from_status_by_hold: dict = {}
+    for hold_entry_id, from_status in rows:
+        first_from_status_by_hold.setdefault(hold_entry_id, from_status)
+
+    assert set(first_from_status_by_hold) == holds
+    for hold_entry_id, from_status in first_from_status_by_hold.items():
+        assert from_status is None, f"{hold_entry_id}: opening transition has from_status={from_status!r}, not NULL"
 
 
 def test_transition_chains_strictly_increase_per_order(seed_engine):
@@ -460,3 +570,39 @@ def test_materializing_twice_in_one_process_resets_open_row_state(seed_engine, t
 
     surviving = [k for k in smoke_only_keys if k in writers_operations._open_rows]
     assert surviving == [], f"stale WO-0006 entries survived a second materialize() call: {surviving}"
+
+
+def test_every_string_value_fits_its_column_length(tmp_path):
+    """SQLite ignores VARCHAR(N) declarations, so a key formula that overflows
+    a real column passes silently here and only fails on MariaDB (ERROR 1406:
+    Data too long) -- or, worse, silently truncates under a non-strict
+    sql_mode, collapsing distinct rows onto one truncated key. Sweep every
+    string column's actual persisted length against Base.metadata's declared
+    length, across BOTH profiles: FULL's larger integer pks are what push a
+    derived key closest to its column's limit."""
+    from sqlalchemy import String, create_engine
+
+    from backend.db.migrate import upgrade_to_head
+
+    for profile in (SMOKE, FULL):
+        events = generate(SCENARIOS, profile, seed=1234, as_of=AS_OF)
+        url = f"sqlite:///{tmp_path / f'{profile.name}.db'}"
+        upgrade_to_head(url)
+        engine = create_engine(url)
+        try:
+            with engine.begin() as conn:
+                materialize(conn, events, profile)
+            with engine.connect() as conn:
+                for table_name, table in Base.metadata.tables.items():
+                    for column in table.columns:
+                        if not isinstance(column.type, String) or column.type.length is None:
+                            continue
+                        for (value,) in conn.execute(select(column)).all():
+                            if value is None:
+                                continue
+                            assert len(value) <= column.type.length, (
+                                f"{profile.name}: {table_name}.{column.name}={value!r} "
+                                f"({len(value)} chars) exceeds VARCHAR({column.type.length})"
+                            )
+        finally:
+            engine.dispose()

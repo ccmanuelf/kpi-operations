@@ -315,8 +315,8 @@ def test_every_hold_status_write_site_is_instrumented():
     """Static guard: a hold_status write with no recorder call nearby is a
     hole in the history, and holes are invisible until a trend query is wrong.
 
-    Four write forms exist or are guarded against in this codebase and all
-    four must be caught:
+    Five write forms exist or are guarded against in this codebase and all
+    five must be caught:
       - attribute assignment:   db_hold.hold_status = ...
       - dict/bracket-key assignment: hold_data["hold_status"] = ...   (crud/hold/core.py)
       - setattr-style:          setattr(db_hold, "hold_status", ...)
@@ -328,6 +328,12 @@ def test_every_hold_status_write_site_is_instrumented():
                                  shape a future writer takes -- it bypasses
                                  setattr entirely, so the three per-line
                                  patterns above cannot see it)
+      - dict-literal key:       {"hold_status": X, ...}   (backend/seed/
+                                 writers_operations.py's opening HOLD_ENTRY
+                                 row -- a Core bulk-insert row built as one
+                                 literal dict, not an attribute assignment,
+                                 bracket assignment, setattr, or bulk update,
+                                 so none of the other four patterns see it)
 
     Two forms of "instrumented" are recognized:
       - `record_hold_transition(` -- the ORM per-row recorder, used by every
@@ -371,6 +377,10 @@ def test_every_hold_status_write_site_is_instrumented():
     # like `x = hold_data["hold_status"]` does not match.
     bracket_write = re.compile(r"""\[\s*['"]hold_status['"]\s*\]\s*=\s*(?!=)""")
     setattr_write = re.compile(r"""setattr\(\s*[\w.]+\s*,\s*['"]hold_status['"]\s*,""")
+    # Dict-literal key: {"hold_status": X, ...}. Requires the `:` (not `=`,
+    # already covered by bracket_write) so a docstring line like the one two
+    # paragraphs up (`hold_data["hold_status"] = ...`) cannot double-match.
+    dict_literal_write = re.compile(r"""['"]hold_status['"]\s*:\s*(?!:)""")
     # `.update({HoldEntry.hold_status: X})` (Query.update dict form) and
     # `update(HoldEntry).values(hold_status=X)` (Core update().values() form).
     # Scanned over the whole file text rather than per-line, since the
@@ -400,7 +410,12 @@ def test_every_hold_status_write_site_is_instrumented():
         recorder_lines += [text.count("\n", 0, m.start()) for m in sink_add_write.finditer(text)]
 
         for i, line in enumerate(lines):
-            is_write = attribute_write.match(line) or bracket_write.search(line) or setattr_write.search(line)
+            is_write = (
+                attribute_write.match(line)
+                or bracket_write.search(line)
+                or setattr_write.search(line)
+                or dict_literal_write.search(line)
+            )
             if not is_write:
                 continue
             if not any(abs(i - r) <= WINDOW for r in recorder_lines):
