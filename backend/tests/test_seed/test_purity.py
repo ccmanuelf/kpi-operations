@@ -151,41 +151,35 @@ def test_the_guard_actually_covers_every_engine_module():
     } <= names
 
 
-def test_exemption_does_not_fail_open_to_subpackages(tmp_path):
+def test_exemption_does_not_fail_open_to_subpackages(tmp_path, monkeypatch):
     """Exemptions match by relative path, not basename. A module in a subpackage
     bearing the same name as an exempted file is NOT automatically exempted --
-    the recursive glob invariant is preserved. This test temporarily plants a
-    SQLAlchemy import in a subpackage and verifies the guard catches it."""
+    the recursive glob invariant is preserved. This test drives the REAL
+    _engine_modules() against a temporary directory with a subpackage."""
+    import sys
+
     # Create a temporary backend/seed structure.
     temp_seed = tmp_path / "seed"
     temp_seed.mkdir()
     (temp_seed / "__init__.py").touch()
 
-    # Create a subpackage with a file named identity.py containing an import.
+    # Create a subpackage with a probe file named identity.py.
     subpkg = temp_seed / "subpkg"
     subpkg.mkdir()
     (subpkg / "__init__.py").touch()
-    (subpkg / "identity.py").write_text("import sqlalchemy\n")
+    (subpkg / "identity.py").write_text("# probe file\n")
 
-    # Temporarily replace SEED_DIR and re-run the glob.
-    # We cannot directly patch SEED_DIR because it is evaluated at module load time,
-    # so we work around by creating a local _engine_modules with the temp dir.
-    def _temp_engine_modules():
-        all_modules = [p for p in temp_seed.rglob("*.py") if p.name != "__init__.py"]
-        return sorted(p for p in all_modules if p.relative_to(temp_seed).as_posix() not in EXEMPTED_MODULE_PATHS)
+    # Patch SEED_DIR in this module's namespace. Get the module from sys.modules
+    # to ensure we patch the right namespace that _engine_modules() will read from.
+    this_module = sys.modules[__name__]
+    monkeypatch.setattr(this_module, "SEED_DIR", temp_seed)
 
-    # The subpackage module should be included (not exempted by basename).
-    modules = _temp_engine_modules()
-    found_subpkg = any(p.as_posix().endswith("subpkg/identity.py") for p in modules)
-    assert found_subpkg, "Guard failed open: subpkg/identity.py was exempted by basename"
+    # Call the real _engine_modules() with the patched SEED_DIR.
+    modules = _engine_modules()
 
-    # Now verify the guard catches the SQLAlchemy import.
-    offenders = []
-    for path in modules:
-        for node in ast.walk(ast.parse(path.read_text())):
-            for m in _imported_modules(node, ("temp", "seed")):
-                if any(m == f or m.startswith(f + ".") for f in FORBIDDEN_IMPORTS):
-                    offenders.append(f"{path.relative_to(temp_seed).as_posix()}: {m}")
-
-    assert offenders, "Guard failed to catch SQLAlchemy import in subpkg/identity.py"
-    assert "subpkg/identity.py" in offenders[0]
+    # The subpackage module MUST be included. If exemptions matched by basename,
+    # subpkg/identity.py would be wrongly excluded.
+    relative_paths = {p.relative_to(temp_seed).as_posix() for p in modules}
+    assert (
+        "subpkg/identity.py" in relative_paths
+    ), f"Guard failed open: subpkg/identity.py was exempted by basename. Modules seen: {relative_paths}"
