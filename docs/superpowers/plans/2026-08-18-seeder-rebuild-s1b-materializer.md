@@ -1558,18 +1558,16 @@ def bulk_insert(conn: Connection, table: Table, rows: list[dict]) -> None:
 
 
 def flush(conn: Connection, sink: RowSink) -> dict[str, int]:
-    # A table written but not declared SEEDED is a table the coverage contract
-    # does not govern -- it would never be checked for rows and could silently
-    # empty. Checked against SEEDED, NOT against INSERT_ORDER: INSERT_ORDER is
-    # every table in the metadata, so a check against it could never fire.
-    from backend.seed.coverage import SEEDED
-
-    undeclared = set(sink.tables()) - SEEDED
-    if undeclared:
-        raise RuntimeError(
-            f"writers produced rows for tables outside the coverage contract: {sorted(undeclared)}"
-        )
-
+    # No "did the writers touch an undeclared table?" check here. It would have
+    # to import backend.seed.coverage, which Task 8 creates -- a runtime import
+    # from a module built three tasks later. The check belongs in a test and it
+    # already has one: test_coverage.py's
+    # test_the_materializer_writes_nothing_outside_the_contract asserts exactly
+    # this against materialize()'s returned counts.
+    #
+    # Note also what NOT to check: INSERT_ORDER covers every table in the
+    # metadata, so `set(sink.tables()) - set(INSERT_ORDER)` is empty by
+    # construction and could never fire.
     counts: dict[str, int] = {}
     for name in INSERT_ORDER:
         rows = sink.rows(name)
@@ -2512,6 +2510,7 @@ reverse of the derived insert order so the two cannot drift."
 **Files:**
 - Create: `backend/tests/test_seed/test_seed_gates.py`
 - Modify: `backend/tests/test_seed/test_purity.py`
+- Modify: `backend/tests/test_seed/conftest.py` (teach `seed_engine` to honour `SEED_TEST_DATABASE_URL`)
 - Modify: `.github/workflows/ci.yml` (add a step to the existing `mariadb-portability` job)
 
 **Interfaces:**
@@ -2653,6 +2652,8 @@ These run on the **FULL** profile: a 14-day smoke window cannot contain a 60-day
 
 **Files:**
 - Create: `backend/tests/test_seed/test_narrative_dataset.py`
+- Modify: `backend/tests/test_seed/conftest.py` (add the module-scoped `seed_engine_module` fixture)
+- Modify: `backend/seed/generator.py` (the per-order lateness draw OTD needs — Step 3)
 
 **Interfaces:**
 - Consumes: `seed_engine`, `generate`, `materialize`, `FULL`.
