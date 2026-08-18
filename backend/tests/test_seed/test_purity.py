@@ -24,9 +24,12 @@ SEED_PACKAGE = ("backend", "seed")
 # the database layer. These are matched by relative path from SEED_DIR to
 # preserve the recursive-glob invariant: a module in a subpackage is still
 # caught, so only legitimate exemptions reach this set. identity.py talks to
-# a live Connection by design; the materializer will consume it to allocate
-# integer PKs and map event keys.
-EXEMPTED_MODULE_PATHS = {"identity.py"}
+# a live Connection by design; the materializer consumes it to allocate
+# integer PKs and map event keys. materialize.py itself talks to the database
+# by design too -- it takes a live Connection, executes Core bulk inserts
+# against it, and derives INSERT_ORDER from Base.metadata -- so it needs the
+# same exemption identity.py has.
+EXEMPTED_MODULE_PATHS = {"identity.py", "materialize.py"}
 
 
 def _engine_modules():
