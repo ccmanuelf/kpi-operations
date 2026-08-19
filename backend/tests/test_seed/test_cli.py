@@ -5,10 +5,19 @@ from datetime import date, datetime
 from pathlib import Path
 
 import pytest
-from sqlalchemy import String, create_engine, func, insert, select
+from sqlalchemy import Column, ForeignKey, Integer, MetaData, String, Table, create_engine, func, insert, select
 
 from backend.database import Base
-from backend.seed.cli import ALLOWLIST, CLIENT_SCOPED_TABLES, DEPENDENT_SWEEPS, SeedError, main, seed
+from backend.seed.cli import (
+    ALLOWLIST,
+    CLIENT_SCOPED_TABLES,
+    DEPENDENT_SWEEPS,
+    AmbiguousClientScope,
+    SeedError,
+    _derive_client_scoped_tables,
+    main,
+    seed,
+)
 
 
 def test_allowlist_is_exactly_the_four_scenario_clients():
@@ -524,6 +533,47 @@ def _tenant_named_string_columns() -> set:
         for column in table.columns
         if isinstance(column.type, String) and ("client" in column.name.lower() or "tenant" in column.name.lower())
     }
+
+
+def test_no_table_has_an_ambiguous_client_scope():
+    """A table with TWO ForeignKeys to CLIENT has no derivable tenant column.
+
+    Raised by the DeepSeek cross-model review of this branch, and worth acting
+    on even though the schema is clean today: the original loop assigned inside
+    the column walk, so a second ForeignKey would silently win by column order.
+    --reset would then filter that table by the wrong column -- deleting rows
+    belonging to a client nobody asked for, or leaving the requested client's
+    behind to collide on the next re-seed. Neither failure names its cause, and
+    both are cross-tenant.
+
+    Two assertions, because either alone is weak. The first pins the live
+    schema, which is what makes the guard meaningful now. The second proves the
+    derivation REFUSES an ambiguous schema rather than guessing -- without it
+    this test would still pass if _derive_client_scoped_tables went back to
+    picking whichever ForeignKey came last.
+    """
+    ambiguous = {}
+    for table in Base.metadata.sorted_tables:
+        scopes = sorted(c.name for c in table.columns for fk in c.foreign_keys if fk.column.table.name == "CLIENT")
+        if len(scopes) > 1:
+            ambiguous[table.name] = scopes
+
+    assert ambiguous == {}
+
+    metadata = MetaData()
+    Table("CLIENT", metadata, Column("client_id", String(50), primary_key=True))
+    Table(
+        "TWO_SCOPES",
+        metadata,
+        Column("row_id", Integer, primary_key=True),
+        Column("client_id", String(50), ForeignKey("CLIENT.client_id")),
+        Column("owner_client_id", String(50), ForeignKey("CLIENT.client_id")),
+    )
+
+    with pytest.raises(AmbiguousClientScope) as exc:
+        _derive_client_scoped_tables(metadata)
+
+    assert "TWO_SCOPES" in str(exc.value)
 
 
 def test_every_bare_client_column_is_a_deliberate_include_or_exclude():

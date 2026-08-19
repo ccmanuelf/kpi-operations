@@ -1,12 +1,17 @@
 """Event stream -> database rows.
 
 Mechanical. Every value written here comes from an event; this module invents
-nothing, and contains no clock -- no datetime.now(), no func.now(), and no
+nothing, and contains no clock: no datetime.now(), no func.now(), and no
 column left to its server_default. That last one is not a style preference:
 created_at carries a server default on every seeded table and
 WORKFLOW_TRANSITION_LOG.transitioned_at does too, and letting them fall
 through is precisely what collapsed all 40 existing transition chains into a
 single instant.
+
+ONE stated exception to "invents nothing": USER.password_hash. argon2id salts
+randomly, so that single column differs between two runs at the same seed --
+deliberate, argued at writers_master._user_created, and confined to that
+column. Nothing else the write layer emits is non-deterministic.
 
 Batching: rows accumulate per table and flush in Base.metadata.sorted_tables
 order (FK-safe, derived rather than hand-maintained). Within a table the batch

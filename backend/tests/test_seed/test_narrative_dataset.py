@@ -81,7 +81,16 @@ def test_demo_piece_dhu_spikes_in_its_crisis_window(full_db):
     crisis, baseline = crisis - baseline, baseline - crisis
 
     with full_db.connect() as conn:
-        assert _dhu(conn, "DEMO-PIECE", crisis) >= 2 * _dhu(conn, "DEMO-PIECE", baseline)
+        crisis_dhu, baseline_dhu = _dhu(conn, "DEMO-PIECE", crisis), _dhu(conn, "DEMO-PIECE", baseline)
+
+    # A ratio between two zeroes satisfies any multiplier: `_dhu` returns 0.0
+    # when a bucket has no inspected units, so `0 >= 2 * 0` passes and the
+    # assertion below would survive DEMO-PIECE losing its quality data
+    # entirely. Baseline measures 1.774 DHU, so this floor is slack by three
+    # orders of magnitude against real data and tight against no data.
+    # (Raised by the DeepSeek cross-model review.)
+    assert baseline_dhu > 0
+    assert crisis_dhu >= 2 * baseline_dhu
 
 
 def test_at_least_three_holds_are_aged_past_sixty_days(full_db):
@@ -242,6 +251,11 @@ def test_demo_hourly_maintenance_downtime_dominates_inside_its_window(full_db):
 
     others = sum(v for k, v in inside.items() if k != "EQUIPMENT_FAILURE")
 
+    # Same zero-ratio hole as the DHU assertion: with no in-window downtime at
+    # all both sides are 0 and `0 >= 2 * 0` passes, so the dominance claim
+    # would survive the window going silent. Measured 8,844 EQUIPMENT_FAILURE
+    # minutes against 3,168 for every other reason combined.
+    assert others > 0
     assert inside["EQUIPMENT_FAILURE"] >= 2 * others
 
 
@@ -271,6 +285,13 @@ def test_demo_hybrid_absenteeism_peaks_inside_its_window(full_db):
     assert inside and outside
     inside_rate = sum(bool(a) for a in inside) / len(inside)
     outside_rate = sum(bool(a) for a in outside) / len(outside)
+
+    # `assert inside and outside` only proves rows EXIST in both bands, not
+    # that anyone was absent: with zero absences everywhere both rates are 0.0
+    # and `0 >= 5 * 0` passes. The out-of-window rate is the control, so it
+    # carries the floor -- measured 4.74% outside (n=3,440) against 35.56%
+    # inside (n=720).
+    assert outside_rate > 0
     assert inside_rate >= 5 * outside_rate
 
 

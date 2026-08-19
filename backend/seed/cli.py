@@ -14,7 +14,7 @@ import sys
 from datetime import date
 from typing import Optional
 
-from sqlalchemy import Connection, Engine, create_engine, delete, select, update
+from sqlalchemy import Connection, Engine, MetaData, create_engine, delete, select, update
 
 from backend.audit import audit_suppressed
 from backend.database import Base
@@ -40,7 +40,16 @@ ALLOWLIST = frozenset(s.client_id for s in SCENARIOS)
 _UNDERIVABLE_CLIENT_SCOPE_COLUMNS = {"EMPLOYEE": "client_id_assigned"}
 
 
-def _derive_client_scoped_tables() -> dict[str, str]:
+class SeedError(RuntimeError):
+    """A guard refused the operation; the message is user-facing."""
+
+
+class AmbiguousClientScope(SeedError):
+    """A table carries more than one ForeignKey to CLIENT, so which column
+    scopes it to a tenant is not derivable."""
+
+
+def _derive_client_scoped_tables(metadata: Optional[MetaData] = None) -> dict[str, str]:
     """Every tenant-scoped table in the schema, mapped to its client column.
 
     Derived from Base.metadata, not hand-listed. Any table carrying a
@@ -58,11 +67,24 @@ def _derive_client_scoped_tables() -> dict[str, str]:
     the demo.
     """
     scoped = {"CLIENT": "client_id"}
-    for table in Base.metadata.sorted_tables:
-        for column in table.columns:
-            for fk in column.foreign_keys:
-                if fk.column.table.name == "CLIENT":
-                    scoped[table.name] = column.name
+    for table in (metadata or Base.metadata).sorted_tables:
+        # Collect ALL of them, then insist there is exactly one. Assigning
+        # inside the loop instead would silently keep whichever ForeignKey the
+        # column order happened to put last, and --reset would then filter that
+        # table by the wrong column -- deleting rows belonging to a client that
+        # was never asked for, or leaving the requested one's rows behind to
+        # collide on re-seed. Neither failure names its cause. No table has two
+        # today (asserted by test_no_table_has_an_ambiguous_client_scope), so
+        # this costs nothing until the day it matters.
+        candidates = [c.name for c in table.columns for fk in c.foreign_keys if fk.column.table.name == "CLIENT"]
+        if len(candidates) > 1:
+            raise AmbiguousClientScope(
+                f"{table.name} carries {len(candidates)} ForeignKeys to CLIENT ({', '.join(sorted(candidates))}); "
+                "which one scopes a row to a tenant cannot be derived. Add it to "
+                "_UNDERIVABLE_CLIENT_SCOPE_COLUMNS naming the correct column."
+            )
+        if candidates:
+            scoped[table.name] = candidates[0]
     scoped.update(_UNDERIVABLE_CLIENT_SCOPE_COLUMNS)
     return scoped
 
@@ -142,10 +164,6 @@ def _self_referential_columns() -> tuple:
 SELF_REFERENTIAL_SWEEPS = _self_referential_columns()
 
 
-class SeedError(RuntimeError):
-    """A guard refused the operation; the message is user-facing."""
-
-
 def _reset(conn: Connection, client_ids: tuple[str, ...]) -> None:
     """Delete only these clients' rows, children first.
 
@@ -174,6 +192,16 @@ def _reset(conn: Connection, client_ids: tuple[str, ...]) -> None:
     backend/crud/floating_pool/assignments.py builds FloatingPool(...) with
     client_id omitted, so every POST /api/floating-pool/assign writes a
     NULL-tenant row referencing a real employee.
+
+    A second shape in the same family, and worse because it is SILENT rather
+    than an error: EMPLOYEE is swept by its bare `client_id_assigned`, while
+    EMPLOYEE_CLIENT_ASSIGNMENT.employee_id declares ondelete=CASCADE. An
+    employee whose client_id_assigned names a demo tenant but who also holds an
+    assignment row for a REAL one therefore loses that real assignment when the
+    demo employee is deleted -- no IntegrityError, no row count to notice, just
+    a real customer's employee quietly unassigned. Reaching it needs someone to
+    have set a real employee's client_id_assigned to a demo client, which is
+    why it is recorded rather than fixed here.
 
     Deliberately NOT fixed on this branch, for two reasons that are facts
     rather than judgement calls: the identical exposure ALREADY SHIPS in

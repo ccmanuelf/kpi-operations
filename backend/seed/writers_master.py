@@ -80,6 +80,17 @@ def _user_created(e: ev.UserCreated, sink: RowSink, ids: IdMap, allocators: Dict
             "user_id": e.user_id,
             "username": e.username,
             "email": e.email,
+            # THE ONE NON-DETERMINISTIC VALUE THE WRITE LAYER PRODUCES, and a
+            # deliberate exception to "the same seed produces the same
+            # database": argon2id salts randomly, so two runs at seed=1234
+            # write six different password_hash values. Verified, not assumed
+            # -- seeding twice gives 6/6 differing hashes. It is confined to
+            # this column and it is the correct trade: pinning the salt to buy
+            # a byte-identical row would mean seeding a demo whose hashes are
+            # reproducible by anyone holding the seed. The event stream itself
+            # stays fully deterministic (the event carries the plaintext, and
+            # stream_digest covers it), so what is asserted elsewhere remains
+            # true. (Raised by the DeepSeek cross-model review.)
             "password_hash": hash_password(e.password),
             "full_name": e.full_name,
             "role": e.role,
