@@ -26,8 +26,12 @@ from backend.seed.scenarios import SCENARIOS
 
 ALLOWLIST = frozenset(s.client_id for s in SCENARIOS)
 
-#: Tenant-scoped tables with NO ForeignKey to CLIENT.client_id, so no
-#: derivation can find them. Only EMPLOYEE belongs here.
+#: The explicit override for tables whose tenant column cannot be DERIVED --
+#: either because there is no ForeignKey to CLIENT.client_id to follow (the
+#: EMPLOYEE case, the only one today), or because there is more than one and
+#: which of them scopes a row is a judgement no walk can make. Consulted before
+#: the ambiguity check in _derive_client_scoped_tables, so naming a table here
+#: genuinely resolves it.
 #:
 #: USER.client_id_assigned is the same bare shape and is DELIBERATELY ABSENT:
 #: USER is never deleted by --reset (see _reset's closing comment) because it
@@ -76,6 +80,14 @@ def _derive_client_scoped_tables(metadata: Optional[MetaData] = None) -> dict[st
         # collide on re-seed. Neither failure names its cause. No table has two
         # today (asserted by test_no_table_has_an_ambiguous_client_scope), so
         # this costs nothing until the day it matters.
+        if table.name in _UNDERIVABLE_CLIENT_SCOPE_COLUMNS:
+            # Consulted BEFORE the ambiguity check, not after, or the escape
+            # hatch the error message names would not exist: the raise happens
+            # inside this loop while `scoped.update(...)` runs after it, so a
+            # table added to the override map would still raise and the
+            # instruction would be a dead end. (Raised by the DeepSeek
+            # cross-model review of this very change.)
+            continue
         candidates = [c.name for c in table.columns for fk in c.foreign_keys if fk.column.table.name == "CLIENT"]
         if len(candidates) > 1:
             raise AmbiguousClientScope(

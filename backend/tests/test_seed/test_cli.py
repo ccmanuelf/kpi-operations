@@ -575,6 +575,23 @@ def test_no_table_has_an_ambiguous_client_scope():
 
     assert "TWO_SCOPES" in str(exc.value)
 
+    # The escape hatch the message names must actually work. It did not at
+    # first: the raise happens inside the table loop while the override map is
+    # applied after it, so naming the table changed nothing and the
+    # instruction was a dead end -- caught by the cross-model review of the
+    # very commit that added it. Asserting the remedy resolves the error is
+    # what keeps that from coming back.
+    from backend.seed import cli as cli_module
+
+    original = cli_module._UNDERIVABLE_CLIENT_SCOPE_COLUMNS
+    cli_module._UNDERIVABLE_CLIENT_SCOPE_COLUMNS = {**original, "TWO_SCOPES": "owner_client_id"}
+    try:
+        resolved = _derive_client_scoped_tables(metadata)
+    finally:
+        cli_module._UNDERIVABLE_CLIENT_SCOPE_COLUMNS = original
+
+    assert resolved["TWO_SCOPES"] == "owner_client_id"
+
 
 def test_every_bare_client_column_is_a_deliberate_include_or_exclude():
     """The OTHER half of the anti-rot guard: a tenant column with NO
