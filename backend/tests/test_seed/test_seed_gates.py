@@ -16,7 +16,7 @@ from pathlib import Path
 import pytest
 
 from backend.tests.test_seed.conftest import seed_engine, seed_engine_module
-from backend.tests.test_seed.test_purity import EXEMPTED_MODULE_PATHS
+from backend.tests.test_seed.test_purity import EXEMPTED_MODULE_PATHS, FORBIDDEN_ATTR_CALLS
 
 SEED_DIR = Path(__file__).resolve().parents[2] / "seed"
 
@@ -33,24 +33,58 @@ CLOCK_EXEMPT = frozenset({"cli.py"})
 #: module can only leave the purity guard by entering this one.
 WRITE_LAYER = tuple(sorted(EXEMPTED_MODULE_PATHS - CLOCK_EXEMPT))
 
-BANNED_CALLS = {
-    ("datetime", "now"),
-    ("datetime", "utcnow"),
-    ("date", "today"),
-    ("func", "now"),
-    ("func", "current_timestamp"),
-}
+#: DERIVED from the purity guard rather than restated, the same
+#: derive-don't-restate discipline WRITE_LAYER already applies to
+#: EXEMPTED_MODULE_PATHS. The two guards were spelled differently and that was
+#: the whole defect: this one matched an (owner, attr) PAIR and required
+#: `isinstance(owner, ast.Name)`, so it saw a two-token call and nothing else,
+#: while test_purity's owner-agnostic FORBIDDEN_ATTR_CALLS -- twenty lines
+#: away -- matched any `.now()`/`.today()`/`.utcnow()` regardless of owner.
+#: The STRICT predicate pointed at the LOOSE surface (the five DB-touching
+#: modules, where a clock is exactly what the original defect was) and the
+#: loose predicate at the eight pure ones, where a clock is implausible.
+#:
+#: Measured against the shipped helper, one plant per spelling:
+#:
+#:     date.today()                     CAUGHT
+#:     datetime.date.today()            EVADED
+#:     dt.date.today()                  EVADED
+#:     datetime.datetime.utcnow()       EVADED
+#:     sa.func.now()                    EVADED
+#:
+#: `uuid4` is the one name dropped from the borrowed tuple: it is not a clock,
+#: and the purity guard still bans it everywhere it applies.
+BANNED_CLOCK_ATTRS = frozenset(FORBIDDEN_ATTR_CALLS) - {"uuid4"}
 
 
 def _banned_clock_calls(path: Path) -> list[str]:
-    tree = ast.parse(path.read_text())
+    """Every clock read in `path`, as `name:lineno shape` strings.
+
+    OWNER-AGNOSTIC: the trailing attribute alone decides, and the reported
+    shape is the FULL unparsed dotted chain, so `date.today()` still reports
+    `date.today()` (which is what the cli.py count pin reads) while
+    `datetime.date.today()` reports its own longer spelling instead of
+    vanishing.
+
+    STATED LIMITATIONS, recorded rather than chased -- neither is reachable by
+    an ordinary edit, and an honest boundary is worth more than a guard that
+    over-claims:
+
+      * indirection through the attribute machinery --
+        `getattr(datetime, "utcnow")()` -- has no ast.Attribute node to match.
+      * SQL-side clocks expressed as text -- `text("CURRENT_TIMESTAMP")`, or a
+        column left to its server_default -- are strings and DDL, not calls.
+        The server_default half is covered from the other direction: the
+        materializer supplies created_at/transitioned_at explicitly on every
+        seeded table, and the narrative-dataset gates assert the transition
+        chains actually span time rather than collapsing to one instant.
+    """
     found = []
-    for node in ast.walk(tree):
+    for node in ast.walk(ast.parse(path.read_text())):
         if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Attribute):
             continue
-        owner = node.func.value
-        if isinstance(owner, ast.Name) and (owner.id, node.func.attr) in BANNED_CALLS:
-            found.append(f"{path.name}:{node.lineno} {owner.id}.{node.func.attr}()")
+        if node.func.attr in BANNED_CLOCK_ATTRS:
+            found.append(f"{path.name}:{node.lineno} {ast.unparse(node.func)}()")
     return found
 
 
@@ -112,11 +146,34 @@ def test_the_cli_holds_exactly_one_clock_call_and_it_is_the_as_of_default():
     assert calls == ["date.today()"]
 
 
-def test_the_clock_guard_is_not_vacuous(tmp_path):
-    """A guard that cannot fail proves nothing. Feed it a file that violates
-    the rule and require a hit."""
+#: The five spellings of the same clock read, as source. Four of them evaded
+#: the shipped guard (see BANNED_CLOCK_ATTRS), and the second one is the
+#: reproducibility defect verbatim, one token different: `import datetime`
+#: plus `as_of = datetime.date.today()` inside cli.seed() silently discards
+#: the caller's --as-of, so `--as-of 2026-01-01` reaches generate() as today's
+#: date and the seeder produces a different database every day -- with 158
+#: tests passing and the cli.py count pin still reporting its single
+#: sanctioned call.
+CLOCK_SPELLINGS = (
+    "from datetime import date\nx = date.today()\n",
+    "import datetime\nx = datetime.date.today()\n",
+    "import datetime as dt\nx = dt.date.today()\n",
+    "import datetime\nx = datetime.datetime.utcnow()\n",
+    "import sqlalchemy as sa\nx = sa.func.now()\n",
+)
+
+
+@pytest.mark.parametrize("source", CLOCK_SPELLINGS)
+def test_the_clock_guard_is_not_vacuous(tmp_path, source):
+    """A guard that cannot fail proves nothing -- and a guard that fails on
+    ONE spelling of the thing it bans proves only that one spelling.
+
+    Parametrised over all five so re-narrowing the predicate (back to an
+    (owner, attr) pair, or to `isinstance(owner, ast.Name)`) goes red here
+    rather than quietly reopening four of the five doors on the only guard
+    the five DB-touching modules have."""
     bad = tmp_path / "bad.py"
-    bad.write_text("from datetime import datetime\nx = datetime.utcnow()\n")
+    bad.write_text(source)
 
     assert _banned_clock_calls(bad) != []
 

@@ -38,7 +38,7 @@ from backend.orm import (
 )
 from backend.seed.generator import generate
 from backend.seed.materialize import materialize
-from backend.seed.narrative import window_active
+from backend.seed.narrative import narrative_window_touches, window_active
 from backend.seed.profiles import FULL
 from backend.seed.scenarios import SCENARIOS
 
@@ -167,6 +167,29 @@ def test_at_least_three_holds_are_aged_past_sixty_days(full_db):
     # a check that names the status independently of the list under test can
     # see the exclusion being withdrawn.
     assert [status for _, status in statuses if status == HoldStatus.PENDING_HOLD_APPROVAL] == []
+
+    # The INCLUSION half, and the only assertion in this test that is not
+    # one-directional. Every other one here says "nothing bad appeared in the
+    # output", which ANY narrowing of the result set satisfies -- the whole
+    # `A | B == C` shape again, blind to UNDER-inclusion, with `len(chronic)
+    # >= 3` against an actual 11 as the sole lower bound and 8x of headroom
+    # under it. Measured defeat, an ordinary one-token widening at
+    # writers_operations.py:168 -- `if e.to_status == "RESUMED":` ->
+    # `if e.to_status in ("RESUMED", "PENDING_RESUME_APPROVAL"):`, i.e.
+    # stamping resume_date on holds that have only REQUESTED a resume: the
+    # chronic list silently falls 11 -> 7, four aged holds vanish from every
+    # WIP-aging screen, and the entire suite stays green.
+    #
+    # Pinned as a SET, not a count: counts saturate (the 11 walks to 20 on a
+    # +1y frozen clock, and both bars converge once every hold has aged past
+    # sixty days), while the two statuses are present at AS_OF, +1d, +1y and
+    # +10y on that same sweep. It kills two regressions at once -- the
+    # resume_date mis-stamp above, and reverting identify_chronic_holds'
+    # active arm to the pre-fix `hold_status == ON_HOLD`, which until now was
+    # caught only by test_holds_aging_portability.py against hand-built
+    # fixtures and never by the seeded dataset that is the only thing able to
+    # demonstrate the INCLUSION half of the distinction this docstring claims.
+    assert {status for _, status in statuses} == {HoldStatus.ON_HOLD, HoldStatus.PENDING_RESUME_APPROVAL}
 
     assert aged_and_excluded == 14
 
@@ -321,10 +344,13 @@ def test_otd_dips_below_eighty_percent_in_some_month_for_every_troubled_client(f
             HYBRID 2; annual 94.59 / 90.32 / 91.67% -- four healthy-looking
             clients and no OTD story left on the dashboards.
 
-    So DEMO-PIECE >= 4 is the real discriminator: margin 1 above the damaged
-    value, 1 below the healthy one. `>= 1` (the bar this replaces) sat blind
-    across roughly 0.3-0.5 and only went red at 0.15, where every client
-    flattens to 100%.
+    So DEMO-PIECE >= 4 is the real discriminator: 3 clear of the damaged
+    value (1) and 1 under the healthy one (5). An earlier revision of this
+    docstring read "margin 1 above the damaged value", which is simply wrong
+    against the vector recorded directly above it -- corrected here rather
+    than left to mislead the next reader into thinking the bar is tighter
+    than it is. `>= 1` (the bar this replaces) sat blind across roughly
+    0.3-0.5 and only went red at 0.15, where every client flattens to 100%.
 
     STATED LIMITATION, deliberate: DEMO-HOURLY >= 2 and DEMO-HYBRID >= 2
     catch TOTAL flattening only -- at 0.4 both still measure exactly 2, so
@@ -349,6 +375,58 @@ def test_otd_dips_below_eighty_percent_in_some_month_for_every_troubled_client(f
         assert below >= floor, f"{client_id}: {below} months below 80% OTD, floor is {floor}"
 
     assert months["SAMPLE_REF"][1] == 0
+
+
+def test_some_in_window_order_still_ships_on_time(full_db):
+    """The lower bound on the ON-TIME side, which nothing else in this file
+    carries.
+
+    Every OTD assertion above is a floor on LATENESS, so all of them are
+    satisfied -- more comfortably, in fact -- by LATE_RATE_NARRATIVE = 1.0.
+    That constant is documented as 0.9 rather than 1.0 precisely so the RNG
+    still decides WHICH eligible orders ship on time ("a hard 100% would read
+    as scripted rather than drawn", backend/seed/narrative.py:33), and until
+    now that stated distinction rested on nothing: measured on FULL/1234 the
+    shipped 0.9 yields 24 of 25 in-window deliveries late, so the entire
+    "drawn, not scripted" claim hangs on a single work order that no
+    assertion mentioned.
+
+    IN-WINDOW is recomputed here with the production predicate
+    (narrative_window_touches over the order's own received -> required
+    commitment span, exactly as emitters_operations.py:119 calls it) rather
+    than reimplemented, and the restriction is the point: out-of-window
+    orders draw against LATE_RATE_BASELINE = 0.0 and are ALWAYS on time, so
+    an unrestricted on-time count would stay large at 1.0 and prove nothing.
+
+    AGGREGATE ACROSS THE TROUBLED CLIENTS, NOT PER CLIENT, and that is a
+    measured limitation rather than a preference. The per-client vector on
+    FULL/1234 is DEMO-PIECE 0 of 9, DEMO-HOURLY 0 of 6, DEMO-HYBRID 1 of 10:
+    a per-client floor is unsatisfiable today and would have to be bought by
+    lowering LATE_RATE_NARRATIVE, which would weaken the OTD story the tests
+    above defend. SAMPLE_REF is excluded because its narrative tuple is
+    empty, so it has no in-window orders at all to contribute.
+
+    The denominator is asserted too. Without it a regression that stopped
+    emitting in-window deliveries entirely would leave both counts at zero
+    and the on-time floor could not tell that apart from the failure it
+    exists to catch.
+    """
+    in_window = on_time = 0
+    with full_db.connect() as conn:
+        for scenario in SCENARIOS:
+            rows = conn.execute(
+                select(WorkOrder.received_date, WorkOrder.required_date, WorkOrder.actual_delivery_date).where(
+                    WorkOrder.client_id == scenario.client_id, WorkOrder.actual_delivery_date.isnot(None)
+                )
+            ).all()
+            for received, required, delivered in rows:
+                if not narrative_window_touches(scenario, received.date(), required.date(), AS_OF):
+                    continue
+                in_window += 1
+                on_time += delivered <= required
+
+    assert in_window >= 20, f"only {in_window} in-window deliveries -- the on-time floor below is vacuous"
+    assert on_time >= 1, "every in-window order shipped late: LATE_RATE_NARRATIVE reads as scripted, not drawn"
 
 
 def test_the_priority_adherence_denominator_is_non_empty_and_incomplete(full_db):

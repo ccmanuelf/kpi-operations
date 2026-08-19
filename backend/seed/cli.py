@@ -14,7 +14,7 @@ import sys
 from datetime import date
 from typing import Optional
 
-from sqlalchemy import Connection, Engine, create_engine, delete, select
+from sqlalchemy import Connection, Engine, create_engine, delete, select, update
 
 from backend.audit import audit_suppressed
 from backend.database import Base
@@ -94,6 +94,54 @@ DEPENDENT_SWEEPS = (
 )
 
 
+def _self_referential_columns() -> tuple:
+    """Every swept table's own foreign keys back into ITSELF, as
+    (table, column).
+
+    DERIVED from Base.metadata rather than naming PRODUCTION_LINE, so a second
+    self-reference added later is handled without a code change here.
+
+    PRODUCTION_LINE.parent_line_id -> PRODUCTION_LINE.line_id is the only one
+    in all 60 tables today, it is nullable, ondelete is None, and it is inside
+    the --reset sweep. InnoDB checks the constraint per row as the DELETE
+    visits rows, and `DELETE FROM PRODUCTION_LINE WHERE client_id IN (...)` is
+    planned over uq_production_line_client_code (client_id, line_code), so the
+    visit order is LINE_CODE order: a parent whose code sorts before its
+    child's is deleted first and raises `Cannot delete or update a parent
+    row`, breaking --reset for that tenant from then on. Measured on
+    mariadb:11.4.12 -- 'SEW-01' with a 'SEW-01-A' section under it raises
+    1451; the same pair named so the child sorts first does not. A section
+    named after its line is the ordinary case, and one supervisor-level
+    `POST /api/production-lines/` is enough to reach it.
+
+    It is LATENT, not live: the seeder itself never writes a line hierarchy,
+    so the seed suite is green on InnoDB either way today. Breaking the
+    self-reference first removes the dependence on visit order entirely.
+
+    STATED LIMITATION, deliberate: only CLIENT_SCOPED_TABLES are scanned,
+    because the UPDATE needs a tenant column to filter on. A DEPENDENT_SWEEPS
+    grandchild with a self-reference would not be found; there is none today,
+    and those three are cleared wholesale by subquery in a single statement
+    before anything else runs. A NOT NULL self-reference is not filtered out
+    either: the UPDATE would fail loudly on the first tenant that owns such a
+    row rather than silently leaving the hazard in place, which is the right
+    failure for a shape that needs a different strategy entirely.
+    """
+    found = set()
+    for name in CLIENT_SCOPED_TABLES:
+        table = Base.metadata.tables[name]
+        for column in table.columns:
+            for fk in column.foreign_keys:
+                if fk.column.table.name == name:
+                    found.add((name, column.name))
+    return tuple(sorted(found))
+
+
+#: (table, column) pairs whose value must be NULLed before the sweep deletes
+#: the table, because they point back into the same table.
+SELF_REFERENTIAL_SWEEPS = _self_referential_columns()
+
+
 class SeedError(RuntimeError):
     """A guard refused the operation; the message is user-facing."""
 
@@ -101,11 +149,13 @@ class SeedError(RuntimeError):
 def _reset(conn: Connection, client_ids: tuple[str, ...]) -> None:
     """Delete only these clients' rows, children first.
 
-    Two passes. DEPENDENT_SWEEPS first: those tables carry no tenant column,
+    Three passes. DEPENDENT_SWEEPS first: those tables carry no tenant column,
     only a raw FK into a scoped table, so they are cleared by subquery through
-    their parent. Then every client-scoped table in reverse INSERT_ORDER --
-    the same metadata topological sort the inserts use, so the two can never
-    drift apart.
+    their parent. Then SELF_REFERENTIAL_SWEEPS -- see its docstring -- breaks
+    every swept table's foreign keys back into itself, which no table-level
+    ordering can resolve. Then every client-scoped table in reverse
+    INSERT_ORDER -- the same metadata topological sort the inserts use, so the
+    two can never drift apart.
 
     The sweep covers CLIENT_SCOPED_TABLES, not SEEDED: --reset must clear
     everything a tenant owns, not only what this seeder wrote. See
@@ -120,6 +170,11 @@ def _reset(conn: Connection, client_ids: tuple[str, ...]) -> None:
                 child.c[child_column].in_(select(parent.c[parent_pk]).where(parent.c[parent_scope].in_(client_ids)))
             )
         )
+
+    for table_name, column_name in SELF_REFERENTIAL_SWEEPS:
+        table = Base.metadata.tables[table_name]
+        scope = CLIENT_SCOPED_TABLES[table_name]
+        conn.execute(update(table).where(table.c[scope].in_(client_ids)).values({column_name: None}))
 
     for name in reversed(INSERT_ORDER):
         column = CLIENT_SCOPED_TABLES.get(name)

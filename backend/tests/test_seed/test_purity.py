@@ -57,8 +57,20 @@ def _engine_modules():
     module in a subpackage is still caught. When adding a module to
     EXEMPTED_MODULE_PATHS, add a comment saying why -- do not weaken the
     checks themselves, and do not go back to an opt-in list.
+
+    `__init__.py` IS INCLUDED. The previous unconditional
+    `p.name != "__init__.py"` filter was the last hole of exactly the shape
+    the recursive glob closed one level up: backend/seed/__init__.py is in
+    neither EXEMPTED_MODULE_PATHS nor test_seed_gates.CLOCK_EXEMPT/WRITE_LAYER,
+    so it was covered by NOTHING -- the only file in the package with no guard
+    on it at all. It is 0 bytes today, which is the cheapest possible moment
+    to bring it under one: a package __init__ is where a convenience re-export
+    (`from backend.seed.cli import seed`) naturally lands, and that single
+    ordinary line would drag backend.orm into the import graph and hand the
+    file a clock and a database at once. Empty subpackage __init__ files cost
+    nothing to scan.
     """
-    all_modules = [p for p in SEED_DIR.rglob("*.py") if p.name != "__init__.py"]
+    all_modules = list(SEED_DIR.rglob("*.py"))
     return sorted(p for p in all_modules if p.relative_to(SEED_DIR).as_posix() not in EXEMPTED_MODULE_PATHS)
 
 
@@ -162,6 +174,9 @@ def test_the_guard_actually_covers_every_engine_module():
         "narrative.py",
         "emitters_master.py",
         "emitters_operations.py",
+        # The package __init__, named so it cannot fall back out of the glob.
+        # It was covered by no guard at all until it was named here.
+        "__init__.py",
     } <= names
 
 

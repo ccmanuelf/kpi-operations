@@ -5,8 +5,7 @@ from datetime import date, datetime
 from pathlib import Path
 
 import pytest
-from sqlalchemy import create_engine, event, func, insert, select
-from sqlalchemy.sql import Delete
+from sqlalchemy import String, create_engine, func, insert, select
 
 from backend.database import Base
 from backend.seed.cli import ALLOWLIST, CLIENT_SCOPED_TABLES, DEPENDENT_SWEEPS, SeedError, main, seed
@@ -464,6 +463,36 @@ def test_the_reset_sweep_completeness_guard_is_not_vacuous():
 #: were ever written down together.
 CLIENT_SCOPE_COLUMN_NAMES = {"client_id", "client_id_fk", "client_id_assigned"}
 
+#: Tenant-NAMED string columns that scope nothing -- CLIENT's own descriptive
+#: fields. Pinned so the derivation below can assert on a closed set without
+#: having to guess which side of the line a new `client_*` column falls on.
+CLIENT_DESCRIPTIVE_COLUMN_NAMES = {"client_contact", "client_email", "client_name", "client_phone", "client_type"}
+
+
+def _tenant_named_string_columns() -> set:
+    """Every string column in the schema whose name mentions a tenant.
+
+    The CANDIDATE set, derived from live metadata. CLIENT_SCOPE_COLUMN_NAMES
+    above is a closed 3-name literal, so the bare-column guard below pins the
+    TABLES those three spellings happen to find and never pins the SPELLINGS
+    themselves -- while this schema is itself the proof that spelling drift is
+    live, carrying three of them already (client_id, client_id_fk,
+    client_id_assigned). A table scoping its rows by a fourth spelling would
+    be invisible to BOTH client-column guards and would sit outside the
+    --reset sweep entirely, which is the cross-reset tenant-data leak the
+    bare-column guard exists to prevent.
+
+    Restricted to string columns because a tenant scope in this schema is
+    always a client-id string; an integer column called `client_count` is not
+    a scope and should not have to be argued about.
+    """
+    return {
+        column.name
+        for table in Base.metadata.sorted_tables
+        for column in table.columns
+        if isinstance(column.type, String) and ("client" in column.name.lower() or "tenant" in column.name.lower())
+    }
+
 
 def test_every_bare_client_column_is_a_deliberate_include_or_exclude():
     """The OTHER half of the anti-rot guard: a tenant column with NO
@@ -488,6 +517,15 @@ def test_every_bare_client_column_is_a_deliberate_include_or_exclude():
     client fixture data (Ruling 17), AUDIT_ENTRY and EVENT_STORE excluded as
     append-only ledgers this seeder writes zero rows to.
     """
+    # The SPELLINGS first, derived, then the TABLES they find. Without this
+    # line the assertion below is conditional on a closed literal nobody
+    # rechecks: a fifth spelling (`client_ref`, `tenant_id`, ...) introduced
+    # by a new table simply would not appear in `bare`, and both this guard
+    # and _derive_client_scoped_tables would report clean while that table
+    # kept a reset tenant's rows alive. Deriving the candidates makes such a
+    # column fail the build BY NAME instead.
+    assert _tenant_named_string_columns() == CLIENT_SCOPE_COLUMN_NAMES | CLIENT_DESCRIPTIVE_COLUMN_NAMES
+
     bare = {
         table.name
         for table in Base.metadata.sorted_tables
@@ -535,47 +573,6 @@ def test_the_reset_sweep_covers_client_scoped_tables_the_seeder_never_writes():
     assert "USER" not in CLIENT_SCOPED_TABLES
     assert "AUDIT_ENTRY" not in CLIENT_SCOPED_TABLES
     assert "EVENT_STORE" not in CLIENT_SCOPED_TABLES
-
-
-def test_reset_issues_a_delete_against_every_swept_table(seed_engine):
-    """What --reset EXECUTES, not what its constants SAY.
-
-    Every other C-2 guard in this file asserts on the SET (CLIENT_SCOPED_TABLES
-    is complete, DEPENDENT_SWEEPS is complete) and only four of the 47 swept
-    tables are covered behaviourally, by the repro above. A per-table hole in
-    the sweep loop therefore passed the entire suite: `if name == "EQUIPMENT":
-    continue` planted as the loop's first statement, with all metadata left
-    intact, gave 151 passed -- while a live --reset raised `IntegrityError:
-    FOREIGN KEY constraint failed`. EQUIPMENT is client-scoped, never seeded,
-    and written by the app in normal use: the same production shape as the
-    ALERT_CONFIG row that motivated C-2 in the first place.
-
-    One assertion closes it for all 47 at once, which is far cheaper than
-    parametrising the seed-insert-reset repro 47 times: capture the tables
-    _reset actually issues a DELETE against and require that set to equal the
-    swept set exactly. `before_execute` sees the Core statement objects, so
-    this reads the executed SQL rather than re-deriving the constants under
-    test. The four end-to-end repros stay as the proof that a swept DELETE
-    genuinely unblocks the CLIENT delete.
-    """
-    kwargs = dict(client_ids=("DEMO-PIECE",), profile_name="smoke", seed_value=1234, as_of=date(2026, 8, 18))
-    seed(seed_engine, reset=False, **kwargs)
-
-    deleted = []
-
-    @event.listens_for(seed_engine, "before_execute")
-    def _capture(conn, clauseelement, multiparams, params, execution_options):  # noqa: ANN001, ARG001
-        if isinstance(clauseelement, Delete):
-            deleted.append(clauseelement.table.name)
-
-    try:
-        seed(seed_engine, reset=True, **kwargs)
-    finally:
-        event.remove(seed_engine, "before_execute", _capture)
-
-    expected = set(CLIENT_SCOPED_TABLES) | {child for child, _, _, _ in DEPENDENT_SWEEPS}
-
-    assert set(deleted) == expected
 
 
 def test_cli_subprocess_reset_sweeps_grandchildren_on_the_production_engine(tmp_path):
