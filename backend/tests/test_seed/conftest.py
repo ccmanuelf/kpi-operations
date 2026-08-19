@@ -53,3 +53,36 @@ def seed_engine(tmp_path):
 
     yield engine
     engine.dispose()
+
+
+@pytest.fixture(scope="module")
+def seed_engine_module(tmp_path_factory):
+    """Module-scoped twin of `seed_engine`, same body, for suites that seed the
+    FULL profile once and run several assertions against the result.
+
+    FULL is 39,400 rows and seeds in ~1.3s on SQLite -- affordable per test,
+    but a module full of scripted-event assertions would otherwise pay that
+    cost eight times over for identical output. `tmp_path_factory` in place of
+    `tmp_path` because the per-test fixture is function-scoped and cannot be
+    depended on by a module-scoped one.
+    """
+    url = os.environ.get("SEED_TEST_DATABASE_URL")
+    if url:
+        rebuild_schema(url)
+    else:
+        db_path = tmp_path_factory.mktemp("seed_module") / "seed.db"
+        url = f"sqlite:///{db_path}"
+        upgrade_to_head(url)
+
+    engine = create_engine(url)
+
+    if url.startswith("sqlite"):
+
+        @event.listens_for(engine, "connect")
+        def _enable_sqlite_foreign_keys(dbapi_conn, connection_record):  # noqa: ANN001, ARG001
+            cursor = dbapi_conn.cursor()
+            cursor.execute("PRAGMA foreign_keys=ON")
+            cursor.close()
+
+    yield engine
+    engine.dispose()

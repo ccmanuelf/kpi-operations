@@ -175,6 +175,11 @@ class WorkOrderStatusChanged(Event):
     work_order_id: str
     from_status: Optional[str]
     to_status: str
+    # Populated only on the step that carries to_status="SHIPPED" -- the
+    # generator's lateness draw resolved against required_date, never the
+    # bare transition instant, which bears no relation to the customer's
+    # commitment date. None on every other step.
+    actual_delivery_date: Optional[datetime] = None
 
 
 @dataclass(frozen=True)

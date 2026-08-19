@@ -30,7 +30,9 @@ from backend.seed.narrative import (
     QUALITY_CRISIS_REASONS,
     downtime_taxonomy,
     hold_rate,
+    late_rate,
     narrative_scale,
+    narrative_window_touches,
     window_active,
 )
 from backend.seed.profiles import Profile
@@ -88,9 +90,10 @@ def emit_work_orders(
     for i in range(profile.work_orders_per_client):
         wo = f"{cid}-WO-{i + 1:04d}"
         opened = activity_start + timedelta(days=rng.randrange(span))
-        # Four more draws, taken unconditionally and in a fixed order, for the
+        # Five more draws, taken unconditionally and in a fixed order, for the
         # same reason the hold block below documents at length: how long the
-        # customer gave us, where the order came from, and how urgent it is.
+        # customer gave us, where the order came from, how urgent it is, and
+        # whether -- if it ships at all -- it ships late.
         lead_days = rng.randint(20, 60)
         origin = WORK_ORDER_ORIGINS[rng.randrange(len(WORK_ORDER_ORIGINS))]
         # ~15% carry no priority: spec section 3 decision 6 excludes those from
@@ -99,6 +102,21 @@ def emit_work_orders(
         # demonstrate that the exclusion works.
         priority_draw = rng.random()
         priority = None if priority_draw < 0.15 else PRIORITIES[int(priority_draw * len(PRIORITIES))]
+        # Drawn here, unconditionally, rather than once depth (and therefore
+        # whether the order ever reaches SHIPPED) is known: the RNG stream
+        # this order consumes must not vary with how far its chain travels or
+        # with narrative state. Only the RATE this draw is compared against
+        # -- resolved below, once the SHIPPED step is actually reached --
+        # depends on the window, the same way hold_rate/reason_pool do for
+        # holds. Unused when the order never reaches SHIPPED, same as
+        # day_draw/open_draw/reason_draw below are unused when depth < 2.
+        lateness_draw = rng.random()
+        required_at = datetime.combine(opened + timedelta(days=lead_days), time(17, 0))
+        # Overlap of this order's own commitment span (received -> required)
+        # against the client's narrative window(s) -- see
+        # narrative_window_touches for why a span, not a single day. Draws no
+        # RNG, so computing it here (ahead of depth) cannot perturb the stream.
+        touches_window = narrative_window_touches(scenario, opened, opened + timedelta(days=lead_days), as_of)
         product_id = products[i % len(products)]
         emit(
             WorkOrderReceived,
@@ -109,7 +127,7 @@ def emit_work_orders(
             planned_quantity=rng.choice([250, 500, 750, 1000]),
             style_model=products_by_id[product_id].style,
             origin=origin,
-            required_date=datetime.combine(opened + timedelta(days=lead_days), time(17, 0)),
+            required_date=required_at,
             priority=priority,
         )
         received.append((opened, wo))
@@ -122,13 +140,40 @@ def emit_work_orders(
         when = opened
         transition_days: List[date] = []
         for step in WORK_ORDER_FLOW[:depth]:
+            at = datetime.combine(when, time(8, 0))
+            # actual_delivery_date is populated on this one step only -- see
+            # the field's docstring in events.py. Resolved from lateness_draw,
+            # drawn unconditionally above, against required_at: no new RNG
+            # consumption happens here, only a read of a value already drawn.
+            extra = {}
+            if step == "SHIPPED":
+                rate = late_rate(touches_window)
+                if rate > 0 and lateness_draw < rate:
+                    # LATE: how far under the threshold the draw fell spreads
+                    # the delay across 1-20 days, so in-window orders do not
+                    # all land on the same date.
+                    delay = 1 + int((rate - lateness_draw) / rate * 20)
+                    delivery = required_at + timedelta(days=delay)
+                else:
+                    # ON TIME -- including every SAMPLE_REF order, whose rate
+                    # is always 0 (LATE_RATE_BASELINE): delivered on or a few
+                    # days ahead of the date promised.
+                    delivery = required_at - timedelta(days=int(lateness_draw * 5))
+                # Never before the order actually shipped, and never after
+                # as_of -- a delivery date past as_of would claim something
+                # that has not happened yet, the same reasoning generate()'s
+                # own clamp applies to the event stream as a whole.
+                delivery = max(delivery, at)
+                delivery = min(delivery, datetime.combine(as_of, time(20, 0)))
+                extra["actual_delivery_date"] = delivery
             emit(
                 WorkOrderStatusChanged,
-                datetime.combine(when, time(8, 0)),
+                at,
                 cid,
                 work_order_id=wo,
                 from_status=prev,
                 to_status=step,
+                **extra,
             )
             transition_days.append(when)
             prev = step

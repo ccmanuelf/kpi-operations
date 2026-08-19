@@ -107,9 +107,15 @@ def _work_order_status_changed(e: ev.WorkOrderStatusChanged, sink: RowSink, ids:
     # planned_ship_date -> required_date -> calculated (backend/calculations/
     # otd.py:43). Without a delivery date the order is excluded from the
     # denominator entirely and OTD renders as "no data" rather than a number.
+    #
+    # shipped_date stays the transition instant (when the status changed);
+    # actual_delivery_date is the generator's lateness-adjusted date against
+    # required_date -- the mechanism the OTD dip needs (spec section 8 row 3).
+    # The event always supplies one on this step; e.at is a defensive
+    # fallback, not the expected path.
     if e.to_status == "SHIPPED":
         order["shipped_date"] = e.at
-        order["actual_delivery_date"] = e.at
+        order["actual_delivery_date"] = e.actual_delivery_date if e.actual_delivery_date is not None else e.at
     elif e.to_status == "CLOSED":
         order["closure_date"] = e.at
 

@@ -28,6 +28,16 @@ ATTENDANCE_DISRUPTION_SCALE = 2.0 / 3.0  # "reduce by roughly a third"
 HOLD_RATE_BASELINE = 0.15
 HOLD_RATE_QUALITY_CRISIS = 0.5
 
+#: Probability that a work order which reaches SHIPPED ships late. Baseline is
+#: exactly ZERO, not merely low: SAMPLE_REF's narrative tuple is empty, so it
+#: never touches a window and this constant is what makes it structurally
+#: never late (spec section 6's healthy control) rather than just unlikely to
+#: be. 0.9, not 1.0, inside a window so the RNG still decides which of the
+#: eligible orders ship on time -- a hard 100% would read as scripted rather
+#: than drawn.
+LATE_RATE_BASELINE = 0.0
+LATE_RATE_NARRATIVE = 0.9
+
 # Reason pools for a hold. The crisis pool is the baseline with QUALITY
 # weighted up, not replaced -- a crisis makes quality holds dominant, it does
 # not make every other cause vanish.
@@ -73,6 +83,38 @@ def narrative_scale(scenario: ClientScenario, day: date, as_of: date) -> dict:
     if window_active(scenario, day, as_of, "labor_disruption"):
         scale["attendance"] *= ATTENDANCE_DISRUPTION_SCALE
     return scale
+
+
+def narrative_window_touches(scenario: ClientScenario, start: date, end: date, as_of: date) -> bool:
+    """Whether the interval [start, end] overlaps ANY of the scenario's
+    narrative windows, regardless of kind.
+
+    Used for delivery lateness rather than a single anchor day: a narrative
+    window is ~60 days wide and only about a third of work orders reach
+    SHIPPED at all, so gating on one day (the way hold_rate gates on the
+    hold's own day) leaves too few orders eligible to move a whole-year
+    aggregate OTD rate. The order's own commitment span -- received to
+    required -- is up to 60 days wide too, so checking it against the window
+    for ANY overlap (not containment) captures the orders whose delivery
+    promise falls under the story's shadow even if they were received before
+    it started.
+
+    Every scripted failure mode plausibly slows delivery (a quality crisis
+    triggers holds and rework, an equipment decline slows throughput, a labor
+    disruption reduces capacity), so this is not keyed to one specific `kind`
+    the way defects/downtime/attendance are. SAMPLE_REF's narrative tuple is
+    empty, so this is always False for it.
+    """
+    for window in scenario.narrative:
+        earlier, later = window_bounds(window, as_of)
+        if start <= later and end >= earlier:
+            return True
+    return False
+
+
+def late_rate(touches_window: bool) -> float:
+    """Delivery-lateness probability for a work order that reaches SHIPPED."""
+    return LATE_RATE_NARRATIVE if touches_window else LATE_RATE_BASELINE
 
 
 def hold_rate(in_quality_crisis: bool) -> float:
