@@ -35,7 +35,12 @@ SEED_PACKAGE = ("backend", "seed")
 # materialize.py sits on. writers_operations.py is the operations-band half
 # of that same write side: it imports backend.orm.work_order for
 # WorkOrderStatus and turns operational events into Core bulk-insert rows.
-EXEMPTED_MODULE_PATHS = {"identity.py", "materialize.py", "writers_master.py", "writers_operations.py"}
+# cli.py is the production entry point: it opens a real Engine/Connection,
+# issues Core deletes for --reset, and its --as-of default is deliberately
+# date.today() (the run must anchor to the actual run date in production) --
+# the one sanctioned date.today() outside a test, at the CLI boundary rather
+# than inside the seeding path itself.
+EXEMPTED_MODULE_PATHS = {"identity.py", "materialize.py", "writers_master.py", "writers_operations.py", "cli.py"}
 
 
 def _engine_modules():
