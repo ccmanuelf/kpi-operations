@@ -138,6 +138,17 @@ def test_demo_hourly_maintenance_downtime_dominates_inside_its_window(full_db):
 
 
 def test_demo_hybrid_absenteeism_peaks_inside_its_window(full_db):
+    """Spec section 8 row 8 gives no numeric bar, so the >=5x floor below
+    deliberately tightens beyond the spec. It is anchored in a measured
+    mutation, not guessed: with the healthy ATTENDANCE_DISRUPTION_SCALE
+    (2.0/3.0) the in-window rate measures 35.56% vs 4.74% outside (720 vs
+    3440 rows) -- a 7.50x ratio. Weakening that constant to 0.9 (a
+    damaged-but-still-directional value that softens DEMO-HYBRID's headline
+    labor-disruption story without removing it) drops the in-window rate to
+    15.28%, a 3.22x ratio -- and a bare `inside_rate > outside_rate`
+    assertion does not notice. 5x sits strictly between 3.22x and 7.50x, so
+    it separates a working narrative from a damaged one.
+    """
     scenario = next(s for s in SCENARIOS if s.client_id == "DEMO-HYBRID")
     with full_db.connect() as conn:
         rows = conn.execute(
@@ -150,7 +161,9 @@ def test_demo_hybrid_absenteeism_peaks_inside_its_window(full_db):
     outside = [a for d, a in rows if not window_active(scenario, d.date(), AS_OF, "labor_disruption")]
 
     assert inside and outside
-    assert sum(bool(a) for a in inside) / len(inside) > sum(bool(a) for a in outside) / len(outside)
+    inside_rate = sum(bool(a) for a in inside) / len(inside)
+    outside_rate = sum(bool(a) for a in outside) / len(outside)
+    assert inside_rate >= 5 * outside_rate
 
 
 def test_otd_dips_below_eighty_percent_for_at_least_one_client_and_never_for_sample_ref(full_db):
