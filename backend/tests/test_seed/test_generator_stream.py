@@ -27,6 +27,7 @@ from backend.seed.events import (
     WorkOrderReceived,
 )
 from backend.seed.generator import generate
+from backend.seed.materialize import materialize
 from backend.seed.profiles import FULL, SMOKE
 from backend.seed.scenarios import DEFECT_CODES, HOLD_REASONS, HOLD_STATUSES, ROOT_CAUSES, SCENARIOS, USERS
 
@@ -180,6 +181,82 @@ def test_the_six_users_are_emitted_once_each_with_their_grants():
     # grant per granted user carries it.
     primary = [(e.user_id, e.client_id) for e in events if isinstance(e, ClientAccessGranted) and e.is_primary]
     assert sorted(primary) == sorted((u.user_id, u.client_ids[0]) for u in USERS if u.client_ids)
+
+
+def test_a_single_client_subset_grants_no_access_to_a_client_it_never_creates():
+    """generate()'s contract is a self-consistent stream for the scenarios it
+    was actually GIVEN, not just for the full SCENARIOS tuple every other
+    test in this file passes -- _gen() and every direct generate(SCENARIOS,
+    ...) call above make the known_client_ids filter in
+    generator._generate_platform a no-op, so none of them can detect its
+    removal. Without that filter, this single-client call would still emit
+    ClientAccessGranted rows quoting DEMO-HOURLY, DEMO-HYBRID, and
+    SAMPLE_REF -- clients this call never creates -- and materializing the
+    stream would hit the foreign key those grants can't satisfy.
+
+    Called directly against generate(), not routed through cli.py: cli.py's
+    seed() applies its own redundant client_id filter to the events
+    generate() returns (see its docstring), which would silently mask a
+    reverted fix here and keep a CLI-level subset test green regardless."""
+    subset = tuple(s for s in SCENARIOS if s.client_id == "DEMO-PIECE")
+    events = generate(subset, SMOKE, seed=1234, as_of=AS_OF)
+    grants = [e for e in events if isinstance(e, ClientAccessGranted)]
+
+    assert grants, "fixture produced no grants; the assertion below would be vacuous"
+    for e in grants:
+        assert e.client_id == "DEMO-PIECE"
+
+
+def test_a_subset_excluding_a_leader_granted_client_still_grants_no_leak():
+    """USR-DEMO-LEADER is granted all three DEMO-* clients (DEMO-PIECE,
+    DEMO-HOURLY, DEMO-HYBRID) -- the widest client_ids of any user in USERS.
+    Generating DEMO-HOURLY alone exercises the leak path the single-client
+    test above cannot reach: TWO of the leader's three declared grants
+    (DEMO-PIECE, DEMO-HYBRID) name clients this call never creates, so if
+    known_client_ids stopped filtering, this is exactly where a dangling
+    grant -- and the materializer's foreign-key violation -- would appear.
+
+    Also on the record here, not asserted as correct (see generator.py's
+    known_client_ids docstring -- a pre-existing quirk, out of scope for this
+    task): is_primary is computed as `cid == spec.client_ids[0]` against the
+    user's FULL declared client list, not the subset being generated. The
+    leader's first client is DEMO-PIECE, which this subset excludes, so the
+    leader's one surviving grant (DEMO-HOURLY) never carries is_primary=True
+    -- this stream contains zero is_primary rows for USR-DEMO-LEADER. No
+    database constraint enforces exactly-one-primary, so this does not raise;
+    it is observed and recorded here rather than fixed."""
+    subset = tuple(s for s in SCENARIOS if s.client_id == "DEMO-HOURLY")
+    events = generate(subset, SMOKE, seed=1234, as_of=AS_OF)
+    grants = [e for e in events if isinstance(e, ClientAccessGranted)]
+
+    assert grants, "fixture produced no grants; the assertion below would be vacuous"
+    for e in grants:
+        assert e.client_id == "DEMO-HOURLY"
+
+    leader_grants = [e for e in grants if e.user_id == "USR-DEMO-LEADER"]
+    assert leader_grants, "leader must still be granted DEMO-HOURLY in this subset"
+    # Pre-existing quirk (see docstring above): is_primary can never be True
+    # here because the leader's declared first client (DEMO-PIECE) is outside
+    # this subset. Recorded, not fixed.
+    assert not any(e.is_primary for e in leader_grants)
+
+
+def test_a_client_subset_stream_materializes_without_a_foreign_key_violation(seed_engine):
+    """The two tests above prove the no-leaked-grant property directly on the
+    stream; this is the end-to-end proof they approximate -- that a subset
+    stream is not just internally self-describing but actually insertable
+    into a real, foreign-key-enforcing database (seed_engine: Alembic-built,
+    PRAGMA foreign_keys=ON). Cheap: SMOKE is a 14-day profile and this
+    materializes a single client. materialize() raising here -- the FK
+    violation the known_client_ids filter exists to prevent -- is exactly the
+    failure this test module exists to catch before a real seed run does."""
+    subset = tuple(s for s in SCENARIOS if s.client_id == "DEMO-HOURLY")
+    events = generate(subset, SMOKE, seed=1234, as_of=AS_OF)
+
+    with seed_engine.begin() as conn:
+        counts = materialize(conn, events, SMOKE)
+
+    assert counts["USER_CLIENT_ASSIGNMENT"] > 0
 
 
 def test_production_is_attributed_to_a_platform_scoped_user():
