@@ -46,15 +46,36 @@ def test_reset_deletes_only_allowlisted_client_rows(seed_engine):
     scoped sweep: a bare CLIENT row is deleted last and blocks nothing, which
     is precisely why C-2 -- a --reset that crashed the moment any demo tenant
     owned a row outside `SEEDED` -- reached review with a green suite.
+
+    It is also given a PRODUCTION_LINE hierarchy, because --reset does not
+    only DELETE any more: SELF_REFERENTIAL_SWEEPS issues an UPDATE that NULLs
+    parent_line_id. An UPDATE with no tenant filter is silent -- it raises
+    nothing, changes no row count, and leaves every assertion above green
+    while quietly flattening a real customer's line hierarchy across the whole
+    database. Dropping `.where(...)` from that one statement is an ordinary
+    refactor slip with cross-tenant consequences on the production VM, so it
+    gets an assertion rather than a comment.
     """
     client = Base.metadata.tables["CLIENT"]
     alert_config = Base.metadata.tables["ALERT_CONFIG"]
+    production_line = Base.metadata.tables["PRODUCTION_LINE"]
     with seed_engine.begin() as conn:
         conn.execute(
             insert(client),
             [{"client_id": "REAL-CUSTOMER", "client_name": "Real", "client_type": "Hourly Rate", "is_active": True}],
         )
         _insert_alert_config(conn, "REAL-CUSTOMER")
+        parent_id = conn.execute(
+            insert(production_line).values(client_id="REAL-CUSTOMER", line_code="REAL-L1", line_name="Real Parent Line")
+        ).inserted_primary_key[0]
+        conn.execute(
+            insert(production_line).values(
+                client_id="REAL-CUSTOMER",
+                line_code="REAL-L1-A",
+                line_name="Real Child Line",
+                parent_line_id=parent_id,
+            )
+        )
 
     kwargs = dict(client_ids=("DEMO-PIECE",), profile_name="smoke", seed_value=1234, as_of=date(2026, 8, 18))
     seed(seed_engine, reset=True, **kwargs)
@@ -68,10 +89,21 @@ def test_reset_deletes_only_allowlisted_client_rows(seed_engine):
         demo = conn.execute(
             select(func.count()).select_from(client).where(client.c.client_id == "DEMO-PIECE")
         ).scalar_one()
+        real_parents = (
+            conn.execute(
+                select(production_line.c.parent_line_id).where(
+                    production_line.c.client_id == "REAL-CUSTOMER",
+                    production_line.c.line_code == "REAL-L1-A",
+                )
+            )
+            .scalars()
+            .all()
+        )
 
     assert len(survivors) == 1
     assert real_configs == 1, "the widened sweep reached a tenant that was never asked for"
     assert demo == 1, "a second --reset seed must not duplicate the client row"
+    assert real_parents == [parent_id], "the self-referential UPDATE flattened a tenant that was never asked for"
 
 
 def test_the_same_inputs_produce_the_same_row_counts(seed_engine, tmp_path):

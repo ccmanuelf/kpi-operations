@@ -64,11 +64,18 @@ def _engine_modules():
     neither EXEMPTED_MODULE_PATHS nor test_seed_gates.CLOCK_EXEMPT/WRITE_LAYER,
     so it was covered by NOTHING -- the only file in the package with no guard
     on it at all. It is 0 bytes today, which is the cheapest possible moment
-    to bring it under one: a package __init__ is where a convenience re-export
-    (`from backend.seed.cli import seed`) naturally lands, and that single
-    ordinary line would drag backend.orm into the import graph and hand the
-    file a clock and a database at once. Empty subpackage __init__ files cost
-    nothing to scan.
+    to bring it under one: a DIRECT database import or clock read there was
+    previously caught by nothing at all.
+
+    Be precise about what that does and does not buy, because an earlier
+    version of this paragraph claimed more than the guard delivers. The import
+    check is PER-FILE and literal-prefix (see FORBIDDEN_IMPORTS); it does not
+    follow the import graph. So a convenience re-export -- `from
+    backend.seed.cli import seed` -- is NOT caught: `backend.seed.cli` matches
+    no forbidden prefix, and the transitive backend.orm it drags in is
+    invisible here. What IS caught is `from backend.orm import ...` or
+    `date.today()` written directly in this file. Empty subpackage __init__
+    files cost nothing to scan.
     """
     all_modules = list(SEED_DIR.rglob("*.py"))
     return sorted(p for p in all_modules if p.relative_to(SEED_DIR).as_posix() not in EXEMPTED_MODULE_PATHS)

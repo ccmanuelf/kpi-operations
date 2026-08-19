@@ -78,6 +78,15 @@ def _banned_clock_calls(path: Path) -> list[str]:
         materializer supplies created_at/transitioned_at explicitly on every
         seeded table, and the narrative-dataset gates assert the transition
         chains actually span time rather than collapsing to one instant.
+      * SQL clock spellings whose trailing attribute is outside
+        BANNED_CLOCK_ATTRS -- `func.current_timestamp()`, `localtime`,
+        `sysdate` -- are not matched, because that set is derived from
+        test_purity's FORBIDDEN_ATTR_CALLS rather than restated. They need no
+        guard: a SQL Function object is not a valid bind value in a Core
+        executemany, so the write layer fails LOUDLY rather than stamping a
+        wrong timestamp. Measured -- planting `func.current_timestamp()` at
+        the transitioned_at site raises `StatementError: SQLite DateTime type
+        only accepts Python datetime and date objects` on the SQLite CI leg.
     """
     found = []
     for node in ast.walk(ast.parse(path.read_text())):

@@ -1,5 +1,10 @@
-"""What `--reset` executes, in what ORDER, and the one foreign key no order
-can satisfy.
+"""What `--reset` executes, in what ORDER, and the one SELF-REFERENTIAL
+foreign key no order can satisfy.
+
+"Order-safe" is NOT the same as "reset-safe", and this module only proves the
+first. See `_reset`'s docstring in backend/seed/cli.py for the second
+unorderable shape -- a swept child with a NULLABLE tenant column -- which no
+sequence can fix and which nothing here asserts.
 
 The rest of the --reset guarding lives in test_cli.py and asserts on SETS:
 CLIENT_SCOPED_TABLES is complete, DEPENDENT_SWEEPS is complete, every swept
@@ -153,7 +158,10 @@ def test_reset_deletes_every_swept_table_children_before_parents(seed_engine):
 
 
 def test_reset_survives_a_line_hierarchy_the_production_lines_api_can_create(seed_engine):
-    """The one foreign key no TABLE order can satisfy.
+    """The one SELF-REFERENTIAL foreign key no TABLE order can satisfy.
+
+    Not the only unorderable shape in the schema -- see `_reset` for the
+    nullable-tenant-column one, which reproduces on SQLite too.
 
     PRODUCTION_LINE.parent_line_id -> PRODUCTION_LINE.line_id is the only
     self-referential ForeignKey in all 60 tables, it declares no ondelete, and

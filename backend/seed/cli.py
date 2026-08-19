@@ -160,6 +160,30 @@ def _reset(conn: Connection, client_ids: tuple[str, ...]) -> None:
     The sweep covers CLIENT_SCOPED_TABLES, not SEEDED: --reset must clear
     everything a tenant owns, not only what this seeder wrote. See
     _derive_client_scoped_tables.
+
+    KNOWN, UNFIXED, and stated here rather than left for someone to rediscover
+    from an IntegrityError on a customer VM: a swept child whose OWN tenant
+    column is NULLABLE, holding a foreign key into another swept table, is
+    never selected by the scoped DELETE below (its client_id is NULL, so it
+    matches no IN clause) and then RESTRICTs its parent's DELETE. No sweep
+    ORDER can fix it -- the row is never visited at all -- so
+    test_reset_ordering.py cannot see it either. Two edges exist today, both
+    reproducible on plain SQLite with PRAGMA foreign_keys=ON:
+    FLOATING_POOL.employee_id -> EMPLOYEE and ALERT.work_order_id ->
+    WORK_ORDER. The FLOATING_POOL one is reachable through ordinary use:
+    backend/crud/floating_pool/assignments.py builds FloatingPool(...) with
+    client_id omitted, so every POST /api/floating-pool/assign writes a
+    NULL-tenant row referencing a real employee.
+
+    Deliberately NOT fixed on this branch, for two reasons that are facts
+    rather than judgement calls: the identical exposure ALREADY SHIPS in
+    seed_sample_client.py's RESET_TABLE_ORDER (same filter-by-own-tenant
+    strategy, same two tables), so this is not a regression S1b introduces;
+    and this module is not yet wired into deploy.sh, bootstrap/lifecycle.py or
+    any other live path, so nothing calls it outside its own tests. It belongs
+    to the S1c cutover, which is what puts this seeder on a live path -- fixing
+    it needs the NULL-tenant rows attributed or swept by parent, a design
+    decision, not a one-liner.
     """
     for child_name, child_column, parent_name, parent_pk in DEPENDENT_SWEEPS:
         child = Base.metadata.tables[child_name]
