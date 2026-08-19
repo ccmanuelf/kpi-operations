@@ -920,7 +920,8 @@ def test_equipment_decline_biases_the_root_cause_toward_machine():
     from datetime import date
 
     from backend.seed.events import DowntimeLogged
-    from backend.seed.generator import _window_active, generate
+    from backend.seed.generator import generate
+from backend.seed.narrative import window_active
     from backend.seed.profiles import FULL
     from backend.seed.scenarios import SCENARIOS
 
@@ -935,12 +936,12 @@ def test_equipment_decline_biases_the_root_cause_toward_machine():
     inside = Counter(
         e.root_cause_category
         for e in events
-        if _window_active(hourly, e.shift_date.date(), as_of, "equipment_reliability_decline")
+        if window_active(hourly, e.shift_date.date(), as_of, "equipment_reliability_decline")
     )
     outside = Counter(
         e.root_cause_category
         for e in events
-        if not _window_active(hourly, e.shift_date.date(), as_of, "equipment_reliability_decline")
+        if not window_active(hourly, e.shift_date.date(), as_of, "equipment_reliability_decline")
     )
 
     assert inside["machine"] / sum(inside.values()) > 2 * (outside["machine"] / sum(outside.values()))
@@ -1124,9 +1125,9 @@ def _root_cause_pool(scenario: ClientScenario, day: date, as_of: date) -> tuple:
     rather than forcing a value keeps the RNG varying which shifts get which
     cause, so a window reads as a shift in the MIX rather than a block of
     identical rows."""
-    if _window_active(scenario, day, as_of, "equipment_reliability_decline"):
+    if window_active(scenario, day, as_of, "equipment_reliability_decline"):
         return EQUIPMENT_DECLINE_CAUSES
-    if _window_active(scenario, day, as_of, "labor_disruption"):
+    if window_active(scenario, day, as_of, "labor_disruption"):
         return SCHEDULING_PRESSURE_CAUSES
     return BASELINE_CAUSES
 ```
@@ -2495,7 +2496,9 @@ def seed(
         return materialize(conn, events, profile)
 ```
 
-Note the ordering trap: `KPI_THRESHOLD` is global (no client column), so `_reset` skips it, and a re-seed would therefore duplicate its rows. Handle it by making `_threshold_set` write with a deterministic `threshold_id` and having `_reset` delete exactly those ids. Write a test for the second-`--reset` case before implementing it — `test_reset_deletes_only_allowlisted_client_rows` already covers the CLIENT row; add the same assertion for `KPI_THRESHOLD`.
+**Corrected during execution — ignore any lingering claim that `KPI_THRESHOLD` is global.** It carries a real nullable `client_id` under `UniqueConstraint("client_id", "kpi_key")`, `CLIENT_SCOPE_COLUMN` maps it to `"client_id"`, and Task 6 made the emitter produce a full threshold set **per client** with per-client-unique ids (`{cid}-THR-{KEY}`). So `_reset` sweeps it like any other client-scoped table and no special-casing is needed. The earlier draft of this plan prescribed a deterministic-id workaround for a duplication problem that only existed under the false "global" premise; that workaround is now unnecessary complexity and must not be built.
+
+Still write the second-`--reset` test: `test_reset_deletes_only_allowlisted_client_rows` covers the CLIENT row, and `KPI_THRESHOLD` deserves the same assertion — seed, reset, re-seed, and assert exactly one threshold set per client survives. Re-seed duplication is the failure mode a `--reset` bug produces, and it is silent.
 
 `build_parser()` declares `--client` (repeatable, default all of `ALLOWLIST`), `--profile` (default `full`), `--seed` (default `1234`), `--as-of` (`date.fromisoformat`, default `date.today()`), and `--reset`. `main()` catches `SeedError`, prints it to stderr, and returns `2`.
 
@@ -2700,7 +2703,8 @@ from backend.orm import (
     QualityEntry,
     WorkOrder,
 )
-from backend.seed.generator import _window_active, generate
+from backend.seed.generator import generate
+from backend.seed.narrative import window_active
 from backend.seed.materialize import materialize
 from backend.seed.profiles import FULL
 from backend.seed.scenarios import SCENARIOS
@@ -2736,7 +2740,7 @@ def test_demo_piece_dhu_spikes_in_its_crisis_window(full_db):
     crisis, baseline = set(), set()
     day = AS_OF - timedelta(days=364)
     while day <= AS_OF:
-        bucket = crisis if _window_active(scenario, day, AS_OF, "supplier_quality_crisis") else baseline
+        bucket = crisis if window_active(scenario, day, AS_OF, "supplier_quality_crisis") else baseline
         bucket.add((day.year, day.month))
         day += timedelta(days=1)
     # A month straddling the window boundary lands in both; drop those so the
@@ -2785,7 +2789,7 @@ def test_demo_hourly_maintenance_downtime_dominates_inside_its_window(full_db):
 
     inside = Counter()
     for shift_date, reason, minutes in rows:
-        if _window_active(scenario, shift_date.date(), AS_OF, "equipment_reliability_decline"):
+        if window_active(scenario, shift_date.date(), AS_OF, "equipment_reliability_decline"):
             inside[reason] += minutes
 
     others = sum(v for k, v in inside.items() if k != "MAINTENANCE")
@@ -2802,8 +2806,8 @@ def test_demo_hybrid_absenteeism_peaks_inside_its_window(full_db):
             )
         ).all()
 
-    inside = [a for d, a in rows if _window_active(scenario, d.date(), AS_OF, "labor_disruption")]
-    outside = [a for d, a in rows if not _window_active(scenario, d.date(), AS_OF, "labor_disruption")]
+    inside = [a for d, a in rows if window_active(scenario, d.date(), AS_OF, "labor_disruption")]
+    outside = [a for d, a in rows if not window_active(scenario, d.date(), AS_OF, "labor_disruption")]
 
     assert inside and outside
     assert sum(bool(a) for a in inside) / len(inside) > sum(bool(a) for a in outside) / len(outside)
