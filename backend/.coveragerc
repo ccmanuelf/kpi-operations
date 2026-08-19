@@ -11,6 +11,16 @@
 # excluded, as before: tests/, alembic/, scripts/, db/migrations/ (seeders),
 # and the top-level modules main.py / config.py / database.py / constants.py
 # — adding those to the pool is a separate, conscious decision.
+#
+# `seed` (S1b) IS in the pool, and the exclusion note above is why it needs
+# saying out loud: that note names "scripts/, db/migrations/ (seeders)" and
+# predates backend/seed/ existing. Inheriting it here would have left a
+# ~1,900-line PRODUCTION package — shipped, invoked on the VM, and the single
+# writer of the demo dataset — contributing zero to the 75% gate, which is
+# exactly the accident Run 7's H-3/H-5 honest-gate remediation was about.
+# Measured before adding: `coverage run --source=seed -m pytest tests/test_seed/`
+# gives 781 statements, 9 missed, 98.85%, so including it RAISES the total
+# rather than eating headroom.
 
 [run]
 source =
@@ -27,6 +37,7 @@ source =
     orm
     routes
     schemas
+    seed
     services
     simulation_v2
     tasks

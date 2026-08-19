@@ -5,7 +5,8 @@ from datetime import date, datetime
 from pathlib import Path
 
 import pytest
-from sqlalchemy import create_engine, func, insert, select
+from sqlalchemy import create_engine, event, func, insert, select
+from sqlalchemy.sql import Delete
 
 from backend.database import Base
 from backend.seed.cli import ALLOWLIST, CLIENT_SCOPED_TABLES, DEPENDENT_SWEEPS, SeedError, main, seed
@@ -428,21 +429,73 @@ def test_no_table_outside_the_reset_sweep_holds_a_foreign_key_into_it():
     is not derivable and must be declared in DEPENDENT_SWEEPS. This asserts
     the declaration is complete against live metadata, so the next one fails
     the build instead of failing --reset on a customer's VM.
+
+    TARGETS ARE `swept`, NOT `scoped`, and the difference is the whole guard.
+    The first version skipped tables in `swept` as SOURCES but only counted
+    tables in `scoped` as TARGETS, and the three DEPENDENT_SWEEPS children are
+    in `swept` and not in `scoped` -- so a future table holding an FK into
+    ALERT_HISTORY / ASSUMPTION_CHANGE / ATTENDANCE_HOUR_ALLOCATION was
+    invisible to it, while its docstring claimed "no table outside the sweep
+    holds a ForeignKey into it". Since _reset deletes those three parents by
+    subquery, such a table would RESTRICT --reset on a customer's VM: C-2 back
+    through a side door. Injecting a synthetic table with an FK into
+    ALERT_HISTORY passed the old form and is named by this one, and the
+    stricter form costs nothing against the live schema today.
     """
     scoped = set(CLIENT_SCOPED_TABLES)
     swept = scoped | {child for child, _, _, _ in DEPENDENT_SWEEPS}
 
-    assert _foreign_keys_into(scoped, swept) == []
+    assert _foreign_keys_into(swept, swept) == []
 
 
 def test_the_reset_sweep_completeness_guard_is_not_vacuous():
     """A guard that cannot fail proves nothing. Withdraw ALERT_HISTORY from
     the swept set and the scan must name exactly the FK that C-2's fourth
-    repro case exercises."""
+    repro case exercises. Target set matches the guard above (`swept`), so the
+    two cannot drift into asserting different things."""
     scoped = set(CLIENT_SCOPED_TABLES)
     swept = scoped | {child for child, _, _, _ in DEPENDENT_SWEEPS}
 
-    assert _foreign_keys_into(scoped, swept - {"ALERT_HISTORY"}) == ["ALERT_HISTORY.alert_id -> ALERT"]
+    assert _foreign_keys_into(swept, swept - {"ALERT_HISTORY"}) == ["ALERT_HISTORY.alert_id -> ALERT"]
+
+
+#: The three column names this schema uses to scope a row to a tenant. Salvaged
+#: from the retiring seed_sample_client.py, which is the only place all three
+#: were ever written down together.
+CLIENT_SCOPE_COLUMN_NAMES = {"client_id", "client_id_fk", "client_id_assigned"}
+
+
+def test_every_bare_client_column_is_a_deliberate_include_or_exclude():
+    """The OTHER half of the anti-rot guard: a tenant column with NO
+    ForeignKey.
+
+    _derive_client_scoped_tables finds a table by following ForeignKeys to
+    CLIENT.client_id, so a table that scopes rows with a bare column is
+    invisible to it -- and that is not hypothetical, it is the shape that
+    already bit once: EMPLOYEE.client_id_assigned carries no FK, the pure
+    derivation silently dropped it, and only the explicit
+    _UNDERIVABLE_CLIENT_SCOPE_COLUMNS entry keeps EMPLOYEE in the sweep.
+
+    Pinning the set exactly means a FIFTH such table fails the build and
+    forces a deliberate include-or-exclude decision. Silently excluded, it
+    would keep a reset tenant's rows alive under a client id that has just
+    been handed back -- a cross-reset tenant-data leak, not a tidiness issue.
+
+    CLIENT is filtered out: CLIENT.client_id is the primary key every one of
+    those ForeignKeys points AT, not a bare scope column. The four that remain
+    are each argued in cli.py -- EMPLOYEE included via
+    _UNDERIVABLE_CLIENT_SCOPE_COLUMNS, USER excluded as user state rather than
+    client fixture data (Ruling 17), AUDIT_ENTRY and EVENT_STORE excluded as
+    append-only ledgers this seeder writes zero rows to.
+    """
+    bare = {
+        table.name
+        for table in Base.metadata.sorted_tables
+        for column in table.columns
+        if column.name in CLIENT_SCOPE_COLUMN_NAMES and not column.foreign_keys
+    } - {"CLIENT"}
+
+    assert bare == {"EMPLOYEE", "USER", "AUDIT_ENTRY", "EVENT_STORE"}
 
 
 def test_the_reset_sweep_covers_client_scoped_tables_the_seeder_never_writes():
@@ -482,3 +535,126 @@ def test_the_reset_sweep_covers_client_scoped_tables_the_seeder_never_writes():
     assert "USER" not in CLIENT_SCOPED_TABLES
     assert "AUDIT_ENTRY" not in CLIENT_SCOPED_TABLES
     assert "EVENT_STORE" not in CLIENT_SCOPED_TABLES
+
+
+def test_reset_issues_a_delete_against_every_swept_table(seed_engine):
+    """What --reset EXECUTES, not what its constants SAY.
+
+    Every other C-2 guard in this file asserts on the SET (CLIENT_SCOPED_TABLES
+    is complete, DEPENDENT_SWEEPS is complete) and only four of the 47 swept
+    tables are covered behaviourally, by the repro above. A per-table hole in
+    the sweep loop therefore passed the entire suite: `if name == "EQUIPMENT":
+    continue` planted as the loop's first statement, with all metadata left
+    intact, gave 151 passed -- while a live --reset raised `IntegrityError:
+    FOREIGN KEY constraint failed`. EQUIPMENT is client-scoped, never seeded,
+    and written by the app in normal use: the same production shape as the
+    ALERT_CONFIG row that motivated C-2 in the first place.
+
+    One assertion closes it for all 47 at once, which is far cheaper than
+    parametrising the seed-insert-reset repro 47 times: capture the tables
+    _reset actually issues a DELETE against and require that set to equal the
+    swept set exactly. `before_execute` sees the Core statement objects, so
+    this reads the executed SQL rather than re-deriving the constants under
+    test. The four end-to-end repros stay as the proof that a swept DELETE
+    genuinely unblocks the CLIENT delete.
+    """
+    kwargs = dict(client_ids=("DEMO-PIECE",), profile_name="smoke", seed_value=1234, as_of=date(2026, 8, 18))
+    seed(seed_engine, reset=False, **kwargs)
+
+    deleted = []
+
+    @event.listens_for(seed_engine, "before_execute")
+    def _capture(conn, clauseelement, multiparams, params, execution_options):  # noqa: ANN001, ARG001
+        if isinstance(clauseelement, Delete):
+            deleted.append(clauseelement.table.name)
+
+    try:
+        seed(seed_engine, reset=True, **kwargs)
+    finally:
+        event.remove(seed_engine, "before_execute", _capture)
+
+    expected = set(CLIENT_SCOPED_TABLES) | {child for child, _, _, _ in DEPENDENT_SWEEPS}
+
+    assert set(deleted) == expected
+
+
+def test_cli_subprocess_reset_sweeps_grandchildren_on_the_production_engine(tmp_path):
+    """--reset on the engine configuration that actually ships.
+
+    Every other reset test runs on `seed_engine`, which switches SQLite's
+    `PRAGMA foreign_keys=ON`. main() builds a bare `create_engine(url)`, which
+    leaves them OFF, and the one subprocess test omitted --reset -- so the
+    production path ran a reset in no test at all. The fixture is the stricter
+    of the two for detecting a RESTRICT, but it cannot see this failure mode:
+    with foreign keys OFF, an unswept ALERT_HISTORY row is not rejected when
+    its ALERT parent is deleted, it is silently ORPHANED. That is precisely
+    why DEPENDENT_SWEEPS clears the three grandchildren explicitly instead of
+    relying on the two that declare ondelete=CASCADE.
+
+    Seeds, plants BOTH grandchild shapes a live demo grows -- the
+    ALERT/ALERT_HISTORY pair the alerting feature writes (ondelete=None, which
+    RESTRICTs under the fixture) and an ATTENDANCE_HOUR_ALLOCATION row the
+    labour-hours API writes (ondelete=CASCADE, which the fixture cleans up for
+    free) -- then re-runs the real CLI with --reset in a fresh process.
+
+    The CASCADE one is the case only this test can see. Skip
+    ATTENDANCE_HOUR_ALLOCATION in _reset's dependent loop and every FK-ON test
+    stays green, because SQLite cascades the delete itself; on main()'s engine
+    the cascade never fires and the row is silently orphaned under a client id
+    that has just been handed back.
+    """
+    repo_root = Path(__file__).resolve().parents[3]
+    url = f"sqlite:///{tmp_path / 'reset.db'}"
+
+    from backend.db.migrate import upgrade_to_head
+
+    upgrade_to_head(url)
+
+    env = dict(os.environ)
+    env["DATABASE_URL"] = url
+    argv = [
+        sys.executable,
+        "-m",
+        "backend.seed.cli",
+        "--client",
+        "DEMO-PIECE",
+        "--profile",
+        "smoke",
+        "--as-of",
+        "2026-08-18",
+    ]
+
+    first = subprocess.run(argv, cwd=str(repo_root), env=env, capture_output=True, text=True, timeout=180)
+    assert first.returncode == 0, f"stdout={first.stdout}\nstderr={first.stderr}"
+
+    engine = create_engine(url)
+    attendance = Base.metadata.tables["ATTENDANCE_ENTRY"]
+    allocation = Base.metadata.tables["ATTENDANCE_HOUR_ALLOCATION"]
+    try:
+        with engine.begin() as conn:
+            _insert_alert_history(conn, "DEMO-PIECE")
+            attendance_entry_id = conn.execute(
+                select(attendance.c.attendance_entry_id).where(attendance.c.client_id == "DEMO-PIECE").limit(1)
+            ).scalar_one()
+            conn.execute(
+                insert(allocation),
+                [{"attendance_entry_id": attendance_entry_id, "category": "billed_production", "hours": 8}],
+            )
+
+        second = subprocess.run(
+            argv + ["--reset"], cwd=str(repo_root), env=env, capture_output=True, text=True, timeout=180
+        )
+        assert second.returncode == 0, f"stdout={second.stdout}\nstderr={second.stderr}"
+
+        with engine.connect() as conn:
+            alerts = conn.execute(select(func.count()).select_from(Base.metadata.tables["ALERT"])).scalar_one()
+            history = conn.execute(select(func.count()).select_from(Base.metadata.tables["ALERT_HISTORY"])).scalar_one()
+            allocations = conn.execute(select(func.count()).select_from(allocation)).scalar_one()
+            clients = conn.execute(select(func.count()).select_from(Base.metadata.tables["CLIENT"])).scalar_one()
+    finally:
+        engine.dispose()
+
+    assert alerts == 0
+    assert history == 0, "ALERT_HISTORY survived --reset on the engine main() actually builds"
+    assert allocations == 0, "ATTENDANCE_HOUR_ALLOCATION survived --reset with no cascade to clean it up"
+    assert clients == 1

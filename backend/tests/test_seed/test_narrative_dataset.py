@@ -13,7 +13,7 @@ the module-scoped `full_db` fixture below pays that cost once for the whole
 file rather than once per test.
 """
 
-from datetime import date, timedelta
+from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 
 import pytest
@@ -21,10 +21,17 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from backend.calculations.otd import calculate_true_otd
-from backend.calculations.wip_aging import identify_chronic_holds
+from backend.calculations.wip_aging import (
+    NON_WIP_HOLD_STATUSES,
+    identify_chronic_holds,
+    snapshot_cutoff,
+)
 from backend.orm import (
     AttendanceEntry,
     DefectDetail,
+    HoldEntry,
+    HoldStatus,
+    HoldStatusTransition,
     ProductionEntry,
     QualityEntry,
     WorkOrder,
@@ -92,24 +99,79 @@ def test_at_least_three_holds_are_aged_past_sixty_days(full_db):
     the spec row names excludes it. The weaker form let the dataset satisfy
     this row with holds invisible on the screens it exists to populate.
 
-    threshold_days is passed EXPLICITLY. Left out it resolves through
-    get_client_wip_thresholds(db, client_id=None) -> (7, 14) and then
-    `critical_threshold * 2` = 28 days -- a weaker bar than the sixty this
-    row asks for, and one that answers 16 rather than 11. Stating 60 anchors
-    the assertion to the spec instead of to a config default.
+    `len(chronic) >= 3` cannot tell those apart. 25 clears it, 11 clears it,
+    and so does the 16 that silently dropping `threshold_days=60` produces
+    (the parameter then resolves through get_client_wip_thresholds(db, None)
+    -> (7, 14) -> critical * 2 = a 28-day bar). Three further assertions
+    carry the distinction the docstring claims, each picked to be
+    CLOCK-STABLE: identify_chronic_holds reads date.today() internally and
+    takes no as_of, while this fixture is anchored at AS_OF = 2026-08-18.
 
-    identify_chronic_holds reads date.today() internally and takes no as_of
-    parameter, while this fixture is anchored at AS_OF = 2026-08-18. The
-    resulting drift is one-directional and safe: the holds counted here have
-    resume_date IS NULL and no transitions after AS_OF, so as the real date
-    advances they only age further and more of the younger ones cross the
-    sixty-day line. The count is monotonically non-decreasing, so `>= 3`
-    cannot begin failing with the calendar.
+      1. Nothing it returned is in NON_WIP_HOLD_STATUSES. Measured 0 today,
+         0 at +1y, 0 at +10y on a frozen-clock sweep.
+      2. The dataset genuinely contains 60-day-aged PENDING_HOLD_APPROVAL
+         holds -- 14 of them, anchored on AS_OF so the number cannot drift --
+         so assertion 1 is exercised rather than vacuously satisfied.
+      3. `threshold_days_used`, which identify_chronic_holds copies from its
+         own parameter into every row it returns, is exactly 60, and no
+         returned hold is younger than 60 days.
+
+    Assertion 3 is deliberately NOT the count comparison it looks like it
+    should be. `len(at 60) < len(at the config default)` holds today (11 vs
+    16) and stops holding almost immediately: the same frozen-clock sweep
+    measures 11/16 at 2026-08-19 but 20/20 at +1y and 20/20 at +10y, because
+    once every seeded hold has aged past sixty days both bars select the same
+    rows. Reading back the parameter the calculator reports has no such
+    saturation point.
+
+    The counts above are recorded and deliberately NOT asserted, for the same
+    reason: the sixty-day answer walks 11 -> 20 -> 20 across that sweep, so
+    `== 11` would be a time bomb. Everything asserted below is monotone-safe
+    -- holds only age, and the two exact numbers (14, 60) are anchored on
+    AS_OF and on the argument passed in, neither of which moves with the
+    calendar.
     """
+    sixty_days_before_as_of = datetime.combine(AS_OF - timedelta(days=60), time.min)
     with Session(full_db) as db:
         chronic = identify_chronic_holds(db, threshold_days=60)
+        statuses = db.execute(
+            select(HoldEntry.hold_entry_id, HoldEntry.hold_status).where(
+                HoldEntry.hold_entry_id.in_([h["hold_id"] for h in chronic])
+            )
+        ).all()
+        latest_transition = db.execute(select(func.max(HoldStatusTransition.transitioned_at))).scalar_one()
+        aged_and_excluded = db.execute(
+            select(func.count())
+            .select_from(HoldEntry)
+            .where(
+                HoldEntry.hold_status == HoldStatus.PENDING_HOLD_APPROVAL,
+                HoldEntry.resume_date.is_(None),
+                HoldEntry.hold_date < sixty_days_before_as_of,
+            )
+        ).scalar_one()
 
     assert len(chronic) >= 3
+
+    # Reading HOLD_ENTRY.hold_status is reading the EFFECTIVE status here,
+    # not merely the current one: every transition this dataset writes
+    # predates today's snapshot cutoff, so active_as_of's three-tier
+    # resolution settles on tier 1 (the latest transition before the cutoff),
+    # and _hold_status_changed mirrors that same to_status into the column.
+    # Asserted rather than assumed, so the equivalence cannot rot silently.
+    assert latest_transition < snapshot_cutoff(date.today())
+    assert [status for _, status in statuses if status in NON_WIP_HOLD_STATUSES] == []
+    # Named LITERALLY as well, and that is not redundancy. The line above reads
+    # the production tuple, so commenting PENDING_HOLD_APPROVAL out of it
+    # removes the status from the calculator AND from this check at the same
+    # time: measured, that mutation left all 8 tests in this module green. Only
+    # a check that names the status independently of the list under test can
+    # see the exclusion being withdrawn.
+    assert [status for _, status in statuses if status == HoldStatus.PENDING_HOLD_APPROVAL] == []
+
+    assert aged_and_excluded == 14
+
+    assert {h["threshold_days_used"] for h in chronic} == {60}
+    assert [h["hold_id"] for h in chronic if h["aging_days"] < 60] == []
 
 
 def test_every_client_has_twelve_distinct_months_of_production_and_quality(full_db):
@@ -247,6 +309,29 @@ def test_otd_dips_below_eighty_percent_in_some_month_for_every_troubled_client(f
     because it counts every delivered order regardless of status, matching
     spec section 8's "at least one month per client below 80% OTD" framing
     rather than the COMPLETED-only subset TRUE-OTD scopes to.
+
+    THE FLOORS ARE MEASURED, NOT GUESSED, and both vectors are recorded here
+    so the next reader does not have to re-derive them (the same discipline
+    the 3.22x/7.50x pair in the absenteeism test above records):
+
+        LATE_RATE_NARRATIVE = 0.9 (healthy, shipping):  PIECE 5, HOURLY 3,
+            HYBRID 3 months below 80%; annual standard OTD 75.68 / 80.65 /
+            75.00%.
+        LATE_RATE_NARRATIVE = 0.4 (damaged):            PIECE 1, HOURLY 2,
+            HYBRID 2; annual 94.59 / 90.32 / 91.67% -- four healthy-looking
+            clients and no OTD story left on the dashboards.
+
+    So DEMO-PIECE >= 4 is the real discriminator: margin 1 above the damaged
+    value, 1 below the healthy one. `>= 1` (the bar this replaces) sat blind
+    across roughly 0.3-0.5 and only went red at 0.15, where every client
+    flattens to 100%.
+
+    STATED LIMITATION, deliberate: DEMO-HOURLY >= 2 and DEMO-HYBRID >= 2
+    catch TOTAL flattening only -- at 0.4 both still measure exactly 2, so
+    neither notices that degradation. A `>= 3` bar on either would have zero
+    margin against the healthy vector and would go red on any unrelated
+    reseed jitter, so it is rejected on purpose rather than overlooked.
+    DEMO-PIECE carries the discrimination for all three.
     """
     months = {}
     with Session(full_db) as db:
@@ -259,8 +344,9 @@ def test_otd_dips_below_eighty_percent_in_some_month_for_every_troubled_client(f
         # months below 80% and silently satisfy the SAMPLE_REF arm.
         assert evaluated >= 10, f"{scenario.client_id}: only {evaluated} months of deliveries -- OTD is undemonstrable"
 
-    for client_id in ("DEMO-PIECE", "DEMO-HOURLY", "DEMO-HYBRID"):
-        assert months[client_id][1] >= 1, f"{client_id}: no month below 80% OTD"
+    for client_id, floor in (("DEMO-PIECE", 4), ("DEMO-HOURLY", 2), ("DEMO-HYBRID", 2)):
+        below = months[client_id][1]
+        assert below >= floor, f"{client_id}: {below} months below 80% OTD, floor is {floor}"
 
     assert months["SAMPLE_REF"][1] == 0
 
