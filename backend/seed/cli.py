@@ -18,14 +18,80 @@ from sqlalchemy import Connection, Engine, create_engine, delete, select
 
 from backend.audit import audit_suppressed
 from backend.database import Base
-from backend.seed.coverage import SEEDED
 from backend.seed.events import PLATFORM_CLIENT_ID, UserCreated
 from backend.seed.generator import generate
-from backend.seed.materialize import CLIENT_SCOPE_COLUMN, INSERT_ORDER, materialize
+from backend.seed.materialize import INSERT_ORDER, materialize
 from backend.seed.profiles import PROFILES
 from backend.seed.scenarios import SCENARIOS
 
 ALLOWLIST = frozenset(s.client_id for s in SCENARIOS)
+
+#: Tenant-scoped tables with NO ForeignKey to CLIENT.client_id, so no
+#: derivation can find them. Only EMPLOYEE belongs here.
+#:
+#: USER.client_id_assigned is the same bare shape and is DELIBERATELY ABSENT:
+#: USER is never deleted by --reset (see _reset's closing comment) because it
+#: is user state, not client fixture data, and user creation is idempotent
+#: instead. AUDIT_ENTRY.client_id and EVENT_STORE.client_id are bare columns
+#: too and are also deliberately absent: they are append-only ledgers rather
+#: than client fixture data, this seeder writes zero rows to either (it runs
+#: under audit_suppressed()), the retiring seed_sample_client.py never touched
+#: them, and neither carries a foreign key, so neither can block a delete.
+_UNDERIVABLE_CLIENT_SCOPE_COLUMNS = {"EMPLOYEE": "client_id_assigned"}
+
+
+def _derive_client_scoped_tables() -> dict[str, str]:
+    """Every tenant-scoped table in the schema, mapped to its client column.
+
+    Derived from Base.metadata, not hand-listed. Any table carrying a
+    ForeignKey to CLIENT.client_id is client fixture data by construction, so
+    a table added later is swept automatically -- which is what
+    seed_sample_client's hand-written RESET_TABLE_ORDER could not do.
+
+    Deliberately NOT `SEEDED`. What the seeder WRITES and what --reset must
+    CLEAR are different sets: 45 tables hold a FK into CLIENT while the
+    seeder writes 23, and restricting the sweep to the seeded ones left every
+    other one (ALERT_CONFIG, JOB, EQUIPMENT, the 13 capacity_* tables, ...)
+    holding rows that RESTRICT the DELETE FROM "CLIENT" at the end of the
+    sweep. That is not an edge case: an ALERT_CONFIG row is what the
+    alert-configuration API writes the first time anyone edits a threshold on
+    the demo.
+    """
+    scoped = {"CLIENT": "client_id"}
+    for table in Base.metadata.sorted_tables:
+        for column in table.columns:
+            for fk in column.foreign_keys:
+                if fk.column.table.name == "CLIENT":
+                    scoped[table.name] = column.name
+    scoped.update(_UNDERIVABLE_CLIENT_SCOPE_COLUMNS)
+    return scoped
+
+
+#: name -> the column that scopes it to a tenant.
+CLIENT_SCOPED_TABLES = _derive_client_scoped_tables()
+
+#: Grandchildren: tables OUTSIDE CLIENT_SCOPED_TABLES that hold a ForeignKey
+#: into one of them, as (child, child fk column, parent, parent pk column).
+#: Swept by subquery before the scoped sweep, because they have no tenant
+#: column of their own to filter on.
+#:
+#: Every one is swept explicitly even though two of the three declare
+#: ondelete=CASCADE at the DB level: SQLite honours ON DELETE CASCADE only
+#: under PRAGMA foreign_keys=ON, and the bare create_engine(url) in main()
+#: does not set it (the app's SQLiteProvider does; this seeder's own engine
+#: does not). Relying on the declared cascade would leave orphans on exactly
+#: the path --reset exists to clean.
+#:
+#: test_no_table_outside_the_reset_sweep_holds_a_foreign_key_into_it proves
+#: this list is complete against live metadata, so a new grandchild fails the
+#: build rather than --reset on a customer's VM.
+DEPENDENT_SWEEPS = (
+    # ondelete=None -- a hard blocker, nothing would clean this up.
+    ("ALERT_HISTORY", "alert_id", "ALERT", "alert_id"),
+    # ondelete=CASCADE, swept explicitly for the PRAGMA reason above.
+    ("ASSUMPTION_CHANGE", "assumption_id", "CALCULATION_ASSUMPTION", "assumption_id"),
+    ("ATTENDANCE_HOUR_ALLOCATION", "attendance_entry_id", "ATTENDANCE_ENTRY", "attendance_entry_id"),
+)
 
 
 class SeedError(RuntimeError):
@@ -35,48 +101,48 @@ class SeedError(RuntimeError):
 def _reset(conn: Connection, client_ids: tuple[str, ...]) -> None:
     """Delete only these clients' rows, children first.
 
-    Reverse INSERT_ORDER rather than a hand-written list: it is the same
-    metadata topological sort, so the two can never drift apart.
+    Two passes. DEPENDENT_SWEEPS first: those tables carry no tenant column,
+    only a raw FK into a scoped table, so they are cleared by subquery through
+    their parent. Then every client-scoped table in reverse INSERT_ORDER --
+    the same metadata topological sort the inserts use, so the two can never
+    drift apart.
 
-    ATTENDANCE_HOUR_ALLOCATION has no tenant column of its own -- only a raw FK
-    to ATTENDANCE_ENTRY -- and its ORM cascade only fires on session.delete(),
-    not a Core delete. Without the subquery below it survives a reset as an
-    orphan and collides on re-seed. (Salvaged from seed_sample_client.)
+    The sweep covers CLIENT_SCOPED_TABLES, not SEEDED: --reset must clear
+    everything a tenant owns, not only what this seeder wrote. See
+    _derive_client_scoped_tables.
     """
-    attendance = Base.metadata.tables["ATTENDANCE_ENTRY"]
-    allocation = Base.metadata.tables.get("ATTENDANCE_HOUR_ALLOCATION")
-    if allocation is not None:
+    for child_name, child_column, parent_name, parent_pk in DEPENDENT_SWEEPS:
+        child = Base.metadata.tables[child_name]
+        parent = Base.metadata.tables[parent_name]
+        parent_scope = CLIENT_SCOPED_TABLES[parent_name]
         conn.execute(
-            delete(allocation).where(
-                allocation.c.attendance_entry_id.in_(
-                    select(attendance.c.attendance_entry_id).where(attendance.c.client_id.in_(client_ids))
-                )
+            delete(child).where(
+                child.c[child_column].in_(select(parent.c[parent_pk]).where(parent.c[parent_scope].in_(client_ids)))
             )
         )
 
     for name in reversed(INSERT_ORDER):
-        if name not in SEEDED:
-            continue
-        column = CLIENT_SCOPE_COLUMN.get(name)
+        column = CLIENT_SCOPED_TABLES.get(name)
         if column is None:
             continue
         table = Base.metadata.tables[name]
         conn.execute(delete(table).where(table.c[column].in_(client_ids)))
 
-    # USER carries no client-scope column of its own -- confirmed directly:
-    # SEEDED - set(CLIENT_SCOPE_COLUMN) == {"USER"}, the one seeded table the
-    # loop above always skips (column is None) -- so it is NEVER deleted here,
-    # deliberately, even though scenarios.USERS is a fixed, known id list an
-    # earlier version of this function used to delete unconditionally. That
-    # version reproduced: a live survey of every FK into USER.user_id found
-    # ~10 tables outside S1b's declared coverage (SAVED_FILTER,
-    # ALERT.acknowledged_by/resolved_by, IMPORT_LOG, COVERAGE_ENTRY,
-    # CALCULATION_ASSUMPTION, METRIC_CALCULATION_RESULT, SIMULATION_SCENARIO,
-    # EVENT_STORE) with no ondelete cascade, so an unconditional USER delete
-    # RESTRICTs the moment a demo user has used one of those features -- e.g.
-    # saved a dashboard filter. That is the default full-allowlist --reset
-    # path, not an edge case, and it is a regression the retiring
-    # seed_sample_client.py never had (it never deleted USER at all).
+    # USER carries no ForeignKey to CLIENT -- only a bare client_id_assigned
+    # column, the same shape EMPLOYEE has -- so nothing derives it and it is
+    # deliberately left out of _UNDERIVABLE_CLIENT_SCOPE_COLUMNS above. It is
+    # therefore NEVER deleted here, deliberately, even though scenarios.USERS
+    # is a fixed, known id list an earlier version of this function used to
+    # delete unconditionally. That version reproduced: a live survey of every
+    # FK into USER.user_id found ~10 tables outside S1b's declared coverage
+    # (SAVED_FILTER, ALERT.acknowledged_by/resolved_by, IMPORT_LOG,
+    # COVERAGE_ENTRY, CALCULATION_ASSUMPTION, METRIC_CALCULATION_RESULT,
+    # SIMULATION_SCENARIO, EVENT_STORE) with no ondelete cascade, so an
+    # unconditional USER delete RESTRICTs the moment a demo user has used one
+    # of those features -- e.g. saved a dashboard filter. That is the default
+    # full-allowlist --reset path, not an edge case, and it is a regression
+    # the retiring seed_sample_client.py never had (it never deleted USER at
+    # all).
     # User creation is idempotent instead -- see seed() below -- which also
     # means a demo user's saved filters and acknowledged alerts genuinely
     # survive a reset, arguably correct since that is user state, not client

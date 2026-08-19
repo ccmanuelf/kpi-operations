@@ -118,8 +118,14 @@ def test_equipment_decline_lands_as_UNPLANNED_downtime(events):
     .py:87) excludes that set because it counts FAILURES -- so a reliability
     decline made entirely of maintenance produced ZERO failures and MTBF, the
     metric named for the very thing the episode is about, could not move.
-    (calculate_availability and calculate_mttr do not filter, so raw minutes
-    always landed; the reliability reading is what was lost.)
+    (The raw minutes still landed on the client+date aggregates the
+    dashboard, trends, downtime and my_shift endpoints read; what was lost is
+    the reliability reading. They do NOT land on calculate_availability or
+    calculate_mttr -- those filter DowntimeEntry.work_order_id
+    (backend/calculations/availability.py:38) and machine_id
+    (availability.py:127) respectively, and the seeder leaves both columns
+    NULL, so availability returns (100, 8.0, 0, 0) and MTTR/MTBF return None
+    regardless of what this episode writes. Measured, not assumed.)
 
     Imported from the live taxonomy rather than restated here, so a change to
     what counts as planned reaches this assertion instead of drifting past it.

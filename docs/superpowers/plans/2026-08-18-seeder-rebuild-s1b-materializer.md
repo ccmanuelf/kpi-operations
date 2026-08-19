@@ -2893,12 +2893,71 @@ draw OTD needs so the dip is caused by the narrative, not by accident."
 
 ## Review
 
-*(Filled in as the plan executes.)*
+Spec section 10's committed measurement. This plan is the only committed
+artifact that records it — the SDD ledger under `.superpowers/` is gitignored
+and does not survive a fresh clone.
 
-- Seed duration, SQLite / FULL: _____
-- Seed duration, MariaDB / FULL: _____
-- Total rows written, FULL: _____
-- Deviations from this plan and why: _____
+- **Seed duration, SQLite / FULL: 1.26 s.** End-to-end `seed()` against a
+  database Alembic had already migrated. `generate()` + `materialize()` alone
+  re-measure at 0.87–0.88 s over three consecutive runs on the same machine;
+  the difference is engine setup and the surrounding transaction, not the
+  event engine.
+- **Seed duration, MariaDB / FULL: 2.23 s.** Same profile and seed against a
+  live InnoDB instance — the dialect the VM actually runs, and the one the
+  new `Seed suite on MariaDB` CI step exercises.
+- **Total rows written, FULL: 39,400, across 23 tables.** Byte-identical
+  across runs and across three `PYTHONHASHSEED` values; determinism is what
+  makes the dataset assertable rather than eyeballable.
+
+### Deviations from this plan and why
+
+1. **Ruling 17 — `USER` is never deleted by `--reset`.** The plan had `_reset`
+   delete the seeded users by id. A live survey found ~10 tables outside S1b's
+   coverage holding FKs into `USER.user_id` with no `ondelete` (`SAVED_FILTER`,
+   `ALERT.acknowledged_by/resolved_by`, `IMPORT_LOG`, `COVERAGE_ENTRY`,
+   `CALCULATION_ASSUMPTION`, `METRIC_CALCULATION_RESULT`,
+   `SIMULATION_SCENARIO`, `EVENT_STORE`), so the delete RESTRICTed the moment a
+   demo user had saved a dashboard filter. Deleting those dependents first was
+   rejected: it rots silently the next time anyone adds a table with an FK to
+   `USER`. User creation is idempotent instead — `seed()` drops `UserCreated`
+   events for ids that already exist — which also means a user's own state
+   survives a reset, arguably the correct semantics since it is not client
+   fixture data.
+2. **Ruling 18 — the client-grant filter moved to the generator root.** The
+   plan fixed the scope leak in `cli.seed()`, leaving `_generate_platform`
+   emitting `ClientAccessGranted` for every DEMO client regardless of the
+   subset requested, so any direct caller of `generate()` reproduced the FK
+   violation. `_generate_platform` now scopes grants to the scenarios it was
+   given; `cli.seed()`'s filter is kept as documented redundant defence.
+3. **Ruling 20 — the `--reset` sweep is wider than `SEEDED`.** The plan
+   salvaged `seed_sample_client`'s client-COLUMN map but restricted the sweep
+   to seeded tables, conflating what the seeder WRITES with what `--reset`
+   CLEARS. 45 tables hold a ForeignKey into `CLIENT` and the seeder writes 23,
+   so an ordinary live demo — one `ALERT_CONFIG` row, one `JOB`, one
+   `capacity_calendar` row — crashed `--reset` with `FOREIGN KEY constraint
+   failed` on the final `DELETE FROM "CLIENT"`. The sweep is now derived from
+   `Base.metadata` (`cli.CLIENT_SCOPED_TABLES`) so it cannot rot, with
+   `EMPLOYEE` added explicitly (bare column, no FK, underivable) and three
+   grandchildren swept by subquery. A permanent guard asserts no table outside
+   the sweep holds a ForeignKey into it.
+4. **Ruling 21 — two spec-section-8 assertions shipped weaker than written and
+   were tightened.** Row 3 asks for ≥ 1 MONTH per client below 80% OTD; the
+   test asserted one 400-day aggregate, which a regression flattening two of
+   three clients would have passed. Row 2 says "all in the chronic list"; the
+   test hand-rolled the predicate (25 holds) instead of driving
+   `identify_chronic_holds` (11) — the 14 it dropped sit in
+   `PENDING_HOLD_APPROVAL` and are invisible to the screens the row names.
+5. **Ruling 12 — `KPI_THRESHOLD` is client-scoped, not global.** The plan's
+   premise was wrong: the column is a real nullable FK under
+   `UniqueConstraint(client_id, kpi_key)`, and the retiring seeder already
+   listed it client-scoped. Thresholds are therefore emitted per client, and
+   Task 9's prescribed deterministic-`threshold_id` workaround — written for a
+   duplication problem that only existed under the false premise — was dropped
+   as unnecessary.
+6. **The new MariaDB seed CI step needs `--no-cov`.** `pyproject.toml` puts
+   `--cov` in `addopts` and `backend/.coveragerc` sets `fail_under = 75`, so a
+   directory-scoped run measures the whole source pool, reports 8.37% and
+   exits 1 with every test passing. The sibling step already carried the flag.
 
 ---
 

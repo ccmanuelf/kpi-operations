@@ -71,8 +71,11 @@ def test_insert_order_is_populated_in_a_fresh_process():
 
 def test_every_client_scoped_table_declares_its_scope_column():
     """Three different column names carry the tenant across these tables. The
-    map is what --reset filters on; a missing entry means a client's rows
-    survive a reset and collide on re-seed."""
+    map is the writer-side contract -- a missing entry means the materializer
+    has no declared tenant column to write, and
+    test_the_platform_sentinel_never_reaches_a_client_column below stops
+    checking that table. (--reset derives its own, wider set; see
+    cli.CLIENT_SCOPED_TABLES.)"""
     for table_name in ("PRODUCTION_ENTRY", "DEFECT_DETAIL", "EMPLOYEE"):
         assert table_name in CLIENT_SCOPE_COLUMN
 

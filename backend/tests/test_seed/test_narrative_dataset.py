@@ -21,10 +21,10 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from backend.calculations.otd import calculate_true_otd
+from backend.calculations.wip_aging import identify_chronic_holds
 from backend.orm import (
     AttendanceEntry,
     DefectDetail,
-    HoldEntry,
     ProductionEntry,
     QualityEntry,
     WorkOrder,
@@ -78,15 +78,38 @@ def test_demo_piece_dhu_spikes_in_its_crisis_window(full_db):
 
 
 def test_at_least_three_holds_are_aged_past_sixty_days(full_db):
-    cutoff = AS_OF - timedelta(days=60)
-    with full_db.connect() as conn:
-        chronic = conn.execute(
-            select(func.count())
-            .select_from(HoldEntry)
-            .where(HoldEntry.resume_date.is_(None), HoldEntry.hold_date < cutoff)
-        ).scalar_one()
+    """Spec section 8 row 2: at least three holds aged past sixty days, and
+    ALL IN THE CHRONIC LIST. That list is identify_chronic_holds
+    (backend/calculations/wip_aging.py:426), so this drives the production
+    calculator rather than hand-rolling the predicate -- exactly as the OTD
+    assertion below drives calculate_true_otd.
 
-    assert chronic >= 3
+    The two disagree, and the calculator is right. The hand-rolled form this
+    replaces (`resume_date IS NULL AND hold_date < AS_OF - 60d`) counts 25
+    holds; identify_chronic_holds returns 11. All 14 it drops sit in
+    PENDING_HOLD_APPROVAL, one of active_as_of's NON_WIP_HOLD_STATUSES: the
+    hold is only REQUESTED, so nothing has stopped and every WIP-aging screen
+    the spec row names excludes it. The weaker form let the dataset satisfy
+    this row with holds invisible on the screens it exists to populate.
+
+    threshold_days is passed EXPLICITLY. Left out it resolves through
+    get_client_wip_thresholds(db, client_id=None) -> (7, 14) and then
+    `critical_threshold * 2` = 28 days -- a weaker bar than the sixty this
+    row asks for, and one that answers 16 rather than 11. Stating 60 anchors
+    the assertion to the spec instead of to a config default.
+
+    identify_chronic_holds reads date.today() internally and takes no as_of
+    parameter, while this fixture is anchored at AS_OF = 2026-08-18. The
+    resulting drift is one-directional and safe: the holds counted here have
+    resume_date IS NULL and no transitions after AS_OF, so as the real date
+    advances they only age further and more of the younger ones cross the
+    sixty-day line. The count is monotonically non-decreasing, so `>= 3`
+    cannot begin failing with the calendar.
+    """
+    with Session(full_db) as db:
+        chronic = identify_chronic_holds(db, threshold_days=60)
+
+    assert len(chronic) >= 3
 
 
 def test_every_client_has_twelve_distinct_months_of_production_and_quality(full_db):
@@ -166,9 +189,55 @@ def test_demo_hybrid_absenteeism_peaks_inside_its_window(full_db):
     assert inside_rate >= 5 * outside_rate
 
 
-def test_otd_dips_below_eighty_percent_for_at_least_one_client_and_never_for_sample_ref(full_db):
-    """Spec section 8 row 3. SAMPLE_REF is the healthy control -- if it dips,
-    the dashboards are uniformly red and the thresholds read as broken.
+def _month_bounds(year: int, month: int) -> tuple[date, date]:
+    """First and last calendar day of a month."""
+    start = date(year, month, 1)
+    end = date(year + (month == 12), (month % 12) + 1, 1) - timedelta(days=1)
+    return start, end
+
+
+def _otd_months(db, client_id: str) -> tuple[int, int]:
+    """(months carrying deliveries, of which months under 80% standard OTD).
+
+    One calculate_true_otd call per month the client actually delivered in,
+    so the buckets are the calendar months a dashboard would draw rather than
+    a window this test invented.
+    """
+    delivered = (
+        db.execute(
+            select(WorkOrder.actual_delivery_date).where(
+                WorkOrder.client_id == client_id, WorkOrder.actual_delivery_date.isnot(None)
+            )
+        )
+        .scalars()
+        .all()
+    )
+
+    evaluated = below = 0
+    for year, month in sorted({(d.year, d.month) for d in delivered}):
+        start, end = _month_bounds(year, month)
+        standard = calculate_true_otd(db, client_id, start, end)["standard_otd"]
+        if standard["total"] == 0:
+            continue
+        evaluated += 1
+        if standard["percentage"] < Decimal("80"):
+            below += 1
+    return evaluated, below
+
+
+def test_otd_dips_below_eighty_percent_in_some_month_for_every_troubled_client(full_db):
+    """Spec section 8 row 3, read as written: at least one MONTH per client
+    below 80% OTD, and SAMPLE_REF never below. SAMPLE_REF is the healthy
+    control -- if it dips, the dashboards are uniformly red and the
+    thresholds read as broken.
+
+    Bucketed by month rather than as one 400-day aggregate. The aggregate
+    form shipped first and was weaker than the spec: it asserted only
+    `min(rates) < 80`, so a regression that flattened DEMO-HOURLY (whose
+    aggregate is 80.65%, already ABOVE the line) and DEMO-HYBRID passed
+    unnoticed as long as DEMO-PIECE still dipped. Measured per month on
+    FULL/1234: PIECE 5 months below, HOURLY 3, HYBRID 3, SAMPLE_REF 0, out
+    of 11 / 11 / 10 / 11 months carrying deliveries.
 
     Drives the PRODUCTION calculator (backend/calculations/otd.py:
     calculate_true_otd), not a reimplementation of the metric: it needs only
@@ -179,21 +248,21 @@ def test_otd_dips_below_eighty_percent_for_at_least_one_client_and_never_for_sam
     spec section 8's "at least one month per client below 80% OTD" framing
     rather than the COMPLETED-only subset TRUE-OTD scopes to.
     """
-    # Wide enough to catch every seeded delivery: FULL spans profile.days=365
-    # plus setup overhead, so 400 days back from AS_OF is a safe margin
-    # without depending on the exact activity_start the setup band computes.
-    start = AS_OF - timedelta(days=400)
-
-    rates = {}
+    months = {}
     with Session(full_db) as db:
         for scenario in SCENARIOS:
-            result = calculate_true_otd(db, scenario.client_id, start, AS_OF)
-            standard = result["standard_otd"]
-            assert standard["total"] > 0, f"{scenario.client_id}: no delivered orders -- OTD is undemonstrable"
-            rates[scenario.client_id] = standard["percentage"]
+            months[scenario.client_id] = _otd_months(db, scenario.client_id)
 
-    assert min(rates.values()) < Decimal("80")
-    assert rates["SAMPLE_REF"] >= Decimal("80")
+    for scenario in SCENARIOS:
+        evaluated, below = months[scenario.client_id]
+        # Non-vacuity: a client with no delivered orders would report zero
+        # months below 80% and silently satisfy the SAMPLE_REF arm.
+        assert evaluated >= 10, f"{scenario.client_id}: only {evaluated} months of deliveries -- OTD is undemonstrable"
+
+    for client_id in ("DEMO-PIECE", "DEMO-HOURLY", "DEMO-HYBRID"):
+        assert months[client_id][1] >= 1, f"{client_id}: no month below 80% OTD"
+
+    assert months["SAMPLE_REF"][1] == 0
 
 
 def test_the_priority_adherence_denominator_is_non_empty_and_incomplete(full_db):

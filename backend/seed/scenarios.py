@@ -62,9 +62,18 @@ REASON_BY_ROOT_CAUSE = {
 #: PLANNED_DOWNTIME_REASONS (backend/orm/downtime_taxonomy.py:53). The one
 #: consumer that filters on that set is calculate_mtbf
 #: (backend/calculations/availability.py:87), which excludes them because it
-#: counts FAILURES and planned work is not one. (calculate_availability and
-#: calculate_mttr do NOT filter -- checked, not assumed -- so the x3 minute
-#: scale does reach Availability either way.) A reliability decline recorded
+#: counts FAILURES and planned work is not one.
+#:
+#: (The x3 minute scale still reaches the client's Availability reading, but
+#: NOT through calculate_availability: that function filters
+#: DowntimeEntry.work_order_id (availability.py:38) and calculate_mttr
+#: filters machine_id (availability.py:127), and the seeder leaves both
+#: columns NULL -- measured, not assumed: calculate_availability returns
+#: (100, 8.0, 0, 0) and MTTR/MTBF return None for every seeded work order and
+#: machine. The minutes are seen by the consumers that aggregate downtime by
+#: client and date instead -- dashboard, trends, downtime and my_shift --
+#: which is why S1b defers work_order_id/machine_id on DOWNTIME_ENTRY rather
+#: than treating it as a gap.) A reliability decline recorded
 #: entirely as MAINTENANCE therefore produces ZERO failures: MTBF, the metric
 #: named for the thing the narrative is about, cannot move at all, and the
 #: decline reads as scheduled servicing -- the opposite of the story spec

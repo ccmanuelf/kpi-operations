@@ -14,8 +14,22 @@ from pathlib import Path
 
 import pytest
 
+from backend.tests.test_seed.test_purity import EXEMPTED_MODULE_PATHS
+
 SEED_DIR = Path(__file__).resolve().parents[2] / "seed"
-WRITE_LAYER = ("materialize.py", "writers_master.py", "writers_operations.py")
+
+#: cli.py is the ONE module allowed a clock: --as-of defaults to date.today()
+#: so a production run anchors to its actual run date (spec section 9).
+CLOCK_EXEMPT = frozenset({"cli.py"})
+
+#: The write layer, DERIVED from test_purity's exemption list rather than
+#: restated. The two were hand-maintained and had already drifted: test_purity
+#: exempts five modules from the no-clock check, this file listed three, and
+#: identity.py sat in NEITHER -- exempted from the purity guard for talking to
+#: a live Connection, and never added here, so a func.now() in it was caught by
+#: nothing at all. Deriving one from the other closes that seam permanently: a
+#: module can only leave the purity guard by entering this one.
+WRITE_LAYER = tuple(sorted(EXEMPTED_MODULE_PATHS - CLOCK_EXEMPT))
 
 BANNED_CALLS = {
     ("datetime", "now"),
@@ -43,6 +57,18 @@ def test_the_write_layer_contains_no_clock(filename):
     """Every timestamp originates in its event. This is the defect that
     collapsed all 40 existing transition chains into a single instant."""
     assert _banned_clock_calls(SEED_DIR / filename) == []
+
+
+def test_the_write_layer_derivation_covers_identity_and_excludes_only_cli():
+    """A parametrize over an empty tuple collects ZERO tests and reports
+    green, so the derivation's membership is pinned rather than trusted.
+
+    identity.py is named explicitly: it is the module the two hand-maintained
+    lists disagreed about, and a planted `func.now()` in it passed both this
+    file and test_purity.py clean before WRITE_LAYER was derived."""
+    assert "identity.py" in WRITE_LAYER
+    assert "cli.py" not in WRITE_LAYER
+    assert set(WRITE_LAYER) | set(CLOCK_EXEMPT) == set(EXEMPTED_MODULE_PATHS)
 
 
 def test_the_clock_guard_is_not_vacuous(tmp_path):

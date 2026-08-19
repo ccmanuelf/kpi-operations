@@ -1,14 +1,14 @@
 import os
 import subprocess
 import sys
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 
 import pytest
 from sqlalchemy import create_engine, func, insert, select
 
 from backend.database import Base
-from backend.seed.cli import ALLOWLIST, SeedError, main, seed
+from backend.seed.cli import ALLOWLIST, CLIENT_SCOPED_TABLES, DEPENDENT_SWEEPS, SeedError, main, seed
 
 
 def test_allowlist_is_exactly_the_four_scenario_clients():
@@ -39,38 +39,38 @@ def test_a_client_outside_the_allowlist_is_refused(seed_engine):
 
 
 def test_reset_deletes_only_allowlisted_client_rows(seed_engine):
-    """--reset must leave every other tenant untouched."""
+    """--reset must leave every other tenant untouched.
+
+    REAL-CUSTOMER is given a CHILD row here, in a client-scoped table the
+    seeder never writes. Without it this test proved almost nothing about the
+    scoped sweep: a bare CLIENT row is deleted last and blocks nothing, which
+    is precisely why C-2 -- a --reset that crashed the moment any demo tenant
+    owned a row outside `SEEDED` -- reached review with a green suite.
+    """
     client = Base.metadata.tables["CLIENT"]
+    alert_config = Base.metadata.tables["ALERT_CONFIG"]
     with seed_engine.begin() as conn:
         conn.execute(
             insert(client),
             [{"client_id": "REAL-CUSTOMER", "client_name": "Real", "client_type": "Hourly Rate", "is_active": True}],
         )
+        _insert_alert_config(conn, "REAL-CUSTOMER")
 
-    seed(
-        seed_engine,
-        client_ids=("DEMO-PIECE",),
-        profile_name="smoke",
-        seed_value=1234,
-        as_of=date(2026, 8, 18),
-        reset=True,
-    )
-    seed(
-        seed_engine,
-        client_ids=("DEMO-PIECE",),
-        profile_name="smoke",
-        seed_value=1234,
-        as_of=date(2026, 8, 18),
-        reset=True,
-    )
+    kwargs = dict(client_ids=("DEMO-PIECE",), profile_name="smoke", seed_value=1234, as_of=date(2026, 8, 18))
+    seed(seed_engine, reset=True, **kwargs)
+    seed(seed_engine, reset=True, **kwargs)
 
     with seed_engine.connect() as conn:
         survivors = conn.execute(select(client.c.client_id).where(client.c.client_id == "REAL-CUSTOMER")).all()
+        real_configs = conn.execute(
+            select(func.count()).select_from(alert_config).where(alert_config.c.client_id == "REAL-CUSTOMER")
+        ).scalar_one()
         demo = conn.execute(
             select(func.count()).select_from(client).where(client.c.client_id == "DEMO-PIECE")
         ).scalar_one()
 
     assert len(survivors) == 1
+    assert real_configs == 1, "the widened sweep reached a tenant that was never asked for"
     assert demo == 1, "a second --reset seed must not duplicate the client row"
 
 
@@ -270,3 +270,215 @@ def test_cli_subprocess_actually_writes_rows(tmp_path):
     assert client_count == 1
     assert production_count == 36  # smoke profile, single client: deterministic, not just non-zero
     assert user_count == 6
+
+
+# --- C-2: --reset must clear every client-scoped table, not just SEEDED ------
+
+
+def _insert_alert_config(conn, client_id):
+    """Exactly what the alert-configuration API writes the first time anyone
+    edits a threshold on the demo."""
+    conn.execute(
+        insert(Base.metadata.tables["ALERT_CONFIG"]),
+        [
+            {
+                "config_id": f"AC-{client_id}",
+                "client_id": client_id,
+                "alert_type": "OEE_LOW",
+                "warning_threshold": 70.0,
+                "critical_threshold": 60.0,
+                "created_at": datetime(2026, 8, 1),
+                "updated_at": datetime(2026, 8, 1),
+            }
+        ],
+    )
+
+
+def _insert_job(conn, client_id):
+    """A JOB is a child of WORK_ORDER, so it blocks a different DELETE than
+    ALERT_CONFIG does -- one inside the sweep rather than at CLIENT."""
+    work_order = Base.metadata.tables["WORK_ORDER"]
+    work_order_id = conn.execute(
+        select(work_order.c.work_order_id).where(work_order.c.client_id == client_id).limit(1)
+    ).scalar_one()
+    conn.execute(
+        insert(Base.metadata.tables["JOB"]),
+        [
+            {
+                "job_id": f"JOB-{client_id}",
+                "work_order_id": work_order_id,
+                "client_id_fk": client_id,
+                "operation_name": "OP10",
+                "sequence_number": 10,
+                "created_at": datetime(2026, 8, 1),
+                "updated_at": datetime(2026, 8, 1),
+            }
+        ],
+    )
+
+
+def _insert_capacity_calendar(conn, client_id):
+    """One of the 13 capacity_* tables the retiring seeder swept and the plan
+    dropped."""
+    conn.execute(
+        insert(Base.metadata.tables["capacity_calendar"]),
+        [
+            {
+                "client_id": client_id,
+                "calendar_date": date(2026, 8, 3),
+                "is_working_day": True,
+                "shifts_available": 2,
+                "created_at": datetime(2026, 8, 1),
+                "updated_at": datetime(2026, 8, 1),
+            }
+        ],
+    )
+
+
+def _insert_alert_history(conn, client_id):
+    """The one grandchild with NO ondelete: ALERT_HISTORY.alert_id -> ALERT
+    RESTRICTs, so deleting the tenant's ALERT rows fails unless the subquery
+    sweep in DEPENDENT_SWEEPS clears it first."""
+    conn.execute(
+        insert(Base.metadata.tables["ALERT"]),
+        [
+            {
+                "alert_id": f"ALRT-{client_id}",
+                "category": "KPI",
+                "severity": "HIGH",
+                "status": "ACTIVE",
+                "title": "OEE below target",
+                "message": "m",
+                "client_id": client_id,
+                "created_at": datetime(2026, 8, 1),
+            }
+        ],
+    )
+    conn.execute(
+        insert(Base.metadata.tables["ALERT_HISTORY"]),
+        [
+            {
+                "history_id": f"AH-{client_id}",
+                "alert_id": f"ALRT-{client_id}",
+                "prediction_date": datetime(2026, 8, 1),
+                "created_at": datetime(2026, 8, 1),
+            }
+        ],
+    )
+
+
+CHILD_ROW_BUILDERS = {
+    "ALERT_CONFIG": (_insert_alert_config, "ALERT_CONFIG", "client_id"),
+    "JOB": (_insert_job, "JOB", "client_id_fk"),
+    "capacity_calendar": (_insert_capacity_calendar, "capacity_calendar", "client_id"),
+    "ALERT_HISTORY": (_insert_alert_history, "ALERT", "client_id"),
+}
+
+
+@pytest.mark.parametrize("case", sorted(CHILD_ROW_BUILDERS))
+def test_reset_clears_a_client_scoped_row_the_seeder_never_wrote(seed_engine, case):
+    """--reset on an ordinary live demo, not a pristine one.
+
+    The plan restricted the sweep to `SEEDED` -- what the seeder WRITES --
+    while --reset must clear what the tenant OWNS. 45 tables hold a
+    ForeignKey into CLIENT and the seeder writes 23, so every one of the
+    other 22 held rows that RESTRICT the final DELETE FROM "CLIENT". All four
+    cases below raised `IntegrityError: FOREIGN KEY constraint failed`
+    before the sweep was widened to cli.CLIENT_SCOPED_TABLES; MariaDB/InnoDB
+    enforces foreign keys unconditionally, so the VM path failed identically.
+    """
+    builder, table_name, column = CHILD_ROW_BUILDERS[case]
+    table = Base.metadata.tables[table_name]
+    kwargs = dict(client_ids=("DEMO-PIECE",), profile_name="smoke", seed_value=1234, as_of=date(2026, 8, 18))
+
+    seed(seed_engine, reset=False, **kwargs)
+    with seed_engine.begin() as conn:
+        builder(conn, "DEMO-PIECE")
+
+    # Must not raise. This is the C-2 repro.
+    seed(seed_engine, reset=True, **kwargs)
+
+    with seed_engine.connect() as conn:
+        left = conn.execute(select(func.count()).select_from(table).where(table.c[column] == "DEMO-PIECE")).scalar_one()
+
+    assert left == 0, f"{table_name} rows for a reset client survived the sweep"
+
+
+def _foreign_keys_into(scoped: set, swept: set) -> list:
+    """Every (table.column -> parent) FK held by a table OUTSIDE `swept` that
+    points at a table INSIDE `scoped`. Each one is a row --reset would orphan
+    or be RESTRICTed by."""
+    offenders = []
+    for table in Base.metadata.sorted_tables:
+        if table.name in swept:
+            continue
+        for column in table.columns:
+            for fk in column.foreign_keys:
+                if fk.column.table.name in scoped:
+                    offenders.append(f"{table.name}.{column.name} -> {fk.column.table.name}")
+    return sorted(offenders)
+
+
+def test_no_table_outside_the_reset_sweep_holds_a_foreign_key_into_it():
+    """The anti-rot guard, and the reason C-2 cannot come back.
+
+    A table added later with a ForeignKey to CLIENT is picked up by
+    _derive_client_scoped_tables automatically. A GRANDCHILD -- a table whose
+    only link is an FK into a client-scoped table, the ALERT_HISTORY shape --
+    is not derivable and must be declared in DEPENDENT_SWEEPS. This asserts
+    the declaration is complete against live metadata, so the next one fails
+    the build instead of failing --reset on a customer's VM.
+    """
+    scoped = set(CLIENT_SCOPED_TABLES)
+    swept = scoped | {child for child, _, _, _ in DEPENDENT_SWEEPS}
+
+    assert _foreign_keys_into(scoped, swept) == []
+
+
+def test_the_reset_sweep_completeness_guard_is_not_vacuous():
+    """A guard that cannot fail proves nothing. Withdraw ALERT_HISTORY from
+    the swept set and the scan must name exactly the FK that C-2's fourth
+    repro case exercises."""
+    scoped = set(CLIENT_SCOPED_TABLES)
+    swept = scoped | {child for child, _, _, _ in DEPENDENT_SWEEPS}
+
+    assert _foreign_keys_into(scoped, swept - {"ALERT_HISTORY"}) == ["ALERT_HISTORY.alert_id -> ALERT"]
+
+
+def test_the_reset_sweep_covers_client_scoped_tables_the_seeder_never_writes():
+    """Pins the two halves of the derivation that a reader would otherwise
+    have to take on trust: the FK-derived set really does reach the blockers
+    the review named, and the three bare-column tables are handled by
+    deliberate decision rather than by accident."""
+    from backend.seed.coverage import SEEDED
+
+    for name in (
+        "ALERT",
+        "ALERT_CONFIG",
+        "JOB",
+        "EQUIPMENT",
+        "BREAK_TIME",
+        "FLOATING_POOL",
+        "COVERAGE_ENTRY",
+        "shift_coverage",
+        "SIMULATION_SCENARIO",
+        "CALCULATION_ASSUMPTION",
+        "METRIC_CALCULATION_RESULT",
+        "PART_OPPORTUNITIES",
+        "capacity_calendar",
+    ):
+        assert name not in SEEDED, f"{name} is seeded after all -- rewrite this test, it proves nothing"
+        assert name in CLIENT_SCOPED_TABLES, f"{name} would survive --reset and RESTRICT the CLIENT delete"
+
+    assert len([n for n in CLIENT_SCOPED_TABLES if n.startswith("capacity_")]) == 13
+
+    # EMPLOYEE.client_id_assigned is a bare column with no ForeignKey, so no
+    # derivation can find it: only the explicit entry keeps it in the sweep.
+    assert CLIENT_SCOPED_TABLES["EMPLOYEE"] == "client_id_assigned"
+
+    # The three other bare client columns, each excluded on purpose. USER is
+    # user state, not client fixture data (Ruling 17); AUDIT_ENTRY and
+    # EVENT_STORE are append-only ledgers this seeder writes zero rows to.
+    assert "USER" not in CLIENT_SCOPED_TABLES
+    assert "AUDIT_ENTRY" not in CLIENT_SCOPED_TABLES
+    assert "EVENT_STORE" not in CLIENT_SCOPED_TABLES

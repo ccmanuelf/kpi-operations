@@ -43,11 +43,17 @@ BATCH_SIZE = 500
 #: and the failure is an IntegrityError far from the edit that caused it.
 INSERT_ORDER = [t.name for t in Base.metadata.sorted_tables]
 
-#: Which column scopes each table to a tenant. Salvaged from the retiring
-#: seed_sample_client._reset_table_order(), which is the only place three
-#: different names (client_id / client_id_fk / client_id_assigned) were ever
-#: written down. --reset filters on this; a missing entry means a client's rows
-#: survive a reset and collide on re-seed.
+#: Which column scopes each SEEDED table to a tenant. Salvaged from the
+#: retiring seed_sample_client._reset_table_order(), which is the only place
+#: three different names (client_id / client_id_fk / client_id_assigned) were
+#: ever written down.
+#:
+#: This is the WRITER-side contract: every row this materializer inserts must
+#: carry a real client id in the column named here, never the platform
+#: sentinel. --reset does NOT filter on it -- it derives its own, wider set
+#: (cli.CLIENT_SCOPED_TABLES) covering every client-scoped table in the
+#: schema, seeded or not, because what the seeder writes and what a reset must
+#: clear are different sets.
 CLIENT_SCOPE_COLUMN = {
     "CLIENT": "client_id",
     "CLIENT_CONFIG": "client_id",
