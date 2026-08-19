@@ -12,6 +12,11 @@ from backend.seed.cli import ALLOWLIST, SeedError, main, seed
 
 
 def test_allowlist_is_exactly_the_four_scenario_clients():
+    # Verbatim from the brief; left as-is (Minor, reviewer's call to make) --
+    # it recomputes the same formula that defines ALLOWLIST, so it cannot
+    # catch a wrong formula, only a drift between this literal and cli.py's.
+    # That drift is exactly what test_main's argparse/SeedError-path tests
+    # exercise from the other direction (an unlisted client is refused).
     from backend.seed.scenarios import SCENARIOS
 
     assert ALLOWLIST == frozenset(s.client_id for s in SCENARIOS)
@@ -116,30 +121,70 @@ def test_main_refuses_an_unknown_profile():
     assert main(["--profile", "gigantic"]) == 2
 
 
-# --- Additional coverage: two traps the brief's own tests do not exercise --
+# --- Additional coverage: traps the brief's own tests do not exercise ------
 
 
-def test_reset_deletes_seeded_user_rows_so_a_second_reset_seed_does_not_collide(seed_engine):
-    """USER carries no client-scope column (verified:
-    SEEDED - set(CLIENT_SCOPE_COLUMN) == {"USER"} -- admin/poweruser belong to
-    no tenant and the leader spans three, so "this client's users" is
-    ill-defined). The generic client-scoped sweep in _reset() therefore skips
-    USER entirely, which means -- without an explicit id-based delete -- the
-    six demo users survive a --reset and the NEXT seed collides on their
-    primary keys. That failure only appears on the second run, so this test
-    seeds, resets+reseeds, and asserts both that it did not raise and that
-    exactly six users exist afterwards."""
-    user = Base.metadata.tables["USER"]
+def test_reset_preserves_a_users_saved_filter_across_reseed(seed_engine):
+    """The reviewer's repro. A live survey of every FK into USER.user_id found
+    ~10 tables outside S1b's declared scope (SAVED_FILTER,
+    ALERT.acknowledged_by/resolved_by, IMPORT_LOG, COVERAGE_ENTRY,
+    CALCULATION_ASSUMPTION, METRIC_CALCULATION_RESULT, SIMULATION_SCENARIO,
+    EVENT_STORE) with no ondelete cascade -- an unconditional USER delete on
+    --reset RESTRICTs the moment a demo user has used one of those features.
+    This seeds, inserts a SAVED_FILTER row for USR-DEMO-OP exactly as the live
+    app does when a user saves a dashboard filter, then --reset + reseeds:
+    must not raise, and the filter must survive (USER is never deleted, so
+    its child row never becomes an orphan)."""
+    saved_filter = Base.metadata.tables["SAVED_FILTER"]
     kwargs = dict(client_ids=tuple(ALLOWLIST), profile_name="smoke", seed_value=1234, as_of=date(2026, 8, 18))
 
     seed(seed_engine, reset=False, **kwargs)
-    # Must not raise a PK-collision IntegrityError on the six demo users.
+
+    with seed_engine.begin() as conn:
+        conn.execute(
+            insert(saved_filter),
+            [
+                {
+                    "user_id": "USR-DEMO-OP",
+                    "filter_name": "My Dashboard",
+                    "filter_type": "dashboard",
+                    "filter_config": '{"client_id": "DEMO-PIECE"}',
+                }
+            ],
+        )
+
+    # Must not raise -- this is the reviewer's repro (previously a
+    # sqlite3.IntegrityError: FOREIGN KEY constraint failed deleting USER).
     seed(seed_engine, reset=True, **kwargs)
 
     with seed_engine.connect() as conn:
-        count = conn.execute(select(func.count()).select_from(user)).scalar_one()
+        survivors = conn.execute(
+            select(func.count()).select_from(saved_filter).where(saved_filter.c.user_id == "USR-DEMO-OP")
+        ).scalar_one()
 
-    assert count == 6
+    assert survivors == 1
+
+
+def test_reset_reseed_cycle_keeps_exactly_six_users_and_never_collides(seed_engine):
+    """User creation is idempotent (seed() drops UserCreated events for ids
+    that already exist), not delete-then-recreate. Run seed / --reset+seed /
+    --reset+seed and assert exactly six users survive at every step, with no
+    PK-collision IntegrityError anywhere in the cycle."""
+    user = Base.metadata.tables["USER"]
+    kwargs = dict(client_ids=tuple(ALLOWLIST), profile_name="smoke", seed_value=1234, as_of=date(2026, 8, 18))
+
+    def count_users() -> int:
+        with seed_engine.connect() as conn:
+            return int(conn.execute(select(func.count()).select_from(user)).scalar_one())
+
+    seed(seed_engine, reset=False, **kwargs)
+    assert count_users() == 6
+
+    seed(seed_engine, reset=True, **kwargs)
+    assert count_users() == 6
+
+    seed(seed_engine, reset=True, **kwargs)
+    assert count_users() == 6
 
 
 def test_reset_does_not_duplicate_kpi_thresholds_on_reseed(seed_engine):
@@ -223,5 +268,5 @@ def test_cli_subprocess_actually_writes_rows(tmp_path):
         engine.dispose()
 
     assert client_count == 1
-    assert production_count > 0
+    assert production_count == 36  # smoke profile, single client: deterministic, not just non-zero
     assert user_count == 6

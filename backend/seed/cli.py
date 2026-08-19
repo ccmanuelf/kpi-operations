@@ -19,11 +19,11 @@ from sqlalchemy import Connection, Engine, create_engine, delete, select
 from backend.audit import audit_suppressed
 from backend.database import Base
 from backend.seed.coverage import SEEDED
-from backend.seed.events import PLATFORM_CLIENT_ID
+from backend.seed.events import PLATFORM_CLIENT_ID, UserCreated
 from backend.seed.generator import generate
 from backend.seed.materialize import CLIENT_SCOPE_COLUMN, INSERT_ORDER, materialize
 from backend.seed.profiles import PROFILES
-from backend.seed.scenarios import SCENARIOS, USERS
+from backend.seed.scenarios import SCENARIOS
 
 ALLOWLIST = frozenset(s.client_id for s in SCENARIOS)
 
@@ -63,20 +63,24 @@ def _reset(conn: Connection, client_ids: tuple[str, ...]) -> None:
         table = Base.metadata.tables[name]
         conn.execute(delete(table).where(table.c[column].in_(client_ids)))
 
-    # USER carries no client-scope column of its own: the admin and poweruser
-    # belong to no tenant (client_ids == ()) and the leader spans three, so
-    # "this client's rows" is ill-defined for USER -- confirmed directly:
+    # USER carries no client-scope column of its own -- confirmed directly:
     # SEEDED - set(CLIENT_SCOPE_COLUMN) == {"USER"}, the one seeded table the
-    # loop above always skips (column is None). Without an explicit delete
-    # here, the six demo users survive every --reset and the NEXT seed
-    # collides on their primary keys -- a failure that only appears on the
-    # second run. scenarios.USERS is a fixed, known list of exactly the ids
-    # this seeder ever creates, so deleting precisely those ids is safe and
-    # cannot reach a real account. Runs AFTER the loop above so
-    # USER_CLIENT_ASSIGNMENT (a child FK, swept generically by client_id) is
-    # already gone before its parent USER row is deleted.
-    user = Base.metadata.tables["USER"]
-    conn.execute(delete(user).where(user.c.user_id.in_(u.user_id for u in USERS)))
+    # loop above always skips (column is None) -- so it is NEVER deleted here,
+    # deliberately, even though scenarios.USERS is a fixed, known id list an
+    # earlier version of this function used to delete unconditionally. That
+    # version reproduced: a live survey of every FK into USER.user_id found
+    # ~10 tables outside S1b's declared coverage (SAVED_FILTER,
+    # ALERT.acknowledged_by/resolved_by, IMPORT_LOG, COVERAGE_ENTRY,
+    # CALCULATION_ASSUMPTION, METRIC_CALCULATION_RESULT, SIMULATION_SCENARIO,
+    # EVENT_STORE) with no ondelete cascade, so an unconditional USER delete
+    # RESTRICTs the moment a demo user has used one of those features -- e.g.
+    # saved a dashboard filter. That is the default full-allowlist --reset
+    # path, not an edge case, and it is a regression the retiring
+    # seed_sample_client.py never had (it never deleted USER at all).
+    # User creation is idempotent instead -- see seed() below -- which also
+    # means a demo user's saved filters and acknowledged alerts genuinely
+    # survive a reset, arguably correct since that is user state, not client
+    # fixture data.
 
 
 @audit_suppressed()
@@ -101,23 +105,27 @@ def seed(
 
     scenarios = tuple(s for s in SCENARIOS if s.client_id in client_ids)
     events = generate(scenarios, profile, seed=seed_value, as_of=as_of)
-    # _generate_platform emits every ClientAccessGranted in the declarative
-    # roster regardless of which scenarios were asked for -- the leader spans
-    # all three DEMO-* clients, so seeding a single one still produces grants
-    # naming the other two. Materializing an unrequested grant inserts a
-    # USER_CLIENT_ASSIGNMENT row referencing a CLIENT that this run never
-    # created: a real FK violation, reproduced directly against a fresh
-    # Alembic-built database before this filter existed. Scoping the stream to
-    # exactly what was asked for is also the correct safety boundary for a
-    # seeder whose whole job is to never touch anything outside its target
-    # clients -- UserCreated is the only other cross-cutting event, and it
-    # always carries the platform sentinel, which the filter keeps.
+    # generator.py's _generate_platform now scopes ClientAccessGranted to the
+    # scenarios it was actually given, so this is redundant defence, not the
+    # primary fix -- kept because a seeder whose whole policy is "never touch
+    # anything outside the target clients" should not rely on a single
+    # upstream module to enforce that alone. A no-op whenever client_ids
+    # matches what was passed to generate() (every current caller).
     client_id_set = set(client_ids)
     events = [e for e in events if e.client_id in client_id_set or e.client_id == PLATFORM_CLIENT_ID]
 
     with engine.begin() as conn:
         if reset:
             _reset(conn, tuple(client_ids))
+        # USER is never deleted by _reset() (see its docstring) so re-seeding
+        # must not try to re-INSERT a demo user that is already there.
+        # Idempotent rather than delete-then-recreate: query which of the
+        # seeded ids already exist and drop their UserCreated events before
+        # materializing. USER_CLIENT_ASSIGNMENT's FK to USER stays satisfied
+        # either way, since the row it points at is never removed.
+        user_table = Base.metadata.tables["USER"]
+        existing_user_ids = {row[0] for row in conn.execute(select(user_table.c.user_id))}
+        events = [e for e in events if not (isinstance(e, UserCreated) and e.user_id in existing_user_ids)]
         return materialize(conn, events, profile)
 
 

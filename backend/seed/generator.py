@@ -44,7 +44,8 @@ def generate(
         seq += 1
         events.append(cls(at=at, seq=seq, client_id=client_id, **kw))
 
-    _generate_platform(emit, start)
+    known_client_ids = {s.client_id for s in scenarios}
+    _generate_platform(emit, start, known_client_ids)
 
     for scenario in scenarios:
         _generate_client(emit, rng, scenario, profile, start, as_of)
@@ -83,7 +84,7 @@ def stream_digest(events: Iterable[Event]) -> str:
     return h.hexdigest()
 
 
-def _generate_platform(emit: Callable[..., None], start: date) -> None:
+def _generate_platform(emit: Callable[..., None], start: date, known_client_ids: set[str]) -> None:
     """Users are global. They are emitted BEFORE the per-client loop and
     stamped a day earlier than the earliest client's setup, so every
     ClientAccessGranted and every `entered_by` reference resolves to a user
@@ -96,6 +97,20 @@ def _generate_platform(emit: Callable[..., None], start: date) -> None:
     inserting in stream order, would hit the FK. So they are stamped one
     minute INTO that band: after every ClientCreated (all clients share the
     06:00 instant), before anything that could depend on a user's scope.
+
+    Grants are also filtered to `known_client_ids` -- the clients THIS
+    generate() call is actually producing. The declarative roster grants the
+    leader all three DEMO-* clients unconditionally; without this filter, a
+    caller asking for a strict subset (a single-client CLI run, say) would
+    still get a grant naming a client that was never created, and the
+    materializer's insert would hit a foreign key it cannot satisfy --
+    reproduced directly against a fresh Alembic-built database before this
+    filter existed. Filtering here (rather than only downstream, in a
+    particular caller) keeps generate()'s own contract -- a self-consistent
+    stream for the scenarios it was given -- true for every caller. No RNG
+    draw happens anywhere in this function, so the filter cannot perturb the
+    stream; the determinism/digest tests always pass the full scenario list,
+    where this filter is a no-op, and stay unchanged.
     """
     platform_at = datetime.combine(start - timedelta(days=1), time(6, 0))
     for i, spec in enumerate(USERS):
@@ -114,6 +129,8 @@ def _generate_platform(emit: Callable[..., None], start: date) -> None:
     grant_cursor = 1
     for spec in USERS:
         for cid in spec.client_ids:
+            if cid not in known_client_ids:
+                continue
             emit(
                 ClientAccessGranted,
                 grant_at + timedelta(minutes=grant_cursor),
