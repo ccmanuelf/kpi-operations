@@ -7,19 +7,29 @@ other suite was byte-identical, because
 `grep -rn -e workflows -e ci.yml -e no-cov -e fail_under backend/tests tests`
 matched only docstrings. This file closes that seam.
 
-PyYAML is already installed by both hash-pinned locks (pyyaml==6.0.3, pulled in
-by bandit on the dev side), so no dependency is added here. If it ever stops
-being installed, this module fails to import -- a collection error, loud, not a
-silent pass.
+PyYAML is installed by both hash-pinned locks (pyyaml==6.0.3, pulled in by
+bandit on the dev side); the dev lock also carries types-PyYAML so this import
+type-checks rather than degrading to Any. If PyYAML ever stops being installed,
+this module fails to import -- a collection error, loud, not a silent pass.
 """
 
 import pathlib
 
-# PyYAML ships no type stubs and types-PyYAML is not in either lock, so mypy
-# reports import-untyped (ignore_missing_imports does not cover an INSTALLED
-# package without stubs). warn_unused_ignores is on, so this comment cannot
-# outlive the reason for it.
-import yaml  # type: ignore[import-untyped]
+# No type-ignore comment on the yaml import, and that is now true under every
+# mypy version -- which it was not before. PyYAML ships no stubs of its own, so
+# the right spelling used to depend on which mypy you happened to have: 1.x
+# reported import-untyped for an installed-but-unstubbed package and demanded a
+# suppression, while 2.1.0 (what requirements-dev.lock pins, and therefore what
+# CI runs) suppresses that under ignore_missing_imports and then flags the very
+# same suppression as dead via warn_unused_ignores. Two versions, opposite
+# demands -- and because the pre-commit mypy hook is `language: system` it runs
+# whatever is on the developer's PATH, so a dead suppression passed locally and
+# failed CI.
+#
+# types-PyYAML is in requirements-dev.txt now, which dissolves the dilemma
+# instead of picking a side: the bare import is correct everywhere, and yaml is
+# genuinely type-checked here rather than silently degrading to Any.
+import yaml
 
 CI_WORKFLOW = pathlib.Path(__file__).resolve().parents[2] / ".github" / "workflows" / "ci.yml"
 
