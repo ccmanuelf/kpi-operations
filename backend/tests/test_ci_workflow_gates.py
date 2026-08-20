@@ -15,20 +15,30 @@ this module fails to import -- a collection error, loud, not a silent pass.
 
 import pathlib
 
-# No type-ignore comment on the yaml import, and that is now true under every
-# mypy version -- which it was not before. PyYAML ships no stubs of its own, so
-# the right spelling used to depend on which mypy you happened to have: 1.x
-# reported import-untyped for an installed-but-unstubbed package and demanded a
+# No type-ignore comment on the yaml import -- correct WHEN types-PyYAML is
+# installed, which requirements-dev.txt now guarantees for anyone installing
+# from the lock. That precondition is worth stating rather than assuming, and
+# the history explains why.
+#
+# PyYAML ships no stubs of its own, so without the stub package the right
+# spelling depended on which mypy you happened to have: 1.x reported
+# import-untyped for an installed-but-unstubbed package and demanded a
 # suppression, while 2.1.0 (what requirements-dev.lock pins, and therefore what
 # CI runs) suppresses that under ignore_missing_imports and then flags the very
 # same suppression as dead via warn_unused_ignores. Two versions, opposite
-# demands -- and because the pre-commit mypy hook is `language: system` it runs
-# whatever is on the developer's PATH, so a dead suppression passed locally and
-# failed CI.
+# demands. A dead suppression consequently passed every local gate and failed
+# the required check.
 #
-# types-PyYAML is in requirements-dev.txt now, which dissolves the dilemma
-# instead of picking a side: the bare import is correct everywhere, and yaml is
-# genuinely type-checked here rather than silently degrading to Any.
+# RESIDUAL, deliberately not fixed here: the pre-commit mypy hook is
+# `language: system` (see .pre-commit-config.yaml, which explains why -- an
+# isolated hook env cannot see the project's dependencies and would degrade
+# cross-module resolution to Any, a worse skew than the one it closes). So it
+# runs whatever mypy is on your PATH against whatever stubs that environment
+# has. Adding types-PyYAML to the lock does not, by itself, put it in a
+# developer's ambient environment. If mypy reports import-untyped on this line,
+# your environment is not the locked one -- install from
+# backend/requirements-dev.lock rather than adding a suppression back, which
+# would turn CI red.
 import yaml
 
 CI_WORKFLOW = pathlib.Path(__file__).resolve().parents[2] / ".github" / "workflows" / "ci.yml"
