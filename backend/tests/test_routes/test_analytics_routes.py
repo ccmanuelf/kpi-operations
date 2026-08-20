@@ -1073,29 +1073,101 @@ class TestAnalyticsWithMockedCRUD:
 class TestAnalyticsConcurrency:
     """Concurrency tests for analytics endpoints"""
 
-    def test_multiple_trend_requests(self, authenticated_client):
-        """Test handling of multiple concurrent trend requests"""
+    @pytest.fixture
+    def concurrent_client(self, authenticated_client, tmp_path):
+        """An authenticated client whose requests each get their OWN connection.
+
+        The shared test engine is `sqlite:///:memory:` behind a `StaticPool`
+        (conftest `_clone_template_engine`), which is ONE physical DBAPI
+        connection for the whole module. That is not a mistake -- an in-memory
+        SQLite database exists only as long as its connection does, so a pool
+        that hands out several would hand out several empty databases -- but it
+        makes concurrent requests unsafe. `get_test_db` opens a Session per
+        request, so three threads land on that single connection and the first
+        thread's `db.close()` resets the transaction the other two are querying
+        inside. Measured at roughly one run in four: the USER lookup finds
+        nothing and `backend/auth/jwt.py:208` returns 401 "User not found", or
+        SQLAlchemy raises and `bootstrap/app_config.py:178` returns 503.
+
+        Neither is application behaviour -- production runs a real
+        per-connection pool -- so this fixture copies the live database to a
+        file with SQLite's backup API and rebinds `get_db` to a file-backed
+        engine. Each thread then gets its own connection and what the test
+        measures is the endpoint, not the fixture.
+
+        The source engine is read off the INSTALLED override rather than by
+        importing conftest: pytest loads `conftest.py` under its own module
+        name, so `from backend.tests.conftest import get_test_engine` returns a
+        SECOND copy of that module with its own `_test_engine = None` and
+        silently builds an empty database -- which presents as every request
+        returning 401, deterministically.
+        """
+        import sqlite3
+
+        from sqlalchemy import create_engine
+        from sqlalchemy.orm import sessionmaker
+
+        from backend.database import get_db
+        from backend.main import app
+
+        installed_override = app.dependency_overrides[get_db]
+        session_generator = installed_override()
+        shared_engine = next(session_generator).get_bind()
+        session_generator.close()
+
+        db_file = tmp_path / "concurrent.db"
+        pooled_connection = shared_engine.raw_connection()
+        try:
+            destination = sqlite3.connect(str(db_file))
+            try:
+                pooled_connection.driver_connection.backup(destination)
+            finally:
+                destination.close()
+        finally:
+            pooled_connection.close()
+
+        engine = create_engine(f"sqlite:///{db_file}", connect_args={"check_same_thread": False})
+        SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+        def _per_request_session():
+            db = SessionLocal()
+            try:
+                yield db
+            finally:
+                db.close()
+
+        app.dependency_overrides[get_db] = _per_request_session
+        try:
+            yield authenticated_client
+        finally:
+            app.dependency_overrides[get_db] = installed_override
+            engine.dispose()
+
+    def test_concurrent_trend_requests_are_all_refused_by_the_tenant_gate(self, concurrent_client):
+        """Three concurrent reads of a client this user cannot access must ALL
+        be refused.
+
+        The assertion used to sit inside `try: ... except Exception:
+        pytest.skip(...)`. `AssertionError` IS an `Exception`, so the handler
+        did not just absorb harness flakiness -- it turned any genuine
+        authorization regression into a silent skip, and the recorded skip
+        reason ("TestClient threading issues") named a cause that was never
+        the one firing. Run 8 H-5 removed the same swallow from the auth
+        fixture, which now calls `pytest.fail` instead, for the same reason.
+        """
         import concurrent.futures
 
         def make_request():
-            return authenticated_client.get(
+            return concurrent_client.get(
                 "/api/analytics/trends",
                 params={"client_id": "TEST-CLIENT", "kpi_type": "efficiency", "time_range": "30d"},
             )
 
-        try:
-            # Execute multiple requests
-            with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
-                futures = [executor.submit(make_request) for _ in range(3)]
-                results = [f.result() for f in concurrent.futures.as_completed(futures)]
+        with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+            futures = [executor.submit(make_request) for _ in range(3)]
+            results = [future.result() for future in concurrent.futures.as_completed(futures)]
 
-            # Supervisor fixture has no access to TEST-CLIENT, all responses 403 (tenant gate)
-            status_codes = [r.status_code for r in results]
-            for code in status_codes:
-                assert code == 403
-        except Exception as e:
-            # Concurrency tests with TestClient can be flaky
-            pytest.skip(f"Concurrency test skipped due to TestClient threading issues: {e}")
+        assert [response.status_code for response in results] == [403, 403, 403]
 
 
 # =============================================================================
