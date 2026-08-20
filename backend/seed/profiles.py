@@ -13,6 +13,11 @@ class Profile:
     shifts_per_client: int
     employees_per_client: int
     work_orders_per_client: int
+    # Required, deliberately undefaulted. A default would let a new profile
+    # omit the field and silently inherit whichever density happened to be the
+    # default -- FULL's two rows per inspection for a smoke-sized profile, say.
+    # Every profile states its own defect density.
+    defect_rows_per_inspection: int
 
 
 # 365 days x 4 clients x 2 lines x 2 shifts is the density the pivot layer
@@ -24,6 +29,7 @@ FULL = Profile(
     shifts_per_client=2,
     employees_per_client=8,
     work_orders_per_client=100,
+    defect_rows_per_inspection=2,
 )
 
 SMOKE = Profile(
@@ -33,6 +39,7 @@ SMOKE = Profile(
     shifts_per_client=2,
     employees_per_client=4,
     work_orders_per_client=6,
+    defect_rows_per_inspection=1,
 )
 
 PROFILES = {p.name: p for p in (FULL, SMOKE)}

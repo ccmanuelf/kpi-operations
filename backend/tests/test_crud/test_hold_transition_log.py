@@ -315,8 +315,8 @@ def test_every_hold_status_write_site_is_instrumented():
     """Static guard: a hold_status write with no recorder call nearby is a
     hole in the history, and holes are invisible until a trend query is wrong.
 
-    Four write forms exist or are guarded against in this codebase and all
-    four must be caught:
+    Five write forms exist or are guarded against in this codebase and all
+    five must be caught:
       - attribute assignment:   db_hold.hold_status = ...
       - dict/bracket-key assignment: hold_data["hold_status"] = ...   (crud/hold/core.py)
       - setattr-style:          setattr(db_hold, "hold_status", ...)
@@ -328,11 +328,30 @@ def test_every_hold_status_write_site_is_instrumented():
                                  shape a future writer takes -- it bypasses
                                  setattr entirely, so the three per-line
                                  patterns above cannot see it)
+      - dict-literal key:       {"hold_status": X, ...}   (backend/seed/
+                                 writers_operations.py's opening HOLD_ENTRY
+                                 row -- a Core bulk-insert row built as one
+                                 literal dict, not an attribute assignment,
+                                 bracket assignment, setattr, or bulk update,
+                                 so none of the other four patterns see it)
+
+    Two forms of "instrumented" are recognized:
+      - `record_hold_transition(` -- the ORM per-row recorder, used by every
+        app-code write site.
+      - `sink.add("HOLD_STATUS_TRANSITION", ...)` -- the demo seeder's
+        (backend/seed/writers_operations.py) Core-bulk equivalent. The spec
+        says the materializer "writes through" record_hold_transition, but
+        that function takes an ORM HoldEntry and calls db.add(row) per row,
+        which contradicts the Core-bulk-insert mandate (spec sections 4/10)
+        and would need an ORM object for every seeded hold. The materializer
+        writes HOLD_STATUS_TRANSITION rows directly instead -- same shape,
+        different call site -- so this guard needs the second spelling or
+        every seeded hold_status write reads as uninstrumented.
 
     Presence-in-file is not enough (that was the bug in the first version of
     this guard): it can't tell a real recorder call for site A from silence
     at site B in the same file. So this checks PROXIMITY per site — each
-    matching write line must have a `record_hold_transition(` call within
+    matching write line must have one of the two recorder forms within
     WINDOW lines of it, in the same file.
 
     WINDOW = 30. The largest legitimate gap among the seven real sites is
@@ -358,12 +377,20 @@ def test_every_hold_status_write_site_is_instrumented():
     # like `x = hold_data["hold_status"]` does not match.
     bracket_write = re.compile(r"""\[\s*['"]hold_status['"]\s*\]\s*=\s*(?!=)""")
     setattr_write = re.compile(r"""setattr\(\s*[\w.]+\s*,\s*['"]hold_status['"]\s*,""")
+    # Dict-literal key: {"hold_status": X, ...}. Requires the `:` (not `=`,
+    # already covered by bracket_write) so a docstring line like the one two
+    # paragraphs up (`hold_data["hold_status"] = ...`) cannot double-match.
+    dict_literal_write = re.compile(r"""['"]hold_status['"]\s*:\s*(?!:)""")
     # `.update({HoldEntry.hold_status: X})` (Query.update dict form) and
     # `update(HoldEntry).values(hold_status=X)` (Core update().values() form).
     # Scanned over the whole file text rather than per-line, since the
     # dict/kwargs argument routinely wraps onto its own line(s) in this
     # codebase's formatting.
     bulk_write = re.compile(r"\.(?:update|values)\([^)]{0,200}?hold_status", re.DOTALL)
+    # The seeder's Core-bulk equivalent of record_hold_transition(). DOTALL
+    # + a bounded gap between `sink.add(` and the table-name string, since
+    # black wraps the string argument onto its own line.
+    sink_add_write = re.compile(r'sink\.add\(\s{0,20}["\']HOLD_STATUS_TRANSITION["\']', re.DOTALL)
 
     offenders = []
 
@@ -374,9 +401,21 @@ def test_every_hold_status_write_site_is_instrumented():
         text = path.read_text()
         lines = text.splitlines()
         recorder_lines = [i for i, line in enumerate(lines) if "record_hold_transition(" in line]
+        # Second spelling: backend/seed/writers_operations.py's Core-bulk
+        # equivalent (sink.add("HOLD_STATUS_TRANSITION", ...)) -- see the
+        # docstring above for why a Core-bulk writer cannot call the ORM
+        # recorder. Scanned over the whole file text (DOTALL), like
+        # bulk_write below, because the table-name argument routinely lands
+        # on its own line under this codebase's formatting.
+        recorder_lines += [text.count("\n", 0, m.start()) for m in sink_add_write.finditer(text)]
 
         for i, line in enumerate(lines):
-            is_write = attribute_write.match(line) or bracket_write.search(line) or setattr_write.search(line)
+            is_write = (
+                attribute_write.match(line)
+                or bracket_write.search(line)
+                or setattr_write.search(line)
+                or dict_literal_write.search(line)
+            )
             if not is_write:
                 continue
             if not any(abs(i - r) <= WINDOW for r in recorder_lines):

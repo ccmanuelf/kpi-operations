@@ -1,8 +1,20 @@
-# IMPORTANT: Enable GitHub branch protection on 'main':
-# Settings > Branches > Add rule for 'main':
-# - Require status checks: backend-tests, frontend-lint-and-tests, docker-build, tooling-tests
-# - Require branches to be up to date before merging
-# This ensures broken builds (e.g. unclosed Vue template tags) never reach main.
+# Branch protection on 'main' requires ALL SEVEN jobs below to pass, with
+# "require branches to be up to date" on (verified against the API 2026-08-20):
+#   backend-tests, frontend-lint-and-tests, docker-build, e2e-sqlite,
+#   mariadb-portability, compose-stack-smoke, tooling-tests
+# This comment previously listed four and named tooling-tests in place of
+# e2e-sqlite, having drifted from the live setting -- so treat the API as the
+# source of truth and re-check it before trusting this block:
+#   gh api repos/:owner/:repo/branches/main/protection/required_status_checks
+#
+# mariadb-portability is required for a specific reason worth keeping: this
+# repo's recurring bug class is MariaDB-only behaviour SQLite cannot catch, and
+# the seeder's self-referential-FK --reset fix is enforced ONLY there (revert it
+# and MariaDB raises 1451 while SQLite passes clean). Advisory, it would let a
+# real regression merge with every other check green.
+#
+# Every job sets timeout-minutes. Without one a job inherits GitHub's 6-hour
+# default, which is how a stalled apt mirror blocked a PR overnight.
 name: CI
 
 on:
@@ -15,6 +27,7 @@ on:
 jobs:
   backend-tests:
     runs-on: ubuntu-latest
+    timeout-minutes: 30  # measured on main: median 12.1m, max 14.3m
     defaults:
       run:
         working-directory: backend
@@ -42,10 +55,20 @@ jobs:
         # (the MiniZinc CLI). Only the Dockerfile installed it, so ~50 solver
         # tests silently skipped in every required check (Run 8 H-1). Mirror the
         # Dockerfile's apt install so the optimization suite actually runs here.
+        #
+        # Bounded and retried because an unbounded apt IS a real outage here, not
+        # a hypothetical: on 2026-08-19 run 32301822261 this step stalled fetching
+        # from azure.archive.ubuntu.com at 21:05:31 and sat there until GitHub
+        # killed the job at the 6-hour default -- backend-tests never reached
+        # pytest, and an open PR was blocked overnight for zero signal. The step
+        # timeout bounds the stall, Acquire::Retries survives a single bad mirror,
+        # and the per-request timeouts stop one hung socket from consuming it all.
         working-directory: .
+        timeout-minutes: 5
         run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends minizinc
+          APT_OPTS="-o Acquire::Retries=3 -o Acquire::http::Timeout=15 -o Acquire::https::Timeout=15"
+          sudo apt-get $APT_OPTS update
+          sudo apt-get $APT_OPTS install -y --no-install-recommends minizinc
 
       - name: Lock drift check (sources must be re-locked)
         working-directory: .
@@ -123,6 +146,7 @@ jobs:
 
   frontend-lint-and-tests:
     runs-on: ubuntu-latest
+    timeout-minutes: 15  # measured on main: median 2.6m, max 2.8m
     defaults:
       run:
         working-directory: frontend
@@ -173,6 +197,7 @@ jobs:
 
   docker-build:
     runs-on: ubuntu-latest
+    timeout-minutes: 20  # measured on main: median 1.6m, max 2.2m; a cold layer cache costs more
     needs: [backend-tests, frontend-lint-and-tests]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -258,6 +283,7 @@ jobs:
 
   tooling-tests:
     runs-on: ubuntu-latest
+    timeout-minutes: 10  # measured on main: median 6s
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -284,6 +310,7 @@ jobs:
 
   mariadb-portability:
     runs-on: ubuntu-latest
+    timeout-minutes: 20  # measured on main: median 1.0m, max 1.2m, plus service-container startup
     defaults:
       run:
         working-directory: backend
@@ -339,10 +366,23 @@ jobs:
           print(f"OK: {suite.get('tests')} tests ran, 0 skipped/errors/failures")
           EOF
 
+      - name: Seed suite on MariaDB
+        # This repo's recurring bug class is MariaDB-only behaviour SQLite
+        # tests cannot catch (SUM Integer->Decimal, DATETIME rounding, the
+        # 307 scheme downgrade, and -- on this branch -- two derived PKs that
+        # hit 64 chars against VARCHAR(50), silently accepted by SQLite and
+        # rejected outright by MariaDB). The seeder writes tens of thousands
+        # of rows of exactly the timestamp-sensitive data that class bites,
+        # so the gates run on both dialects (spec section 8).
+        env:
+          SEED_TEST_DATABASE_URL: ${{ env.DATABASE_URL }}
+        run: pytest tests/test_seed/ -v --tb=short --no-cov
+
   compose-stack-smoke:
     # Proves the exact VM topology (docker-compose.prod.yml): MariaDB + Caddy
     # internal-CA TLS + gunicorn backend + static frontend + backup sidecar.
     runs-on: ubuntu-latest
+    timeout-minutes: 20  # measured on main: median 2.3m, max 3.5m
     needs: [backend-tests, frontend-lint-and-tests]
     env:
       # KPI_DATA_ROOT is exported per-run below: the `runner` context is NOT

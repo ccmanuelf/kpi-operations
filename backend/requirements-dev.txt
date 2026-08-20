@@ -21,6 +21,14 @@ pip-audit==2.9.0
 
 # Type stubs (required by mypy --no-error-summary)
 types-python-dateutil==2.9.0.20260807
+# PyYAML ships no stubs of its own, and backend/tests/test_ci_workflow_gates.py
+# parses ci.yml with it. Without these, `import yaml` is Any under mypy 2.x and
+# an outright import-untyped error under mypy 1.x -- so the correct spelling of
+# that import depended on which mypy you happened to have, and the two versions
+# disagreed (CI runs the locked 2.1.0; a stale ambient 1.17.1 wanted the
+# opposite). Installing the stubs makes one spelling right everywhere AND type-
+# checks the yaml calls instead of treating them as Any.
+types-PyYAML==6.0.12.20260815
 
 # Lock tooling (C4) — compiles the hash-pinned *.lock files
 pip-tools==7.5.3
