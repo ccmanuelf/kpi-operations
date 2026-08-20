@@ -10,7 +10,7 @@ pydantic-settings==2.14.2  # GHSA-4xgf-cpjx-pc3j (disclosed 2026-06-21); 2.14.1 
 
 # Database
 sqlalchemy==2.0.51
-alembic==1.18.5
+alembic==1.19.1
 pymysql==1.1.2
 cryptography==50.0.0  # GHSA-m2h6-j472-rp4c/GHSA-g6cj-pr64-35w5/GHSA-jwv3-5hgf-82ww (2026-08) + prior CVEs; pinned for pymysql SSL; security-critical
 
