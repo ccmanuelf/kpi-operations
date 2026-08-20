@@ -1,27 +1,32 @@
 from datetime import date, datetime, time, timedelta
 
 from backend.seed.events import (
+    PLATFORM_CLIENT_ID,
+    ClientAccessGranted,
     ClientCreated,
+    DefectsFound,
     EmployeeHired,
     HoldOpened,
     HoldStatusChanged,
     LineCommissioned,
     ProductDefined,
+    ProductionRecorded,
+    QualityInspected,
     ShiftDefined,
-    ShiftWorked,
+    UserCreated,
     WorkOrderReceived,
     WorkOrderStatusChanged,
 )
 from backend.seed.generator import generate, stream_digest
 from backend.seed.profiles import FULL, SMOKE, Profile
-from backend.seed.scenarios import SCENARIOS
+from backend.seed.scenarios import DEFECT_CATALOG, HOLD_REASONS, HOLD_STATUSES, SCENARIOS, THRESHOLDS
 
 AS_OF = date(2026, 8, 14)
 
 # shifts_per_client=4 is the minimum that exposes the old (6 + si * 8) % 24
 # aliasing (shift index 0 landed on the same hour as shift index 3): under
 # the pre-fix formula, 40 of 40 client-days in a SMOKE-sized run had
-# colliding ShiftWorked instants, but SMOKE/FULL's own shifts_per_client=2
+# colliding per-shift instants, but SMOKE/FULL's own shifts_per_client=2
 # never reaches that collision, so neither profile can catch a regression on
 # its own.
 WIDE_SHIFTS = Profile(
@@ -31,6 +36,11 @@ WIDE_SHIFTS = Profile(
     shifts_per_client=4,
     employees_per_client=SMOKE.employees_per_client,
     work_orders_per_client=SMOKE.work_orders_per_client,
+    # Stated, not defaulted. profiles.Profile deliberately has no default for
+    # this field: a profile that omitted it would silently inherit some other
+    # profile's defect density, and the DefectsFound row count per inspection
+    # is a property these structural profiles must pin for themselves.
+    defect_rows_per_inspection=SMOKE.defect_rows_per_inspection,
 )
 
 
@@ -41,6 +51,7 @@ MANY_ENTITIES = Profile(
     shifts_per_client=12,
     employees_per_client=60,
     work_orders_per_client=6,
+    defect_rows_per_inspection=SMOKE.defect_rows_per_inspection,
 )
 
 
@@ -48,13 +59,29 @@ def _gen(seed=1234):
     return generate(SCENARIOS, SMOKE, seed=seed, as_of=AS_OF)
 
 
-def _activity_start(profile, start):
+def _activity_start(profile, start, scenario_index):
     """Independent restatement of the generator's setup band: ClientCreated at
-    06:00, then one minute per remaining setup event (1 user + lines + shifts
-    + 3 products + employees), and activity begins the day after the last of
-    them. Recomputed here rather than read off the stream so a regression that
-    moved the band would fail the test instead of being absorbed by it."""
-    setup_minutes = 1 + profile.lines_per_client + profile.shifts_per_client + 3 + profile.employees_per_client
+    06:00, then one minute per remaining setup event, and activity begins the
+    day after the last of them. Recomputed here rather than read off the stream
+    so a regression that moved the band would fail the test instead of being
+    absorbed by it.
+
+    The band is ClientConfigured (1) + hold reasons (3) + hold statuses (4) +
+    defect types (5) + lines + shifts + products (3) + employees + the four
+    KPI thresholds, emitted once per client (S1b correction: the generator
+    used to ride them under only the first scenario, which was wrong --
+    KPI_THRESHOLD.client_id is a real per-client FK, not a global row)."""
+    setup_minutes = (
+        1
+        + len(HOLD_REASONS)
+        + len(HOLD_STATUSES)
+        + len(DEFECT_CATALOG)
+        + profile.lines_per_client
+        + profile.shifts_per_client
+        + len(SCENARIOS[scenario_index].products)
+        + profile.employees_per_client
+        + len(THRESHOLDS)
+    )
     setup_end = datetime.combine(start, time(6, 0)) + timedelta(minutes=setup_minutes)
     return setup_end.date() + timedelta(days=1)
 
@@ -87,13 +114,19 @@ def test_seq_is_contiguous_from_one_across_the_whole_stream():
     assert seqs == list(range(1, len(seqs) + 1))
 
 
-def test_shift_worked_timestamps_are_distinct_within_a_client_day():
+def test_production_timestamps_are_distinct_within_a_client_day():
     """order_key uniqueness is guaranteed by construction (seq is reassigned
     1..n), so it cannot catch a real ambiguity defect: collapsing every
-    ShiftWorked event to one instant per day still passes it. There is one
-    ShiftWorked event per (line, shift) pair per day, deliberately
+    per-shift event to one instant per day still passes it. There is one
+    ProductionRecorded event per (line, shift) pair per day, deliberately
     staggered by hour/minute -- assert they stay distinct within each
     (client_id, date) group, which is the property a collapse would break.
+
+    ProductionRecorded rather than the retired ShiftWorked: it is the event
+    emitted exactly once per worked (line, shift, day), so it carries the same
+    staggering the old headcount event did. Attendance/quality/defect events
+    deliberately SHARE that instant (they describe the same shift), so they
+    cannot stand in for this check.
 
     SMOKE alone can't catch the aliasing this guards against: its
     shifts_per_client=2 never reaches the modulus where `si * step` wraps
@@ -102,11 +135,11 @@ def test_shift_worked_timestamps_are_distinct_within_a_client_day():
     for profile in (SMOKE, WIDE_SHIFTS):
         groups: dict = {}
         for e in generate(SCENARIOS, profile, seed=1234, as_of=AS_OF):
-            if isinstance(e, ShiftWorked):
+            if isinstance(e, ProductionRecorded):
                 groups.setdefault((e.client_id, e.at.date()), []).append(e.at)
-        assert groups, "fixture produced no ShiftWorked events; the assertion below would be vacuous"
+        assert groups, "fixture produced no ProductionRecorded events; the assertion below would be vacuous"
         for key, times in groups.items():
-            assert len(set(times)) == len(times), f"{profile.name}/{key} has colliding ShiftWorked instants"
+            assert len(set(times)) == len(times), f"{profile.name}/{key} has colliding production instants"
 
 
 def test_every_timestamp_is_whole_seconds_and_naive():
@@ -116,14 +149,25 @@ def test_every_timestamp_is_whole_seconds_and_naive():
 
 def test_no_event_precedes_its_client_creation():
     """Referential integrity in time: the materializer inserts in stream order
-    and would hit an FK violation otherwise."""
+    and would hit an FK violation otherwise.
+
+    PLATFORM_CLIENT_ID is exempt and must be: the six demo users belong to no
+    tenant, so there is no CLIENT row for the sentinel to precede. Every event
+    carrying a REAL client_id still has to fall after that client's creation --
+    including ClientAccessGranted, which names a user AND a client and so
+    cannot sit on the platform day beside the users it grants."""
     created_at = {}
+    checked = 0
     for e in _gen():
         if isinstance(e, ClientCreated):
             created_at[e.client_id] = e.order_key
+        elif e.client_id == PLATFORM_CLIENT_ID:
+            continue
         else:
             assert e.client_id in created_at
             assert created_at[e.client_id] < e.order_key
+            checked += 1
+    assert checked, "fixture produced no tenant-scoped events; the assertions above would be vacuous"
 
 
 # Which attribute on an event names an entity of each creating type. An event
@@ -169,7 +213,15 @@ def test_no_event_precedes_the_line_shift_or_product_it_references():
 
 
 def test_work_order_events_follow_the_work_order_receipt():
+    """QualityInspected is in this list deliberately. A shift is stamped at its
+    own start hour -- 06:30 for shift 0, and as early as 00:30 once the modular
+    hour step wraps -- while a WorkOrderReceived is stamped 07:00. So an
+    inspection may only reach for an order received on a STRICTLY EARLIER day;
+    "on or before today" puts the 06:30 inspection thirty minutes ahead of the
+    07:00 receipt it names, and the materializer inserting in stream order
+    would hit the FK before the parent row exists."""
     seen = set()
+    inspections = 0
     for e in _gen():
         if isinstance(e, WorkOrderReceived):
             seen.add(e.work_order_id)
@@ -177,6 +229,10 @@ def test_work_order_events_follow_the_work_order_receipt():
             assert e.work_order_id in seen
         elif isinstance(e, HoldOpened):
             assert e.work_order_id in seen
+        elif isinstance(e, QualityInspected):
+            assert e.work_order_id in seen
+            inspections += 1
+    assert inspections, "fixture produced no inspections; the assertion above would be vacuous"
 
 
 def test_every_work_order_gets_an_opening_status_row():
@@ -215,19 +271,37 @@ def test_shift_events_cover_the_profile_window():
     SMOKE window's actual weekday composition, so compute the exact expected
     working-day set (Mon-Fri, mirroring the generator's own day loop) and
     compare the actual dates, not just their count -- a window shifted by
-    one day would still match on cardinality alone."""
-    days = {e.at.date() for e in _gen() if isinstance(e, ShiftWorked)}
-    start = AS_OF - timedelta(days=SMOKE.days)
-    # Day 0 (and any further day the setup band spills onto) belongs to setup
-    # alone, so activity runs [activity_start, as_of) -- see _activity_start.
-    activity_start = _activity_start(SMOKE, start)
-    expected_days = {
-        activity_start + timedelta(days=offset)
-        for offset in range((AS_OF - activity_start).days)
-        if (activity_start + timedelta(days=offset)).weekday() < 5
-    }
-    assert expected_days, "expected-day set is empty; the comparison below would be vacuous"
-    assert days == expected_days
+    one day would still match on cardinality alone.
+
+    Compared PER CLIENT rather than over the union: a per-client comparison
+    catches a client-specific drift in any one client's band, which a union
+    over all four could paper over.
+
+    Swept over seven consecutive as_of dates rather than the pinned one. On
+    AS_OF the band opens on a Saturday, so the Mon-Fri filter absorbs a band
+    shifted by a day or two and the comparison stays green against a generator
+    that moved it -- measured: pushing activity_start forward a day left this
+    test passing. Seven consecutive dates put activity_start on every weekday
+    phase, so a shifted band always drops or gains a working day somewhere."""
+    for k in range(7):
+        as_of = AS_OF + timedelta(days=k)
+        events = generate(SCENARIOS, SMOKE, seed=1234, as_of=as_of)
+        start = as_of - timedelta(days=SMOKE.days)
+        for index, scenario in enumerate(SCENARIOS):
+            days = {
+                e.at.date() for e in events if isinstance(e, ProductionRecorded) and e.client_id == scenario.client_id
+            }
+            # Day 0 (and any further day the setup band spills onto) belongs to
+            # setup alone, so activity runs [activity_start, as_of) -- see
+            # _activity_start.
+            activity_start = _activity_start(SMOKE, start, index)
+            expected_days = {
+                activity_start + timedelta(days=offset)
+                for offset in range((as_of - activity_start).days)
+                if (activity_start + timedelta(days=offset)).weekday() < 5
+            }
+            assert expected_days, "expected-day set is empty; the comparison below would be vacuous"
+            assert days == expected_days, (as_of, scenario.client_id)
 
 
 def test_no_event_is_dated_after_as_of():
@@ -334,3 +408,29 @@ def test_each_client_gets_its_declared_employee_count():
             per_client[e.client_id] = per_client.get(e.client_id, 0) + 1
     for scenario in SCENARIOS:
         assert per_client[scenario.client_id] == SMOKE.employees_per_client
+
+
+def test_every_defects_found_references_an_earlier_quality_entry():
+    """Referential integrity in time: the materializer inserts in stream order,
+    so a child may never precede its parent."""
+    seen = set()
+    checked = 0
+    for e in _gen():
+        if isinstance(e, QualityInspected):
+            seen.add(e.quality_entry_id)
+        elif isinstance(e, DefectsFound):
+            assert e.quality_entry_id in seen
+            checked += 1
+    assert checked, "fixture produced no defect rows; the assertion above would be vacuous"
+
+
+def test_users_are_emitted_before_any_grant_references_them():
+    created = set()
+    checked = 0
+    for e in _gen():
+        if isinstance(e, UserCreated):
+            created.add(e.user_id)
+        elif isinstance(e, ClientAccessGranted):
+            assert e.user_id in created
+            checked += 1
+    assert checked, "fixture produced no grants; the assertion above would be vacuous"

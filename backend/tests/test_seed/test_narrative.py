@@ -1,9 +1,18 @@
+from collections import Counter
 from datetime import date, timedelta
 
 import pytest
 
-from backend.seed.events import HoldOpened, ShiftWorked, WorkOrderStatusChanged
+from backend.seed.events import (
+    AttendanceRecorded,
+    DowntimeLogged,
+    HoldOpened,
+    ProductionRecorded,
+    QualityInspected,
+    WorkOrderStatusChanged,
+)
 from backend.seed.generator import generate
+from backend.seed.narrative import window_active
 from backend.seed.profiles import FULL
 from backend.seed.scenarios import SCENARIOS
 
@@ -41,20 +50,22 @@ def _window(lo_months, hi_months):
     return earlier, later
 
 
-def _shift_events(events, client_id, lo, hi):
+def _shift_events(events, cls, client_id, lo, hi):
+    """One shift now writes five kinds of event, so the caller names which one
+    it is measuring. Filtered on `at` rather than `shift_date`: they are the
+    same calendar day by construction (both are built from the day the shift
+    loop is on), and `at` is the only field every event carries."""
     earlier, later = _window(lo, hi)
-    rows = [
-        e for e in events if isinstance(e, ShiftWorked) and e.client_id == client_id and earlier <= e.at.date() <= later
-    ]
-    assert rows, f"no ShiftWorked rows for {client_id} in [{earlier}, {later}] — assertion would be vacuous"
+    rows = [e for e in events if isinstance(e, cls) and e.client_id == client_id and earlier <= e.at.date() <= later]
+    assert rows, f"no {cls.__name__} rows for {client_id} in [{earlier}, {later}] — assertion would be vacuous"
     return rows
 
 
 def _defect_rate(events, client_id, lo, hi):
-    rows = _shift_events(events, client_id, lo, hi)
-    produced = sum(r.units_produced for r in rows)
+    rows = _shift_events(events, QualityInspected, client_id, lo, hi)
+    inspected = sum(r.units_inspected for r in rows)
     defective = sum(r.units_defective for r in rows)
-    return defective / produced if produced else 0.0
+    return defective / inspected if inspected else 0.0
 
 
 def test_supplier_quality_crisis_lifts_demo_piece_defect_rate(events):
@@ -67,21 +78,103 @@ def test_supplier_quality_crisis_lifts_demo_piece_defect_rate(events):
 
 
 def test_equipment_decline_lifts_demo_hourly_downtime(events):
-    crisis = sum(r.downtime_minutes for r in _shift_events(events, "DEMO-HOURLY", -5, -3))
-    baseline = sum(r.downtime_minutes for r in _shift_events(events, "DEMO-HOURLY", -2, -1))
+    crisis_rows = _shift_events(events, DowntimeLogged, "DEMO-HOURLY", -5, -3)
+    baseline_rows = _shift_events(events, DowntimeLogged, "DEMO-HOURLY", -2, -1)
 
     # Windows differ in length, so compare per-shift averages, not totals.
-    crisis_avg = crisis / len(_shift_events(events, "DEMO-HOURLY", -5, -3))
-    baseline_avg = baseline / len(_shift_events(events, "DEMO-HOURLY", -2, -1))
+    crisis_avg = sum(r.downtime_minutes for r in crisis_rows) / len(crisis_rows)
+    baseline_avg = sum(r.downtime_minutes for r in baseline_rows) / len(baseline_rows)
     assert crisis_avg > baseline_avg * 1.5
 
 
-def test_labor_disruption_drops_demo_hybrid_attendance(events):
-    def avg_headcount(lo, hi):
-        rows = _shift_events(events, "DEMO-HYBRID", lo, hi)
-        return sum(r.attendance_headcount for r in rows) / len(rows)
+def _hourly_downtime_split(events):
+    """DEMO-HOURLY's downtime rows, partitioned by whether the
+    equipment-reliability-decline window covers the shift."""
+    hourly = next(s for s in SCENARIOS if s.client_id == "DEMO-HOURLY")
+    rows = [e for e in events if isinstance(e, DowntimeLogged) and e.client_id == "DEMO-HOURLY"]
+    inside = [e for e in rows if window_active(hourly, e.shift_date.date(), AS_OF, "equipment_reliability_decline")]
+    outside = [
+        e for e in rows if not window_active(hourly, e.shift_date.date(), AS_OF, "equipment_reliability_decline")
+    ]
+    assert inside and outside, "one side of the window is empty; the comparisons below would be vacuous"
+    return inside, outside
 
-    assert avg_headcount(-4, -2) < avg_headcount(-2, -1)
+
+def test_equipment_decline_biases_the_root_cause_toward_machine(events):
+    """Spec section 6: DEMO-HOURLY must read as equipment reliability. Scaling
+    only downtime MINUTES leaves Q2 an undifferentiated total."""
+    inside, outside = _hourly_downtime_split(events)
+    inside_share = Counter(e.root_cause_category for e in inside)
+    outside_share = Counter(e.root_cause_category for e in outside)
+
+    assert inside_share["machine"] / len(inside) > 2 * (outside_share["machine"] / len(outside))
+
+
+def test_equipment_decline_lands_as_UNPLANNED_downtime(events):
+    """The root_cause_category column alone is not enough, and asserting only
+    on it hid this: every machine-category stop was written
+    downtime_reason=MAINTENANCE, which is one of the two members of
+    PLANNED_DOWNTIME_REASONS. calculate_mtbf (backend/calculations/availability
+    .py:87) excludes that set because it counts FAILURES -- so a reliability
+    decline made entirely of maintenance produced ZERO failures and MTBF, the
+    metric named for the very thing the episode is about, could not move.
+    (The raw minutes still landed on the client+date aggregates the
+    dashboard, trends, downtime and my_shift endpoints read; what was lost is
+    the reliability reading. They do NOT land on calculate_availability or
+    calculate_mttr -- those filter DowntimeEntry.work_order_id
+    (backend/calculations/availability.py:38) and machine_id
+    (availability.py:127) respectively, and the seeder leaves both columns
+    NULL, so availability returns (100, 8.0, 0, 0) and MTTR/MTBF return None
+    regardless of what this episode writes. Measured, not assumed.)
+
+    Imported from the live taxonomy rather than restated here, so a change to
+    what counts as planned reaches this assertion instead of drifting past it.
+    Measured on FULL/1234: 69.99 unplanned minutes per shift inside the window
+    against 12.48 outside, ratio 5.6, with the in-window unplanned share at
+    1.000 versus 0.575."""
+    from backend.orm.downtime_taxonomy import PLANNED_DOWNTIME_REASONS
+
+    inside, outside = _hourly_downtime_split(events)
+
+    def unplanned_minutes_per_shift(rows):
+        return sum(e.downtime_minutes for e in rows if e.downtime_reason not in PLANNED_DOWNTIME_REASONS) / len(rows)
+
+    assert unplanned_minutes_per_shift(inside) > 2 * unplanned_minutes_per_shift(outside)
+
+
+def test_every_downtime_reason_agrees_with_its_root_cause_category(events):
+    """The two columns are written from one map, so they can never disagree --
+    but only if that map stays the canonical one. DEFAULT_CATEGORY_BY_REASON in
+    backend/orm/downtime_taxonomy.py is the single source of truth the schemas,
+    the ORM validators and the reference endpoint all read; asserting against
+    it is what keeps the EQUIPMENT_FAILURE override honest rather than merely
+    self-consistent."""
+    from backend.orm.downtime_taxonomy import DEFAULT_CATEGORY_BY_REASON
+
+    rows = [e for e in events if isinstance(e, DowntimeLogged)]
+    assert rows, "fixture produced no downtime; the assertion below would be vacuous"
+    for e in rows:
+        assert DEFAULT_CATEGORY_BY_REASON[e.downtime_reason] == e.root_cause_category
+
+
+def test_labor_disruption_drops_demo_hybrid_attendance(events):
+    """Measured off ATTENDANCE_ENTRY's own per-employee rows, which is what the
+    widened model made expressible: the retired headcount field could only say
+    how many showed up, never who was absent, so an absence rate -- the figure
+    the Q2 labor view actually reports -- had to be inferred.
+
+    A RATIO, not a bare `<`. The predecessor asserted only that the in-window
+    average was the smaller of two numbers, which two noisy estimates of the
+    same quantity satisfy half the time: deleting the narrative multiplier from
+    the absence threshold left this test green. The declared multiplier is
+    2/3 of a 0.95 present-threshold, i.e. ~37% absence inside the window
+    against a ~5% baseline -- measured 0.359 vs 0.054, ratio 6.6."""
+
+    def absence_rate(lo, hi):
+        rows = _shift_events(events, AttendanceRecorded, "DEMO-HYBRID", lo, hi)
+        return sum(1 if r.is_absent else 0 for r in rows) / len(rows)
+
+    assert absence_rate(-4, -2) > absence_rate(-2, -1) * 2.0
 
 
 # Every client with a narrative, and the window that narrative covers.
@@ -92,16 +185,25 @@ _NARRATIVE_WINDOWS = (
 )
 
 # Floors on how many DISTINCT values each drawn quantity must take inside a
-# window. Set well below what the generator actually produces at FULL/1234
-# (units_produced 67-72, units_defective 7-18, downtime_minutes 36,
-# attendance_headcount 4-5) so ordinary re-tuning of a range does not trip
-# them, but far enough above 1 that any collapse to a constant does.
-_MIN_DISTINCT_IN_WINDOW = {
-    "units_produced": 20,
-    "units_defective": 5,
-    "downtime_minutes": 10,
-    "attendance_headcount": 3,
-}
+# window, now that the four quantities live on four different events. Set well
+# below what the generator actually produces at FULL/1234 -- measured across
+# the three narrative windows: units_produced 69-73, units_defective 6-17,
+# downtime_minutes 35-36, employees_assigned 3-4 -- so ordinary re-tuning of a
+# range does not trip them, but far enough above 1 that any collapse to a
+# constant does.
+#
+# employees_assigned carries the lowest floor because it is the only one whose
+# cardinality is structurally capped: it is a headcount bounded by the crew
+# size (FULL puts 8 employees on 2 lines, so 4 per line) and floored at 1, so
+# 4 values is the most it can ever take and 2 is the highest floor that still
+# leaves room for re-tuning. It remains the check that caught the constant
+# headcount, which scored 1.
+_MIN_DISTINCT_IN_WINDOW = (
+    (ProductionRecorded, "units_produced", 20),
+    (QualityInspected, "units_defective", 5),
+    (DowntimeLogged, "downtime_minutes", 10),
+    (ProductionRecorded, "employees_assigned", 2),
+)
 
 
 def test_each_narrative_window_still_varies_day_to_day(events):
@@ -117,10 +219,10 @@ def test_each_narrative_window_still_varies_day_to_day(events):
     have flattened it. This is what would have caught attendance_headcount
     being a constant."""
     for client_id, lo, hi in _NARRATIVE_WINDOWS:
-        rows = _shift_events(events, client_id, lo, hi)
-        for field, floor in _MIN_DISTINCT_IN_WINDOW.items():
+        for cls, field, floor in _MIN_DISTINCT_IN_WINDOW:
+            rows = _shift_events(events, cls, client_id, lo, hi)
             distinct = len({getattr(r, field) for r in rows})
-            assert distinct >= floor, f"{client_id} {field}: only {distinct} distinct values across {len(rows)} shifts"
+            assert distinct >= floor, f"{client_id} {field}: only {distinct} distinct values across {len(rows)} rows"
 
 
 def test_sample_ref_has_no_episode(events):

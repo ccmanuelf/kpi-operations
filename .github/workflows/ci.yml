@@ -366,6 +366,18 @@ jobs:
           print(f"OK: {suite.get('tests')} tests ran, 0 skipped/errors/failures")
           EOF
 
+      - name: Seed suite on MariaDB
+        # This repo's recurring bug class is MariaDB-only behaviour SQLite
+        # tests cannot catch (SUM Integer->Decimal, DATETIME rounding, the
+        # 307 scheme downgrade, and -- on this branch -- two derived PKs that
+        # hit 64 chars against VARCHAR(50), silently accepted by SQLite and
+        # rejected outright by MariaDB). The seeder writes tens of thousands
+        # of rows of exactly the timestamp-sensitive data that class bites,
+        # so the gates run on both dialects (spec section 8).
+        env:
+          SEED_TEST_DATABASE_URL: ${{ env.DATABASE_URL }}
+        run: pytest tests/test_seed/ -v --tb=short --no-cov
+
   compose-stack-smoke:
     # Proves the exact VM topology (docker-compose.prod.yml): MariaDB + Caddy
     # internal-CA TLS + gunicorn backend + static frontend + backup sidecar.
