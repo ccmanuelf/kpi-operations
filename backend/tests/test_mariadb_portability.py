@@ -1693,3 +1693,104 @@ def test_no_coalesce_over_enum_columns():
                     f"{py.relative_to(backend_root)}:{first.lineno} " f"coalesce({first.value.id}.{first.attr}, ...)"
                 )
     assert sorted(offenders) == []
+
+
+# ---------------------------------------------------------------------------
+# Decimal-leak guard (always-on, dialect-agnostic). MariaDB's SUM()/AVG() over an
+# integer column returns DECIMAL, PyMySQL hands back decimal.Decimal, and FastAPI
+# serialises Decimal as a JSON *string* -- so an un-coerced aggregate reaches the
+# client as "1067" instead of 1067 while its neighbours stay numbers. SQLite
+# returns int, so no amount of SQLite testing can catch it; this guard is static.
+# Found live on VM prod across 10 endpoints (e.g. /api/kpi/dashboard total_units,
+# /api/attendance/kpi/absenteeism total_absences).
+# ---------------------------------------------------------------------------
+
+
+def test_no_uncoerced_aggregate_in_response_dict():
+    """A func.sum()/func.avg() label must not land in a dict literal uncoerced.
+
+    Wrap it: int(x or 0) for a count, float(x or 0) for a measure. The set of
+    aggregate labels is DERIVED per-file from the source, not listed, so a new
+    aggregate is covered the moment it is written.
+    """
+    import ast
+    import pathlib
+
+    AGG = {"sum", "avg"}  # count() is integer on both dialects
+    COERCERS = {"int", "float", "round", "str", "Decimal", "abs", "max", "min", "len"}
+
+    backend_root = pathlib.Path(__file__).resolve().parent.parent
+    offenders = []
+
+    for py in sorted(backend_root.rglob("*.py")):
+        if ".venv" in py.parts or "tests" in py.parts or "alembic" in py.parts:
+            continue
+        try:
+            tree = ast.parse(py.read_text(encoding="utf-8"))
+        except SyntaxError:  # pragma: no cover - not our source
+            continue
+
+        aggregate_labels = set()
+        for node in ast.walk(tree):
+            if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)):
+                continue
+            if node.func.attr != "label" or not node.args:
+                continue
+            label = node.args[0]
+            if not (isinstance(label, ast.Constant) and isinstance(label.value, str)):
+                continue
+            if any(
+                isinstance(sub, ast.Call) and isinstance(sub.func, ast.Attribute) and sub.func.attr in AGG
+                for sub in ast.walk(node.func.value)
+            ):
+                aggregate_labels.add(label.value)
+        if not aggregate_labels:
+            continue
+
+        class Walker(ast.NodeVisitor):
+            def visit_Call(self, node):
+                name = node.func.id if isinstance(node.func, ast.Name) else getattr(node.func, "attr", None)
+                if name in COERCERS:
+                    return  # value is coerced -- this subtree is safe
+                self.generic_visit(node)
+
+            def visit_Dict(self, node):
+                for key, value in zip(node.keys, node.values):
+                    inner = value.values[0] if isinstance(value, ast.BoolOp) and isinstance(value.op, ast.Or) else value
+                    if (
+                        isinstance(key, ast.Constant)
+                        and isinstance(inner, ast.Attribute)
+                        and inner.attr in aggregate_labels
+                    ):
+                        offenders.append(
+                            f'{py.relative_to(backend_root)}:{inner.lineno} "{key.value}": ...{inner.attr}'
+                        )
+                        continue
+                    self.visit(value)
+
+        Walker().visit(tree)
+
+    assert sorted(offenders) == []
+
+
+@requires_mariadb
+def test_sum_over_integer_returns_decimal_on_mariadb():
+    """Pin the premise behind test_no_uncoerced_aggregate_in_response_dict.
+
+    That guard is static, so it can only be justified by the dialect actually
+    behaving this way. MariaDB widens SUM() over an integer to DECIMAL; SQLite
+    returns int. If MariaDB ever stopped doing this, the guard's rationale would
+    be stale and this test would say so rather than leaving it a folk belief.
+    """
+    from decimal import Decimal
+
+    from sqlalchemy import text
+
+    session = SessionLocal()
+    try:
+        value = session.execute(text("SELECT SUM(x) FROM (SELECT 1 AS x UNION ALL SELECT 2) t")).scalar()
+    finally:
+        session.close()
+
+    assert isinstance(value, Decimal), f"expected Decimal from MariaDB SUM(), got {type(value).__name__}"
+    assert value == 3

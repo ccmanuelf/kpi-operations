@@ -753,7 +753,7 @@ class ExcelReportGenerator:
             {
                 "date": r.production_date,
                 "product": r.product_name,
-                "units": r.units or 0,
+                "units": int(r.units or 0),
                 "efficiency": float(r.efficiency or 0),
                 "performance": float(r.performance or 0),
                 "availability": float(
@@ -843,4 +843,4 @@ class ExcelReportGenerator:
 
         results = query.all()
 
-        return [{"date": r.shift_date, "scheduled": r.scheduled or 0, "absent": r.absent or 0} for r in results]
+        return [{"date": r.shift_date, "scheduled": r.scheduled or 0, "absent": int(r.absent or 0)} for r in results]

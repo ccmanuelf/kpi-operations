@@ -84,7 +84,7 @@ def get_efficiency_by_shift(
         {
             "shift_id": r.shift_id,
             "shift_name": r.shift_name or f"Shift {r.shift_id}",
-            "actual_output": r.actual_output or 0,
+            "actual_output": int(r.actual_output or 0),
             "expected_output": _expected_output(r.actual_output or 0, float(r.efficiency) if r.efficiency else None),
             "efficiency": float(r.efficiency) if r.efficiency else 0,
         }
@@ -146,7 +146,7 @@ def get_efficiency_by_product(
         {
             "product_id": r.product_id,
             "product_name": r.product_name or f"Product {r.product_id}",
-            "actual_output": r.actual_output or 0,
+            "actual_output": int(r.actual_output or 0),
             "efficiency": float(r.efficiency) if r.efficiency else 0,
         }
         for r in results
