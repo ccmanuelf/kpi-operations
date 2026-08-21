@@ -70,7 +70,7 @@ def list_saved_filters(
     # and return [], on the rationale that the table might not exist -- which Alembic
     # has since made impossible (it is the single schema mechanism, and the baseline
     # is asserted equal to Base.metadata on both engines every CI run). What the
-    # swallow actually did was hide a real defect: the ORDER BY used NULLS LAST,
+    # swallow actually did was hide a real defect: the ORDER BY used NULLS LAST,  # nullslast-guard: allow
     # which MariaDB rejects with error 1064, so on MariaDB this endpoint returned an
     # empty list for every user while reporting 200 OK. A genuine query failure must
     # surface, not masquerade as "you have no saved filters".

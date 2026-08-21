@@ -79,7 +79,7 @@ def list_scenarios(
         q = q.filter(SimulationScenario.client_id == client_id)
     rows: List[SimulationScenario] = (
         q.order_by(
-            # MariaDB rejects the NULLS LAST clause outright (error 1064); ordering on
+            # MariaDB rejects the NULLS LAST clause outright (error 1064); ordering on  # nullslast-guard: allow
             # `col IS NULL` first is the portable equivalent -- False (0) sorts before
             # True (1), so rows with a value come first and NULLs land last.
             SimulationScenario.updated_at.is_(None),
