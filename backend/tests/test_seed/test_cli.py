@@ -847,3 +847,123 @@ def test_the_nullable_tenant_sweep_set_is_exactly_the_known_two():
         ("ALERT", "work_order_id", "client_id", "WORK_ORDER", "work_order_id"),
         ("FLOATING_POOL", "employee_id", "client_id", "EMPLOYEE", "employee_id"),
     )
+
+
+def test_reset_does_not_delete_an_employee_shared_with_a_foreign_tenant(seed_engine):
+    """CASCADE makes the ORIGINAL bug silent rather than loud: deleting a demo
+    employee removes a real tenant's assignment with no error and no row count.
+
+    DEVIATION FROM THE BRIEF, recorded here rather than silently -- the same
+    kind Task 1 recorded for the FLOATING_POOL/EMPLOYEE edge, but with a
+    DIFFERENT root cause. The brief's version of this test called
+    `seed(reset=True)` unguarded and asserted `kept == 1` with no exception.
+    Run for real, that raises -- not because the guard fails to spare the
+    employee (it does; verified directly against `_reset()` in isolation) but
+    because sparing it and then re-running `generate()`/`materialize()` for
+    the SAME client/profile/seed tries to INSERT a fresh EMPLOYEE row with the
+    identical, deterministic `employee_code` the surviving row already holds:
+    unlike USER, EMPLOYEE has no re-seed idempotency (`seed()` never checks
+    for an existing employee_code before materializing), so the second insert
+    collides on EMPLOYEE's GLOBAL unique index. `engine.begin()` wraps the
+    whole `_reset()` + `materialize()` call in one transaction, so the
+    IntegrityError rolls back everything -- the REAL-CUSTOMER assignment
+    that would have survived via the guard also survives via the rollback,
+    and the pre-existing employees are untouched. A loud failure that leaves
+    the database exactly as it was is the correct outcome for the same reason
+    Ruling 3 accepts it for FLOATING_POOL: refusing to proceed beats silently
+    destroying a real tenant's row. The assertion still discriminates the
+    guard: with `shared_employee_ids` filtering disabled, the demo employee
+    (and its cascading REAL-CUSTOMER assignment) is deleted outright, nothing
+    survives to collide with, the reseed completes normally, and `kept`
+    becomes 0 -- so this fails the way the brief predicted for the WRONG
+    code, just reached through `pytest.raises` instead of a bare assertion.
+    """
+    from sqlalchemy import insert, select, func
+    from sqlalchemy.exc import IntegrityError
+    from backend.database import Base
+    from backend.seed.cli import seed
+
+    client = Base.metadata.tables["CLIENT"]
+    with seed_engine.begin() as conn:
+        conn.execute(
+            insert(client).values(
+                client_id="REAL-CUSTOMER", client_name="Real", client_type="Hourly Rate", is_active=True
+            )
+        )
+
+    kwargs = dict(client_ids=("DEMO-PIECE",), profile_name="smoke", seed_value=1234, as_of=date(2026, 8, 18))
+    seed(seed_engine, reset=False, **kwargs)
+
+    employee = Base.metadata.tables["EMPLOYEE"]
+    eca = Base.metadata.tables["EMPLOYEE_CLIENT_ASSIGNMENT"]
+    with seed_engine.begin() as conn:
+        emp_id = conn.execute(
+            select(employee.c.employee_id).where(employee.c.client_id_assigned == "DEMO-PIECE").limit(1)
+        ).scalar_one()
+        conn.execute(insert(eca).values(employee_id=emp_id, client_id="REAL-CUSTOMER"))
+
+    with pytest.raises(IntegrityError):
+        seed(seed_engine, reset=True, **kwargs)
+
+    with seed_engine.connect() as conn:
+        kept = conn.execute(
+            select(func.count()).select_from(eca).where(eca.c.client_id == "REAL-CUSTOMER")
+        ).scalar_one()
+    assert kept == 1
+
+
+def test_reset_does_not_delete_a_line_assignment_shared_with_a_foreign_tenant(seed_engine):
+    """The EMPLOYEE_LINE_ASSIGNMENT variant of the cascade hazard above --
+    same shape, different cascade child, identical root cause and identical
+    deviation from the brief (see the EMPLOYEE_CLIENT_ASSIGNMENT test's
+    docstring): sparing the employee collides its employee_code on reseed,
+    `engine.begin()` rolls the whole operation back, and the REAL-CUSTOMER
+    row survives via the rollback rather than via a clean scoped sweep."""
+    from sqlalchemy import insert, select, func
+    from sqlalchemy.exc import IntegrityError
+    from backend.database import Base
+    from backend.seed.cli import seed
+
+    client = Base.metadata.tables["CLIENT"]
+    with seed_engine.begin() as conn:
+        conn.execute(
+            insert(client).values(
+                client_id="REAL-CUSTOMER", client_name="Real", client_type="Hourly Rate", is_active=True
+            )
+        )
+
+    kwargs = dict(client_ids=("DEMO-PIECE",), profile_name="smoke", seed_value=1234, as_of=date(2026, 8, 18))
+    seed(seed_engine, reset=False, **kwargs)
+
+    employee = Base.metadata.tables["EMPLOYEE"]
+    production_line = Base.metadata.tables["PRODUCTION_LINE"]
+    ela = Base.metadata.tables["EMPLOYEE_LINE_ASSIGNMENT"]
+    with seed_engine.begin() as conn:
+        emp_id = conn.execute(
+            select(employee.c.employee_id).where(employee.c.client_id_assigned == "DEMO-PIECE").limit(1)
+        ).scalar_one()
+        line_id = conn.execute(
+            select(production_line.c.line_id).where(production_line.c.client_id == "DEMO-PIECE").limit(1)
+        ).scalar_one()
+        conn.execute(
+            insert(ela).values(
+                employee_id=emp_id, line_id=line_id, client_id="REAL-CUSTOMER", effective_date=date(2026, 8, 18)
+            )
+        )
+
+    with pytest.raises(IntegrityError):
+        seed(seed_engine, reset=True, **kwargs)
+
+    with seed_engine.connect() as conn:
+        kept = conn.execute(
+            select(func.count()).select_from(ela).where(ela.c.client_id == "REAL-CUSTOMER")
+        ).scalar_one()
+    assert kept == 1
+
+
+def test_the_employee_cascade_children_are_exactly_the_known_two():
+    """A third cascade child of EMPLOYEE must fail the build: it would be a new
+    way for a reset to silently delete a real tenant's rows."""
+    from backend.seed.cli import CASCADE_CHILDREN_OF_EMPLOYEE
+
+    assert CASCADE_CHILDREN_OF_EMPLOYEE == ("EMPLOYEE_CLIENT_ASSIGNMENT", "EMPLOYEE_LINE_ASSIGNMENT")
