@@ -1864,3 +1864,83 @@ def test_sum_over_integer_returns_decimal_on_mariadb():
 
     assert isinstance(value, Decimal), f"expected Decimal from MariaDB SUM(), got {type(value).__name__}"
     assert value == 3
+
+
+# ---------------------------------------------------------------------------
+# NULLS LAST guard (always-on, dialect-agnostic). SQLAlchemy emits the NULLS  # nullslast-guard: allow
+# FIRST/LAST clause verbatim for every dialect, but MariaDB has no such syntax
+# and rejects the statement with error 1064. SQLite accepts it, so the default
+# suite cannot catch this. Two endpoints shipped it: /api/v2/simulation/scenarios
+# (a visible 503) and /api/filters, which swallowed the error and returned [] --
+# every saved filter silently invisible behind a 200 OK.
+# ---------------------------------------------------------------------------
+
+
+def test_no_nullslast_in_query_construction():
+    """The nulls-ordering helpers must not appear in backend source.  # nullslast-guard: allow
+
+    Order on the null-ness expression instead, which every engine understands:
+
+        .order_by(Model.col.is_(None), Model.col.desc())
+
+    `col IS NULL` yields False (0) for rows that have a value and True (1) for
+    those that do not, so ascending on it reproduces the nulls-last ordering exactly.
+    """
+    import pathlib
+    import re
+
+    backend_root = pathlib.Path(__file__).resolve().parent.parent
+    marker = "# nullslast-guard: allow"
+    # Two spellings reach MariaDB: the SQLAlchemy helpers, and the raw clause inside a
+    # text() string. Cross-model review pointed out the first pattern alone missed the
+    # second, which is the easier one to write by accident.
+    patterns = (
+        re.compile(r"\bnulls(last|first)\s*\("),  # nullslast-guard: allow
+        re.compile(r"NULLS\s+(LAST|FIRST)", re.IGNORECASE),  # nullslast-guard: allow
+    )
+
+    offenders = []
+    for py in backend_root.rglob("*.py"):
+        if ".venv" in py.parts or "alembic" in py.parts:
+            continue
+        for lineno, line in enumerate(py.read_text(encoding="utf-8").splitlines(), start=1):
+            if marker in line:
+                continue
+            if any(p.search(line) for p in patterns):
+                offenders.append(f"{py.relative_to(backend_root)}:{lineno}")
+    assert sorted(offenders) == []
+
+
+@requires_mariadb
+def test_nulls_last_clause_is_rejected_but_is_null_ordering_works():
+    """Pin both halves of the premise behind test_no_nullslast_in_query_construction.
+
+    The guard is static, so it is only justified while MariaDB actually rejects
+    the clause AND the replacement actually orders the same way. If either ever
+    changed, this says so rather than leaving the guard as folklore.
+    """
+    from sqlalchemy import text
+    from sqlalchemy.exc import ProgrammingError
+
+    session = SessionLocal()
+    try:
+        session.execute(text("CREATE TEMPORARY TABLE _nl (id INT, u DATETIME NULL)"))
+        session.execute(text("INSERT INTO _nl VALUES (1, NULL), (2, '2026-01-01'), (3, '2026-02-01')"))
+
+        try:
+            session.execute(text("SELECT id FROM _nl ORDER BY u DESC NULLS LAST"))  # nullslast-guard: allow
+            raise AssertionError(
+                "MariaDB accepted the nulls-last clause -- the guard's premise no longer holds"
+            )  # nullslast-guard: allow
+        except ProgrammingError:
+            session.rollback()
+            session.execute(text("CREATE TEMPORARY TABLE _nl2 (id INT, u DATETIME NULL)"))
+            session.execute(text("INSERT INTO _nl2 VALUES (1, NULL), (2, '2026-01-01'), (3, '2026-02-01')"))
+
+        order = [r[0] for r in session.execute(text("SELECT id FROM _nl2 ORDER BY u IS NULL, u DESC")).fetchall()]
+    finally:
+        session.rollback()
+        session.close()
+
+    # newest value first, then the older value, and the NULL row last
+    assert order == [3, 2, 1]
