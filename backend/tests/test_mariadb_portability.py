@@ -1632,3 +1632,64 @@ def test_earliest_tier_same_second_transitions_break_tie_by_insertion_order_on_m
     }
 
     assert active == {hold_id}
+
+
+# ---------------------------------------------------------------------------
+# Enum-decoding guard (always-on, dialect-agnostic). A SQL COALESCE over an
+# Enum-typed column inherits that column's type, so SQLAlchemy decodes the
+# fallback literal with the enum's result-processor and raises LookupError the
+# moment a row holds NULL. routes/attendance.py shipped exactly this and turned
+# GET /api/attendance/kpi/absenteeism into a 500 for any absent row with no
+# recorded reason; services/kpi_cause_service.py documents the rule.
+# ---------------------------------------------------------------------------
+
+
+def test_no_coalesce_over_enum_columns():
+    """No SQL coalesce() may take an Enum-typed ORM column as its first argument.
+
+    Resolve NULL in Python after the rows come back, where no enum decoding
+    happens -- see routes.attendance._absence_reason_label.
+
+    The set of Enum columns is DERIVED from the live mappers rather than listed,
+    so a column that becomes an Enum later is covered automatically.
+    """
+    import ast
+    import pathlib
+
+    import sqlalchemy
+
+    from backend.database import Base
+
+    # (ClassName, attribute) for every Enum-typed mapped column.
+    enum_columns = set()
+    for mapper in Base.registry.mappers:
+        for prop in mapper.column_attrs:
+            column = prop.columns[0]
+            if isinstance(column.type, sqlalchemy.Enum):
+                enum_columns.add((mapper.class_.__name__, prop.key))
+    assert enum_columns, "derived no Enum columns -- the guard would be vacuous"
+
+    backend_root = pathlib.Path(__file__).resolve().parent.parent
+    offenders = []
+    for py in backend_root.rglob("*.py"):
+        if ".venv" in py.parts or "alembic" in py.parts:
+            continue
+        try:
+            tree = ast.parse(py.read_text(encoding="utf-8"))
+        except SyntaxError:  # pragma: no cover - not our source
+            continue
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call) or not node.args:
+                continue
+            func = node.func
+            name = func.attr if isinstance(func, ast.Attribute) else getattr(func, "id", None)
+            if name != "coalesce":
+                continue
+            first = node.args[0]
+            if not isinstance(first, ast.Attribute) or not isinstance(first.value, ast.Name):
+                continue
+            if (first.value.id, first.attr) in enum_columns:
+                offenders.append(
+                    f"{py.relative_to(backend_root)}:{first.lineno} " f"coalesce({first.value.id}.{first.attr}, ...)"
+                )
+    assert sorted(offenders) == []

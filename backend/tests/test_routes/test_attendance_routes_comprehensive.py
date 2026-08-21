@@ -466,6 +466,113 @@ class TestAbsenteeismKPI:
         assert "total_absences" in data
 
 
+class TestAbsenteeismByReasonLabels:
+    """Tests for the by_reason breakdown of GET /api/attendance/kpi/absenteeism.
+
+    The five TestAbsenteeismKPI tests above all run against a fixture that creates
+    NO attendance rows, so by_reason is always [] there and only its shape is
+    asserted. These tests supply real absent rows so the breakdown's *content* is
+    exercised -- which is where both of the defects below lived.
+    """
+
+    def _absence(self, db, setup, idx, absence_type):
+        from backend.orm.attendance_entry import AttendanceEntry
+
+        entry = AttendanceEntry(
+            attendance_entry_id=f"ATT-REASON-{idx:03d}",
+            client_id=setup["client"].client_id,
+            employee_id=setup["employees"][idx % len(setup["employees"])].employee_id,
+            shift_id=setup["shift"].shift_id,
+            shift_date=datetime.combine(date.today() - timedelta(days=1), datetime.min.time()),
+            scheduled_hours=8,
+            actual_hours=0,
+            absence_hours=8,
+            is_absent=1,
+            absence_type=absence_type,
+        )
+        db.add(entry)
+        return entry
+
+    def test_null_absence_type_does_not_500(self, authenticated_client):
+        """An absent row with no recorded reason must not break the endpoint.
+
+        is_absent=1 with absence_type NULL is legitimate (absence recorded before a
+        reason is known). routes/attendance.py used to build the group-by label as
+        func.coalesce(AttendanceEntry.absence_type, "Unspecified"); that expression
+        inherits the column's Enum type, so SQLAlchemy decoded the literal through
+        the enum's result-processor and raised
+            LookupError: 'Unspecified' is not among the defined enum values
+        turning this endpoint into a 500 for the whole request.
+        """
+        client, setup = authenticated_client
+        db = setup["db"]
+        self._absence(db, setup, 0, None)
+        db.commit()
+
+        response = client.get("/api/attendance/kpi/absenteeism")
+
+        assert response.status_code == 200
+        by_reason = response.json()["by_reason"]
+        assert by_reason == [{"reason": "Unspecified", "count": 1, "percentage": 100.0}]
+
+    def test_reason_labels_are_bare_enum_values(self, authenticated_client):
+        """Labels must be the enum's value, not its Python repr.
+
+        by_reason is rendered straight through by Absenteeism.vue, so str() on an
+        AbsenceType member surfaced "AbsenceType.VACATION" to users instead of
+        "VACATION". Verified against VM production before the fix.
+        """
+        from backend.orm.attendance_entry import AbsenceType
+
+        client, setup = authenticated_client
+        db = setup["db"]
+        self._absence(db, setup, 0, AbsenceType.VACATION)
+        self._absence(db, setup, 1, AbsenceType.MEDICAL_LEAVE)
+        db.commit()
+
+        response = client.get("/api/attendance/kpi/absenteeism")
+
+        assert response.status_code == 200
+        labels = sorted(r["reason"] for r in response.json()["by_reason"])
+        assert labels == ["MEDICAL_LEAVE", "VACATION"]
+
+    def test_null_and_typed_absences_coexist(self, authenticated_client):
+        """The mixed case: a NULL row alongside typed rows, all labelled correctly."""
+        from backend.orm.attendance_entry import AbsenceType
+
+        client, setup = authenticated_client
+        db = setup["db"]
+        self._absence(db, setup, 0, AbsenceType.VACATION)
+        self._absence(db, setup, 1, None)
+        db.commit()
+
+        response = client.get("/api/attendance/kpi/absenteeism")
+
+        assert response.status_code == 200
+        counts = {r["reason"]: r["count"] for r in response.json()["by_reason"]}
+        assert counts == {"VACATION": 1, "Unspecified": 1}
+
+
+class TestAbsenceReasonLabel:
+    """Unit tests for routes.attendance._absence_reason_label."""
+
+    def test_label_resolution(self):
+        """None and empty string both mean 'no reason recorded'.
+
+        The empty string is unreachable through the Enum-typed column -- SQLAlchemy's
+        result-processor raises LookupError on "" before it could get here -- but the
+        helper documents that it accepts bare strings, and returning a blank label for
+        one would silently regress the behaviour of the truthiness check it replaced.
+        """
+        from backend.orm.attendance_entry import AbsenceType
+        from backend.routes.attendance import _absence_reason_label
+
+        assert _absence_reason_label(None) == "Unspecified"
+        assert _absence_reason_label("") == "Unspecified"
+        assert _absence_reason_label(AbsenceType.VACATION) == "VACATION"
+        assert _absence_reason_label("MEDICAL_LEAVE") == "MEDICAL_LEAVE"
+
+
 class TestAbsenteeismTrend:
     """Tests for GET /api/attendance/kpi/absenteeism/trend endpoint."""
 
