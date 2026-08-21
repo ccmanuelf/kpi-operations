@@ -14,7 +14,7 @@ import sys
 from datetime import date
 from typing import Optional
 
-from sqlalchemy import Connection, Engine, MetaData, create_engine, delete, select, update
+from sqlalchemy import Connection, Engine, MetaData, create_engine, delete, or_, select, update
 
 from backend.audit import audit_suppressed
 from backend.database import Base
@@ -176,6 +176,39 @@ def _self_referential_columns() -> tuple:
 SELF_REFERENTIAL_SWEEPS = _self_referential_columns()
 
 
+def _nullable_tenant_children() -> tuple:
+    """Swept children whose OWN tenant column is nullable and which hold a
+    ForeignKey into another swept table, as
+    (child, child fk column, child scope column, parent, parent pk).
+
+    A row here with a NULL tenant matches no IN clause, so the scoped DELETE
+    never selects it -- and it then RESTRICTs its parent. No sweep ORDER can fix
+    that, because the row is never visited at all, which is why
+    test_reset_ordering.py cannot see this class either.
+
+    Derived rather than listed: two edges exist today (FLOATING_POOL.employee_id
+    -> EMPLOYEE, ALERT.work_order_id -> WORK_ORDER) and a third added later is
+    handled without a code change here.
+    """
+    found = set()
+    for name, scope in CLIENT_SCOPED_TABLES.items():
+        table = Base.metadata.tables[name]
+        if not table.columns[scope].nullable:
+            continue
+        for column in table.columns:
+            if column.name == scope:
+                continue
+            for fk in column.foreign_keys:
+                parent = fk.column.table.name
+                if parent in CLIENT_SCOPED_TABLES and parent != name:
+                    found.add((name, column.name, scope, parent, fk.column.name))
+    return tuple(sorted(found))
+
+
+#: Children invisible to the scoped sweep because their own tenant column is NULL.
+NULLABLE_TENANT_SWEEPS = _nullable_tenant_children()
+
+
 def _reset(conn: Connection, client_ids: tuple[str, ...]) -> None:
     """Delete only these clients' rows, children first.
 
@@ -232,6 +265,20 @@ def _reset(conn: Connection, client_ids: tuple[str, ...]) -> None:
         conn.execute(
             delete(child).where(
                 child.c[child_column].in_(select(parent.c[parent_pk]).where(parent.c[parent_scope].in_(client_ids)))
+            )
+        )
+
+    for child_name, child_column, child_scope, parent_name, parent_pk in NULLABLE_TENANT_SWEEPS:
+        child = Base.metadata.tables[child_name]
+        parent = Base.metadata.tables[parent_name]
+        parent_scope = CLIENT_SCOPED_TABLES[parent_name]
+        # Selected by PARENT in scope, not by own tenant -- that is the whole
+        # point. The second predicate keeps a row explicitly owned by another
+        # tenant safe even when it points at a demo parent.
+        conn.execute(
+            delete(child).where(
+                child.c[child_column].in_(select(parent.c[parent_pk]).where(parent.c[parent_scope].in_(client_ids))),
+                or_(child.c[child_scope].is_(None), child.c[child_scope].in_(client_ids)),
             )
         )
 
