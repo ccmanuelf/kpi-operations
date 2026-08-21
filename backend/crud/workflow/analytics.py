@@ -64,7 +64,7 @@ def get_transition_statistics(db: Session, client_id: str, current_user: User) -
                 "from_status": t.from_status,
                 "to_status": t.to_status,
                 "count": t.count,
-                "avg_elapsed_hours": round(t.avg_hours, 2) if t.avg_hours else None,
+                "avg_elapsed_hours": float(round(t.avg_hours, 2)) if t.avg_hours is not None else None,
             }
             for t in by_transition
         ],

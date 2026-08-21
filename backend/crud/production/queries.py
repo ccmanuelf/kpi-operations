@@ -124,7 +124,7 @@ def get_daily_summary(
     return [
         {
             "date": result.production_date,
-            "total_units": result.total_units,
+            "total_units": int(result.total_units or 0),
             "avg_efficiency": float(result.avg_efficiency) if result.avg_efficiency else 0,
             "avg_performance": float(result.avg_performance) if result.avg_performance else 0,
             "entry_count": result.entry_count,

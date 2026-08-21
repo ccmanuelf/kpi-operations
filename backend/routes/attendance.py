@@ -449,7 +449,7 @@ def calculate_absenteeism_kpi(
         {
             "department": d.department,
             "workforce": d.workforce,
-            "absences": d.absences,
+            "absences": int(d.absences or 0),
             "rate": round((float(d.absent_hrs or 0) / float(d.scheduled_hrs or 1)) * 100, 1),
         }
         for d in dept_results
@@ -477,7 +477,7 @@ def calculate_absenteeism_kpi(
         {
             "employee_id": e.employee_id,
             "department": e.department,
-            "absence_count": e.absence_count,
+            "absence_count": int(e.absence_count or 0),
             "last_absence": e.last_absence.strftime("%Y-%m-%d") if e.last_absence else None,
         }
         for e in high_absence_results

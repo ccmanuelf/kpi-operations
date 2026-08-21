@@ -470,8 +470,8 @@ def calculate_stage_duration_summary(
             {
                 "from_status": r.from_status,
                 "to_status": r.to_status,
-                "avg_hours": round(r.avg_hours, 2) if r.avg_hours else None,
-                "avg_days": round(r.avg_hours / 24, 2) if r.avg_hours else None,
+                "avg_hours": float(round(r.avg_hours, 2)) if r.avg_hours is not None else None,
+                "avg_days": float(round(r.avg_hours / 24, 2)) if r.avg_hours is not None else None,
                 "min_hours": r.min_hours,
                 "max_hours": r.max_hours,
                 "transition_count": r.count,

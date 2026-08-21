@@ -133,7 +133,7 @@ class QualityService:
             {
                 "date": str(r.date),
                 "fpy_percentage": (
-                    round((r.passed / r.inspected) * 100, 2) if r.inspected and r.inspected > 0 else 0.0
+                    float(round(r.passed / r.inspected * 100, 2)) if r.inspected and r.inspected > 0 else 0.0
                 ),
             }
             for r in rows

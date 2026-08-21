@@ -1693,3 +1693,174 @@ def test_no_coalesce_over_enum_columns():
                     f"{py.relative_to(backend_root)}:{first.lineno} " f"coalesce({first.value.id}.{first.attr}, ...)"
                 )
     assert sorted(offenders) == []
+
+
+# ---------------------------------------------------------------------------
+# Decimal-leak guard (always-on, dialect-agnostic). MariaDB's SUM()/AVG() over an
+# integer column returns DECIMAL, PyMySQL hands back decimal.Decimal, and FastAPI
+# serialises Decimal as a JSON *string* -- so an un-coerced aggregate reaches the
+# client as "1067" instead of 1067 while its neighbours stay numbers. SQLite
+# returns int, so no amount of SQLite testing can catch it; this guard is static.
+# Found live on VM prod across 10 endpoints (e.g. /api/kpi/dashboard total_units,
+# /api/attendance/kpi/absenteeism total_absences).
+# ---------------------------------------------------------------------------
+
+
+def test_no_uncoerced_aggregate_in_response_dict():
+    """A func.sum()/func.avg() label must not land in a dict literal uncoerced.
+
+    int(x or 0) for a SUM over an integer column; float(x or 0) for an AVG or a
+    SUM over a Numeric one. int() and float() are the ONLY wrappers accepted --
+    round(Decimal, n) returns a Decimal, and abs/max/min/str/Decimal can each
+    hand back a Decimal or a string, so none of them prove the value reaches the
+    client as a JSON number.
+
+    An AVG label wrapped in int() is reported as an offender in its own right:
+    AVG over an integer column is fractional on MariaDB, so int() would silently
+    truncate 97.9 to 97. (Cross-model review raised this; no current site does
+    it, and this keeps it that way.)
+
+    Labels are DERIVED per-file from the source, so a new aggregate is covered
+    the moment it is written.
+
+    Known limitation, stated rather than hidden: the scan is anchored on dict
+    literals, so binding an aggregate to a local first (`x = r.avg_hours;
+    return {"v": x}`) or returning it through a helper evades it. Closing that
+    needs dataflow analysis; every occurrence found in this codebase so far has
+    been a direct dict value, and widening the rule to all arithmetic anywhere
+    produced 27 false positives on legitimate internal Decimal maths.
+    """
+    import ast
+    import pathlib
+
+    COERCERS = {"int", "float"}
+
+    backend_root = pathlib.Path(__file__).resolve().parent.parent
+    offenders = []
+
+    for py in sorted(backend_root.rglob("*.py")):
+        if ".venv" in py.parts or "tests" in py.parts or "alembic" in py.parts:
+            continue
+        try:
+            tree = ast.parse(py.read_text(encoding="utf-8"))
+        except SyntaxError:  # pragma: no cover - not our source
+            continue
+
+        # label -> "avg" if any avg() feeds it, else "sum"
+        label_kind = {}
+        for node in ast.walk(tree):
+            if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)):
+                continue
+            if node.func.attr != "label" or not node.args:
+                continue
+            key = node.args[0]
+            if not (isinstance(key, ast.Constant) and isinstance(key.value, str)):
+                continue
+            kinds = {
+                sub.func.attr
+                for sub in ast.walk(node.func.value)
+                if isinstance(sub, ast.Call) and isinstance(sub.func, ast.Attribute) and sub.func.attr in ("sum", "avg")
+            }
+            if not kinds:
+                continue
+            if label_kind.get(key.value) != "avg":
+                label_kind[key.value] = "avg" if "avg" in kinds else "sum"
+        if not label_kind:
+            continue
+
+        def labels_in(node):
+            return [n.attr for n in ast.walk(node) if isinstance(n, ast.Attribute) and n.attr in label_kind]
+
+        def _uncoerced_labels(value):
+            """Aggregate labels that reach the client through `value` unconverted.
+
+            Skips int()/float() subtrees (already JSON numbers) and Compare nodes
+            (`if r.inspected > 0` is a condition, not a serialised value). Catches the
+            bare label, the `x or 0` idiom, and arithmetic such as `r.total * 2`,
+            which yields a Decimal just as the bare label does.
+            """
+            found = []
+
+            def walk(n):
+                if isinstance(n, ast.Call):
+                    name = n.func.id if isinstance(n.func, ast.Name) else getattr(n.func, "attr", None)
+                    if name in COERCERS:
+                        return
+                if isinstance(n, ast.Compare):
+                    return
+                if isinstance(n, ast.IfExp):
+                    # `float(x) if x else 0` -- the test is a condition, not a value.
+                    walk(n.body)
+                    walk(n.orelse)
+                    return
+                if isinstance(n, ast.Attribute) and n.attr in label_kind:
+                    found.append((n.attr, n.lineno))
+                    return
+                for child in ast.iter_child_nodes(n):
+                    walk(child)
+
+            walk(value)
+            return found
+
+        class Walker(ast.NodeVisitor):
+            def visit_Call(self, node):
+                name = node.func.id if isinstance(node.func, ast.Name) else getattr(node.func, "attr", None)
+                if name in COERCERS:
+                    # int(round(...)) rounds to nearest and is a legitimate whole-number
+                    # conversion (e.g. average headcount -> operators). Bare int() over an
+                    # AVG label truncates, which is not.
+                    # round(x) returns the nearest integer, so int(round(x)) is exact.
+                    # round(x, 2) is still fractional -- int() would truncate it, so it
+                    # does NOT earn the exemption.
+                    rounded = any(
+                        isinstance(a, ast.Call)
+                        and getattr(a.func, "id", getattr(a.func, "attr", None)) == "round"
+                        and len(a.args) == 1
+                        for a in node.args
+                    )
+                    if name == "int" and not rounded:
+                        for label in labels_in(node):
+                            if label_kind[label] == "avg":
+                                offenders.append(
+                                    f"{py.relative_to(backend_root)}:{node.lineno} "
+                                    f"int() truncates avg label {label!r} -- use float() or int(round(...))"
+                                )
+                    return  # coerced to a JSON number; subtree is safe
+                self.generic_visit(node)
+
+            def visit_Dict(self, node):
+                for key, value in zip(node.keys, node.values):
+                    if isinstance(key, ast.Constant):
+                        leaked = _uncoerced_labels(value)
+                        if leaked:
+                            attr, lineno = leaked[0]
+                            offenders.append(f'{py.relative_to(backend_root)}:{lineno} "{key.value}": ...{attr}')
+                            continue
+                    self.visit(value)
+
+        Walker().visit(tree)
+
+    assert sorted(offenders) == []
+
+
+@requires_mariadb
+def test_sum_over_integer_returns_decimal_on_mariadb():
+    """Pin the premise behind test_no_uncoerced_aggregate_in_response_dict.
+
+    That guard is static, so it can only be justified by the dialect actually
+    behaving this way. MariaDB widens SUM() over an integer to DECIMAL; SQLite
+    returns int. If MariaDB ever stopped doing this, the guard's rationale would
+    be stale and this test would say so rather than leaving it a folk belief.
+    """
+    from decimal import Decimal
+
+    from sqlalchemy import text
+
+    session = SessionLocal()
+    try:
+        value = session.execute(text("SELECT SUM(x) FROM (SELECT 1 AS x UNION ALL SELECT 2) t")).scalar()
+    finally:
+        session.close()
+
+    assert isinstance(value, Decimal), f"expected Decimal from MariaDB SUM(), got {type(value).__name__}"
+    assert value == 3
