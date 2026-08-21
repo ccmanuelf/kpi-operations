@@ -51,7 +51,13 @@ def _absence_reason_label(raw: object) -> str:
     if raw is None:
         return "Unspecified"
     value = getattr(raw, "value", None)
-    return value if isinstance(value, str) else str(raw)
+    if isinstance(value, str):
+        return value
+    # Preserve the pre-existing falsy-to-"Unspecified" mapping: a bare "" would
+    # otherwise render as a blank label. Unreachable through the Enum-typed
+    # column (its result-processor raises LookupError on "" first), but this
+    # helper's contract accepts bare strings, so it answers for them.
+    return str(raw) or "Unspecified"
 
 
 router = APIRouter(prefix="/api/attendance", tags=["Attendance Tracking"])

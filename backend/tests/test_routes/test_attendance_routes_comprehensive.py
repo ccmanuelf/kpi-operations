@@ -553,6 +553,26 @@ class TestAbsenteeismByReasonLabels:
         assert counts == {"VACATION": 1, "Unspecified": 1}
 
 
+class TestAbsenceReasonLabel:
+    """Unit tests for routes.attendance._absence_reason_label."""
+
+    def test_label_resolution(self):
+        """None and empty string both mean 'no reason recorded'.
+
+        The empty string is unreachable through the Enum-typed column -- SQLAlchemy's
+        result-processor raises LookupError on "" before it could get here -- but the
+        helper documents that it accepts bare strings, and returning a blank label for
+        one would silently regress the behaviour of the truthiness check it replaced.
+        """
+        from backend.orm.attendance_entry import AbsenceType
+        from backend.routes.attendance import _absence_reason_label
+
+        assert _absence_reason_label(None) == "Unspecified"
+        assert _absence_reason_label("") == "Unspecified"
+        assert _absence_reason_label(AbsenceType.VACATION) == "VACATION"
+        assert _absence_reason_label("MEDICAL_LEAVE") == "MEDICAL_LEAVE"
+
+
 class TestAbsenteeismTrend:
     """Tests for GET /api/attendance/kpi/absenteeism/trend endpoint."""
 
