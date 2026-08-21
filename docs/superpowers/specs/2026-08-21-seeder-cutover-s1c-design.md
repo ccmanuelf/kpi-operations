@@ -246,6 +246,22 @@ absent.
 `helpers.ts` must follow. This is a new coupling that did not exist while the e2e suite used the
 old seeder's users; it is accepted because the alternative is duplicating the roster.
 
+**EMPLOYEE re-seed idempotency is a prerequisite for the first real tenant.** Tasks 1 and 2
+made `--reset` protect a tenant outside the allowlist rather than silently deleting its rows —
+the correct direction. But protection and re-seed are in tension: `EMPLOYEE.employee_code`
+carries a GLOBAL unique index, and `EMPLOYEE` has no re-seed idempotency, so a spared employee
+collides on the next seed and `seed(reset=True)` raises. Both hazards converge on the same
+missing capability: resolve an existing employee's PK into the IdMap instead of inserting,
+exactly what S1b built for `USER` under its Ruling 17.
+
+This is unreachable today — the VM hosts only `DEMO-PIECE / DEMO-HOURLY / DEMO-HYBRID /
+SAMPLE_REF`, and Render is demo-only after its one-time rebuild, so no tenant exists that could
+reference a demo employee. **The trigger is explicit: before the first non-allowlisted tenant is
+created on any deployment, EMPLOYEE re-seed idempotency must land.** Until then the failure mode
+is a loud, non-destructive `IntegrityError` that preserves the customer's data, recoverable by
+deleting the offending row. Recorded here rather than only in `_reset`'s docstring, because a
+deferral that lives in a comment is one nobody reads before onboarding a customer.
+
 **`deploy.sh` deletion is irreversible in the working tree but not in history.** If some
 unrecorded workflow used it, that surfaces after the fact. Mitigated by the evidence that it
 cannot currently run at all.
