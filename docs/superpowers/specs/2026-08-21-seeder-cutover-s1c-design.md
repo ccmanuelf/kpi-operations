@@ -262,6 +262,16 @@ is a loud, non-destructive `IntegrityError` that preserves the customer's data, 
 deleting the offending row. Recorded here rather than only in `_reset`'s docstring, because a
 deferral that lives in a comment is one nobody reads before onboarding a customer.
 
+**A note for whoever lands that work.** Three tests currently assert
+`pytest.raises(IntegrityError)` — the two shared-employee tests and the foreign-owned
+null-tenant test. They discriminate correctly today (removing the guard stops the raise, and
+they fail), but they are pinned to the CURRENT failure mode, not to the desired one. Adding
+employee idempotency removes the collision, `seed(reset=True)` starts succeeding, and those
+three tests will fail on a raise that no longer happens. That is the correct signal, not a
+regression: **flip them to assert clean success plus survival** at that point. Stated here so
+the failure reads as "the deferred fix landed" rather than "the idempotency change broke
+`--reset`".
+
 **`deploy.sh` deletion is irreversible in the working tree but not in history.** If some
 unrecorded workflow used it, that surfaces after the fact. Mitigated by the evidence that it
 cannot currently run at all.
