@@ -1722,6 +1722,13 @@ def test_no_uncoerced_aggregate_in_response_dict():
 
     Labels are DERIVED per-file from the source, so a new aggregate is covered
     the moment it is written.
+
+    Known limitation, stated rather than hidden: the scan is anchored on dict
+    literals, so binding an aggregate to a local first (`x = r.avg_hours;
+    return {"v": x}`) or returning it through a helper evades it. Closing that
+    needs dataflow analysis; every occurrence found in this codebase so far has
+    been a direct dict value, and widening the rule to all arithmetic anywhere
+    produced 27 false positives on legitimate internal Decimal maths.
     """
     import ast
     import pathlib
@@ -1802,8 +1809,13 @@ def test_no_uncoerced_aggregate_in_response_dict():
                     # int(round(...)) rounds to nearest and is a legitimate whole-number
                     # conversion (e.g. average headcount -> operators). Bare int() over an
                     # AVG label truncates, which is not.
+                    # round(x) returns the nearest integer, so int(round(x)) is exact.
+                    # round(x, 2) is still fractional -- int() would truncate it, so it
+                    # does NOT earn the exemption.
                     rounded = any(
-                        isinstance(a, ast.Call) and getattr(a.func, "id", getattr(a.func, "attr", None)) == "round"
+                        isinstance(a, ast.Call)
+                        and getattr(a.func, "id", getattr(a.func, "attr", None)) == "round"
+                        and len(a.args) == 1
                         for a in node.args
                     )
                     if name == "int" and not rounded:
