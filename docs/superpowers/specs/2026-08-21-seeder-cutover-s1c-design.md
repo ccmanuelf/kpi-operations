@@ -97,22 +97,32 @@ another swept table), consistent with `CLIENT_SCOPED_TABLES`, `DEPENDENT_SWEEPS`
 
 ### 4.2 Shared employee loses a real tenant's assignment, silently
 
-`EMPLOYEE` is swept by its bare `client_id_assigned`, while
-`EMPLOYEE_CLIENT_ASSIGNMENT.employee_id` declares `ondelete=CASCADE`. An employee whose
-`client_id_assigned` names a demo tenant but who also holds an assignment to a real one loses
-that real assignment when the demo employee is deleted. No IntegrityError, no row count to
-notice — worse than the RESTRICT because it is silent.
+`EMPLOYEE` is swept by its bare `client_id_assigned`, while two of its children declare
+`ondelete=CASCADE`:
 
-**Fix.** Exclude from the `EMPLOYEE` delete any employee holding an
-`EMPLOYEE_CLIENT_ASSIGNMENT` row for a client outside the allowlist. Their demo assignment rows
-are still cleared by the normal scoped sweep, which is correct; only the shared `EMPLOYEE` row
-survives.
+- `EMPLOYEE_CLIENT_ASSIGNMENT.employee_id -> EMPLOYEE`
+- `EMPLOYEE_LINE_ASSIGNMENT.employee_id -> EMPLOYEE`
 
-Handled **explicitly rather than generically**: there is exactly one such edge in the schema,
-and a general "never delete a parent whose cascade reaches a foreign tenant" derivation is
-substantial machinery for a single case. Following the repo's idiom, the *detection* is derived
-and pinned by a guard test asserting the set of such edges is exactly the known one, so a second
-instance fails the build rather than shipping silently.
+An employee whose `client_id_assigned` names a demo tenant but who also holds a client or line
+assignment belonging to a real one loses that real row when the demo employee is deleted. No
+IntegrityError, no row count to notice — worse than the RESTRICT because it is silent.
+
+`EMPLOYEE` is the only swept table with this shape, because it is the only one whose children
+can belong to a *different* tenant than the parent: an employee may be shared across clients,
+whereas a work order, hold or production line belongs to exactly one. The other five
+CASCADE edges into swept tables (`WORKFLOW_TRANSITION_LOG`, `HOLD_STATUS_TRANSITION`,
+`ATTENDANCE_HOUR_ALLOCATION`, `ASSUMPTION_CHANGE`, `EMPLOYEE_LINE_ASSIGNMENT.line_id`) are
+single-tenant chains and cannot strand another tenant's data.
+
+**Fix.** Exclude from the `EMPLOYEE` delete any employee holding a row in either cascade child
+whose own `client_id` falls outside the allowlist. Their demo assignment rows are still cleared
+by the normal scoped sweep, which is correct; only the shared `EMPLOYEE` row survives.
+
+Handled **explicitly rather than generically**: a general "never delete a parent whose cascade
+reaches a foreign tenant" derivation is substantial machinery for a shape only `EMPLOYEE` has.
+Following the repo's idiom, the *detection* is derived — the set of CASCADE edges into a swept
+table whose child carries its own tenant column — and pinned by a guard test asserting that set
+is exactly the known one, so a third instance fails the build rather than shipping silently.
 
 ### 4.3 Testing
 
