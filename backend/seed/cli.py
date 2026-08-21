@@ -14,7 +14,7 @@ import sys
 from datetime import date
 from typing import Optional
 
-from sqlalchemy import Connection, Engine, MetaData, create_engine, delete, select, update
+from sqlalchemy import Connection, Engine, MetaData, create_engine, delete, or_, select, update
 
 from backend.audit import audit_suppressed
 from backend.database import Base
@@ -176,54 +176,129 @@ def _self_referential_columns() -> tuple:
 SELF_REFERENTIAL_SWEEPS = _self_referential_columns()
 
 
+def _nullable_tenant_children() -> tuple:
+    """Swept children whose OWN tenant column is nullable and which hold a
+    ForeignKey into another swept table, as
+    (child, child fk column, child scope column, parent, parent pk).
+
+    A row here with a NULL tenant matches no IN clause, so the scoped DELETE
+    never selects it -- and it then RESTRICTs its parent. No sweep ORDER can fix
+    that, because the row is never visited at all, which is why
+    test_reset_ordering.py cannot see this class either.
+
+    Derived rather than listed: two edges exist today (FLOATING_POOL.employee_id
+    -> EMPLOYEE, ALERT.work_order_id -> WORK_ORDER) and a third added later is
+    handled without a code change here.
+    """
+    found = set()
+    for name, scope in CLIENT_SCOPED_TABLES.items():
+        table = Base.metadata.tables[name]
+        if not table.columns[scope].nullable:
+            continue
+        for column in table.columns:
+            if column.name == scope:
+                continue
+            for fk in column.foreign_keys:
+                parent = fk.column.table.name
+                if parent in CLIENT_SCOPED_TABLES and parent != name:
+                    found.add((name, column.name, scope, parent, fk.column.name))
+    return tuple(sorted(found))
+
+
+#: Children invisible to the scoped sweep because their own tenant column is NULL.
+NULLABLE_TENANT_SWEEPS = _nullable_tenant_children()
+
+
+def _cascade_children_of_employee() -> tuple:
+    """Child tables whose employee_id FK to EMPLOYEE declares ondelete=CASCADE.
+
+    EMPLOYEE is the only swept table whose children can belong to a DIFFERENT
+    tenant than the parent -- an employee may be shared across clients, whereas
+    a work order, hold or production line belongs to exactly one. So it is the
+    only table where deleting a demo row can silently remove a real tenant's
+    data. Two such children exist today.
+    """
+    found = set()
+    for name in CLIENT_SCOPED_TABLES:
+        table = Base.metadata.tables[name]
+        for column in table.columns:
+            for fk in column.foreign_keys:
+                if fk.column.table.name == "EMPLOYEE" and fk.ondelete == "CASCADE":
+                    found.add(name)
+    return tuple(sorted(found))
+
+
+#: Client-scoped children whose employee_id FK to EMPLOYEE cascades.
+CASCADE_CHILDREN_OF_EMPLOYEE = _cascade_children_of_employee()
+
+
 def _reset(conn: Connection, client_ids: tuple[str, ...]) -> None:
     """Delete only these clients' rows, children first.
 
-    Three passes. DEPENDENT_SWEEPS first: those tables carry no tenant column,
-    only a raw FK into a scoped table, so they are cleared by subquery through
-    their parent. Then SELF_REFERENTIAL_SWEEPS -- see its docstring -- breaks
-    every swept table's foreign keys back into itself, which no table-level
-    ordering can resolve. Then every client-scoped table in reverse
-    INSERT_ORDER -- the same metadata topological sort the inserts use, so the
-    two can never drift apart.
+    Four passes, over CLIENT_SCOPED_TABLES (not SEEDED: --reset must clear
+    everything a tenant owns, not only what this seeder wrote -- see
+    _derive_client_scoped_tables):
 
-    The sweep covers CLIENT_SCOPED_TABLES, not SEEDED: --reset must clear
-    everything a tenant owns, not only what this seeder wrote. See
-    _derive_client_scoped_tables.
+    1. DEPENDENT_SWEEPS: tables with no tenant column of their own, only a
+       raw FK into a scoped table -- cleared by subquery through their
+       parent.
+    2. NULLABLE_TENANT_SWEEPS: children whose OWN tenant column is nullable,
+       selected by their PARENT's scope instead of their own -- a NULL
+       tenant column matches no IN clause, so these are invisible to the
+       ordinary scoped sweep in pass 4 and would otherwise strand and
+       RESTRICT their parent's delete. See its docstring.
+    3. SELF_REFERENTIAL_SWEEPS: NULLs every swept table's foreign keys back
+       into itself first, which no table-level ordering can resolve. See
+       its docstring.
+    4. Every client-scoped table, in reverse INSERT_ORDER -- the same
+       metadata topological sort the inserts use, so the two can never
+       drift apart. EMPLOYEE's delete additionally excludes any employee id
+       referenced by a CASCADE_CHILDREN_OF_EMPLOYEE row (own client_id)
+       belonging to a tenant outside this sweep: EMPLOYEE_CLIENT_ASSIGNMENT
+       and EMPLOYEE_LINE_ASSIGNMENT both declare ondelete=CASCADE on
+       employee_id, so without this exclusion deleting a shared demo
+       employee would silently cascade-delete a real tenant's assignment
+       row -- no IntegrityError, no row count to notice.
 
-    KNOWN, UNFIXED, and stated here rather than left for someone to rediscover
-    from an IntegrityError on a customer VM: a swept child whose OWN tenant
-    column is NULLABLE, holding a foreign key into another swept table, is
-    never selected by the scoped DELETE below (its client_id is NULL, so it
-    matches no IN clause) and then RESTRICTs its parent's DELETE. No sweep
-    ORDER can fix it -- the row is never visited at all -- so
-    test_reset_ordering.py cannot see it either. Two edges exist today, both
-    reproducible on plain SQLite with PRAGMA foreign_keys=ON:
-    FLOATING_POOL.employee_id -> EMPLOYEE and ALERT.work_order_id ->
-    WORK_ORDER. The FLOATING_POOL one is reachable through ordinary use:
-    backend/crud/floating_pool/assignments.py builds FloatingPool(...) with
-    client_id omitted, so every POST /api/floating-pool/assign writes a
-    NULL-tenant row referencing a real employee.
+    STATED LIMITATION: pass 4's employee guard and pass 2's FLOATING_POOL
+    edge can conflict. FLOATING_POOL.employee_id is NOT NULL with no
+    ondelete, so if a tenant OUTSIDE this sweep owns a FLOATING_POOL row
+    pointing at a demo employee, protecting that row (pass 2) and deleting
+    the employee (pass 4) are mutually exclusive: the DELETE raises
+    IntegrityError. That is accepted, correct behaviour -- refusing to
+    silently delete a real tenant's row and failing loudly beats corrupting
+    it. The obvious repair, sparing the employee too, was rejected:
+    EMPLOYEE.employee_code carries a GLOBAL unique index
+    (ix_EMPLOYEE_employee_code, not per-client), so a spared employee
+    collides with the next re-seed's employee_code. Fixing that properly
+    needs employee-creation idempotency in the materializer (resolve the
+    existing PK into the IdMap rather than insert, mirroring what S1b did
+    for USER) -- a materializer change, disproportionate to a scenario that
+    cannot arise while demo tenants are the only tenants. Note the
+    asymmetry: ALERT.work_order_id, pass 2's other edge, IS nullable, so it
+    has no equivalent problem.
 
-    A second shape in the same family, and worse because it is SILENT rather
-    than an error: EMPLOYEE is swept by its bare `client_id_assigned`, while
-    EMPLOYEE_CLIENT_ASSIGNMENT.employee_id declares ondelete=CASCADE. An
-    employee whose client_id_assigned names a demo tenant but who also holds an
-    assignment row for a REAL one therefore loses that real assignment when the
-    demo employee is deleted -- no IntegrityError, no row count to notice, just
-    a real customer's employee quietly unassigned. Reaching it needs someone to
-    have set a real employee's client_id_assigned to a demo client, which is
-    why it is recorded rather than fixed here.
+    SECOND STATED LIMITATION, confirmed empirically rather than hypothesised:
+    pass 4's employee guard collides with employee_code uniqueness on its OWN,
+    with no FLOATING_POOL involved at all. Sparing a shared employee (pass 4)
+    and then re-seeding the SAME client with the SAME profile/seed -- the
+    ordinary --reset workflow -- makes materialize() try to INSERT a fresh
+    EMPLOYEE row carrying the identical, deterministic employee_code the
+    spared row already holds, because EMPLOYEE has no re-seed idempotency the
+    way USER does (seed() never checks for an existing employee_code before
+    materializing). That raises the same GLOBAL-unique-index IntegrityError
+    named above, and engine.begin() rolls the whole reset+reseed transaction
+    back, leaving the database exactly as it was -- the shared employee's
+    foreign assignment survives via the rollback rather than via a clean
+    scoped sweep. Accepted for the same reason as the first limitation: a
+    loud, fully-rolled-back failure beats silently deleting a real tenant's
+    row, and the proper fix is the same deferred one -- employee-creation
+    idempotency in the materializer. Pinned by
+    test_reset_does_not_delete_an_employee_shared_with_a_foreign_tenant and
+    its EMPLOYEE_LINE_ASSIGNMENT variant, both of which assert
+    pytest.raises(IntegrityError) rather than a clean success.
 
-    Deliberately NOT fixed on this branch, for two reasons that are facts
-    rather than judgement calls: the identical exposure ALREADY SHIPS in
-    seed_sample_client.py's RESET_TABLE_ORDER (same filter-by-own-tenant
-    strategy, same two tables), so this is not a regression S1b introduces;
-    and this module is not yet wired into deploy.sh, bootstrap/lifecycle.py or
-    any other live path, so nothing calls it outside its own tests. It belongs
-    to the S1c cutover, which is what puts this seeder on a live path -- fixing
-    it needs the NULL-tenant rows attributed or swept by parent, a design
-    decision, not a one-liner.
+    USER is never deleted here -- see the comment closing this function.
     """
     for child_name, child_column, parent_name, parent_pk in DEPENDENT_SWEEPS:
         child = Base.metadata.tables[child_name]
@@ -235,17 +310,46 @@ def _reset(conn: Connection, client_ids: tuple[str, ...]) -> None:
             )
         )
 
+    for child_name, child_column, child_scope, parent_name, parent_pk in NULLABLE_TENANT_SWEEPS:
+        child = Base.metadata.tables[child_name]
+        parent = Base.metadata.tables[parent_name]
+        parent_scope = CLIENT_SCOPED_TABLES[parent_name]
+        # Selected by PARENT in scope, not by own tenant -- that is the whole
+        # point. The second predicate keeps a row explicitly owned by another
+        # tenant safe even when it points at a demo parent.
+        conn.execute(
+            delete(child).where(
+                child.c[child_column].in_(select(parent.c[parent_pk]).where(parent.c[parent_scope].in_(client_ids))),
+                or_(child.c[child_scope].is_(None), child.c[child_scope].in_(client_ids)),
+            )
+        )
+
     for table_name, column_name in SELF_REFERENTIAL_SWEEPS:
         table = Base.metadata.tables[table_name]
         scope = CLIENT_SCOPED_TABLES[table_name]
         conn.execute(update(table).where(table.c[scope].in_(client_ids)).values({column_name: None}))
+
+    # An employee shared with a tenant outside the sweep must survive: both of
+    # its cascade children carry their own client_id, so deleting the employee
+    # would remove a REAL tenant's assignment with no error at all. Their demo
+    # assignment rows are still cleared by the scoped sweep below, which is the
+    # correct outcome; only the shared EMPLOYEE row is spared.
+    shared_employee_ids: set = set()
+    for child_name in CASCADE_CHILDREN_OF_EMPLOYEE:
+        child = Base.metadata.tables[child_name]
+        shared_employee_ids.update(
+            conn.execute(select(child.c.employee_id).where(child.c.client_id.notin_(client_ids))).scalars().all()
+        )
 
     for name in reversed(INSERT_ORDER):
         column = CLIENT_SCOPED_TABLES.get(name)
         if column is None:
             continue
         table = Base.metadata.tables[name]
-        conn.execute(delete(table).where(table.c[column].in_(client_ids)))
+        statement = delete(table).where(table.c[column].in_(client_ids))
+        if name == "EMPLOYEE" and shared_employee_ids:
+            statement = statement.where(table.c.employee_id.notin_(shared_employee_ids))
+        conn.execute(statement)
 
     # USER carries no ForeignKey to CLIENT -- only a bare client_id_assigned
     # column, the same shape EMPLOYEE has -- so nothing derives it and it is
