@@ -12,7 +12,6 @@ from backend.database import get_db
 from backend.auth.jwt import get_current_user
 from backend.orm.user import User
 from backend.dependencies import PaginationParams
-from backend.utils.logging_utils import get_module_logger
 from backend.schemas.filters import (
     SavedFilterCreate,
     SavedFilterUpdate,
@@ -38,9 +37,6 @@ from backend.services.filter_service import (
     get_user_filter_statistics as get_filter_statistics,
     duplicate_saved_filter as duplicate_filter,
 )
-
-logger = get_module_logger(__name__)
-
 
 router = APIRouter(prefix="/api/filters", tags=["Saved Filters"])
 
@@ -70,17 +66,18 @@ def list_saved_filters(
     2. Most recently used
     3. Alphabetically by name
     """
-    try:
-        filters = get_saved_filters(
-            db, user_id=current_user.user_id, filter_type=filter_type, skip=pagination.skip, limit=pagination.limit
-        )
-
-        # Transform to response model with parsed config
-        return [_to_filter_response(f) for f in filters]
-    except Exception:
-        # Return empty list if table doesn't exist or other DB error
-        logger.warning("Error fetching saved filters", exc_info=True)
-        return []
+    # No try/except here on purpose. This endpoint used to swallow every exception
+    # and return [], on the rationale that the table might not exist -- which Alembic
+    # has since made impossible (it is the single schema mechanism, and the baseline
+    # is asserted equal to Base.metadata on both engines every CI run). What the
+    # swallow actually did was hide a real defect: the ORDER BY used NULLS LAST,
+    # which MariaDB rejects with error 1064, so on MariaDB this endpoint returned an
+    # empty list for every user while reporting 200 OK. A genuine query failure must
+    # surface, not masquerade as "you have no saved filters".
+    filters = get_saved_filters(
+        db, user_id=current_user.user_id, filter_type=filter_type, skip=pagination.skip, limit=pagination.limit
+    )
+    return [_to_filter_response(f) for f in filters]
 
 
 @router.post("", response_model=SavedFilterResponse, status_code=status.HTTP_201_CREATED)
