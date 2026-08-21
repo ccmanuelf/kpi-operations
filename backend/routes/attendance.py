@@ -41,6 +41,19 @@ from backend.middleware.client_auth import build_client_filter_clause, verify_cl
 logger = get_module_logger(__name__)
 
 
+def _absence_reason_label(raw: object) -> str:
+    """Render an absence_type group-by key for display.
+
+    Accepts what the driver actually returns: None (no reason recorded), an
+    AbsenceType member, or a bare string. Mirrors the resolution in
+    services/kpi_cause_service.top_absence_type.
+    """
+    if raw is None:
+        return "Unspecified"
+    value = getattr(raw, "value", None)
+    return value if isinstance(value, str) else str(raw)
+
+
 router = APIRouter(prefix="/api/attendance", tags=["Attendance Tracking"])
 
 
@@ -381,10 +394,14 @@ def calculate_absenteeism_kpi(
     # Additional breakdown data for tables
     # ========================================
 
-    # 1. Absence by reason/type - using ORM with func.coalesce for enum handling
+    # 1. Absence by reason/type. Group by the RAW enum column: coalescing a string
+    # literal through an Enum-typed column makes SQLAlchemy decode that literal with
+    # the enum's result-processor, raising LookupError as soon as any absent row has
+    # a NULL absence_type (legitimate -- is_absent=1 before a reason is recorded).
+    # NULL becomes "Unspecified" in Python below, where no enum decoding happens.
     from sqlalchemy import func as sa_func
 
-    absence_type_label = sa_func.coalesce(AttendanceEntry.absence_type, "Unspecified").label("reason")
+    absence_type_label = AttendanceEntry.absence_type.label("reason")
 
     reason_query = db.query(
         absence_type_label,
@@ -402,7 +419,7 @@ def calculate_absenteeism_kpi(
     total_absences_for_pct = sum(r.row_count for r in reason_results) or 1
     by_reason = [
         {
-            "reason": str(r.reason) if r.reason else "Unspecified",
+            "reason": _absence_reason_label(r.reason),
             "count": r.row_count,
             "percentage": round((r.row_count / total_absences_for_pct) * 100, 1),
         }
