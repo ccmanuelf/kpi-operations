@@ -85,7 +85,9 @@ def get_efficiency_by_shift(
             "shift_id": r.shift_id,
             "shift_name": r.shift_name or f"Shift {r.shift_id}",
             "actual_output": int(r.actual_output or 0),
-            "expected_output": _expected_output(r.actual_output or 0, float(r.efficiency) if r.efficiency else None),
+            "expected_output": _expected_output(
+                int(r.actual_output or 0), float(r.efficiency) if r.efficiency else None
+            ),
             "efficiency": float(r.efficiency) if r.efficiency else 0,
         }
         for r in results

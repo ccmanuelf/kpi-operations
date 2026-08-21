@@ -1709,15 +1709,24 @@ def test_no_coalesce_over_enum_columns():
 def test_no_uncoerced_aggregate_in_response_dict():
     """A func.sum()/func.avg() label must not land in a dict literal uncoerced.
 
-    Wrap it: int(x or 0) for a count, float(x or 0) for a measure. The set of
-    aggregate labels is DERIVED per-file from the source, not listed, so a new
-    aggregate is covered the moment it is written.
+    int(x or 0) for a SUM over an integer column; float(x or 0) for an AVG or a
+    SUM over a Numeric one. int() and float() are the ONLY wrappers accepted --
+    round(Decimal, n) returns a Decimal, and abs/max/min/str/Decimal can each
+    hand back a Decimal or a string, so none of them prove the value reaches the
+    client as a JSON number.
+
+    An AVG label wrapped in int() is reported as an offender in its own right:
+    AVG over an integer column is fractional on MariaDB, so int() would silently
+    truncate 97.9 to 97. (Cross-model review raised this; no current site does
+    it, and this keeps it that way.)
+
+    Labels are DERIVED per-file from the source, so a new aggregate is covered
+    the moment it is written.
     """
     import ast
     import pathlib
 
-    AGG = {"sum", "avg"}  # count() is integer on both dialects
-    COERCERS = {"int", "float", "round", "str", "Decimal", "abs", "max", "min", "len"}
+    COERCERS = {"int", "float"}
 
     backend_root = pathlib.Path(__file__).resolve().parent.parent
     offenders = []
@@ -1730,42 +1739,91 @@ def test_no_uncoerced_aggregate_in_response_dict():
         except SyntaxError:  # pragma: no cover - not our source
             continue
 
-        aggregate_labels = set()
+        # label -> "avg" if any avg() feeds it, else "sum"
+        label_kind = {}
         for node in ast.walk(tree):
             if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)):
                 continue
             if node.func.attr != "label" or not node.args:
                 continue
-            label = node.args[0]
-            if not (isinstance(label, ast.Constant) and isinstance(label.value, str)):
+            key = node.args[0]
+            if not (isinstance(key, ast.Constant) and isinstance(key.value, str)):
                 continue
-            if any(
-                isinstance(sub, ast.Call) and isinstance(sub.func, ast.Attribute) and sub.func.attr in AGG
+            kinds = {
+                sub.func.attr
                 for sub in ast.walk(node.func.value)
-            ):
-                aggregate_labels.add(label.value)
-        if not aggregate_labels:
+                if isinstance(sub, ast.Call) and isinstance(sub.func, ast.Attribute) and sub.func.attr in ("sum", "avg")
+            }
+            if not kinds:
+                continue
+            if label_kind.get(key.value) != "avg":
+                label_kind[key.value] = "avg" if "avg" in kinds else "sum"
+        if not label_kind:
             continue
+
+        def labels_in(node):
+            return [n.attr for n in ast.walk(node) if isinstance(n, ast.Attribute) and n.attr in label_kind]
+
+        def _uncoerced_labels(value):
+            """Aggregate labels that reach the client through `value` unconverted.
+
+            Skips int()/float() subtrees (already JSON numbers) and Compare nodes
+            (`if r.inspected > 0` is a condition, not a serialised value). Catches the
+            bare label, the `x or 0` idiom, and arithmetic such as `r.total * 2`,
+            which yields a Decimal just as the bare label does.
+            """
+            found = []
+
+            def walk(n):
+                if isinstance(n, ast.Call):
+                    name = n.func.id if isinstance(n.func, ast.Name) else getattr(n.func, "attr", None)
+                    if name in COERCERS:
+                        return
+                if isinstance(n, ast.Compare):
+                    return
+                if isinstance(n, ast.IfExp):
+                    # `float(x) if x else 0` -- the test is a condition, not a value.
+                    walk(n.body)
+                    walk(n.orelse)
+                    return
+                if isinstance(n, ast.Attribute) and n.attr in label_kind:
+                    found.append((n.attr, n.lineno))
+                    return
+                for child in ast.iter_child_nodes(n):
+                    walk(child)
+
+            walk(value)
+            return found
 
         class Walker(ast.NodeVisitor):
             def visit_Call(self, node):
                 name = node.func.id if isinstance(node.func, ast.Name) else getattr(node.func, "attr", None)
                 if name in COERCERS:
-                    return  # value is coerced -- this subtree is safe
+                    # int(round(...)) rounds to nearest and is a legitimate whole-number
+                    # conversion (e.g. average headcount -> operators). Bare int() over an
+                    # AVG label truncates, which is not.
+                    rounded = any(
+                        isinstance(a, ast.Call) and getattr(a.func, "id", getattr(a.func, "attr", None)) == "round"
+                        for a in node.args
+                    )
+                    if name == "int" and not rounded:
+                        for label in labels_in(node):
+                            if label_kind[label] == "avg":
+                                offenders.append(
+                                    f"{py.relative_to(backend_root)}:{node.lineno} "
+                                    f"int() truncates avg label {label!r} -- use float() or int(round(...))"
+                                )
+                    return  # coerced to a JSON number; subtree is safe
                 self.generic_visit(node)
 
             def visit_Dict(self, node):
                 for key, value in zip(node.keys, node.values):
-                    inner = value.values[0] if isinstance(value, ast.BoolOp) and isinstance(value.op, ast.Or) else value
-                    if (
-                        isinstance(key, ast.Constant)
-                        and isinstance(inner, ast.Attribute)
-                        and inner.attr in aggregate_labels
-                    ):
-                        offenders.append(
-                            f'{py.relative_to(backend_root)}:{inner.lineno} "{key.value}": ...{inner.attr}'
-                        )
-                        continue
+                    if isinstance(key, ast.Constant):
+                        leaked = _uncoerced_labels(value)
+                        if leaked:
+                            attr, lineno = leaked[0]
+                            offenders.append(f'{py.relative_to(backend_root)}:{lineno} "{key.value}": ...{attr}')
+                            continue
                     self.visit(value)
 
         Walker().visit(tree)
