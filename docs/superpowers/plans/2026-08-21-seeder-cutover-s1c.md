@@ -396,12 +396,32 @@ def test_expected_clients_is_the_seeder_allowlist():
 
 
 def test_the_boot_path_cannot_reach_rebuild_schema():
-    """The destructive path is gone by construction, not by configuration."""
+    """The destructive path is gone by construction, not by configuration.
+
+    Asserted against the AST, not the raw source: a substring check would also
+    match COMMENTS, forbidding the explanatory note this removal deserves and
+    training the next reader to delete the comment to make the test pass. This
+    checks what actually executes -- no import of rebuild_schema, no call to it.
+    """
+    import ast
     import inspect
     import backend.bootstrap.lifecycle as lifecycle
 
-    source = inspect.getsource(lifecycle)
-    assert "rebuild_schema" not in source
+    tree = ast.parse(inspect.getsource(lifecycle))
+    imported = {
+        alias.name.split(".")[-1] if alias.asname is None else alias.asname
+        for node in ast.walk(tree)
+        if isinstance(node, (ast.Import, ast.ImportFrom))
+        for alias in node.names
+    }
+    called = {
+        ast.unparse(node.func).split(".")[-1]
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call)
+    }
+
+    assert "rebuild_schema" not in imported
+    assert "rebuild_schema" not in called
 ```
 
 - [ ] **Step 2: Run and confirm both fail**
