@@ -1944,3 +1944,91 @@ def test_nulls_last_clause_is_rejected_but_is_null_ordering_works():
 
     # newest value first, then the older value, and the NULL row last
     assert order == [3, 2, 1]
+
+
+def test_no_aggregate_reaches_a_response_dict_through_a_local():
+    """The companion to test_no_uncoerced_aggregate_in_response_dict, which is
+    anchored on dict literals and therefore cannot see one level of indirection:
+
+        absence_count = result.absence_count or 0     # aggregate, still Decimal
+        ...
+        return {"total_absences": absence_count}      # invisible to that guard
+
+    That is not hypothetical. It shipped: `/api/attendance/kpi/absenteeism`
+    returned `"total_absences": "4"` on MariaDB AFTER the sweep that was supposed
+    to have fixed the whole class, because the value was bound to a local first.
+    Six more sites had the same shape, including
+    `/api/kpi/dashboard/aggregated`'s `on_time_orders` -- another field observed
+    leaking on production and missed by the same blind spot.
+
+    Deliberately narrow, so it stays trustworthy: single-assignment taint within
+    one function body, cleared when the name is re-bound through int()/float().
+    It does not chase attributes, subscripts, helper returns or reassignment
+    through a branch. A wider rule was tried when the first guard was written and
+    produced 27 false positives on legitimate internal Decimal maths; a guard
+    people learn to override is worse than one with a stated edge.
+    """
+    import ast
+    import pathlib
+
+    AGG = {"sum", "avg"}
+    COERCERS = {"int", "float"}
+
+    backend_root = pathlib.Path(__file__).resolve().parent.parent
+    offenders = []
+
+    for py in sorted(backend_root.rglob("*.py")):
+        if ".venv" in py.parts or "tests" in py.parts or "alembic" in py.parts:
+            continue
+        try:
+            tree = ast.parse(py.read_text(encoding="utf-8"))
+        except SyntaxError:  # pragma: no cover - not our source
+            continue
+
+        labels = set()
+        for node in ast.walk(tree):
+            if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)):
+                continue
+            if node.func.attr != "label" or not node.args:
+                continue
+            key = node.args[0]
+            if not (isinstance(key, ast.Constant) and isinstance(key.value, str)):
+                continue
+            if any(
+                isinstance(sub, ast.Call) and isinstance(sub.func, ast.Attribute) and sub.func.attr in AGG
+                for sub in ast.walk(node.func.value)
+            ):
+                labels.add(key.value)
+        if not labels:
+            continue
+
+        for enclosing in [n for n in ast.walk(tree) if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))]:
+            tainted = {}
+            for node in ast.walk(enclosing):
+                if not isinstance(node, ast.Assign) or len(node.targets) != 1:
+                    continue
+                target = node.targets[0]
+                if not isinstance(target, ast.Name):
+                    continue
+                value = node.value
+                inner = value.values[0] if isinstance(value, ast.BoolOp) and isinstance(value.op, ast.Or) else value
+                if isinstance(inner, ast.Attribute) and inner.attr in labels:
+                    tainted[target.id] = (inner.attr, node.lineno)
+                elif isinstance(value, ast.Call):
+                    name = value.func.id if isinstance(value.func, ast.Name) else getattr(value.func, "attr", None)
+                    if name in COERCERS:
+                        tainted.pop(target.id, None)
+            if not tainted:
+                continue
+            for node in ast.walk(enclosing):
+                if not isinstance(node, ast.Dict):
+                    continue
+                for key, value in zip(node.keys, node.values):
+                    if isinstance(key, ast.Constant) and isinstance(value, ast.Name) and value.id in tainted:
+                        label, bound_at = tainted[value.id]
+                        offenders.append(
+                            f'{py.relative_to(backend_root)}:{value.lineno} "{key.value}": {value.id}'
+                            f" (bound at :{bound_at} from .{label})"
+                        )
+
+    assert sorted(offenders) == []
