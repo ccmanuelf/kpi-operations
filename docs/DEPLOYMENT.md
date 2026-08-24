@@ -220,11 +220,11 @@ No manual SQL import is required. Alembic is the single schema mechanism (`backe
 
 Simply ensure the database exists and the connection is configured (see [Environment Variables](#environment-variables)), then start the backend. The schema and demo data will be created automatically.
 
-The auto-seed creates 5 demo clients (ACME-MFG, TEXTILE-PRO, FASHION-WORKS, QUALITY-STITCH, GLOBAL-APPAREL) with employees, work orders, production entries, quality data, capacity planning records, hold catalogs, break times, production lines, equipment, and assignments.
+The auto-seed creates 4 demo clients (DEMO-PIECE, DEMO-HOURLY, DEMO-HYBRID, SAMPLE_REF) with employees, work orders, production entries, quality data, capacity planning records, hold catalogs, break times, production lines, equipment, and assignments.
 
 > **Note:** The old `CAPACITY_PLANNING_ENABLED` flag has been removed — capacity tables are always part of the Alembic schema and the flag had no effect since the Alembic collapse.
 
-**Demo credentials**: admin/admin123, all other users use password123.
+**Demo credentials**: `demo_admin`, `demo_planner`, `demo_leader`, `demo_supervisor`, `demo_operator`, `demo_viewer` — all use password `DemoSeed#2026`.
 
 **Upgrading a pre-Alembic database:** if your database was created before this change (schema present, no `alembic_version` table), stamp it once: `cd backend && python -m alembic stamp head`. For demo databases, it's simpler to just delete the DB file and let startup rebuild and reseed it.
 
@@ -595,7 +595,7 @@ asserting an empty prod DB serves health and returns 401 on login) is the
 release evidence for this stack.
 
 > **The smoke has side effects.** It writes `SMOKE-####` hold-status rows to the
-> `ACME-MFG` client and leaves a `smoke_restore` scratch database behind
+> `DEMO-PIECE` client and leaves a `smoke_restore` scratch database behind
 > (proof 5's restore target). This is harmless on CI and fresh installs; run it
 > knowingly against a live system.
 

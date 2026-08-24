@@ -47,7 +47,7 @@ Authenticate user and receive access token.
 **Request Body:**
 ```json
 {
-  "username": "operator1",
+  "username": "demo_operator",
   "password": "securePassword123"
 }
 ```
@@ -59,8 +59,8 @@ Authenticate user and receive access token.
   "token_type": "bearer",
   "user": {
     "user_id": 5,
-    "username": "operator1",
-    "email": "operator1@example.com",
+    "username": "demo_operator",
+    "email": "demo_operator@example.com",
     "full_name": "John Operator",
     "role": "operator",
     "client_id": 1,
@@ -108,8 +108,8 @@ Get current authenticated user information.
 ```json
 {
   "user_id": 5,
-  "username": "operator1",
-  "email": "operator1@example.com",
+  "username": "demo_operator",
+  "email": "demo_operator@example.com",
   "full_name": "John Operator",
   "role": "operator",
   "client_id": 1,

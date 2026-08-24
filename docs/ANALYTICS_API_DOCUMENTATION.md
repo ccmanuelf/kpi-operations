@@ -48,7 +48,7 @@ tests/
 **Response Example**:
 ```json
 {
-  "client_id": "BOOT-LINE-A",
+  "client_id": "DEMO-PIECE",
   "kpi_type": "efficiency",
   "time_range": "30d",
   "start_date": "2024-01-01",
@@ -98,7 +98,7 @@ tests/
 **Response Example**:
 ```json
 {
-  "client_id": "BOOT-LINE-A",
+  "client_id": "DEMO-PIECE",
   "kpi_type": "efficiency",
   "prediction_method": "double_exponential_smoothing",
   "historical_start": "2024-01-01",
@@ -155,8 +155,8 @@ tests/
   "end_date": "2024-01-30",
   "clients": [
     {
-      "client_id": "BOOT-LINE-A",
-      "client_name": "Boot Production Line A",
+      "client_id": "DEMO-PIECE",
+      "client_name": "Piecework Apparel Co.",
       "average_value": 87.5,
       "percentile_rank": 82,
       "above_benchmark": true,
@@ -201,7 +201,7 @@ tests/
 **Response Example**:
 ```json
 {
-  "client_id": "BOOT-LINE-A",
+  "client_id": "DEMO-PIECE",
   "kpi_type": "efficiency",
   "time_range": "30d",
   "start_date": "2024-01-01",
@@ -257,7 +257,7 @@ tests/
 **Response Example**:
 ```json
 {
-  "client_id": "BOOT-LINE-A",
+  "client_id": "DEMO-PIECE",
   "time_range": "30d",
   "start_date": "2024-01-01",
   "end_date": "2024-01-30",
@@ -434,16 +434,16 @@ All endpoints include:
 
 ```javascript
 // Fetch 30-day trends for main KPIs
-const efficiency = await fetch('/api/analytics/trends?client_id=BOOT-LINE-A&kpi_type=efficiency&time_range=30d');
-const performance = await fetch('/api/analytics/trends?client_id=BOOT-LINE-A&kpi_type=performance&time_range=30d');
-const quality = await fetch('/api/analytics/trends?client_id=BOOT-LINE-A&kpi_type=quality&time_range=30d');
+const efficiency = await fetch('/api/analytics/trends?client_id=DEMO-PIECE&kpi_type=efficiency&time_range=30d');
+const performance = await fetch('/api/analytics/trends?client_id=DEMO-PIECE&kpi_type=performance&time_range=30d');
+const quality = await fetch('/api/analytics/trends?client_id=DEMO-PIECE&kpi_type=quality&time_range=30d');
 ```
 
 ### 2. Predictive Analytics
 
 ```javascript
 // Forecast next 7 days
-const forecast = await fetch('/api/analytics/predictions?client_id=BOOT-LINE-A&kpi_type=efficiency&forecast_days=7');
+const forecast = await fetch('/api/analytics/predictions?client_id=DEMO-PIECE&kpi_type=efficiency&forecast_days=7');
 ```
 
 ### 3. Benchmarking
@@ -457,14 +457,14 @@ const comparison = await fetch('/api/analytics/comparisons?kpi_type=efficiency&t
 
 ```javascript
 // Heatmap for identifying problematic shifts/dates
-const heatmap = await fetch('/api/analytics/heatmap?client_id=BOOT-LINE-A&kpi_type=efficiency&time_range=30d');
+const heatmap = await fetch('/api/analytics/heatmap?client_id=DEMO-PIECE&kpi_type=efficiency&time_range=30d');
 ```
 
 ### 5. Quality Focus
 
 ```javascript
 // Identify top defect types for improvement
-const pareto = await fetch('/api/analytics/pareto?client_id=BOOT-LINE-A&time_range=30d');
+const pareto = await fetch('/api/analytics/pareto?client_id=DEMO-PIECE&time_range=30d');
 ```
 
 ---

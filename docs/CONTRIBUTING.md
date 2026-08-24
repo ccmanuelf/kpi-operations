@@ -26,7 +26,8 @@ cd backend
 python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
-python scripts/init_demo_database.py
+PYTHONPATH=.. python -c "from backend.db.migrate import upgrade_to_head; upgrade_to_head()"
+PYTHONPATH=.. python -m backend.seed.cli --profile full
 
 # Frontend
 cd frontend

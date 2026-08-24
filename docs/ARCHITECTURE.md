@@ -68,7 +68,7 @@ KPI Operations is a manufacturing KPI tracking platform designed for shopfloor o
 +----------------------------+------------------------------------+
 |                        DATABASE                                 |
 |  SQLite (dev) / MariaDB (prod)                                 |
-|  Multi-tenant with client_id isolation (5 demo clients)        |
+|  Multi-tenant with client_id isolation (4 demo clients)        |
 +-----------------------------------------------------------------+
 ```
 
@@ -119,7 +119,8 @@ backend/
   simulation_v2/           # SimPy discrete-event engine + Monte Carlo + MiniZinc optimization/ (4 patterns)
   reports/                 # PDF/Excel generation
   alembic/versions/        # Alembic migrations -- the single schema mechanism
-  scripts/                 # init_demo_database.py (canonical seeder), backup utilities
+  seed/                    # backend.seed.cli (canonical demo/tenant seeder, INSERT-only)
+  scripts/                 # backup, create_admin, docker-entrypoint, defect-type utilities
   utils/
     logging_utils.py       # get_module_logger() -- used by all route modules
 ```
@@ -233,9 +234,9 @@ dependencies — so it runs in every environment, including the Docker image:
 
 | Seeder | Location | Used By |
 |--------|----------|---------|
-| `init_demo_database.py` | `backend/scripts/` | Local development (`python scripts/init_demo_database.py`) AND the Docker / auto-seed path (called from `backend/bootstrap/lifecycle.py`'s lifespan) |
+| `backend.seed.cli` | `backend/seed/` | Local development (`python -m backend.seed.cli --profile full`, after `upgrade_to_head()`) AND the Docker / auto-seed path (called from `backend/bootstrap/lifecycle.py`'s lifespan via `backend.seed.cli.seed(...)`) |
 
-It imports ALL ORM models and creates the comprehensive demo dataset (5 clients, employees, work orders, production data, quality entries, capacity planning data, hold catalogs, break times, production lines, equipment, and assignments). Schema creation itself is Alembic's job (`backend/alembic/versions/`), not the seeder's.
+It imports ALL ORM models and creates the comprehensive demo dataset (4 clients, employees, work orders, production data, quality entries, capacity planning data, hold catalogs, break times, production lines, equipment, and assignments). Schema creation itself is Alembic's job (`backend/alembic/versions/`), not the seeder's.
 
 ---
 
@@ -546,7 +547,8 @@ See `docs/DEPLOYMENT.md` for full deployment instructions.
 # Backend
 cd backend
 pip install -r requirements.txt
-python scripts/init_demo_database.py
+PYTHONPATH=.. python -c "from backend.db.migrate import upgrade_to_head; upgrade_to_head()"
+PYTHONPATH=.. python -m backend.seed.cli --profile full
 uvicorn backend.main:app --reload
 
 # Frontend

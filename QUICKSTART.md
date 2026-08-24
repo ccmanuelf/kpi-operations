@@ -44,7 +44,7 @@ npm run dev
 
 ### Step 3: Login
 
-Open **http://localhost:3000** and login with `operator` / `password123`.
+Open **http://localhost:3000** and login with `demo_operator` / `DemoSeed#2026`.
 
 The SQLite database file is created at `database/kpi_platform.db`. To reset demo data, delete it and restart the backend with `DEMO_MODE=true` — it re-seeds on boot.
 
@@ -115,8 +115,8 @@ Frontend will start at: **http://localhost:3000**
 
 1. Open browser: **http://localhost:3000**
 2. Login with:
-   - **Username**: `operator`
-   - **Password**: `password123`
+   - **Username**: `demo_operator`
+   - **Password**: `DemoSeed#2026`
 3. Navigate to:
    - Dashboard: See sample data
    - Production Entry: Add new entries
@@ -153,11 +153,12 @@ Visit: **http://localhost:8000/docs** for interactive Swagger UI
 
 | Username | Password | Role |
 |----------|----------|------|
-| admin | admin123 | admin |
-| supervisor1 | password123 | supervisor |
-| operator1 | password123 | operator |
-| leader1 | password123 | leader (multi-client) |
-| poweruser | password123 | poweruser |
+| demo_admin | DemoSeed#2026 | admin |
+| demo_planner | DemoSeed#2026 | poweruser |
+| demo_leader | DemoSeed#2026 | leader (multi-client) |
+| demo_supervisor | DemoSeed#2026 | supervisor |
+| demo_operator | DemoSeed#2026 | operator |
+| demo_viewer | DemoSeed#2026 | viewer |
 
 ## Test the Features
 
@@ -298,4 +299,4 @@ For production setup, see `/docs/DEPLOYMENT.md` which includes:
 
 ---
 
-**Ready to go!** Login at http://localhost:3000 with `operator` / `password123`
+**Ready to go!** Login at http://localhost:3000 with `demo_operator` / `DemoSeed#2026`

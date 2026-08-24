@@ -54,7 +54,7 @@ The KPI Operations Dashboard Platform is an enterprise-grade web application des
 - **QR Code Integration** - Scan QR codes for work order lookup and form auto-fill
 - **Responsive Design** - Works on desktop, tablet, mobile
 - **Keyboard Shortcuts** - Power-user productivity features
-- **Demo Data** - Sample data generator with 5 clients, 100 employees
+- **Demo Data** - Sample data generator with 4 demo clients, 100 employees
 - **Production Line Simulation** - SimPy-based simulation with station modeling, bottleneck detection, and throughput analysis
 - **Capacity Planning** - 13-worksheet workbook with orders, calendars, production lines, standards, BOM, stock, scheduling, and analysis
 - **Scenario Comparison** - 11 what-if scenario types (overtime, subcontract, new line, shift changes, efficiency improvements, and more)
@@ -130,11 +130,12 @@ Startup applies Alembic migrations automatically (`RUN_MIGRATIONS_ON_STARTUP=tru
 
 | Username | Password | Role |
 |----------|----------|------|
-| admin | admin123 | Admin |
-| supervisor1 | password123 | Supervisor |
-| operator1 | password123 | Operator |
-| leader1 | password123 | Leader (multi-client) |
-| poweruser | password123 | Power user |
+| demo_admin | DemoSeed#2026 | Admin |
+| demo_planner | DemoSeed#2026 | Power user |
+| demo_leader | DemoSeed#2026 | Leader (multi-client) |
+| demo_supervisor | DemoSeed#2026 | Supervisor |
+| demo_operator | DemoSeed#2026 | Operator |
+| demo_viewer | DemoSeed#2026 | Viewer |
 
 For detailed setup including MariaDB production configuration, see [QUICKSTART.md](QUICKSTART.md).
 
@@ -311,8 +312,8 @@ Production: https://your-domain.com/api
 # Login
 POST /api/auth/login
 {
-  "username": "admin",
-  "password": "admin123"
+  "username": "demo_admin",
+  "password": "DemoSeed#2026"  # pragma: allowlist secret
 }
 
 # Response

@@ -165,7 +165,7 @@ A hold has a category (Material, Quality, Process, etc.) drawn from the per-clie
 
 The customer or business unit a work order, line, or operator belongs to. Every record has a `client_id` and queries are filtered server-side.
 
-The 5 demo clients seeded in the platform: ACME-MFG, BOOT-LINE-A, TEXTILE-PRO, CIRCUIT-WORLD, ELECTRONICS-OEM.
+The 4 demo clients seeded in the platform: DEMO-PIECE, DEMO-HOURLY, DEMO-HYBRID, SAMPLE_REF.
 
 ### Multi-client user
 
