@@ -48,10 +48,10 @@ BATCH_SIZE = 500
 #: and the failure is an IntegrityError far from the edit that caused it.
 INSERT_ORDER = [t.name for t in Base.metadata.sorted_tables]
 
-#: Which column scopes each SEEDED table to a tenant. Salvaged from the
-#: retiring seed_sample_client._reset_table_order(), which is the only place
-#: three different names (client_id / client_id_fk / client_id_assigned) were
-#: ever written down.
+#: Which column scopes each SEEDED table to a tenant. Salvaged from
+#: seed_sample_client.py's (removed in S1c) _reset_table_order(), which was
+#: the only place three different names (client_id / client_id_fk /
+#: client_id_assigned) were ever written down.
 #:
 #: This is the WRITER-side contract: every row this materializer inserts must
 #: carry a real client id in the column named here, never the platform
@@ -63,8 +63,9 @@ CLIENT_SCOPE_COLUMN = {
     "CLIENT": "client_id",
     "CLIENT_CONFIG": "client_id",
     # Client-scoped, not global: KPI_THRESHOLD.client_id is nullable but real,
-    # unique per (client_id, kpi_key), and the retiring seed_sample_client.py
-    # (the source this map was salvaged from) already lists it client-scoped.
+    # unique per (client_id, kpi_key), and seed_sample_client.py (removed in
+    # S1c, the source this map was salvaged from) already lists it
+    # client-scoped.
     "KPI_THRESHOLD": "client_id",
     "HOLD_REASON_CATALOG": "client_id",
     "HOLD_STATUS_CATALOG": "client_id",

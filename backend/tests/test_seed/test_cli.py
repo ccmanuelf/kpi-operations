@@ -500,8 +500,8 @@ def test_the_reset_sweep_completeness_guard_is_not_vacuous():
 
 
 #: The three column names this schema uses to scope a row to a tenant. Salvaged
-#: from the retiring seed_sample_client.py, which is the only place all three
-#: were ever written down together.
+#: from seed_sample_client.py (removed in S1c), which was the only place all
+#: three were ever written down together.
 CLIENT_SCOPE_COLUMN_NAMES = {"client_id", "client_id_fk", "client_id_assigned"}
 
 #: Tenant-NAMED string columns that scope nothing -- CLIENT's own descriptive

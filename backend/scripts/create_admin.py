@@ -81,8 +81,13 @@ def create_admin(session: Session, username: str, password: str, email: Optional
             "create further users from the admin UI, not this script."
         )
 
-    # id + default-email conventions intentionally mirror the demo seeder
-    # (backend/scripts/init_demo_database.py) — change both together.
+    # create_admin.py now owns this USER-{USERNAME} convention alone.
+    # init_demo_database.py (removed in S1c) used to mirror it, but the demo
+    # seeder that replaced it (backend/seed/scenarios.py) deliberately hand-
+    # assigns its own USR-DEMO-* ids (USR-DEMO-ADMIN, USR-DEMO-PLANNER, ...),
+    # not derived from a username at all. Do NOT re-sync the two: the
+    # divergence is intentional, not drift, and the USER- / USR- prefixes
+    # cannot collide.
     user_id = f"USER-{username.upper()}"
     collision = session.get(User, user_id) or session.query(User).filter(User.username == username).first()
     if collision is not None:

@@ -46,17 +46,19 @@ another expression is a blind spot, and the guard reports it as clean:
 * SQL assembled in a variable — ``stmt = "DELETE FROM WORK_ORDER ..."`` then
   ``db.execute(text(stmt))`` (only *literal* strings inside an SQL-executing
   call are scanned);
-* a model held in a variable or loop target — and this one is not
-  hypothetical: ``scripts/seed_sample_client.py::reset_client_data`` does
-  ``for cls, col in RESET_TABLE_ORDER: session.query(cls).…delete()`` over 39
-  models, 11 of them audited (WORK_ORDER, HOLD_ENTRY, EMPLOYEE, KPI_THRESHOLD,
-  …). It passes this guard by BLIND SPOT, not by reviewed exemption: it is
-  absent from ``ALLOWED_BYPASSES`` because the scan never saw it.
+* a model held in a variable or loop target — and this one was not
+  hypothetical: ``scripts/seed_sample_client.py::reset_client_data`` (removed
+  in S1c) did ``for cls, col in RESET_TABLE_ORDER: session.query(cls).…
+  delete()`` over 39 models, 11 of them audited (WORK_ORDER, HOLD_ENTRY,
+  EMPLOYEE, KPI_THRESHOLD, …). It passed this guard by BLIND SPOT, not by
+  reviewed exemption: it was absent from ``ALLOWED_BYPASSES`` because the
+  scan never saw it.
 
-  That code is safe today for a reason that lives elsewhere — its only caller,
-  ``seed_sample_client.main()``, is decorated ``@audit_suppressed()``, so the
-  writes are deliberately outside the trail rather than accidentally missing
-  from it. If that decorator is ever removed, this guard will NOT tell you.
+  That code was safe for a reason that lived elsewhere — its only caller,
+  ``seed_sample_client.main()``, was decorated ``@audit_suppressed()``, so the
+  writes were deliberately outside the trail rather than accidentally missing
+  from it. If that decorator had ever been removed, this guard would NOT have
+  told you.
 
 So: green here means "no bypass of the *recognised* shapes", not "no bypass".
 Closing a blind spot means teaching ``_scan`` the shape (and adding a

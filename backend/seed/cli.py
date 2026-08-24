@@ -2,7 +2,7 @@
 
   python -m backend.seed.cli --profile full --as-of 2026-08-18
 
-Prod-safety carries over from seed_sample_client unchanged (spec section 9):
+Prod-safety carries over from seed_sample_client.py (removed in S1c) unchanged (spec section 9):
 INSERT-only, refuses any client not on the allowlist, never creates or drops
 schema -- Alembic is the single schema mechanism -- and --reset deletes only
 allowlisted clients' rows.
@@ -39,8 +39,9 @@ ALLOWLIST = frozenset(s.client_id for s in SCENARIOS)
 #: instead. AUDIT_ENTRY.client_id and EVENT_STORE.client_id are bare columns
 #: too and are also deliberately absent: they are append-only ledgers rather
 #: than client fixture data, this seeder writes zero rows to either (it runs
-#: under audit_suppressed()), the retiring seed_sample_client.py never touched
-#: them, and neither carries a foreign key, so neither can block a delete.
+#: under audit_suppressed()), seed_sample_client.py (removed in S1c) never
+#: touched them, and neither carries a foreign key, so neither can block a
+#: delete.
 _UNDERIVABLE_CLIENT_SCOPE_COLUMNS = {"EMPLOYEE": "client_id_assigned"}
 
 
@@ -59,7 +60,8 @@ def _derive_client_scoped_tables(metadata: Optional[MetaData] = None) -> dict[st
     Derived from Base.metadata, not hand-listed. Any table carrying a
     ForeignKey to CLIENT.client_id is client fixture data by construction, so
     a table added later is swept automatically -- which is what
-    seed_sample_client's hand-written RESET_TABLE_ORDER could not do.
+    seed_sample_client.py's (removed in S1c) hand-written RESET_TABLE_ORDER
+    could not do.
 
     Deliberately NOT `SEEDED`. What the seeder WRITES and what --reset must
     CLEAR are different sets: 45 tables hold a FK into CLIENT while the
@@ -364,8 +366,8 @@ def _reset(conn: Connection, client_ids: tuple[str, ...]) -> None:
     # unconditional USER delete RESTRICTs the moment a demo user has used one
     # of those features -- e.g. saved a dashboard filter. That is the default
     # full-allowlist --reset path, not an edge case, and it is a regression
-    # the retiring seed_sample_client.py never had (it never deleted USER at
-    # all).
+    # seed_sample_client.py (removed in S1c) never had (it never deleted USER
+    # at all).
     # User creation is idempotent instead -- see seed() below -- which also
     # means a demo user's saved filters and acknowledged alerts genuinely
     # survive a reset, arguably correct since that is user state, not client
