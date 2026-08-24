@@ -154,7 +154,10 @@ def test_seed_cli_seed_writes_no_audit_rows(monkeypatch):
     finally:
         engine.dispose()
 
-    assert observed["suppressed"] is True, "materialize() ran without audit suppression active"
+    assert observed.get("suppressed") is True, (
+        "materialize() ran without audit suppression active "
+        "(or seed() never reached materialize() at all, leaving the spy unset)"
+    )
 
 
 # ==================== csv_upload_processor.py ====================
