@@ -28,7 +28,8 @@ run_migrations() {
     echo "[INIT] Migrations complete (head)"
 }
 
-# Demo seeding is handled by main.py lifespan (smart reseed with TestDataFactory).
+# Demo seeding is handled by the lifespan hook in backend/bootstrap/lifecycle.py,
+# which calls backend.seed.cli.seed() and only when DEMO_MODE is on.
 # The entrypoint only handles infrastructure (DB connectivity, migrations).
 
 # Function to verify database connectivity

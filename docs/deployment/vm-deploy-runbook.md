@@ -207,11 +207,34 @@ armed. Living captures complete.
   demo/CI paths that seed or reset data.
 - **Seeding demo/sample clients:** unlike the `DEMO_MODE` path above, `docker
   compose -f docker-compose.prod.yml exec backend python -m
-  backend.scripts.seed_sample_client --days 90` is a separate, prod-safe,
+  backend.seed.cli --profile full` is a separate, prod-safe,
   INSERT-only seeder gated by a fixed client allowlist (`DEMO-PIECE`,
   `DEMO-HOURLY`, `DEMO-HYBRID`, `SAMPLE_REF`) — it never drops or creates
   schema. It seeds with **today's date by default** (recent, visible data);
-  pass `--anchor YYYY-MM-DD` for reproducible/backdated seeding.
+  pass `--as-of YYYY-MM-DD` for reproducible/backdated seeding. Other flags:
+  `--client` (repeatable, defaults to every allowlisted client), `--seed` (RNG
+  seed, default 1234) and `--reset` (delete the allowlisted clients' rows
+  before seeding). There is no `--days`; the seeded window comes from the
+  profile.
+- **Run it through `exec backend`, never from a host shell.** With
+  `DATABASE_URL` unset the seeder falls back to
+  `sqlite:///<repo>/database/kpi_platform.db` and seeds a local SQLite file
+  **without any error** — the command succeeds, prints row counts, and MariaDB
+  is untouched. Inside the container `DATABASE_URL` is set, which is why the
+  `docker compose ... exec backend` form above is the only supported one.
+  Confirm the result against MariaDB, not against the command's own output.
+- **Seeded demo users** (written by the seeder; password `DemoSeed#2026`):
+  `demo_admin` (admin), `demo_planner` (poweruser), `demo_leader` (leader,
+  scoped to DEMO-PIECE/DEMO-HOURLY/DEMO-HYBRID), plus `demo_supervisor`,
+  `demo_operator` and `demo_viewer` (each scoped to DEMO-PIECE). These belong
+  to the demo tenants only. The real admin comes from `create_admin.py`, which
+  owns a separate `USER-{USERNAME}` id convention and is untouched by re-seeds.
+- **Re-seeding is manual, and the data ages.** The seeded window ends at the
+  date of the seed run, so a host left un-reseeded drifts steadily into the
+  past and its dashboards go quiet — the same behaviour as before this change,
+  not a regression introduced by it. Either schedule a periodic re-seed
+  (`--reset` re-creates the allowlisted clients' rows in place) or accept the
+  staleness as a deliberate choice rather than by omission.
 - **Firewall changes:** `sudo ufw allow <port>/tcp` (confirmed, recorded in
   Living captures). Current allows: 22, 443, 80, 7070 (bridge), 5443 (bridge),
   3389 (RDP).

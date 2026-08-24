@@ -68,9 +68,8 @@ def process_csv_upload(
     (backend/endpoints/csv_upload.py). A supervisor uploading 500 hold
     records must leave the same entity-level trail as editing one hold in
     the UI -- bulk changes are exactly the ones most worth tracing. Only the
-    demo seeders (backend/scripts/seed_sample_client.py,
-    backend/scripts/init_demo_database.py) suppress, because they generate
-    fixture data rather than a human decision.
+    demo seeder (backend/seed/cli.py's seed()) suppresses, because it
+    generates fixture data rather than a human decision.
     """
     total_rows = 0
     successful = 0

@@ -35,7 +35,7 @@ import { login } from './helpers'
  * selector of its own — activeClientId() falls back to
  * authStore.user.client_id_assigned, which is null for a fresh admin
  * session, so an admin session can load the grid but can't create
- * attendance records. operator1 carries an assigned client (ACME-MFG
+ * attendance records. demo_operator carries an assigned client (DEMO-PIECE
  * per the demo seed) and matches this grid's real-world primary users.
  */
 
@@ -100,7 +100,7 @@ async function seedExistingAttendanceEntry(page: Page) {
       method: 'POST',
       headers: { ...headers, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        client_id: 'ACME-MFG',
+        client_id: 'DEMO-PIECE',
         employee_id: employee.employee_id,
         shift_date: today,
         shift_id: shift.shift_id,

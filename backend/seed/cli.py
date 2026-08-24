@@ -2,7 +2,7 @@
 
   python -m backend.seed.cli --profile full --as-of 2026-08-18
 
-Prod-safety carries over from seed_sample_client unchanged (spec section 9):
+Prod-safety carries over from seed_sample_client.py (removed in S1c) unchanged (spec section 9):
 INSERT-only, refuses any client not on the allowlist, never creates or drops
 schema -- Alembic is the single schema mechanism -- and --reset deletes only
 allowlisted clients' rows.
@@ -14,7 +14,8 @@ import sys
 from datetime import date
 from typing import Optional
 
-from sqlalchemy import Connection, Engine, MetaData, create_engine, delete, or_, select, update
+from sqlalchemy import Connection, Engine, MetaData, and_, create_engine, delete, or_, select, update
+from sqlalchemy.sql.elements import ColumnElement
 
 from backend.audit import audit_suppressed
 from backend.database import Base
@@ -39,8 +40,9 @@ ALLOWLIST = frozenset(s.client_id for s in SCENARIOS)
 #: instead. AUDIT_ENTRY.client_id and EVENT_STORE.client_id are bare columns
 #: too and are also deliberately absent: they are append-only ledgers rather
 #: than client fixture data, this seeder writes zero rows to either (it runs
-#: under audit_suppressed()), the retiring seed_sample_client.py never touched
-#: them, and neither carries a foreign key, so neither can block a delete.
+#: under audit_suppressed()), seed_sample_client.py (removed in S1c) never
+#: touched them, and neither carries a foreign key, so neither can block a
+#: delete.
 _UNDERIVABLE_CLIENT_SCOPE_COLUMNS = {"EMPLOYEE": "client_id_assigned"}
 
 
@@ -59,7 +61,8 @@ def _derive_client_scoped_tables(metadata: Optional[MetaData] = None) -> dict[st
     Derived from Base.metadata, not hand-listed. Any table carrying a
     ForeignKey to CLIENT.client_id is client fixture data by construction, so
     a table added later is swept automatically -- which is what
-    seed_sample_client's hand-written RESET_TABLE_ORDER could not do.
+    seed_sample_client.py's (removed in S1c) hand-written RESET_TABLE_ORDER
+    could not do.
 
     Deliberately NOT `SEEDED`. What the seeder WRITES and what --reset must
     CLEAR are different sets: 45 tables hold a FK into CLIENT while the
@@ -209,6 +212,78 @@ def _nullable_tenant_children() -> tuple:
 NULLABLE_TENANT_SWEEPS = _nullable_tenant_children()
 
 
+def _parents_widened_by_the_nullable_tenant_sweep() -> tuple:
+    """Tables that sit on BOTH sides of the reset: named as a PARENT in
+    DEPENDENT_SWEEPS and as a CHILD in NULLABLE_TENANT_SWEEPS.
+
+    This is the intersection where the two passes interact, and it is exactly
+    the set for which "the parent rows in scope" and "the parent rows this
+    reset deletes" are DIFFERENT sets. Pass 1 clears a grandchild by selecting
+    its parent, and if it selects only `parent.scope IN client_ids` while pass
+    2 goes on to delete additional NULL-tenant parent rows, the grandchildren
+    of those extra rows are never visited: orphaned where foreign keys are off
+    (main()'s bare engine), an IntegrityError that rolls back the whole
+    reset+reseed where they are on (MariaDB/InnoDB, i.e. production, and the
+    DEMO_MODE boot path where run_best_effort swallows it into a warning).
+
+    ALERT is the one member today and it is reachable through the product's
+    own API, not by hand: POST /api/alerts treats client_id as optional
+    (routes/alerts/crud.py:238 is a guard, not a requirement) while accepting
+    a work_order_id, and resolving that alert writes the ALERT_HISTORY row.
+
+    DERIVED rather than naming ALERT, matching this module's other four
+    derived sets, and PINNED by
+    test_the_widened_reset_parents_are_exactly_the_known_one. The widening
+    itself is generic -- _rows_deleted_by_reset walks NULLABLE_TENANT_SWEEPS,
+    so a second member is handled without a code change here -- but the guard
+    still earns its place: each member is a shape whose two passes must be
+    re-argued (a NOT NULL tenant column, a self-referential edge, or a
+    grandchild with its own children would each need a different answer), and
+    a set that silently grows is how this bug got in.
+    """
+    dependent_parents = {parent for _, _, parent, _ in DEPENDENT_SWEEPS}
+    nullable_children = {child for child, _, _, _, _ in NULLABLE_TENANT_SWEEPS}
+    return tuple(sorted(dependent_parents & nullable_children))
+
+
+#: Pass-1 parents whose deleted-row set is wider than their in-scope set.
+WIDENED_RESET_PARENTS = _parents_widened_by_the_nullable_tenant_sweep()
+
+
+def _rows_deleted_by_reset(table_name: str, client_ids: tuple[str, ...]) -> ColumnElement:
+    """THE definition of "rows of `table_name` that this reset deletes".
+
+    One source of truth, consulted by pass 2 (which executes the delete) and
+    by pass 1 (which must clear the children of every row pass 2 will remove,
+    not merely the in-scope ones). Duplicating the predicate across the two
+    passes is what let them disagree: pass 1 had no knowledge of the set pass
+    2 widens to, so a NULL-tenant ALERT pointing at a demo WORK_ORDER was
+    deleted with its ALERT_HISTORY children left behind. See
+    _parents_widened_by_the_nullable_tenant_sweep.
+
+    `scope IN client_ids` is the base term -- what pass 4 deletes -- so the
+    NULLABLE_TENANT_SWEEPS terms reduce to the NULL-tenant case: a row whose
+    own tenant column is NULL and which points at an in-scope parent. A row
+    explicitly owned by ANOTHER tenant is matched by neither term and stays
+    safe, which is the guarantee pass 2's `or_` carried before.
+    """
+    table = Base.metadata.tables[table_name]
+    scope = CLIENT_SCOPED_TABLES[table_name]
+    terms: list = [table.c[scope].in_(client_ids)]
+    for child_name, child_column, child_scope, parent_name, parent_pk in NULLABLE_TENANT_SWEEPS:
+        if child_name != table_name:
+            continue
+        parent = Base.metadata.tables[parent_name]
+        parent_scope = CLIENT_SCOPED_TABLES[parent_name]
+        terms.append(
+            and_(
+                table.c[child_column].in_(select(parent.c[parent_pk]).where(parent.c[parent_scope].in_(client_ids))),
+                table.c[child_scope].is_(None),
+            )
+        )
+    return or_(*terms)
+
+
 def _cascade_children_of_employee() -> tuple:
     """Child tables whose employee_id FK to EMPLOYEE declares ondelete=CASCADE.
 
@@ -241,12 +316,17 @@ def _reset(conn: Connection, client_ids: tuple[str, ...]) -> None:
 
     1. DEPENDENT_SWEEPS: tables with no tenant column of their own, only a
        raw FK into a scoped table -- cleared by subquery through their
-       parent.
+       parent. The subquery selects every parent row THIS RESET DELETES
+       (_rows_deleted_by_reset), not merely the in-scope ones: for a parent
+       pass 2 also widens, the two differ, and the difference is a
+       grandchild orphaned or an IntegrityError. See
+       _parents_widened_by_the_nullable_tenant_sweep.
     2. NULLABLE_TENANT_SWEEPS: children whose OWN tenant column is nullable,
-       selected by their PARENT's scope instead of their own -- a NULL
+       selected by their PARENT's scope as well as their own -- a NULL
        tenant column matches no IN clause, so these are invisible to the
        ordinary scoped sweep in pass 4 and would otherwise strand and
-       RESTRICT their parent's delete. See its docstring.
+       RESTRICT their parent's delete. Same predicate pass 1 used, by
+       construction. See its docstring.
     3. SELF_REFERENTIAL_SWEEPS: NULLs every swept table's foreign keys back
        into itself first, which no table-level ordering can resolve. See
        its docstring.
@@ -303,26 +383,25 @@ def _reset(conn: Connection, client_ids: tuple[str, ...]) -> None:
     for child_name, child_column, parent_name, parent_pk in DEPENDENT_SWEEPS:
         child = Base.metadata.tables[child_name]
         parent = Base.metadata.tables[parent_name]
-        parent_scope = CLIENT_SCOPED_TABLES[parent_name]
+        # Selected against EVERY parent row this reset deletes, not just the
+        # in-scope ones: for a parent that pass 2 also widens (ALERT today),
+        # `parent.scope IN client_ids` alone leaves the grandchildren of the
+        # NULL-tenant parent rows behind. See _rows_deleted_by_reset.
         conn.execute(
             delete(child).where(
-                child.c[child_column].in_(select(parent.c[parent_pk]).where(parent.c[parent_scope].in_(client_ids)))
+                child.c[child_column].in_(
+                    select(parent.c[parent_pk]).where(_rows_deleted_by_reset(parent_name, client_ids))
+                )
             )
         )
 
-    for child_name, child_column, child_scope, parent_name, parent_pk in NULLABLE_TENANT_SWEEPS:
+    for child_name in sorted({child for child, _, _, _, _ in NULLABLE_TENANT_SWEEPS}):
         child = Base.metadata.tables[child_name]
-        parent = Base.metadata.tables[parent_name]
-        parent_scope = CLIENT_SCOPED_TABLES[parent_name]
         # Selected by PARENT in scope, not by own tenant -- that is the whole
-        # point. The second predicate keeps a row explicitly owned by another
-        # tenant safe even when it points at a demo parent.
-        conn.execute(
-            delete(child).where(
-                child.c[child_column].in_(select(parent.c[parent_pk]).where(parent.c[parent_scope].in_(client_ids))),
-                or_(child.c[child_scope].is_(None), child.c[child_scope].in_(client_ids)),
-            )
-        )
+        # point, and it is the same predicate pass 1 just used to find these
+        # rows' children. A row explicitly owned by another tenant is matched
+        # by no term and stays safe even when it points at a demo parent.
+        conn.execute(delete(child).where(_rows_deleted_by_reset(child_name, client_ids)))
 
     for table_name, column_name in SELF_REFERENTIAL_SWEEPS:
         table = Base.metadata.tables[table_name]
@@ -364,8 +443,8 @@ def _reset(conn: Connection, client_ids: tuple[str, ...]) -> None:
     # unconditional USER delete RESTRICTs the moment a demo user has used one
     # of those features -- e.g. saved a dashboard filter. That is the default
     # full-allowlist --reset path, not an edge case, and it is a regression
-    # the retiring seed_sample_client.py never had (it never deleted USER at
-    # all).
+    # seed_sample_client.py (removed in S1c) never had (it never deleted USER
+    # at all).
     # User creation is idempotent instead -- see seed() below -- which also
     # means a demo user's saved filters and acknowledged alerts genuinely
     # survive a reset, arguably correct since that is user state, not client

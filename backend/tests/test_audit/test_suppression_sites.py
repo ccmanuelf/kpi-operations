@@ -2,13 +2,21 @@
 writers (CSV/XLSX upload) must still be fully captured.
 
 Owner ruling (2026-08-12, fix round 1) narrowed this file's original scope:
-suppression is ONLY for the two demo seeders (seed_sample_client.main(),
-init_demo_database.init_database()), which generate machine-created fixture
-data carrying no human decision. process_csv_upload is reached from 11
-authenticated, user-facing endpoints -- a supervisor uploading 500 hold
+suppression is ONLY for the demo seeder, which generates machine-created
+fixture data carrying no human decision. process_csv_upload is reached from
+11 authenticated, user-facing endpoints -- a supervisor uploading 500 hold
 records must leave the same trail as editing one hold in the UI, so it is
 deliberately NOT suppressed. See backend/services/csv_upload_processor.py's
 docstring.
+
+S1c repoints this file at the ONE seeder that survives the cutover:
+`backend.seed.cli.seed()`. The two retiring seeders (seed_sample_client.main(),
+init_demo_database.init_database()) each had their own test here; both are
+gone now that S1c's later task deletes the modules they drove. S2 changes
+this file's contract again: once the materializer authors its own audit
+trail for the events it plays back, "zero AUDIT_ENTRY rows" becomes "every
+audit row is one the materializer authored" -- a materializer-attributed
+trail, not an absence of one.
 
 Behavioural on purpose: an earlier draft of this task's plan asserted
 `"audit_suppressed" in inspect.getsource(module)`, which passes if the name
@@ -16,10 +24,26 @@ merely appears in a comment and proves nothing about what the writer
 actually wrote. Every test here runs the real writer with audit capture
 registered and counts AUDIT_ENTRY rows.
 
+`backend.seed.cli.seed()` is a special case worth recording rather than
+silently relying on: `backend/seed/materialize.py` writes exclusively
+through Core (`Connection.execute(insert(table), rows)`), never through an
+ORM `Session`. `register_audit_listener()`'s handlers are ORM *mapper*
+events (`after_insert`/`before_update`/`before_delete` on `Base`,
+`propagate=True`) that SQLAlchemy fires only from a `Session` flush's unit
+of work -- a bare Core insert never reaches them. So the zero-row count
+below holds structurally, independent of `@audit_suppressed()`; verified
+directly (commenting out the decorator on `seed()` and rerunning left the
+count at 0). The count assertion is kept anyway as the documented contract
+and a regression guard against a future writer that starts touching the ORM
+without suppression, but the assertion that actually discriminates the
+decorator being present is `test_seed_cli_seed_writes_no_audit_rows`'s spy
+on `is_suppressed()` sampled from inside the real `materialize()` call --
+the only point that can observe the contextvar `audit_suppressed()` resets
+in a `finally` the instant `seed()` returns.
+
 Also includes a mandatory control (`test_writes_outside_suppression_are_still_captured`):
-without it, all-zero counts in the two seeder suppression tests would be
-equally satisfied by capture being broken entirely, not by suppression
-working.
+without it, an all-zero count above would be equally satisfied by capture
+being broken entirely, not by suppression working.
 
 `register_audit_listener()` attaches process-wide SQLAlchemy mapper events
 (see backend/audit/capture.py's module docstring) -- not scoped to a
@@ -28,17 +52,11 @@ backend/tests/test_audit/test_capture.py) and an autouse fixture unregisters
 it on teardown to avoid bleeding into later test modules.
 """
 
-import os
-import sqlite3
-import subprocess
-import sys
-from pathlib import Path
+from datetime import date
 
 import pytest
 
 from backend.orm.audit_entry import AuditEntry
-
-REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
 @pytest.fixture(autouse=True)
@@ -53,114 +71,93 @@ def _audit_count(db) -> int:
     return int(db.query(AuditEntry).count())
 
 
-# ==================== seed_sample_client.py ====================
+# ==================== backend.seed.cli.seed ====================
 
 
-def test_seed_sample_client_main_writes_no_audit_rows(tmp_path, monkeypatch):
-    """`main()` is the real CLI/production entry point (the module's own
-    docstring documents the VM invocation as `python -m
-    backend.scripts.seed_sample_client`) and is what runs on a `--reset`
-    re-seed. It owns its own engine/session (built from DATABASE_URL), so
-    this drives it end-to-end against a throwaway file-based sqlite db
-    rather than a shared fixture session.
+def test_seed_cli_seed_writes_no_audit_rows(monkeypatch):
+    """`seed()` (backend/seed/cli.py) is the one seeder left after S1c; this
+    replaces the two retiring seeder-specific tests this file used to carry.
+    Runs against a real Alembic-built schema (`clone_template_engine` --
+    Alembic is the single schema mechanism, never `create_all`; see
+    `test_no_create_all_outside_alembic`) with the real audit listener
+    registered, the worst case for suppression: if anything in the write
+    path went through the ORM, this would capture it unless genuinely
+    suppressed.
+
+    Two independent checks, because either alone is weak here (see the
+    module docstring's explanation of why this writer is Core-only):
+
+    1. The documented contract, zero AUDIT_ENTRY rows -- holds structurally
+       for this writer regardless of the decorator, so it alone would not
+       catch the decorator being removed.
+    2. A spy on `materialize()`, patched by the name `cli.py` binds it under
+       (`backend.seed.cli.materialize`, not `backend.seed.materialize.materialize`
+       -- cli.py's `from ... import materialize` gives it its own reference,
+       so patching the origin module would leave cli.py still calling the
+       original), that samples `is_suppressed()` from inside the real call.
+       That is the assertion the mutation proof in this task's report
+       actually breaks.
     """
-    from sqlalchemy import create_engine
-    from sqlalchemy.orm import Session
+    import backend.seed.cli as cli_module
+    from sqlalchemy import func, select
 
     from backend.audit.capture import register_audit_listener
-    from backend.db.factories import TestDataFactory
-    from backend.db.migrate import upgrade_to_head
-    from backend.orm import HoldEntry, WorkOrder
-    from backend.scripts import seed_sample_client as seed
+    from backend.audit.context import is_suppressed
+    from backend.database import Base
+    from backend.tests.conftest import clone_template_engine
 
-    db_path = tmp_path / "seed_audit_test.db"
-    db_url = f"sqlite:///{db_path}"
-    upgrade_to_head(db_url)
+    observed = {}
+    real_materialize = cli_module.materialize
 
-    # seed.main() resolves entered_by via a real admin user -- seed it first,
-    # same as the existing full-orchestrator tests in
-    # tests/test_scripts/test_seed_sample_client.py (`_seed_admin`).
-    setup_engine = create_engine(db_url)
-    try:
-        with Session(setup_engine) as session:
-            TestDataFactory.create_user(session, username="seed_admin", role="admin")
-            session.commit()
-    finally:
-        setup_engine.dispose()
+    def _spy(conn, events, profile):
+        observed["suppressed"] = is_suppressed()
+        return real_materialize(conn, events, profile)
+
+    monkeypatch.setattr(cli_module, "materialize", _spy)
 
     register_audit_listener()
-    monkeypatch.setenv("DATABASE_URL", db_url)
-
-    rc = seed.main(["--client", "DEMO-PIECE", "--days", "1"])
-    assert rc == 0
-
-    check_engine = create_engine(db_url)
+    engine = clone_template_engine()
     try:
-        with Session(check_engine) as session:
+        client_id = sorted(cli_module.ALLOWLIST)[0]
+        cli_module.seed(
+            engine,
+            client_ids=(client_id,),
+            profile_name="smoke",
+            seed_value=1234,
+            as_of=date(2026, 8, 18),
+            reset=False,
+        )
+
+        client_table = Base.metadata.tables["CLIENT"]
+        work_order = Base.metadata.tables["WORK_ORDER"]
+        hold_entry = Base.metadata.tables["HOLD_ENTRY"]
+        audit_table = Base.metadata.tables["AUDIT_ENTRY"]
+        with engine.connect() as conn:
             # Sanity: the run actually performed writes to audited tables
             # (CLIENT, WORK_ORDER, HOLD_ENTRY), so a zero AUDIT_ENTRY count
             # below is not merely "nothing happened".
-            assert session.query(seed.Client).filter_by(client_id="DEMO-PIECE").count() == 1
-            assert session.query(WorkOrder).filter_by(client_id="DEMO-PIECE").count() >= 1
-            assert session.query(HoldEntry).filter_by(client_id="DEMO-PIECE").count() >= 1
+            client_count = conn.execute(
+                select(func.count()).select_from(client_table).where(client_table.c.client_id == client_id)
+            ).scalar_one()
+            work_order_count = conn.execute(
+                select(func.count()).select_from(work_order).where(work_order.c.client_id == client_id)
+            ).scalar_one()
+            hold_entry_count = conn.execute(
+                select(func.count()).select_from(hold_entry).where(hold_entry.c.client_id == client_id)
+            ).scalar_one()
+            audit_count = conn.execute(select(func.count()).select_from(audit_table)).scalar_one()
 
-            assert _audit_count(session) == 0
+            assert client_count == 1
+            assert work_order_count == 6  # smoke profile, single client: deterministic, not just non-zero
+            assert hold_entry_count > 0
+            assert audit_count == 0
     finally:
-        check_engine.dispose()
+        engine.dispose()
 
-
-# ==================== init_demo_database.py ====================
-
-
-def test_init_demo_database_writes_no_audit_rows(tmp_path):
-    """`init_database()` is the single canonical demo seeder (per its own
-    docstring: "Run 8 unification"), invoked by CI's seed step and the
-    e2e-sqlite job against a file-based DATABASE_URL -- exactly as driven
-    here (mirrors tests/test_scripts/test_init_demo_database.py's subprocess
-    pattern). It never imports the FastAPI app, so audit capture is not
-    registered by anything in-process here; the driver script below
-    registers it explicitly to exercise the worst case: capture IS active,
-    and suppression must still hold.
-    """
-    db_path = tmp_path / "demo_audit_test.db"
-    env = os.environ.copy()
-    env["DATABASE_URL"] = f"sqlite:///{db_path}"
-    env["PYTHONPATH"] = "."
-
-    driver = (
-        "from backend.audit.capture import register_audit_listener; "
-        "register_audit_listener(); "
-        "from backend.scripts.init_demo_database import init_database; "
-        "init_database()"
+    assert observed.get("suppressed") is True, (
+        "materialize() ran without audit suppression active "
+        "(or seed() never reached materialize() at all, leaving the spy unset)"
     )
-    result = subprocess.run(
-        [sys.executable, "-c", driver],
-        cwd=str(REPO_ROOT),
-        env=env,
-        capture_output=True,
-        text=True,
-        timeout=180,
-    )
-    assert result.returncode == 0, (
-        f"demo seeder crashed (exit {result.returncode})\n"
-        f"--- stdout tail ---\n{result.stdout[-2000:]}\n"
-        f"--- stderr tail ---\n{result.stderr[-2000:]}"
-    )
-
-    conn = sqlite3.connect(str(db_path))
-    try:
-        # Sanity: the run actually performed writes to audited tables
-        # (CLIENT, USER) before checking AUDIT_ENTRY is empty.
-        (client_count,) = conn.execute("SELECT COUNT(*) FROM CLIENT").fetchone()
-        (user_count,) = conn.execute("SELECT COUNT(*) FROM USER").fetchone()
-        assert client_count >= 1
-        assert user_count >= 1
-
-        (audit_count,) = conn.execute("SELECT COUNT(*) FROM AUDIT_ENTRY").fetchone()
-    finally:
-        conn.close()
-
-    assert audit_count == 0
 
 
 # ==================== csv_upload_processor.py ====================

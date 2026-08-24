@@ -72,7 +72,7 @@ Every database row carries a `client_id`. The platform filters queries server-si
 | Role | Sees data from |
 |------|----------------|
 | Admin / PowerUser | All clients |
-| Leader | One or more clients (comma-separated `client_id_assigned`, e.g. `ACME-MFG,TEXTILE-PRO`) |
+| Leader | One or more clients (comma-separated `client_id_assigned`, e.g. `DEMO-PIECE,DEMO-HOURLY`) |
 | Operator / Supervisor | Exactly one client |
 
 ⚠ This is enforced at the API layer (every backend route filters), so you cannot bypass it from a non-admin browser session even if you craft a URL by hand.

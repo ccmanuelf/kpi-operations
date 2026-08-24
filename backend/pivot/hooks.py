@@ -35,7 +35,7 @@ from backend.orm.hold_entry import HoldEntry, HoldStatus
 from backend.orm.production_entry import ProductionEntry
 from backend.orm.work_order import WorkOrder
 
-# Mirrors backend/scripts/_seed_operations.py's open_statuses set: a hold is
+# Mirrors _seed_operations.py's (removed in S1c) open_statuses set: a hold is
 # still "open" (not yet resumed/cancelled/released) in these three statuses.
 # Used to decide age-to-date vs. recorded-duration in fetch_holds below.
 _OPEN_HOLD_STATUSES = frozenset(

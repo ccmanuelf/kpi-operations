@@ -40,8 +40,14 @@ def rebuild_schema(url: Optional[str] = None) -> None:
 
     Binds an engine from ``url`` (or settings.DATABASE_URL when None), drops all
     ORM tables plus Alembic's ``alembic_version`` bookkeeping table, then upgrades
-    the schema back to head. Used by the demo reseed path and the MariaDB test
-    fixture.
+    the schema back to head.
+
+    TEST FIXTURES ONLY. It used to sit in front of the demo reseed on the boot
+    path; S1c retired that path, so no application code calls this and none
+    should. Its remaining callers are ``tests/test_seed/conftest.py`` and
+    ``tests/test_mariadb_portability.py``, which want a schema built the same way
+    Alembic builds production's. Calling it from a request or a lifespan hook
+    would hand a running deployment a drop-everything primitive.
 
     Raises SchemaRebuildError on any failure — callers must treat that as fatal:
     a half-rebuilt database must crash the boot, not serve 500s.

@@ -32,9 +32,13 @@ Manufacturing KPI tracking and capacity planning platform with multi-tenant arch
 ### Backend
 
 ```bash
-cd backend
-pip install -r requirements.txt
-python scripts/init_demo_database.py   # Seeds demo data (5 clients, 57 tables)
+# Run these from the REPO ROOT, not from backend/. `upgrade_to_head()` resolves
+# DATABASE_URL to an absolute repo-root path, while the seeder's default is
+# relative to the working directory — from backend/ they would target two
+# different files and the seeder would fail on a directory that does not exist.
+pip install -r backend/requirements.txt
+PYTHONPATH=. python -c "from backend.db.migrate import upgrade_to_head; upgrade_to_head()"
+PYTHONPATH=. python -m backend.seed.cli --profile full   # Seeds the 4 demo clients
 uvicorn backend.main:app --reload
 ```
 
@@ -54,12 +58,14 @@ Frontend available at http://localhost:5173.
 
 | Username | Password | Role |
 |----------|----------|------|
-| admin | admin123 | admin |
-| supervisor1 | password123 | supervisor |
-| operator1 | password123 | operator |
-| operator2 | password123 | operator |
+| demo_admin | DemoSeed#2026 | admin |
+| demo_planner | DemoSeed#2026 | poweruser |
+| demo_leader | DemoSeed#2026 | leader |
+| demo_supervisor | DemoSeed#2026 | supervisor |
+| demo_operator | DemoSeed#2026 | operator |
+| demo_viewer | DemoSeed#2026 | viewer |
 
-Five demo clients are seeded: ACME-MFG, TechCorp, GlobalMfg, PrecisionParts, SmartFactory.
+Four demo clients are seeded: DEMO-PIECE, DEMO-HOURLY, DEMO-HYBRID, SAMPLE_REF.
 
 ## Docker
 
@@ -127,7 +133,8 @@ kpi-operations/
     events/                  # Domain event bus (collect/flush pattern)
     simulation_v2/           # SimPy-based simulation engine
     alembic/versions/        # Alembic migrations -- the single schema mechanism
-    scripts/                 # init_demo_database.py (canonical seeder), backup, utilities
+    seed/                    # backend.seed.cli (canonical demo/tenant seeder, INSERT-only)
+    scripts/                 # backup, create_admin, docker-entrypoint, defect-type utilities
   frontend/src/
     views/                   # Page views (admin/, kpi/, CapacityPlanning/, etc.)
     components/              # Vue components (grids, entries, widgets, filters)

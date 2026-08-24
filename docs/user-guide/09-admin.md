@@ -54,7 +54,7 @@ The tenant catalog. Each client is a separate scope of data isolation.
 
 | Field | Notes |
 |-------|-------|
-| client_id | Short ID (e.g. `ACME-MFG`) — primary key |
+| client_id | Short ID (e.g. `DEMO-PIECE`) — primary key |
 | name | Full name |
 | timezone | Default `America/New_York`; affects date rollups |
 | created_at | Auto |

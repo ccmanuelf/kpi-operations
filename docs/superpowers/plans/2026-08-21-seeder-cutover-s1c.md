@@ -667,7 +667,17 @@ Then `/cross-review` and `gh pr create`.
 
 ## Post-merge: the one manual step
 
-After PR-2 merges and main is green, **drop the Render demo database once** so Alembic plus the new seeder repopulate it clean. Until then Render serves nine clients — four new and five stale legacy ones that `--reset` cannot see, because it is scoped to the allowlist.
+~~After PR-2 merges and main is green, **drop the Render demo database once** so Alembic plus the new seeder repopulate it clean. Until then Render serves nine clients — four new and five stale legacy ones that `--reset` cannot see, because it is scoped to the allowlist.~~
+
+**CORRECTED 2026-08-24, before merge — there is no manual step, and the premise was wrong.**
+
+Two things checked against reality rather than carried forward:
+
+1. **Render has no persistent disk.** `render.yaml` says so in its own header ("No persistent disk: DB recreates on each deploy") and carries no `disk:` block; `DATABASE_URL` is `sqlite:////app/database/kpi_platform.db`, a path inside an immutable container. So the merge's auto-deploy starts a fresh container with an empty database, `RUN_MIGRATIONS=true` runs `alembic upgrade head`, and `DEMO_MODE=true` triggers the boot-path seed. The clean repopulation this step describes happens by itself.
+
+2. **It serves five clients, not nine.** Measured against the live demo before merging: `ACME-MFG`, `FASHION-WORKS`, `GLOBAL-APPAREL`, `QUALITY-STITCH`, `TEXTILE-PRO` — the legacy five from the still-deployed old seeder, and none of the new four. The "four new and five stale" figure assumed both seeders had run against one surviving database, which an ephemeral filesystem makes impossible.
+
+What remains is a **verification**, not an action: after the deploy, confirm the demo serves exactly the four allowlisted clients and that `demo_admin` / `DemoSeed#2026` logs in. If it still shows the legacy five, the deploy did not pick up the merge — that is the real failure mode worth watching for, and it is not fixed by dropping a database.
 
 Verify afterwards: exactly four clients, the demo renders, and `/health/live` returns 200.
 

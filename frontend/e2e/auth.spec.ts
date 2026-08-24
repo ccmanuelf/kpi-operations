@@ -50,7 +50,7 @@ test.describe('Authentication', () => {
     });
 
     test('should show error for valid user but wrong password', async ({ page }) => {
-      await page.fill('input[type="text"]', 'admin');
+      await page.fill('input[type="text"]', 'demo_admin');
       await page.fill('input[type="password"]', 'wrongpassword');
       await page.click('button:has-text("Sign In")');
 
@@ -443,8 +443,8 @@ test.describe('Authentication', () => {
   test.describe('Logout', () => {
     test('should logout successfully', async ({ page }) => {
       // Login first
-      await page.fill('input[type="text"]', 'admin');
-      await page.fill('input[type="password"]', 'admin123');
+      await page.fill('input[type="text"]', 'demo_admin');
+      await page.fill('input[type="password"]', 'DemoSeed#2026');
       await page.click('button:has-text("Sign In")');
 
       await expect(page.locator('.v-navigation-drawer').first()).toBeVisible({ timeout: 15000 });
@@ -463,8 +463,8 @@ test.describe('Authentication', () => {
 
     test('should clear session data on logout', async ({ page }) => {
       // Login
-      await page.fill('input[type="text"]', 'admin');
-      await page.fill('input[type="password"]', 'admin123');
+      await page.fill('input[type="text"]', 'demo_admin');
+      await page.fill('input[type="password"]', 'DemoSeed#2026');
       await page.click('button:has-text("Sign In")');
       await expect(page.locator('.v-navigation-drawer').first()).toBeVisible({ timeout: 15000 });
 
@@ -486,8 +486,8 @@ test.describe('Authentication', () => {
 
     test('should show confirmation before logout (if implemented)', async ({ page }) => {
       // Login
-      await page.fill('input[type="text"]', 'admin');
-      await page.fill('input[type="password"]', 'admin123');
+      await page.fill('input[type="text"]', 'demo_admin');
+      await page.fill('input[type="password"]', 'DemoSeed#2026');
       await page.click('button:has-text("Sign In")');
       await expect(page.locator('.v-navigation-drawer').first()).toBeVisible({ timeout: 15000 });
 
@@ -512,8 +512,8 @@ test.describe('Authentication', () => {
   test.describe('Session Management', () => {
     test('should handle session timeout gracefully', async ({ page }) => {
       // Login
-      await page.fill('input[type="text"]', 'admin');
-      await page.fill('input[type="password"]', 'admin123');
+      await page.fill('input[type="text"]', 'demo_admin');
+      await page.fill('input[type="password"]', 'DemoSeed#2026');
       await page.click('button:has-text("Sign In")');
       await expect(page.locator('.v-navigation-drawer').first()).toBeVisible({ timeout: 15000 });
 
@@ -538,10 +538,25 @@ test.describe('Authentication', () => {
       expect(onLoginPage || hasSessionExpired).toBeTruthy();
     });
 
+    // FIXME(2026-08-24): this test has never actually run — it always takes the
+    // test.skip() below, and two defects are stacked here:
+    //   1. `locator.isVisible()` does NOT wait; the { timeout } passed to it is
+    //      inert. So `loginSucceeded` is read before login can complete and is
+    //      always false. Measured: skips in ~850ms against a nominal 15000ms
+    //      timeout. Sibling specs use waitForSelector(), which does wait, and they
+    //      pass with these same credentials.
+    //   2. Even once it runs, `expect(isLoggedInNewTab || isLoginPage)` accepts
+    //      every possible outcome, so it would pass whether or not sessions are
+    //      actually shared. Fixing only (1) trades a visible skip for an invisible
+    //      tautology.
+    // Left alone by the S1c seeder cutover deliberately: it predates that work and
+    // is unrelated to it, and waking a dormant test there risked unrelated failures
+    // blocking an unrelated PR. Decide what cross-tab behaviour SHOULD be, then fix
+    // (1) and (2) together.
     test('should maintain session across tabs', async ({ page, context }) => {
       // Login in first tab
-      await page.fill('input[type="text"]', 'admin');
-      await page.fill('input[type="password"]', 'admin123');
+      await page.fill('input[type="text"]', 'demo_admin');
+      await page.fill('input[type="password"]', 'DemoSeed#2026');
       await page.click('button:has-text("Sign In")');
 
       // Wait for login to complete - check for navigation or error
@@ -569,14 +584,14 @@ test.describe('Authentication', () => {
 
   test.describe('Security', () => {
     test('should not expose password in URL', async ({ page }) => {
-      await page.fill('input[type="text"]', 'admin');
-      await page.fill('input[type="password"]', 'admin123');
+      await page.fill('input[type="text"]', 'demo_admin');
+      await page.fill('input[type="password"]', 'DemoSeed#2026');
       await page.click('button:has-text("Sign In")');
 
       // URL should not contain password
       const url = page.url();
       expect(url).not.toContain('password');
-      expect(url).not.toContain('admin123');
+      expect(url).not.toContain('DemoSeed#2026');
     });
 
     test('should mask password input', async ({ page }) => {

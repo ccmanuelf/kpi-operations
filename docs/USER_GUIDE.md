@@ -27,9 +27,12 @@ Welcome to the Manufacturing KPI Platform. This guide will help you navigate and
 **Default Credentials (Demo):**
 | Role | Username | Password |
 |------|----------|----------|
-| Admin | admin | admin123 |
-| Supervisor | supervisor1 | password123 |
-| Operator | operator1 | password123 |
+| Admin | demo_admin | DemoSeed#2026 |
+| PowerUser | demo_planner | DemoSeed#2026 |
+| Leader | demo_leader | DemoSeed#2026 |
+| Supervisor | demo_supervisor | DemoSeed#2026 |
+| Operator | demo_operator | DemoSeed#2026 |
+| Viewer | demo_viewer | DemoSeed#2026 |
 
 **Important:** Change your password after first login for security.
 

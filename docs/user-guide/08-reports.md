@@ -49,7 +49,7 @@ All accept query params:
 
 ```bash
 curl -O -H "Authorization: Bearer $TOKEN" \
-  "https://api.example.com/api/reports/comprehensive/excel?client_id=ACME-MFG&start_date=2026-04-01&end_date=2026-04-30"
+  "https://api.example.com/api/reports/comprehensive/excel?client_id=DEMO-PIECE&start_date=2026-04-01&end_date=2026-04-30"
 ```
 
 The response is the Excel file as binary; pipe to `-o filename.xlsx`.

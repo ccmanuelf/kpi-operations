@@ -96,17 +96,22 @@ jobs:
       - name: Run linting
         run: flake8 . --count --show-source --statistics
 
-      - name: Seed demo database
+      - name: Seed the demo database
         # The smoke-test suite (test_smoke_paramless_get) hits every
         # paramless GET via TestClient and expects no 5xx — that exercise
         # only makes sense against a populated schema. Most other tests
         # use the in-memory `transactional_db` fixture and ignore this
         # file, but a handful (and the smoke test) bind to the file-based
         # DATABASE_URL. Seeding once here gives them a working schema +
-        # 5 demo clients without polluting the rest of the suite (writes
+        # 4 demo clients without polluting the rest of the suite (writes
         # land in the disposable demo DB, not in any persistent store).
+        #
+        # The old seeder created the schema AND seeded it; backend.seed only
+        # seeds, because Alembic owns schema (C5). One command becomes two.
         working-directory: .
-        run: PYTHONPATH=. python backend/scripts/init_demo_database.py
+        run: |
+          PYTHONPATH=. python -c "from backend.db.migrate import upgrade_to_head; upgrade_to_head()"
+          PYTHONPATH=. python -m backend.seed.cli --profile full
 
       - name: Run tests with coverage
         # Coverage source/omit/fail_under come from backend/.coveragerc; pytest
@@ -254,7 +259,7 @@ jobs:
           # Auth
           TOKEN=$(curl -sf -X POST http://localhost:8001/api/auth/login \
             -H "Content-Type: application/json" \
-            -d '{"username":"admin","password":"admin123"}' | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
+            -d '{"username":"demo_admin","password":"DemoSeed#2026"}' | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")  # pragma: allowlist secret
           AUTH="Authorization: Bearer $TOKEN"
           # Hit key workflow endpoints. A non-2xx from any of these is a real
           # regression — collect every failure and fail the step (Run 8 H-2:
@@ -262,15 +267,15 @@ jobs:
           # passed" even when an endpoint was broken).
           FAILED=""
           check() { curl -sf -H "$AUTH" "$1" > /dev/null || FAILED="$FAILED $2"; }
-          check "http://localhost:8001/api/capacity/orders?client_id=ACME-MFG" "capacity/orders"
+          check "http://localhost:8001/api/capacity/orders?client_id=DEMO-PIECE" "capacity/orders"
           check "http://localhost:8001/api/work-orders" "work-orders"
           check "http://localhost:8001/api/production" "production"
           check "http://localhost:8001/api/quality/" "quality"
           check "http://localhost:8001/api/downtime" "downtime"
           check "http://localhost:8001/api/attendance" "attendance"
-          check "http://localhost:8001/api/kpi/dashboard?client_id=ACME-MFG" "kpi/dashboard"
-          check "http://localhost:8001/api/alerts/dashboard?client_id=ACME-MFG" "alerts/dashboard"
-          check "http://localhost:8001/api/onboarding/status?client_id=ACME-MFG" "onboarding"
+          check "http://localhost:8001/api/kpi/dashboard?client_id=DEMO-PIECE" "kpi/dashboard"
+          check "http://localhost:8001/api/alerts/dashboard?client_id=DEMO-PIECE" "alerts/dashboard"
+          check "http://localhost:8001/api/onboarding/status?client_id=DEMO-PIECE" "onboarding"
           check "http://localhost:8001/api/shifts" "shifts"
           if [ -n "$FAILED" ]; then
             echo "::error::Smoke test failed for:$FAILED"

@@ -95,8 +95,8 @@ test.describe('Error Handling', () => {
     await page.goto('/')
     await page.waitForSelector('input[type="text"]', { state: 'visible', timeout: 15000 })
 
-    await page.fill('input[type="text"]', 'admin')
-    await page.fill('input[type="password"]', 'admin123')
+    await page.fill('input[type="text"]', 'demo_admin')
+    await page.fill('input[type="password"]', 'DemoSeed#2026')
     await page.click('button:has-text("Sign In")')
     await page.waitForSelector('.v-navigation-drawer', { state: 'visible', timeout: 15000 })
 

@@ -18,11 +18,12 @@ Demo credentials (development environments only):
 
 | Username | Password | Role |
 |----------|----------|------|
-| `admin` | `admin123` | Admin (everything) |
-| `poweruser` | `password123` | PowerUser (planning, ops, monitoring) |
-| `leader1` | `password123` | Leader (ops, monitoring, multiple clients) |
-| `operator1` | `password123` | Operator (single client, line-level data) |
-| `supervisor1` | `password123` | Supervisor (between leader and operator) |
+| `demo_admin` | `DemoSeed#2026` | Admin (everything) |
+| `demo_planner` | `DemoSeed#2026` | PowerUser (planning, ops, monitoring) |
+| `demo_leader` | `DemoSeed#2026` | Leader (ops, monitoring, multiple clients) |
+| `demo_supervisor` | `DemoSeed#2026` | Supervisor (between leader and operator) |
+| `demo_operator` | `DemoSeed#2026` | Operator (single client, line-level data) |
+| `demo_viewer` | `DemoSeed#2026` | Viewer (read-only) |
 
 ⚠ In production these accounts are disabled or have rotated passwords. Contact your administrator for real credentials.
 
