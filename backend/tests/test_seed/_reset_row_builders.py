@@ -106,6 +106,59 @@ def _insert_alert_history(conn, client_id):
     )
 
 
+def _insert_null_tenant_alert_history(conn, client_id):
+    """The same ALERT/ALERT_HISTORY pair as above, but with the ALERT's own
+    tenant column NULL and a demo WORK_ORDER as its parent.
+
+    That one field is the difference between a row pass 1 of `_reset` selects
+    and a row only pass 2 selects. `_insert_alert_history` always sets
+    client_id=client_id, so its ALERT is in scope and pass 1's
+    `parent.client_id IN client_ids` subquery reaches its history child --
+    which is precisely why the existing suite could not see the pass-1/pass-2
+    disagreement.
+
+    Reachable through the product's own API rather than only by hand: POST
+    /api/alerts treats client_id as optional (routes/alerts/crud.py:238 is a
+    guard, not a requirement) while accepting a work_order_id, and resolving
+    that alert is what writes the ALERT_HISTORY row.
+
+    NOT in CHILD_ROW_BUILDERS below: that map's test asserts on rows matching
+    `column == client_id`, and a NULL tenant column matches nothing, so the
+    assertion would pass without the sweep ever running.
+    """
+    work_order = Base.metadata.tables["WORK_ORDER"]
+    work_order_id = conn.execute(
+        select(work_order.c.work_order_id).where(work_order.c.client_id == client_id).limit(1)
+    ).scalar_one()
+    conn.execute(
+        insert(Base.metadata.tables["ALERT"]),
+        [
+            {
+                "alert_id": f"ALRT-NULL-{client_id}",
+                "category": "manual",
+                "severity": "HIGH",
+                "status": "ACTIVE",
+                "title": "Raised against a work order, no client",
+                "message": "m",
+                "client_id": None,
+                "work_order_id": work_order_id,
+                "created_at": datetime(2026, 8, 1),
+            }
+        ],
+    )
+    conn.execute(
+        insert(Base.metadata.tables["ALERT_HISTORY"]),
+        [
+            {
+                "history_id": f"AH-NULL-{client_id}",
+                "alert_id": f"ALRT-NULL-{client_id}",
+                "prediction_date": datetime(2026, 8, 1),
+                "created_at": datetime(2026, 8, 1),
+            }
+        ],
+    )
+
+
 CHILD_ROW_BUILDERS = {
     "ALERT_CONFIG": (_insert_alert_config, "ALERT_CONFIG", "client_id"),
     "JOB": (_insert_job, "JOB", "client_id_fk"),

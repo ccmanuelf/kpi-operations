@@ -19,7 +19,11 @@ from sqlalchemy import create_engine, func, insert, select
 
 from backend.database import Base
 from backend.seed.cli import seed
-from backend.tests.test_seed._reset_row_builders import CHILD_ROW_BUILDERS, _insert_alert_history
+from backend.tests.test_seed._reset_row_builders import (
+    CHILD_ROW_BUILDERS,
+    _insert_alert_history,
+    _insert_null_tenant_alert_history,
+)
 
 
 @pytest.mark.parametrize("case", sorted(CHILD_ROW_BUILDERS))
@@ -131,6 +135,95 @@ def test_cli_subprocess_reset_sweeps_grandchildren_on_the_production_engine(tmp_
     assert history == 0, "ALERT_HISTORY survived --reset on the engine main() actually builds"
     assert allocations == 0, "ATTENDANCE_HOUR_ALLOCATION survived --reset with no cascade to clean it up"
     assert clients == 1
+
+
+def test_reset_sweeps_the_history_of_an_alert_only_pass_two_deletes(seed_engine):
+    """Pass 1 must select every parent row the reset DELETES, not merely the
+    in-scope ones -- the two passes used to disagree about which those are.
+
+    Pass 1 (DEPENDENT_SWEEPS) clears ALERT_HISTORY by subquery over ALERT rows
+    whose own client_id is in scope. Pass 2 (NULLABLE_TENANT_SWEEPS) then
+    deletes ADDITIONAL ALERT rows -- those with client_id NULL pointing at an
+    in-scope WORK_ORDER. ALERT is the single table naming both passes (pinned
+    by test_the_widened_reset_parents_are_exactly_the_known_one), so pass 1
+    never visited those extra rows' children.
+
+    This is the FK-ENFORCED half, which is production's semantics:
+    ALERT_HISTORY.alert_id is NOT NULL with no ondelete, so InnoDB (and SQLite
+    under the fixture's PRAGMA foreign_keys=ON) REFUSES the delete rather than
+    orphaning. Against the unfixed pass 1 this raised, and engine.begin()
+    rolled the entire reset+reseed back:
+
+        sqlalchemy.exc.IntegrityError: (sqlite3.IntegrityError)
+        FOREIGN KEY constraint failed
+        [SQL: DELETE FROM "ALERT" WHERE ...]
+
+    On the DEMO_MODE boot path that exception is swallowed by run_best_effort
+    (bootstrap/lifecycle.py:319), so the demo simply stops re-seeding behind a
+    warning. Hence `seed(reset=True)` unguarded here: raising IS the failure.
+    """
+    kwargs = dict(client_ids=("DEMO-PIECE",), profile_name="smoke", seed_value=1234, as_of=date(2026, 8, 18))
+    seed(seed_engine, reset=False, **kwargs)
+
+    alert = Base.metadata.tables["ALERT"]
+    history = Base.metadata.tables["ALERT_HISTORY"]
+    with seed_engine.begin() as conn:
+        _insert_null_tenant_alert_history(conn, "DEMO-PIECE")
+
+    # Must not raise. This is the FK-enforced repro.
+    seed(seed_engine, reset=True, **kwargs)
+
+    with seed_engine.connect() as conn:
+        alerts = conn.execute(select(func.count()).select_from(alert)).scalar_one()
+        histories = conn.execute(select(func.count()).select_from(history)).scalar_one()
+
+    assert alerts == 0
+    assert histories == 0
+
+
+def test_reset_orphans_no_alert_history_on_the_engine_main_actually_builds(tmp_path):
+    """The same pass-1/pass-2 disagreement with foreign keys OFF, where it is
+    SILENT instead of loud.
+
+    main() builds a bare create_engine(url), which leaves SQLite's foreign
+    keys off, and that is the configuration the VM and the DEMO_MODE boot path
+    run. There the unswept ALERT_HISTORY row is not rejected when its ALERT
+    parent disappears -- it is ORPHANED, under a client id that has just been
+    handed back to the next re-seed. Measured against the unfixed pass 1 on
+    exactly this setup: `ALERT=0 ALERT_HISTORY=1 ORPHANED=1`.
+
+    A bare engine rather than the `seed_engine` fixture is the whole point:
+    the fixture's PRAGMA turns this into the IntegrityError the test above
+    asserts, and no count is ever reached. Direct rather than by subprocess
+    because the assertion here is about the ENGINE's foreign-key setting, not
+    about argument parsing, which the subprocess test above already covers.
+    """
+    from backend.db.migrate import upgrade_to_head
+
+    url = f"sqlite:///{tmp_path / 'orphan.db'}"
+    upgrade_to_head(url)
+    engine = create_engine(url)
+
+    kwargs = dict(client_ids=("DEMO-PIECE",), profile_name="smoke", seed_value=1234, as_of=date(2026, 8, 18))
+    alert = Base.metadata.tables["ALERT"]
+    history = Base.metadata.tables["ALERT_HISTORY"]
+    try:
+        seed(engine, reset=False, **kwargs)
+        with engine.begin() as conn:
+            _insert_null_tenant_alert_history(conn, "DEMO-PIECE")
+
+        seed(engine, reset=True, **kwargs)
+
+        with engine.connect() as conn:
+            alerts = conn.execute(select(func.count()).select_from(alert)).scalar_one()
+            orphans = conn.execute(
+                select(func.count()).select_from(history).where(history.c.alert_id.notin_(select(alert.c.alert_id)))
+            ).scalar_one()
+    finally:
+        engine.dispose()
+
+    assert alerts == 0
+    assert orphans == 0
 
 
 def test_reset_clears_a_null_tenant_child_that_would_block_its_parent(seed_engine):

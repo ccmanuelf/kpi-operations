@@ -264,3 +264,30 @@ def test_the_employee_cascade_children_are_exactly_the_known_two():
     from backend.seed.cli import CASCADE_CHILDREN_OF_EMPLOYEE
 
     assert CASCADE_CHILDREN_OF_EMPLOYEE == ("EMPLOYEE_CLIENT_ASSIGNMENT", "EMPLOYEE_LINE_ASSIGNMENT")
+
+
+def test_the_widened_reset_parents_are_exactly_the_known_one():
+    """The tables sitting on BOTH sides of --reset: a PARENT in
+    DEPENDENT_SWEEPS and a CHILD in NULLABLE_TENANT_SWEEPS.
+
+    That intersection is where the two passes have to agree about which parent
+    rows the reset deletes, and it is where they did not: pass 1 selected
+    ALERT rows by `client_id IN client_ids` while pass 2 went on to delete
+    NULL-tenant ALERT rows pointing at an in-scope WORK_ORDER, so those rows'
+    ALERT_HISTORY children were never visited -- orphaned with foreign keys
+    off (main()'s bare engine), IntegrityError with them on (InnoDB), which
+    run_best_effort turns into a silent warning on the DEMO_MODE boot path.
+
+    Derived from the two sweep tuples rather than naming ALERT, matching the
+    four other derived sets in this module. The widening is generic --
+    _rows_deleted_by_reset walks NULLABLE_TENANT_SWEEPS, so a second member
+    would be handled without a code change -- so this pin is not what makes
+    the next one correct; it is what makes the next one VISIBLE. Each member
+    is a shape whose two passes must be re-argued (a NOT NULL tenant column,
+    a self-reference, or a grandchild with children of its own would each need
+    a different answer), and a set that grows silently is exactly how this
+    bug got in.
+    """
+    from backend.seed.cli import WIDENED_RESET_PARENTS
+
+    assert WIDENED_RESET_PARENTS == ("ALERT",)
