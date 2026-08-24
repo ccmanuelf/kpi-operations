@@ -767,8 +767,12 @@ def calculate_job_rty_summary(db: Session, start_date: date, end_date: date, cli
             "total_jobs_completed": 0,
             "total_units_completed": 0,
             "total_units_scrapped": 0,
-            "average_job_yield": Decimal("0"),
-            "overall_yield": Decimal("0"),
+            # float, not Decimal("0"): the populated branch below returns
+            # float(avg_yield) / float(overall), and a caller must not get a
+            # JSON string here and a JSON number there depending on whether any
+            # jobs existed. FastAPI serialises Decimal as a string.
+            "average_job_yield": 0.0,
+            "overall_yield": 0.0,
             "jobs_below_target": 0,
             "top_scrap_operations": [],
         }
