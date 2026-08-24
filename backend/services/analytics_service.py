@@ -476,7 +476,7 @@ class AnalyticsService:
             ppm = 0
 
         return {
-            "total_units_produced": prod_result.total_units or 0,
+            "total_units_produced": int(prod_result.total_units or 0),
             "avg_efficiency": float(prod_result.avg_efficiency or 0),
             "avg_performance": float(prod_result.avg_performance or 0),
             "total_inspected": total_inspected,

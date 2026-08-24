@@ -210,6 +210,6 @@ def get_defect_summary_by_type(
     results = query.group_by(DefectDetail.defect_type).all()
 
     return [
-        {"defect_type": row.defect_type, "total_count": row.total_count, "defect_count": row.defect_count or 0}
+        {"defect_type": row.defect_type, "total_count": row.total_count, "defect_count": int(row.defect_count or 0)}
         for row in results
     ]

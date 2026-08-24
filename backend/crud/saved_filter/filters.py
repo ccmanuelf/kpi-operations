@@ -118,7 +118,10 @@ def get_saved_filters(
     return (
         query.order_by(
             SavedFilter.is_default.desc(),  # Default filters first
-            SavedFilter.last_used_at.desc().nullslast(),  # Recently used next
+            # MariaDB rejects NULLS LAST (error 1064); `col IS NULL` ascending is the  # nullslast-guard: allow
+            # portable equivalent -- rows with a value sort before those without.
+            SavedFilter.last_used_at.is_(None),
+            SavedFilter.last_used_at.desc(),  # Recently used next
             SavedFilter.filter_name.asc(),  # Alphabetical fallback
         )
         .offset(skip)

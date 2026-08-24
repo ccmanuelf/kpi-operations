@@ -1632,3 +1632,315 @@ def test_earliest_tier_same_second_transitions_break_tie_by_insertion_order_on_m
     }
 
     assert active == {hold_id}
+
+
+# ---------------------------------------------------------------------------
+# Enum-decoding guard (always-on, dialect-agnostic). A SQL COALESCE over an
+# Enum-typed column inherits that column's type, so SQLAlchemy decodes the
+# fallback literal with the enum's result-processor and raises LookupError the
+# moment a row holds NULL. routes/attendance.py shipped exactly this and turned
+# GET /api/attendance/kpi/absenteeism into a 500 for any absent row with no
+# recorded reason; services/kpi_cause_service.py documents the rule.
+# ---------------------------------------------------------------------------
+
+
+def test_no_coalesce_over_enum_columns():
+    """No SQL coalesce() may take an Enum-typed ORM column as its first argument.
+
+    Resolve NULL in Python after the rows come back, where no enum decoding
+    happens -- see routes.attendance._absence_reason_label.
+
+    The set of Enum columns is DERIVED from the live mappers rather than listed,
+    so a column that becomes an Enum later is covered automatically.
+    """
+    import ast
+    import pathlib
+
+    import sqlalchemy
+
+    from backend.database import Base
+
+    # (ClassName, attribute) for every Enum-typed mapped column.
+    enum_columns = set()
+    for mapper in Base.registry.mappers:
+        for prop in mapper.column_attrs:
+            column = prop.columns[0]
+            if isinstance(column.type, sqlalchemy.Enum):
+                enum_columns.add((mapper.class_.__name__, prop.key))
+    assert enum_columns, "derived no Enum columns -- the guard would be vacuous"
+
+    backend_root = pathlib.Path(__file__).resolve().parent.parent
+    offenders = []
+    for py in backend_root.rglob("*.py"):
+        if ".venv" in py.parts or "alembic" in py.parts:
+            continue
+        try:
+            tree = ast.parse(py.read_text(encoding="utf-8"))
+        except SyntaxError:  # pragma: no cover - not our source
+            continue
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call) or not node.args:
+                continue
+            func = node.func
+            name = func.attr if isinstance(func, ast.Attribute) else getattr(func, "id", None)
+            if name != "coalesce":
+                continue
+            first = node.args[0]
+            if not isinstance(first, ast.Attribute) or not isinstance(first.value, ast.Name):
+                continue
+            if (first.value.id, first.attr) in enum_columns:
+                offenders.append(
+                    f"{py.relative_to(backend_root)}:{first.lineno} " f"coalesce({first.value.id}.{first.attr}, ...)"
+                )
+    assert sorted(offenders) == []
+
+
+# ---------------------------------------------------------------------------
+# Decimal-leak guard (always-on, dialect-agnostic). MariaDB's SUM()/AVG() over an
+# integer column returns DECIMAL, PyMySQL hands back decimal.Decimal, and FastAPI
+# serialises Decimal as a JSON *string* -- so an un-coerced aggregate reaches the
+# client as "1067" instead of 1067 while its neighbours stay numbers. SQLite
+# returns int, so no amount of SQLite testing can catch it; this guard is static.
+# Found live on VM prod across 10 endpoints (e.g. /api/kpi/dashboard total_units,
+# /api/attendance/kpi/absenteeism total_absences).
+# ---------------------------------------------------------------------------
+
+
+def test_no_uncoerced_aggregate_in_response_dict():
+    """A func.sum()/func.avg() label must not land in a dict literal uncoerced.
+
+    int(x or 0) for a SUM over an integer column; float(x or 0) for an AVG or a
+    SUM over a Numeric one. int() and float() are the ONLY wrappers accepted --
+    round(Decimal, n) returns a Decimal, and abs/max/min/str/Decimal can each
+    hand back a Decimal or a string, so none of them prove the value reaches the
+    client as a JSON number.
+
+    An AVG label wrapped in int() is reported as an offender in its own right:
+    AVG over an integer column is fractional on MariaDB, so int() would silently
+    truncate 97.9 to 97. (Cross-model review raised this; no current site does
+    it, and this keeps it that way.)
+
+    Labels are DERIVED per-file from the source, so a new aggregate is covered
+    the moment it is written.
+
+    Known limitation, stated rather than hidden: the scan is anchored on dict
+    literals, so binding an aggregate to a local first (`x = r.avg_hours;
+    return {"v": x}`) or returning it through a helper evades it. Closing that
+    needs dataflow analysis; every occurrence found in this codebase so far has
+    been a direct dict value, and widening the rule to all arithmetic anywhere
+    produced 27 false positives on legitimate internal Decimal maths.
+    """
+    import ast
+    import pathlib
+
+    COERCERS = {"int", "float"}
+
+    backend_root = pathlib.Path(__file__).resolve().parent.parent
+    offenders = []
+
+    for py in sorted(backend_root.rglob("*.py")):
+        if ".venv" in py.parts or "tests" in py.parts or "alembic" in py.parts:
+            continue
+        try:
+            tree = ast.parse(py.read_text(encoding="utf-8"))
+        except SyntaxError:  # pragma: no cover - not our source
+            continue
+
+        # label -> "avg" if any avg() feeds it, else "sum"
+        label_kind = {}
+        for node in ast.walk(tree):
+            if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)):
+                continue
+            if node.func.attr != "label" or not node.args:
+                continue
+            key = node.args[0]
+            if not (isinstance(key, ast.Constant) and isinstance(key.value, str)):
+                continue
+            kinds = {
+                sub.func.attr
+                for sub in ast.walk(node.func.value)
+                if isinstance(sub, ast.Call) and isinstance(sub.func, ast.Attribute) and sub.func.attr in ("sum", "avg")
+            }
+            if not kinds:
+                continue
+            if label_kind.get(key.value) != "avg":
+                label_kind[key.value] = "avg" if "avg" in kinds else "sum"
+        if not label_kind:
+            continue
+
+        def labels_in(node):
+            return [n.attr for n in ast.walk(node) if isinstance(n, ast.Attribute) and n.attr in label_kind]
+
+        def _uncoerced_labels(value):
+            """Aggregate labels that reach the client through `value` unconverted.
+
+            Skips int()/float() subtrees (already JSON numbers) and Compare nodes
+            (`if r.inspected > 0` is a condition, not a serialised value). Catches the
+            bare label, the `x or 0` idiom, and arithmetic such as `r.total * 2`,
+            which yields a Decimal just as the bare label does.
+            """
+            found = []
+
+            def walk(n):
+                if isinstance(n, ast.Call):
+                    name = n.func.id if isinstance(n.func, ast.Name) else getattr(n.func, "attr", None)
+                    if name in COERCERS:
+                        return
+                if isinstance(n, ast.Compare):
+                    return
+                if isinstance(n, ast.IfExp):
+                    # `float(x) if x else 0` -- the test is a condition, not a value.
+                    walk(n.body)
+                    walk(n.orelse)
+                    return
+                if isinstance(n, ast.Attribute) and n.attr in label_kind:
+                    found.append((n.attr, n.lineno))
+                    return
+                for child in ast.iter_child_nodes(n):
+                    walk(child)
+
+            walk(value)
+            return found
+
+        class Walker(ast.NodeVisitor):
+            def visit_Call(self, node):
+                name = node.func.id if isinstance(node.func, ast.Name) else getattr(node.func, "attr", None)
+                if name in COERCERS:
+                    # int(round(...)) rounds to nearest and is a legitimate whole-number
+                    # conversion (e.g. average headcount -> operators). Bare int() over an
+                    # AVG label truncates, which is not.
+                    # round(x) returns the nearest integer, so int(round(x)) is exact.
+                    # round(x, 2) is still fractional -- int() would truncate it, so it
+                    # does NOT earn the exemption.
+                    rounded = any(
+                        isinstance(a, ast.Call)
+                        and getattr(a.func, "id", getattr(a.func, "attr", None)) == "round"
+                        and len(a.args) == 1
+                        for a in node.args
+                    )
+                    if name == "int" and not rounded:
+                        for label in labels_in(node):
+                            if label_kind[label] == "avg":
+                                offenders.append(
+                                    f"{py.relative_to(backend_root)}:{node.lineno} "
+                                    f"int() truncates avg label {label!r} -- use float() or int(round(...))"
+                                )
+                    return  # coerced to a JSON number; subtree is safe
+                self.generic_visit(node)
+
+            def visit_Dict(self, node):
+                for key, value in zip(node.keys, node.values):
+                    if isinstance(key, ast.Constant):
+                        leaked = _uncoerced_labels(value)
+                        if leaked:
+                            attr, lineno = leaked[0]
+                            offenders.append(f'{py.relative_to(backend_root)}:{lineno} "{key.value}": ...{attr}')
+                            continue
+                    self.visit(value)
+
+        Walker().visit(tree)
+
+    assert sorted(offenders) == []
+
+
+@requires_mariadb
+def test_sum_over_integer_returns_decimal_on_mariadb():
+    """Pin the premise behind test_no_uncoerced_aggregate_in_response_dict.
+
+    That guard is static, so it can only be justified by the dialect actually
+    behaving this way. MariaDB widens SUM() over an integer to DECIMAL; SQLite
+    returns int. If MariaDB ever stopped doing this, the guard's rationale would
+    be stale and this test would say so rather than leaving it a folk belief.
+    """
+    from decimal import Decimal
+
+    from sqlalchemy import text
+
+    session = SessionLocal()
+    try:
+        value = session.execute(text("SELECT SUM(x) FROM (SELECT 1 AS x UNION ALL SELECT 2) t")).scalar()
+    finally:
+        session.close()
+
+    assert isinstance(value, Decimal), f"expected Decimal from MariaDB SUM(), got {type(value).__name__}"
+    assert value == 3
+
+
+# ---------------------------------------------------------------------------
+# NULLS LAST guard (always-on, dialect-agnostic). SQLAlchemy emits the NULLS  # nullslast-guard: allow
+# FIRST/LAST clause verbatim for every dialect, but MariaDB has no such syntax
+# and rejects the statement with error 1064. SQLite accepts it, so the default
+# suite cannot catch this. Two endpoints shipped it: /api/v2/simulation/scenarios
+# (a visible 503) and /api/filters, which swallowed the error and returned [] --
+# every saved filter silently invisible behind a 200 OK.
+# ---------------------------------------------------------------------------
+
+
+def test_no_nullslast_in_query_construction():
+    """The nulls-ordering helpers must not appear in backend source.  # nullslast-guard: allow
+
+    Order on the null-ness expression instead, which every engine understands:
+
+        .order_by(Model.col.is_(None), Model.col.desc())
+
+    `col IS NULL` yields False (0) for rows that have a value and True (1) for
+    those that do not, so ascending on it reproduces the nulls-last ordering exactly.
+    """
+    import pathlib
+    import re
+
+    backend_root = pathlib.Path(__file__).resolve().parent.parent
+    marker = "# nullslast-guard: allow"
+    # Two spellings reach MariaDB: the SQLAlchemy helpers, and the raw clause inside a
+    # text() string. Cross-model review pointed out the first pattern alone missed the
+    # second, which is the easier one to write by accident.
+    patterns = (
+        re.compile(r"\bnulls(last|first)\s*\("),  # nullslast-guard: allow
+        re.compile(r"NULLS\s+(LAST|FIRST)", re.IGNORECASE),  # nullslast-guard: allow
+    )
+
+    offenders = []
+    for py in backend_root.rglob("*.py"):
+        if ".venv" in py.parts or "alembic" in py.parts:
+            continue
+        for lineno, line in enumerate(py.read_text(encoding="utf-8").splitlines(), start=1):
+            if marker in line:
+                continue
+            if any(p.search(line) for p in patterns):
+                offenders.append(f"{py.relative_to(backend_root)}:{lineno}")
+    assert sorted(offenders) == []
+
+
+@requires_mariadb
+def test_nulls_last_clause_is_rejected_but_is_null_ordering_works():
+    """Pin both halves of the premise behind test_no_nullslast_in_query_construction.
+
+    The guard is static, so it is only justified while MariaDB actually rejects
+    the clause AND the replacement actually orders the same way. If either ever
+    changed, this says so rather than leaving the guard as folklore.
+    """
+    from sqlalchemy import text
+    from sqlalchemy.exc import ProgrammingError
+
+    session = SessionLocal()
+    try:
+        session.execute(text("CREATE TEMPORARY TABLE _nl (id INT, u DATETIME NULL)"))
+        session.execute(text("INSERT INTO _nl VALUES (1, NULL), (2, '2026-01-01'), (3, '2026-02-01')"))
+
+        try:
+            session.execute(text("SELECT id FROM _nl ORDER BY u DESC NULLS LAST"))  # nullslast-guard: allow
+            raise AssertionError(
+                "MariaDB accepted the nulls-last clause -- the guard's premise no longer holds"
+            )  # nullslast-guard: allow
+        except ProgrammingError:
+            session.rollback()
+            session.execute(text("CREATE TEMPORARY TABLE _nl2 (id INT, u DATETIME NULL)"))
+            session.execute(text("INSERT INTO _nl2 VALUES (1, NULL), (2, '2026-01-01'), (3, '2026-02-01')"))
+
+        order = [r[0] for r in session.execute(text("SELECT id FROM _nl2 ORDER BY u IS NULL, u DESC")).fetchall()]
+    finally:
+        session.rollback()
+        session.close()
+
+    # newest value first, then the older value, and the NULL row last
+    assert order == [3, 2, 1]

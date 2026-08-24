@@ -202,7 +202,7 @@ def get_otd_by_client(
             "client_id": r.client_id,
             "client_name": r.client_name or f"Client {r.client_id}",
             "total_deliveries": r.total_deliveries or 0,
-            "on_time": r.on_time or 0,
+            "on_time": int(r.on_time or 0),
             "otd_percentage": round(
                 (float(r.on_time) / float(r.total_deliveries) * 100) if r.total_deliveries > 0 else 0, 1
             ),

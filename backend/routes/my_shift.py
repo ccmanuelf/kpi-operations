@@ -355,9 +355,9 @@ def get_my_shift_stats(
         "units_produced": total_units,
         "efficiency": round(efficiency, 1),
         "downtime_incidents": (down_result.incidents or 0) if down_result else 0,
-        "downtime_minutes": (down_result.total_minutes or 0) if down_result else 0,
+        "downtime_minutes": int(down_result.total_minutes or 0) if down_result else 0,
         "quality_checks": (qual_result.checks or 0) if qual_result else 0,
-        "defect_count": (qual_result.defects or 0) if qual_result else 0,
+        "defect_count": int(qual_result.defects or 0) if qual_result else 0,
     }
 
 

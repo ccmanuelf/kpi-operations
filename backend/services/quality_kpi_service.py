@@ -452,8 +452,8 @@ class QualityKPIService:
             "period": {"start_date": start_date.isoformat(), "end_date": end_date.isoformat()},
             "ppm": {
                 "value": float(ppm.ppm),
-                "total_inspected": ppm.total_inspected,
-                "total_defects": ppm.total_defects,
+                "total_inspected": int(ppm.total_inspected or 0),
+                "total_defects": int(ppm.total_defects or 0),
             },
             "dpmo": {
                 "value": float(dpmo.dpmo),
@@ -506,9 +506,9 @@ class QualityKPIService:
             return {"total_inspected": 0, "total_defects": 0, "total_defects_count": 0}
 
         return {
-            "total_inspected": result.total_inspected or 0,
-            "total_defects": result.total_defects or 0,
-            "total_defects_count": result.total_defects_count or result.total_defects or 0,
+            "total_inspected": int(result.total_inspected or 0),
+            "total_defects": int(result.total_defects or 0),
+            "total_defects_count": int(result.total_defects_count or result.total_defects or 0),
         }
 
     def _fetch_fpy_aggregates(
@@ -545,9 +545,9 @@ class QualityKPIService:
             }
 
         return {
-            "total_inspected": result.total_inspected or 0,
-            "total_passed": result.total_passed or 0,
-            "total_rework": result.total_rework or 0,
-            "total_repair": result.total_repair or 0,
-            "total_scrap": result.total_scrap or 0,
+            "total_inspected": int(result.total_inspected or 0),
+            "total_passed": int(result.total_passed or 0),
+            "total_rework": int(result.total_rework or 0),
+            "total_repair": int(result.total_repair or 0),
+            "total_scrap": int(result.total_scrap or 0),
         }
