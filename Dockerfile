@@ -37,7 +37,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user for security
-RUN groupadd -r kpiuser && useradd -r -g kpiuser kpiuser
+# -m creates /home/kpiuser. Without it, useradd -r makes a system user with no
+# home while still setting HOME=/home/kpiuser, so gunicorn 26's control server
+# fails to initialise there and logs
+#   [ERROR] Control server error: [Errno 13] Permission denied: '/home/kpiuser'
+# on every boot. Nothing uses that control interface, so the error is harmless in
+# itself -- but a permanent ERROR line in production logs is how people learn to
+# skim past ERROR lines, and the next one might matter.
+RUN groupadd -r kpiuser && useradd -r -m -g kpiuser kpiuser
 
 # Copy installed packages from builder
 COPY --from=builder /usr/local /usr/local
