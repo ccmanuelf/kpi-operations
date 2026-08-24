@@ -107,13 +107,26 @@ def test_auto_seed_skipped_when_demo_mode_off(monkeypatch):
 
 
 def test_force_reseed_does_not_bypass_demo_gate(monkeypatch):
-    """FORCE_RESEED is a demo-mode tool; it must not seed when DEMO_MODE is off."""
+    """FORCE_RESEED is a demo-mode tool; it must not seed when DEMO_MODE is off.
+
+    Patches the seeder like its siblings. Without that patch this test still went
+    red under a gate regression -- but only AFTER running the real seed() against
+    the real unstubbed engine, which under pytest resolves to the developer's own
+    database/kpi_platform.db (config.py defaults DATABASE_URL to it). That is the
+    same hazard this module's header records being fixed once already; asserting
+    the gate held while writing thousands of rows to prove it is not a gate test.
+    """
+    import backend.seed.cli as seed_cli
+
+    calls = []
     monkeypatch.setattr(backend.config.settings, "DEMO_MODE", False)
     monkeypatch.setenv("FORCE_RESEED", "true")
+    monkeypatch.setattr(seed_cli, "seed", lambda *a, **kw: calls.append(kw))
     session_calls = _install_recorders(monkeypatch, [_Row("REAL-CLIENT")])
 
     lifecycle._auto_seed_demo_data()
 
+    assert calls == []
     assert session_calls == []
 
 
