@@ -319,7 +319,7 @@ def get_aggregated_dashboard(
             on_time_orders = 0
         else:
             total_orders = otd_result.total or 0
-            on_time_orders = otd_result.on_time or 0
+            on_time_orders = int(otd_result.on_time or 0)
         otd_rate = (on_time_orders / total_orders * 100) if total_orders > 0 else 100
 
         result["otd"] = {

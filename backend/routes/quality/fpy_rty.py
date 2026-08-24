@@ -115,8 +115,8 @@ def calculate_fpy_rty_kpi(
     steps = []
     stage_fpys: list[Decimal] = []
     for stage in stage_results:
-        stage_total = stage.stage_total or 0
-        stage_passed = stage.stage_passed or 0
+        stage_total = int(stage.stage_total or 0)
+        stage_passed = int(stage.stage_passed or 0)
         if stage_total > 0:
             stage_fpy_pct = calculate_fpy_orchestrator(
                 FPYInputs(total_passed=stage_passed, total_inspected=stage_total)

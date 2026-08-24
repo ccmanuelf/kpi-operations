@@ -468,9 +468,9 @@ class ProductionKPIService:
 
             result = query.first()
 
-            total_units = result.total_units or 0
-            total_defects = result.total_defects or 0
-            total_scrap = result.total_scrap or 0
+            total_units = int(result.total_units or 0)
+            total_defects = int(result.total_defects or 0)
+            total_scrap = int(result.total_scrap or 0)
 
             # Calculate quality rate from aggregates
             if total_units > 0:

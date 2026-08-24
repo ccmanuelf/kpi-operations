@@ -384,7 +384,7 @@ def calculate_absenteeism_kpi(
         scheduled = float(result.scheduled or 0)
         absent = float(result.absent or 0)
         emp_count = result.emp_count or 0
-        absence_count = result.absence_count or 0
+        absence_count = int(result.absence_count or 0)
     rate = (absent / scheduled * 100) if scheduled > 0 else 0
 
     # Get shift_id for response if not provided
