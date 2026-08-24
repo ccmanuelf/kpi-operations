@@ -291,3 +291,46 @@ def test_the_widened_reset_parents_are_exactly_the_known_one():
     from backend.seed.cli import WIDENED_RESET_PARENTS
 
     assert WIDENED_RESET_PARENTS == ("ALERT",)
+
+
+def test_nothing_referencing_a_pass_two_table_is_swept_only_in_pass_four():
+    """Every inbound FK to a pass-2 table must be cleared BEFORE pass 2 runs.
+
+    Pass 2 now deletes a superset of what it used to: `_rows_deleted_by_reset`
+    leads with `scope IN client_ids`, which the old pass-2 predicate reached
+    only in combination with a parent-FK match. The extra rows are demo rows
+    that pass 4 deleted anyway, so no foreign tenant is newly targeted -- but
+    they are now deleted EARLIER, and that is a different claim.
+
+    Cross-model review caught the gap in that reasoning: "pass 4 deletes them
+    anyway" is about the SET of rows, not the ORDER. Under InnoDB, which always
+    enforces foreign keys, a table referencing ALERT that is only cleared in
+    pass 4 would now have its parent deleted first -- an IntegrityError that
+    rolls back the whole reset+reseed, or a transient orphan on the FK-off CLI
+    engine. It does not happen today: ALERT's only inbound FK is ALERT_HISTORY,
+    a pass-1 dependent sweep, and FLOATING_POOL has no inbound FKs at all.
+
+    The point of this test is that nothing in the code SAID so. Adding a table
+    with an FK into ALERT and a tenant column of its own would satisfy every
+    other guard here and break --reset on MariaDB only, which is the failure
+    mode this suite has the least chance of catching.
+    """
+    from backend.database import Base
+    from backend.seed.cli import DEPENDENT_SWEEPS, NULLABLE_TENANT_SWEEPS
+
+    cleared_before_pass_two = {child for child, _, _, _ in DEPENDENT_SWEEPS}
+    pass_two_tables = {child for child, _, _, _, _ in NULLABLE_TENANT_SWEEPS}
+    assert pass_two_tables, "derived no pass-2 tables -- this guard would be vacuous"
+
+    offenders = []
+    for name, table in Base.metadata.tables.items():
+        for column in table.columns:
+            for fk in column.foreign_keys:
+                target = fk.column.table.name
+                if target not in pass_two_tables:
+                    continue
+                if name == target or name in cleared_before_pass_two or name in pass_two_tables:
+                    continue
+                offenders.append(f"{name}.{column.name} -> {target} (swept only in pass 4)")
+
+    assert sorted(offenders) == []
