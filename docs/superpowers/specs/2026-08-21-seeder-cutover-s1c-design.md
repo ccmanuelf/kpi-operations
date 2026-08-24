@@ -34,7 +34,13 @@ by how much it actually hurts, so S2 inherits a decision list rather than a redi
 
 1. **`BREAK_TIME` — changes numbers, not just screens.** `production_kpi_service` falls back
    to full `scheduled_hours` when no break rows exist, so efficiency is systematically
-   overstated (~14% for a 60-min break on an 8h shift), `is_estimated` does not flag it, and
+   UNDERSTATED (~9.4% for the 45 min the retired seeder actually wrote -- 15 min morning
+   plus 30 min lunch -- on an 8h shift). Direction corrected 2026-08-24: an earlier draft
+   of this section said "overstated ~14% for a 60-min break", which was wrong twice.
+   `scheduled_hours` is the DENOMINATOR in
+   `(units * ideal_cycle_time) / (employees * scheduled_hours) * 100`, so omitting breaks
+   makes it larger and efficiency SMALLER; and 60 min was a figure no seeder ever used.
+   Measured: 7.25h -> 11.03%, 8.00h -> 10.00%. `is_estimated` does not flag it, and
    `crud/production/core.py` persists the value. This is the only gap that silently alters
    stored KPI data; it should be closed first.
 2. **Global `KPI_THRESHOLD` rows — re-opens a shipped fix.** The retired

@@ -224,7 +224,7 @@ The auto-seed creates 4 demo clients (DEMO-PIECE, DEMO-HOURLY, DEMO-HYBRID, SAMP
 
 It does **not** populate every table. Capacity planning (all 13 `capacity_*` tables), break times, equipment, alerts, jobs, part opportunities and labor-hour allocations are outside the current seeder's scope, so screens backed only by those tables render empty on a freshly seeded demo. Two of those gaps are worth knowing about specifically:
 
-- **Break times.** With no `BREAK_TIME` rows the efficiency denominator uses full scheduled hours, so efficiency reads high — roughly 14% for a 60-minute break on an 8-hour shift — and the value is persisted, not computed per request.
+- **Break times.** With no `BREAK_TIME` rows the efficiency denominator uses full scheduled hours. Since `scheduled_hours` divides the formula, that makes efficiency read **low**, not high — about 9.4% low for the 45 minutes of breaks the demo is meant to have (15 min morning + 30 min lunch on an 8-hour shift). The value is persisted, not recomputed per request, so re-seeding does not correct history.
 - **Global KPI thresholds.** The seeder writes per-client thresholds only, so the admin thresholds panel is empty until a client is selected.
 
 The seeder's own coverage contract lives in `backend/seed/coverage.py`: `SEEDED` is the authoritative list of what it writes. `NOT_SEEDED` is deliberately **not** the complement — it records only exclusions that are permanent by design, and is pinned to that by `test_not_seeded_holds_exactly_token_blacklist`. Full-coverage accounting is S2 scope.
