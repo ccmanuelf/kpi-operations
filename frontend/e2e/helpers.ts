@@ -59,9 +59,9 @@ export async function login(
   }
 
   const credentials = {
-    admin: { user: 'admin', pass: 'admin123' },
-    operator: { user: 'operator1', pass: 'password123' },
-    leader: { user: 'leader1', pass: 'password123' }
+    admin: { user: 'demo_admin', pass: 'DemoSeed#2026' },
+    operator: { user: 'demo_operator', pass: 'DemoSeed#2026' },
+    leader: { user: 'demo_leader', pass: 'DemoSeed#2026' }
   };
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {

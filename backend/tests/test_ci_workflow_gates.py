@@ -214,3 +214,48 @@ def test_the_seed_suite_step_still_points_at_the_live_mariadb_service():
     step = next(s for s in steps if s.get("name") == "Seed suite on MariaDB")
 
     assert step.get("env") == {"SEED_TEST_DATABASE_URL": "${{ env.DATABASE_URL }}"}
+
+
+def _all_run_blocks(workflow: dict) -> list:
+    """Every `run:` block in the workflow, as (job, step name, raw text).
+
+    Flat across every job and step regardless of name, so a step being
+    renamed or reordered doesn't quietly drop it from the walk below.
+    """
+    blocks = []
+    for job_name, job in workflow["jobs"].items():
+        for step in job.get("steps", []):
+            run = step.get("run")
+            if isinstance(run, str):
+                blocks.append((job_name, step.get("name"), run))
+    return blocks
+
+
+def test_the_ci_workflow_parser_finds_run_blocks():
+    """Anti-vacuity control for test_no_ci_step_references_init_demo_database.
+
+    A parser that silently finds zero `run:` blocks would let the assertion
+    below pass trivially forever -- exactly the failure mode this file exists
+    to close (see module docstring: `--no-cov` was deleted from ci.yml once
+    already and nothing noticed). Pinning a nonzero count here means a change
+    that empties the walk (every step restructured into a composite action,
+    `jobs` renamed, ...) fails loudly instead of leaving the gate below green
+    with nothing left to check.
+    """
+    workflow = yaml.safe_load(CI_WORKFLOW.read_text())
+
+    assert len(_all_run_blocks(workflow)) > 0
+
+
+def test_no_ci_step_references_init_demo_database():
+    """S1c retires backend/scripts/init_demo_database.py in favour of
+    backend.seed.cli.seed (.superpowers/sdd/2026-08-21-seeder-cutover-s1c). No
+    `run:` block in ci.yml may reference the retired module by name -- if one
+    still did, the later task that deletes the file would break this
+    workflow, silently, until the step actually ran.
+    """
+    workflow = yaml.safe_load(CI_WORKFLOW.read_text())
+
+    offenders = [f"{job}/{name}" for job, name, run in _all_run_blocks(workflow) if "init_demo_database" in run]
+
+    assert offenders == []

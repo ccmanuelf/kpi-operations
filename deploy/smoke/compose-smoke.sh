@@ -7,14 +7,14 @@
 #   5 backup + restore (scratch DB)    6 migration ownership logs
 # CI (compose-stack-smoke) and local verification both run exactly this file.
 #
-# SIDE EFFECTS: writes SMOKE-#### hold-status rows (client ACME-MFG) and leaves a
+# SIDE EFFECTS: writes SMOKE-#### hold-status rows (client DEMO-PIECE) and leaves a
 # `smoke_restore` scratch database behind (proof 5's restore target). Harmless on
 # CI / fresh installs; run knowingly against a live system.
 #
 # Write endpoint: POST /api/hold-catalogs/statuses (201, supervisor tier — the
-# demo `admin` satisfies it). Chosen because a hold-status catalog entry is a
+# demo `demo_admin` satisfies it). Chosen because a hold-status catalog entry is a
 # self-contained authenticated create+list against a seeded demo client
-# (ACME-MFG) with no extra setup. Proof requirement: create -> readback ->
+# (DEMO-PIECE) with no extra setup. Proof requirement: create -> readback ->
 # survives restart.
 set -euo pipefail
 
@@ -22,7 +22,7 @@ BASE_URL="${BASE_URL:-https://localhost}"
 # `docker compose` reads COMPOSE_FILE natively — a single path or a colon-joined
 # value (e.g. the local named-volume override) both work — so we just export it.
 export COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.prod.yml}"
-CLIENT_ID="${CLIENT_ID:-ACME-MFG}"
+CLIENT_ID="${CLIENT_ID:-DEMO-PIECE}"
 CURL="curl -sk"   # -k: Caddy's internal CA isn't in the host trust store
 READY_DEADLINE="${READY_DEADLINE:-600}"   # proof 0 owns the boot/seed wait
 RETRY_DEADLINE="${RETRY_DEADLINE:-120}"   # per-request bounded retry (slow boot)
@@ -84,7 +84,7 @@ echo "OK uploads writable"
 # --- Proof 2: login (demo admin) ---------------------------------------------
 step "2 login (demo admin)"
 TOKEN=""
-LOGIN_JSON='{"username":"admin","password":"admin123"}'  # pragma: allowlist secret
+LOGIN_JSON='{"username":"demo_admin","password":"DemoSeed#2026"}'  # pragma: allowlist secret
 login_once() {
   TOKEN=$($CURL -X POST "$BASE_URL/api/auth/login" -H 'Content-Type: application/json' \
     -d "$LOGIN_JSON" 2>/dev/null \
