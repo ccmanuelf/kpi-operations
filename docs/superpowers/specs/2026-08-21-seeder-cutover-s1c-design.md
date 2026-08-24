@@ -276,7 +276,10 @@ absent.
 ## 7. Risks
 
 **Render is the only environment that changes.** Its one-time rebuild is manual and deliberate
-(D3). If skipped, Render serves nine clients — four new and five stale — until it is done.
+(D3). CORRECTED 2026-08-24: measured before merge, Render serves the legacy FIVE and none
+of the new four, and it has no persistent disk — `render.yaml` recreates the database on
+every deploy — so the repopulation is automatic and D3 reduces to a post-deploy check that
+exactly four allowlisted clients are present. See the plan's post-merge section.
 
 **The e2e suite depends on seeded credentials.** If the roster or `DEMO_PASSWORD` changes later,
 `helpers.ts` must follow. This is a new coupling that did not exist while the e2e suite used the
