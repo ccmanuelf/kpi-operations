@@ -100,7 +100,8 @@ Admin → manages alert thresholds via `/api/alerts/config/`. Each config has:
 | notification_sms | SMS out on trigger |
 | check_frequency_minutes | How often the rule runs |
 
-Examples (from the demo seed):
+Illustrative examples — alert configs are **not** seeded. They are created
+through this screen, and a freshly seeded demo starts with none:
 
 | Config | Warning | Critical |
 |--------|---------|----------|
@@ -108,7 +109,7 @@ Examples (from the demo seed):
 | quality_ppm (global) | 5000 PPM | 10000 PPM |
 | OTD (global) | 90% | 80% (low) |
 | absenteeism (global) | 5% | 10% |
-| efficiency (ACME-MFG) | 80% | 65% |
+| efficiency (DEMO-PIECE) | 80% | 65% |
 
 Per-client configs override globals.
 
