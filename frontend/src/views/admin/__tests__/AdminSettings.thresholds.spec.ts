@@ -5,8 +5,12 @@
  * placeholders"): the prod-safe demo seeder never created any
  * client_id=NULL KPIThreshold row, so GET /api/kpi-thresholds (no
  * client_id) returned `{ thresholds: {} }` for the panel's default view —
- * a load-path/data problem, not a frontend binding bug (fixed separately
- * in backend/scripts/_seed_reference.py). This test asserts the DISPLAY
+ * a load-path/data problem, not a frontend binding bug. That fix lived in
+ * backend/scripts/_seed_reference.py, which S1c deleted along with the rest
+ * of the old seeder — and backend.seed does NOT write global rows, so the
+ * empty default view is currently back. Recorded as gap 2 in
+ * docs/superpowers/specs/2026-08-21-seeder-cutover-s1c-design.md section 2.1.
+ * This test asserts the DISPLAY
  * side of the contract: when the API *does* return threshold rows, the
  * panel's fields render those values instead of staying blank.
  *

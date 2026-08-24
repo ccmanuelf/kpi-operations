@@ -42,6 +42,7 @@ import pathlib
 import yaml
 
 CI_WORKFLOW = pathlib.Path(__file__).resolve().parents[2] / ".github" / "workflows" / "ci.yml"
+E2E_WORKFLOW = pathlib.Path(__file__).resolve().parents[2] / ".github" / "workflows" / "e2e.yml"
 
 #: The full-suite target list. Coverage (and therefore backend/.coveragerc's
 #: fail_under gate) is meaningful only when the whole pool is measured, so this
@@ -232,7 +233,7 @@ def _all_run_blocks(workflow: dict) -> list:
 
 
 def test_the_ci_workflow_parser_finds_run_blocks():
-    """Anti-vacuity control for test_no_ci_step_references_init_demo_database.
+    """Anti-vacuity control for test_no_workflow_step_references_a_retired_seeder.
 
     A parser that silently finds zero `run:` blocks would let the assertion
     below pass trivially forever -- exactly the failure mode this file exists
@@ -247,15 +248,41 @@ def test_the_ci_workflow_parser_finds_run_blocks():
     assert len(_all_run_blocks(workflow)) > 0
 
 
-def test_no_ci_step_references_init_demo_database():
-    """S1c retires backend/scripts/init_demo_database.py in favour of
-    backend.seed.cli.seed (.superpowers/sdd/2026-08-21-seeder-cutover-s1c). No
-    `run:` block in ci.yml may reference the retired module by name -- if one
-    still did, the later task that deletes the file would break this
-    workflow, silently, until the step actually ran.
+#: Everything S1c deleted that a workflow step could plausibly invoke. The whole
+#: set, not just the one that happened to be referenced: an earlier version of
+#: this gate checked `init_demo_database` alone and stayed green when the seed
+#: step was repointed at `seed_sample_client`, a module this same change deletes.
+#: Checking the member that names the set instead of every member is precisely
+#: the habit this gate exists to catch, so it must not practise it.
+RETIRED_SEEDER_MODULES = (
+    "init_demo_database",
+    "seed_sample_client",
+    "_seed_capacity",
+    "_seed_common",
+    "_seed_master",
+    "_seed_operations",
+    "_seed_reference",
+    "_seed_simulation",
+    "scripts/deploy.sh",
+)
+
+
+def test_no_workflow_step_references_a_retired_seeder():
+    """S1c retires both old demo seeders in favour of backend.seed.cli.seed. No
+    `run:` block in either workflow may reference any of the deleted modules --
+    if one did, the deletion would break that workflow silently, and only when
+    the step actually ran.
+
+    Covers e2e.yml as well as ci.yml: e2e-sqlite is a required check and seeds
+    through the DEMO_MODE boot path, so a seeder reference could appear there
+    just as easily.
     """
-    workflow = yaml.safe_load(CI_WORKFLOW.read_text())
+    offenders = []
+    for workflow_path in (CI_WORKFLOW, E2E_WORKFLOW):
+        workflow = yaml.safe_load(workflow_path.read_text())
+        for job, name, run in _all_run_blocks(workflow):
+            for retired in RETIRED_SEEDER_MODULES:
+                if retired in run:
+                    offenders.append(f"{workflow_path.name}:{job}/{name} -> {retired}")
 
-    offenders = [f"{job}/{name}" for job, name, run in _all_run_blocks(workflow) if "init_demo_database" in run]
-
-    assert offenders == []
+    assert sorted(offenders) == []

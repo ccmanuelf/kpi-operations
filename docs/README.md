@@ -32,10 +32,13 @@ Manufacturing KPI tracking and capacity planning platform with multi-tenant arch
 ### Backend
 
 ```bash
-cd backend
-pip install -r requirements.txt
-PYTHONPATH=.. python -c "from backend.db.migrate import upgrade_to_head; upgrade_to_head()"
-PYTHONPATH=.. python -m backend.seed.cli --profile full   # Seeds demo data (4 clients, 57 tables)
+# Run these from the REPO ROOT, not from backend/. `upgrade_to_head()` resolves
+# DATABASE_URL to an absolute repo-root path, while the seeder's default is
+# relative to the working directory — from backend/ they would target two
+# different files and the seeder would fail on a directory that does not exist.
+pip install -r backend/requirements.txt
+PYTHONPATH=. python -c "from backend.db.migrate import upgrade_to_head; upgrade_to_head()"
+PYTHONPATH=. python -m backend.seed.cli --profile full   # Seeds the 4 demo clients
 uvicorn backend.main:app --reload
 ```
 

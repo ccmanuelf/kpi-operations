@@ -3,7 +3,14 @@
 **Version:** 1.0
 **Date:** 2025-12-31
 **Author:** System Architect
-**Status:** Ready for Development
+**Status:** Superseded pre-implementation design — kept as a historical record.
+
+> **This document describes the Phase 1 MVP as designed, not the system as built.**
+> Its credentials, client ids and seed instructions predate the S1c seeder cutover and
+> will not work against a current demo. It is paired with `database_schema.sql` in this
+> directory, so the two were deliberately left un-repointed together rather than half
+> updated. For how to run and seed the platform today see `docs/README.md`,
+> `docs/CONTRIBUTING.md` and `docs/DEPLOYMENT.md`.
 
 ---
 

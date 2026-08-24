@@ -220,7 +220,14 @@ No manual SQL import is required. Alembic is the single schema mechanism (`backe
 
 Simply ensure the database exists and the connection is configured (see [Environment Variables](#environment-variables)), then start the backend. The schema and demo data will be created automatically.
 
-The auto-seed creates 4 demo clients (DEMO-PIECE, DEMO-HOURLY, DEMO-HYBRID, SAMPLE_REF) with employees, work orders, production entries, quality data, capacity planning records, hold catalogs, break times, production lines, equipment, and assignments.
+The auto-seed creates 4 demo clients (DEMO-PIECE, DEMO-HOURLY, DEMO-HYBRID, SAMPLE_REF) with employees, work orders, production entries, quality data, downtime, hold catalogs and entries, production lines, products, shifts and assignments.
+
+It does **not** populate every table. Capacity planning (all 13 `capacity_*` tables), break times, equipment, alerts, jobs, part opportunities and labor-hour allocations are outside the current seeder's scope, so screens backed only by those tables render empty on a freshly seeded demo. Two of those gaps are worth knowing about specifically:
+
+- **Break times.** With no `BREAK_TIME` rows the efficiency denominator uses full scheduled hours, so efficiency reads high — roughly 14% for a 60-minute break on an 8-hour shift — and the value is persisted, not computed per request.
+- **Global KPI thresholds.** The seeder writes per-client thresholds only, so the admin thresholds panel is empty until a client is selected.
+
+The seeder's own coverage contract lives in `backend/seed/coverage.py`: `SEEDED` is the authoritative list of what it writes. `NOT_SEEDED` is deliberately **not** the complement — it records only exclusions that are permanent by design, and is pinned to that by `test_not_seeded_holds_exactly_token_blacklist`. Full-coverage accounting is S2 scope.
 
 > **Note:** The old `CAPACITY_PLANNING_ENABLED` flag has been removed — capacity tables are always part of the Alembic schema and the flag had no effect since the Alembic collapse.
 

@@ -219,21 +219,6 @@ def run_best_effort(name: str, fn: Callable[[], None]) -> None:
         logger.warning("%s failed: %s", name, e)
 
 
-def run_best_effort_unless(name: str, fn: Callable[[], None], fatal_exc: type[BaseException]) -> None:
-    """Best-effort, EXCEPT ``fatal_exc`` which is re-raised.
-
-    Ordinary failures are logged and swallowed (same semantic as
-    run_best_effort); a fatal exception (e.g. SchemaRebuildError from a
-    half-completed destructive rebuild) must crash the boot instead.
-    """
-    try:
-        fn()
-    except fatal_exc:
-        raise
-    except Exception as e:  # noqa: BLE001 - best-effort by design
-        logger.warning("%s failed: %s", name, e)
-
-
 def run_startup_migrations() -> None:
     """FATAL: bring the schema to Alembic head (the ONLY schema mechanism).
 

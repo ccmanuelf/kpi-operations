@@ -24,6 +24,42 @@ deliberately left — because until now nothing called `_reset`, and S1c is what
 Non-goals: S2 feature coverage (alerts, assumptions, floating-pool, simulation), periodic
 re-seed scheduling, and any change to Alembic revisions. S1c adds no migrations.
 
+### 2.1 Demo-coverage gaps this cutover makes visible
+
+The old seeder wrote 45 tables; `backend.seed` writes 23 (`coverage.py:SEEDED`). That gap
+belongs to S1b, but S1c is where it becomes *user-visible*, because until this change the
+boot path ran the old seeder and the VM's four tenants were populated by
+`seed_sample_client.seed_client()`. Recorded here rather than in an untracked note, ranked
+by how much it actually hurts, so S2 inherits a decision list rather than a rediscovery:
+
+1. **`BREAK_TIME` — changes numbers, not just screens.** `production_kpi_service` falls back
+   to full `scheduled_hours` when no break rows exist, so efficiency is systematically
+   overstated (~14% for a 60-min break on an 8h shift), `is_estimated` does not flag it, and
+   `crud/production/core.py` persists the value. This is the only gap that silently alters
+   stored KPI data; it should be closed first.
+2. **Global `KPI_THRESHOLD` rows — re-opens a shipped fix.** The retired
+   `_seed_reference.py` wrote 10 `client_id=None` rows specifically so the admin thresholds
+   panel was not empty in its default view; `AdminSettings.thresholds.spec.ts` is that fix's
+   regression test. The new seeder writes per-client keys only, so 0 of 10 fields populate
+   until a client is selected.
+3. **Capacity planning (13 `capacity_*` tables).** `poweruser` logs in straight onto
+   `/capacity-planning`, and `demo_planner` is a poweruser — so the seeded planner's first
+   screen reads all zeros. "Plan vs Actual" is entirely capacity-sourced, and onboarding can
+   never reach its `capacity_plan_created` step.
+4. **Labor-hours cluster.** `ATTENDANCE_HOUR_ALLOCATION` unseeded and `labor_class` /
+   `normal_hours` / `double_hours` / `triple_hours` never set, so every row buckets as
+   `unclassified`, Billed reads 0.00, and the grid's amber completeness chip fires on 100%
+   of rows instead of the minority the old seeder left incomplete.
+5. **Lower impact, same class.** `WORK_ORDER.delay_classification` never set, so
+   `otd_net_pct == otd_gross_pct` everywhere; `CLIENT` contact fields never set;
+   `is_floating_pool` hardcoded False; `JOB`, `ALERT`, `PART_OPPORTUNITIES` and
+   `SIMULATION_SCENARIO` empty. `EQUIPMENT` and `DASHBOARD_WIDGET_DEFAULTS` are inert.
+
+`NOT_SEEDED` in `coverage.py` is deliberately **not** the complement of `SEEDED` — it records
+only permanently-excluded tables and is pinned to `TOKEN_BLACKLIST` by
+`test_not_seeded_holds_exactly_token_blacklist` (section 7). Full-coverage accounting is the
+S2 gate, so this list is prose here rather than a contract there, on purpose.
+
 ## 3. Decisions settled in brainstorm
 
 **D1 — the destructive boot path is retired, not repointed.** The old `init_database()` created

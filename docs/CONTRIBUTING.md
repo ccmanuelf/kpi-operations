@@ -22,12 +22,16 @@ Use conventional commit format:
 
 ```bash
 # Backend
-cd backend
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-PYTHONPATH=.. python -c "from backend.db.migrate import upgrade_to_head; upgrade_to_head()"
-PYTHONPATH=.. python -m backend.seed.cli --profile full
+python -m venv backend/venv
+source backend/venv/bin/activate
+pip install -r backend/requirements.txt
+
+# Schema, then data — run both from the REPO ROOT. `upgrade_to_head()` resolves
+# DATABASE_URL to an absolute repo-root path, while the seeder's default is
+# relative to the working directory; from backend/ they target two different
+# files and the seeder fails on a directory that does not exist.
+PYTHONPATH=. python -c "from backend.db.migrate import upgrade_to_head; upgrade_to_head()"
+PYTHONPATH=. python -m backend.seed.cli --profile full
 
 # Frontend
 cd frontend
