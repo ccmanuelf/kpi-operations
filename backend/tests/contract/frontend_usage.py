@@ -154,3 +154,41 @@ def fields_read_by_frontend() -> dict:
                     usage.setdefault(endpoint, set()).update(fields)
 
     return usage
+
+
+#: Endpoints where this extractor is KNOWN to be blind, so an empty or bleed-only
+#: result must never be read as "nothing missing". Measured 2026-08-25: all eight
+#: /api/kpi/*/trend endpoints report non-empty field sets that contain neither
+#: `date` nor `value` -- the only two fields they actually return. The listed
+#: fields are bleed from unrelated code in the same file. Coverage read 10/10
+#: while real protection was 0/10, which is worse than an honest zero.
+#:
+#: Root cause is structural, not a regex to widen: kpiChartConfig.ts::unwrapTrend
+#: destructures points as `r`, reads the axios envelope through a TypeScript cast,
+#: and states date/value partly as type ANNOTATIONS rather than runtime accesses.
+#: Recovering those needs type-shape mining, not another pass of accessor matching.
+KNOWN_BLIND = frozenset(
+    {
+        "/api/kpi/availability/trend",
+        "/api/kpi/efficiency/trend",
+        "/api/kpi/oee/trend",
+        "/api/kpi/on-time-delivery/trend",
+        "/api/kpi/performance/trend",
+        "/api/kpi/quality/trend",
+        "/api/kpi/throughput-time/trend",
+        "/api/kpi/wip-aging/trend",
+    }
+)
+
+
+def coverage_of(endpoint: str) -> str:
+    """Whether this extractor can say anything trustworthy about `endpoint`.
+
+    Exists so a caller cannot mistake silence for assurance. A cross-check that
+    prints "read-but-not-sent: []" looks identical whether the extractor examined
+    the endpoint and found nothing wrong, or could not see it at all -- and the
+    second is not a pass. Callers must branch on this rather than on emptiness.
+    """
+    if endpoint in KNOWN_BLIND:
+        return "NO_COVERAGE"
+    return "COVERED" if fields_read_by_frontend().get(endpoint) else "NO_FIELDS_FOUND"

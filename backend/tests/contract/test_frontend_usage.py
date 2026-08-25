@@ -43,3 +43,28 @@ def test_wrapper_hop_resolves_a_field_for_a_trend_endpoint():
     usage = fields_read_by_frontend()
 
     assert "has_estimated" in usage["/api/kpi/efficiency/trend"]
+
+
+def test_a_blind_endpoint_reports_no_coverage_rather_than_silence():
+    """An empty result and an unseeable endpoint must not look alike.
+
+    Measured 2026-08-25: all eight /api/kpi/*/trend endpoints return NON-EMPTY
+    field sets that contain neither `date` nor `value` -- the only two fields
+    they actually return. The listed names are bleed from unrelated code in the
+    same file. So the coverage metric read 10/10 while real protection was 0/10.
+
+    A cross-check printing "read-but-not-sent: []" is identical whether the
+    extractor looked and found nothing wrong or could not see the endpoint at
+    all. The second is not a pass, and this is what stops it being read as one.
+    """
+    from backend.tests.contract.frontend_usage import coverage_of, fields_read_by_frontend
+
+    usage = fields_read_by_frontend()
+
+    # the trap: non-empty, yet missing both real fields
+    trend = usage.get("/api/kpi/efficiency/trend", set())
+    assert "value" not in trend
+    assert "date" not in trend
+
+    assert coverage_of("/api/kpi/efficiency/trend") == "NO_COVERAGE"
+    assert coverage_of("/api/attendance/kpi/absenteeism") == "COVERED"
