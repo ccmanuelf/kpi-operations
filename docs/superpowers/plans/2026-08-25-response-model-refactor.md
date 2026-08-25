@@ -563,3 +563,126 @@ Present the number and the recommendation to the human partner. **Do not begin `
 git add docs/superpowers/plans/2026-08-25-response-model-refactor-PILOT-MEASUREMENT.md
 git commit -m "docs(plan): pilot measurement and reassessment for the response-model refactor"
 ```
+
+---
+
+## Gate outcome (Task 7 Step 3) — answered 2026-08-25
+
+The human partner chose **all 140 remaining routes** (not the narrowed 107 the pilot
+recommended, and not stop-after-kpi), and **fix `coverage_of()` first**. Spec D2 survives
+contact. Spec §8's open question about `/api/export` + `/api/reports` is thereby answered:
+they are in scope.
+
+Measured surface at the gate — the numbers these tasks are sized from:
+
+| bucket | count | what conversion buys |
+|---|---:|---|
+| explicit GET | 81 | closes a real Decimal leak; capturable with today's harness |
+| explicit mutation (22 POST, 2 PUT, 2 DELETE) | 26 | closes a real leak; needs the D4 write-capture harness first |
+| undeclared | 33 (25 DELETE, 7 GET, 1 POST) | closes **no bug** — already immune; OpenAPI accuracy only |
+
+Spec §6 predicted the DELETEs would be trivial. Measured: 25 of 27 are undeclared and
+already immune, so they need no bug work at all — only contract declarations, last.
+
+**Sequencing rule for everything below:** one area (or named group) per task, per the pilot's
+demonstrated cost variance. Each task ends with the allowlist strictly smaller and the golden
+master green. Do not batch areas into one PR.
+
+**The recurring hazard the pilot found, restated because it will bite again:** a route whose
+fields are *conditionally present* — an auth-scope-gated addition, or a `try/except` fallback
+with a narrower shape — needs `response_model_exclude_unset=True`. Without it, `Optional[X] =
+None` fields serialize as explicit `null` keys the route never used to emit. mypy cannot catch
+this; only the golden master's key-set comparison does. Check every route for it explicitly
+rather than assuming clean.
+
+---
+
+### Task 8: Repair the second safety net (`coverage_of`)
+
+**Files:**
+- Modify: `backend/tests/contract/frontend_usage.py`
+- Test: `backend/tests/contract/test_frontend_usage.py`
+
+The pilot measured `coverage_of()` returning `COVERED` for 9 of 15 routes that had **zero**
+real field overlap — pure bleed from unrelated code in the same file. Combined with the 8
+trend routes already in `KNOWN_BLIND`, the entire 24-route pilot area ran on one net, not the
+two spec D3 requires. It must not be relied on across ~100 more routes in that state.
+
+- [ ] **Step 1: Write the failing test.** Assert that a route whose frontend-read fields do
+      not intersect its own declared/captured field names reports `NO_FIELDS_FOUND`, not
+      `COVERED`. Use a real measured case from the pilot: `GET /api/kpi/efficiency/by-product`
+      reads `avg_efficiency` from bleed, while the route's real fields are `actual_output`,
+      `efficiency`, `product_id`, `product_name` — zero intersection.
+- [ ] **Step 2: Run it, confirm it fails** with the current `COVERED`.
+- [ ] **Step 3: Implement.** Require the fields found to intersect the route's actual field
+      names (available from the golden master entry) before reporting `COVERED`. Report a
+      third state where the endpoint is genuinely unused by the frontend, so "nobody reads
+      this" is distinguishable from "the extractor cannot see it".
+- [ ] **Step 4: Re-measure the pilot's 24 routes** and record the corrected coverage. If the
+      corrected reading is that few or none are genuinely covered, say so — that is a real
+      finding about the frontend audit's value, not a failure of this task.
+- [ ] **Step 5: Mutation-proof + commit.**
+
+**Exit criterion:** no route can report `COVERED` on bleed. `KNOWN_BLIND` shrinks or is
+justified per remaining entry.
+
+---
+
+### Tasks 9–14: Convert the 81 explicit GET routes, by area
+
+Same loop as Tasks 6 and 7, one task per grouping. Measure the exact route list and its
+golden entries at dispatch time (the pilot's method), rather than trusting a list written
+here that may drift.
+
+| Task | area(s) | total | explicit | GET | notes |
+|---|---|---:|---:|---:|---|
+| 9 | `/api/workflow` | 14 | 14 | 9 | densest remaining; 5 mutations deferred to Task 15 |
+| 10 | `/api/reports` + `/api/export` | 20 | 20 | 18 | spec §8's "benefit close to zero" area — **verify first** whether these return `FileResponse`/`StreamingResponse`, for which a `response_model` is meaningless. Any that do get a documented allowlist exception, not an invented model. |
+| 11 | `/api/quality` + `/api/jobs` | 17 | 15 | 15 | |
+| 12 | `/api/floating-pool` + `/api/attendance` | 14 | 12 | 8 | `/api/floating-pool/simulation/insights` returns **deliberate** numeric-looking strings (spec §6) — its model must declare `str`. Nested three levels; cover the interior. |
+| 13 | `/api/work-orders` + `/api/kpi-thresholds` + `/api/capacity` + `/api/data-completeness` | 16 | 14 | 10 | |
+| 14 | the explicit-GET tail | rest | | | `/api/cache`, `/api/predictions`, `/api/my-shift`, `/api/alerts`, `/api/shifts`, `/api/v2`, `/api/defect-types`, `/api/filters`, `/api/client-config`, `/api/pivot`, `/api/products`, `/api/downtime-reasons`, `/api/inference`, `/api/import-logs`, `/api/onboarding` |
+
+Per task: model from the captured key set → apply → golden master → check
+`response_model_exclude_unset` need → shrink allowlist → frontend audit (now trustworthy
+after Task 8) → commit.
+
+---
+
+### Task 15: Build the D4 write-capture harness
+
+**Files:** `backend/tests/contract/capture.py`, `backend/tests/contract/test_golden_master.py`
+
+The 26 explicit mutation routes cannot be converted safely without capturing what they
+actually return. Spec D4: disposable seeded database, `alembic upgrade head`, seed, exercise,
+discard — never against the VM.
+
+- [ ] Extend the harness to issue real writes with valid bodies, resolving required fields
+      from seeded rows.
+- [ ] Capture mutation responses into the golden master.
+- [ ] **Prove the harness detects change**, exactly as Task 5 did for reads: a deliberately
+      dropped field must fail and name the route and key. A harness that records
+      `<status:422>` for every mutation because it cannot build a valid body is the same
+      false green Task 5 caught — check for it explicitly.
+- [ ] Where a mutation's shape genuinely varies with the request, record a documented
+      allowlist exception (spec §6) rather than inventing a model.
+
+---
+
+### Task 16: Convert the 26 explicit mutation routes
+
+Depends on Task 15. `/api/auth` holds 4 of them and is security-sensitive — its responses
+must not gain or lose fields, and no token/credential field may be added to a model.
+`/api/metrics/results` returns **deliberate** str-of-Decimal values (spec §6); its model
+declares `str` and must stay that way.
+
+---
+
+### Task 17: Declare the 33 already-immune routes
+
+These close no bug — they are the OpenAPI-accuracy half of D1. 25 are DELETEs, which spec §6
+predicted would be uniform; confirm that and use one shared model if so. Lowest priority;
+do them last so the risk-bearing work lands first.
+
+**Completion:** the ratchet allowlist is empty, and `test_no_api_route_has_a_loose_response_model`
+passes with no exceptions beyond those documented per spec §6.
