@@ -4,7 +4,10 @@ Values change on every reseed; shapes do not. A value-sensitive record would
 churn constantly and be ignored within a week.
 """
 
+import typing
 from typing import Any, List
+
+from fastapi.routing import APIRoute
 
 #: Fields whose dict KEYS are data, not field names -- a value->count map rather
 #: than an object with fixed attributes. `shape_of` records these as `field.*`
@@ -75,3 +78,31 @@ def capture_all(client, routes) -> dict:
         except ValueError:
             captured[f"{method} {path}"] = ["<non-json>"]
     return captured
+
+
+LOOSE_MARKERS = ("typing.Any", "dict", "list[dict", "typing.Dict", "<class 'dict'>", "<class 'list'>")
+
+
+def is_loose(response_model) -> bool:
+    """True when the declared model cannot constrain a Decimal.
+
+    `None`, `Any`, bare `dict`/`list` all let Pydantic serialise a Decimal as a
+    string. This is the predicate the ratchet guard shrinks to zero.
+    """
+    if response_model is None:
+        return True
+    if response_model in (typing.Any, dict, list):
+        return True
+    return str(response_model).startswith(LOOSE_MARKERS)
+
+
+def loose_routes(app) -> list:
+    found: List[tuple] = []
+    for route in app.routes:
+        if not isinstance(route, APIRoute) or not route.path.startswith("/api"):
+            continue
+        if not is_loose(route.response_model):
+            continue
+        for method in sorted(set(route.methods) - {"HEAD", "OPTIONS"}):
+            found.append((method, route.path, {}))
+    return found
