@@ -57,7 +57,7 @@ from backend.db.migrate import upgrade_to_head
 from backend.main import app
 from backend.seed.cli import ALLOWLIST as ALLOWLIST_CLIENTS
 from backend.seed.cli import seed
-from backend.tests.contract.capture import capture_all, loose_routes
+from backend.tests.contract.capture import capture_all
 from backend.tests.contract.frontend_usage import KNOWN_BLIND
 from backend.tests.test_routes.test_smoke_paramless_get import _mock_admin
 
@@ -113,7 +113,23 @@ def captured_shapes(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Dict[s
     app.dependency_overrides[get_current_user] = _mock_admin
     try:
         client = TestClient(app, raise_server_exceptions=False)
-        yield capture_all(client, loose_routes(app))
+        # Capture the routes the GOLDEN MASTER names, not the currently-loose
+        # ones. This is the difference between the net working and the net
+        # deleting itself route by route as the refactor proceeds.
+        #
+        # `loose_routes(app)` shrinks with every conversion, so a converted route
+        # would stop being captured, read as None, and fail the comparison -- a
+        # FALSE REGRESSION for a correct change. The tempting remedy is to prune
+        # that route's golden entry, which is exactly backwards: the golden entry
+        # is the proof the new response model did not drop a field, so pruning it
+        # discards the protection at the moment it is finally being used.
+        #
+        # Driving from golden's keys means a converted route stays captured and
+        # stays compared, which is the entire point of taking the shape first.
+        golden_routes: List[tuple] = [
+            (route.split(" ", 1)[0], route.split(" ", 1)[1], {}) for route in sorted(json.loads(GOLDEN.read_text()))
+        ]
+        yield capture_all(client, golden_routes)
     finally:
         app.dependency_overrides.pop(get_db, None)
         app.dependency_overrides.pop(get_current_user, None)
