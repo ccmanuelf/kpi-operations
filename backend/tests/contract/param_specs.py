@@ -350,7 +350,8 @@ NEVER_404 = frozenset(
 
 #: A request that can change the seeded database must not be allowed to change
 #: it for every route captured after it. The capture replays these against a
-#: freshly restored snapshot -- see test_golden_master.py's `harness` fixture.
+#: freshly restored snapshot -- see `conftest.py`'s `harness` fixture and
+#: `capture.capture_isolated`.
 #: Only path-param routes qualify: the paramless mutations were already running
 #: in this order before this module existed, and re-ordering them would churn
 #: entries this task has no business touching.

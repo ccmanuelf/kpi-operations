@@ -2,8 +2,9 @@
 
 Everything here is pure: no database, no HTTP. The behavioural half -- that
 each SEEDED_ROW spec finds a row, that each BLOCKED spec's table is still
-empty, and that the resulting URLs contain no braces -- lives in
-`test_golden_master.py`, where a seeded database already exists.
+empty, that the resulting URLs contain no braces, and that a 2xx is proof
+the id was right -- lives in `test_capture_integrity.py`, which has the
+seeded database from `conftest.py`.
 """
 
 from __future__ import annotations

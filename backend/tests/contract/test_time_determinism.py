@@ -6,7 +6,7 @@ therefore whether the route returns a shift dict or a 404, depends on the real
 wall-clock hour the suite happens to run at. Reproduced live: at 18:17 UTC the
 unpinned capture returns a shift dict; the committed golden entry is
 `["<status:404>"]`, captured during a window with no shift active. That is a
-genuinely flaky gate, not a hypothetical one -- `test_golden_master.py` fails
+genuinely flaky gate, not a hypothetical one -- the golden-master capture fails
 roughly half of every day without `capture.ShiftActivePin`.
 
 This module proves the fix is real determinism, not a lucky golden-file
@@ -61,8 +61,10 @@ _ROUTE = "GET /api/shifts/active"
 
 @pytest.fixture(scope="module")
 def _client() -> Iterator[TestClient]:
-    """Same disposable-DB pattern as test_golden_master.py's captured_shapes,
-    scoped to just this module since only one route is exercised here."""
+    """Same disposable-DB pattern as `conftest.py`'s `harness` fixture, scoped
+    to just this module since only one route is exercised here. Deliberately
+    NOT that fixture: this module needs to swap the clock per test, and
+    `harness` is module-scoped with the pin already applied."""
     import tempfile
 
     with tempfile.TemporaryDirectory() as tmp:
@@ -103,8 +105,9 @@ def _capture_shift_active(client: TestClient) -> List[str]:
 
 def test_unpinned_capture_genuinely_differs_across_the_two_moments(monkeypatch, _client: TestClient) -> None:
     """Baseline: proves the two chosen moments really do straddle the flake --
-    i.e. this is what `test_golden_master.py` looked like before ShiftActivePin
-    existed, and what it reverts to if the pin is ever removed from its fixture.
+    i.e. this is what the golden-master capture looked like before
+    ShiftActivePin existed, and what it reverts to if the pin is ever removed
+    from `conftest.py`'s `harness` fixture.
     If this assertion ever starts passing (shapes equal), the two moments no
     longer straddle a real boundary and need re-picking -- it is not testing
     the fix, it is testing that the fix is *necessary*.
@@ -132,8 +135,8 @@ def test_unpinned_capture_genuinely_differs_across_the_two_moments(monkeypatch, 
 
 def test_pinned_capture_is_identical_across_the_two_moments(monkeypatch, _client: TestClient) -> None:
     """The required assertion: same route, same two real moments as above,
-    but through ShiftActivePin (the actual class wired into
-    test_golden_master.py's captured_shapes fixture) -- output must be
+    but through ShiftActivePin (the actual class wired into `conftest.py`'s
+    `harness` fixture) -- output must be
     identical regardless of which of the two real moments `_real_now` reports.
     """
     monkeypatch.setattr("backend.routes.reference.datetime", ShiftActivePin)
