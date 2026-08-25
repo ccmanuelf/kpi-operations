@@ -53,7 +53,42 @@ peculiarity.**
 
 ## 2. Golden-master failures: real vs. noise
 
-**2 real, 0 noise**, both found and fixed in this task:
+**UPDATED post-review (reviewer finding F2):** the original cut of this section reported
+"2 real, 0 noise" and closed the book too early. The gate itself carries a third,
+genuinely-noise failure mode -- unrelated to any of the 15 conversions, but surfaced by
+this task's own claim that the golden master is the pilot area's sole working safety net
+(SS6). Corrected count: **2 real (found and fixed as part of the 15 conversions), 1 noise
+(a pre-existing, time-of-day-flaky gate, found by the reviewer and fixed as a follow-up)**.
+
+**The noise one, first, since it changes what "green" meant going into this report:**
+`GET /api/shifts/active` (`backend/routes/reference.py::get_active_shift`, not one of the
+15 -- it is a plain, still-`Optional[dict]`-loose allowlisted route) branches on
+`datetime.now(tz=timezone.utc).time()`: whether a seeded shift is active, and therefore
+whether the route returns a shift dict or 404, depends on the real wall-clock hour the
+suite happens to run at. The committed golden entry is `["<status:404>"]`, captured during
+a no-shift-active window; the seeded shift windows tile 16 of every 24 hours (see
+`capture.ShiftActivePin`'s docstring for the exact windows), so for that majority of
+the day a shift IS active and the gate fails with
+`AssertionError: GET /api/shifts/active changed shape`. Reproduced live against this
+task's own HEAD at 18:17 UTC (real time at the moment of the fix), confirming it is not
+hypothetical. Pre-existing at the parent commit (`40f4a92`) too -- not introduced by this
+task's 15 conversions -- but fixed here per this repo's rule that a finding surfaced
+during a deliberate verification pass expands the current task rather than becoming
+tech debt. Fixed by pinning only `backend.routes.reference`'s `datetime.now()` to a fixed
+time-of-day (15:00 UTC, inside the dead zone common to every smoke-seeded shift) during
+golden-master capture, via a new `ShiftActivePin` class in `capture.py`, plus a dedicated
+`test_time_determinism.py` that captures the route at two real moments straddling the
+shift boundary and asserts identical output -- mutation-tested twice (removing the
+fixture's `time_pin.setattr(...)` line reproduced the live failure verbatim; a second
+mutation inside `ShiftActivePin.now()` itself broke the new determinism test). Swept for
+other routes reading the clock the same way: one other hit
+(`routes/production.py:80`), not in the golden master's 164-route surface at all (already
+has a real `response_model`, and is a POST the capture harness never sends a body to), so
+no further routes needed the same treatment. Zero other golden entries changed when the
+pin landed -- the full `test_no_route_lost_a_field` run stayed green across all 164
+entries, confirming the pin is scoped correctly.
+
+**The 2 real ones, both found and fixed as part of converting the 15:**
 
 1. `GET /api/kpi/otd` — after applying `response_model=OTDSummary` (no `exclude_unset` yet),
    `test_no_route_lost_a_field` failed: `AssertionError: GET /api/kpi/otd changed shape`.
@@ -84,13 +119,20 @@ real, correctly-typed content (`"percentage": 100.0`, not `"100.00"`). Same chec
 `dashboard/aggregated`: success path has no `error` keys anywhere; the model still validates
 if a fallback branch fires (verified by construction, not by forcing a live DB error).
 
-**Zero noise failures** in the actual `cd backend && pytest tests/contract/` run (14/14
-green after the fix). One artifact worth naming so it isn't mistaken for a third real
-failure: an ad hoc debugging script run from the repo root (not `backend/`) reproduced the
-already-documented, pre-existing `POST /api/predictions/demo/seed` import bug (missing
-`backend.` package prefix, cwd-sensitive — see `test_golden_master.py`'s own module
-docstring). This is Task 5's documented harness gotcha, not something this task's changes
-caused, and it does not appear when running the real suite the documented way.
+**Zero noise failures traceable to the 15 conversions themselves** in the actual
+`cd backend && pytest tests/contract/` run (14/14 green after the fix, at the time this
+task's own conversion work was verified). One artifact worth naming so it isn't mistaken
+for a third real failure from the 15: an ad hoc debugging script run from the repo root
+(not `backend/`) reproduced the already-documented, pre-existing
+`POST /api/predictions/demo/seed` import bug (missing `backend.` package prefix,
+cwd-sensitive — see `test_golden_master.py`'s own module docstring). This is Task 5's
+documented harness gotcha, not something this task's changes caused, and it does not
+appear when running the real suite the documented way.
+
+This is distinct from the time-of-day noise failure documented above the 2 real ones in
+this section: that one is unrelated to any of the 15 routes and was found by the
+reviewer, not by this task's own verification pass, hence the corrected "2 real, 1
+noise" count at the top rather than a contradiction with "zero noise" here.
 
 ## 3. The bug this task found (worth generalizing)
 

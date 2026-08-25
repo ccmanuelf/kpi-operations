@@ -5,6 +5,7 @@ churn constantly and be ignored within a week.
 """
 
 import typing
+from datetime import datetime
 
 from pydantic import RootModel
 from typing import Any, List
@@ -80,6 +81,46 @@ def capture_all(client, routes) -> dict:
         except ValueError:
             captured[f"{method} {path}"] = ["<non-json>"]
     return captured
+
+
+class ShiftActivePin(datetime):
+    """Deterministic stand-in for `datetime.now()` inside
+    `backend.routes.reference`, whose only caller
+    (`get_active_shift` -> `GET /api/shifts/active`) does
+    `datetime.now(tz=timezone.utc).time()` and branches on which seeded
+    shift, if any, contains that time-of-day. Golden-master capture used to
+    read the REAL wall clock, so the recorded shape (a shift dict, or
+    `<status:404>` when none is active) depended on what hour the suite
+    happened to run at -- flaky by construction, not by bad luck.
+
+    `smoke` seeds 2 shifts/client, 8 hours each, starting at hour 6 and hour
+    18 UTC (see `seed/emitters_master.py`'s `shift_hour_step` derivation:
+    `shift_hour_step = 24 // shifts_per_client = 12`, so shift N starts at
+    `(6 + N*12) % 24`). Every client gets the SAME two windows -- 06:00-14:00
+    and 18:00-02:00 -- so the union across all clients (what an unscoped
+    admin sees) leaves exactly two dead zones with no shift active for
+    anyone: 02:00-06:00 and 14:00-18:00 UTC. `PIN_HOUR_UTC = 15` sits inside
+    the second, so the pinned capture always resolves to `<status:404>`,
+    matching the currently-committed golden entry.
+
+    Only the TIME-OF-DAY is overridden, not the date: `get_active_shift`
+    calls `.time()` on the result and never reads the date component at all,
+    so keeping the real date live is free correctness (no risk of the
+    rolling-window date-drift a full `freeze_time`-style pin would cause
+    elsewhere) rather than a compromise. `_real_now` is a class attribute,
+    not a hardcoded call, specifically so a test can swap it to a fixed
+    instant and prove determinism without waiting for a real clock to move
+    -- see `test_time_determinism.py`.
+    """
+
+    PIN_HOUR_UTC = 15
+
+    _real_now = datetime.now
+
+    @classmethod
+    def now(cls, tz: Any = None) -> "ShiftActivePin":
+        real = cls._real_now(tz)
+        return cls(real.year, real.month, real.day, cls.PIN_HOUR_UTC, 0, 0, 0, tzinfo=real.tzinfo)
 
 
 def is_loose(response_model) -> bool:

@@ -57,7 +57,7 @@ from backend.db.migrate import upgrade_to_head
 from backend.main import app
 from backend.seed.cli import ALLOWLIST as ALLOWLIST_CLIENTS
 from backend.seed.cli import seed
-from backend.tests.contract.capture import capture_all
+from backend.tests.contract.capture import ShiftActivePin, capture_all
 from backend.tests.contract.frontend_usage import KNOWN_BLIND
 from backend.tests.test_routes.test_smoke_paramless_get import _mock_admin
 
@@ -111,6 +111,20 @@ def captured_shapes(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Dict[s
 
     app.dependency_overrides[get_db] = _override_get_db
     app.dependency_overrides[get_current_user] = _mock_admin
+    # `pytest.MonkeyPatch()` used directly, not the `monkeypatch` fixture --
+    # this fixture is module-scoped and `monkeypatch` is function-scoped, so
+    # pytest refuses to inject it here (ScopeMismatch). Undone in `finally`.
+    #
+    # GET /api/shifts/active branches on `datetime.now(tz=timezone.utc).time()`
+    # (backend/routes/reference.py::get_active_shift): whether a seeded shift
+    # is active depends on the WALL-CLOCK HOUR the suite happens to run at,
+    # so an unpinned capture is genuinely flaky (a shift dict roughly half the
+    # day, `<status:404>` the other half) rather than merely theoretically so
+    # -- reproduced live against this exact fixture. Pinning only this one
+    # route's `datetime.now` (see ShiftActivePin) makes the capture
+    # deterministic without touching how any other route reads the clock.
+    time_pin = pytest.MonkeyPatch()
+    time_pin.setattr("backend.routes.reference.datetime", ShiftActivePin)
     try:
         client = TestClient(app, raise_server_exceptions=False)
         # Capture the routes the GOLDEN MASTER names, not the currently-loose
@@ -133,6 +147,7 @@ def captured_shapes(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Dict[s
     finally:
         app.dependency_overrides.pop(get_db, None)
         app.dependency_overrides.pop(get_current_user, None)
+        time_pin.undo()
         engine.dispose()
 
 
