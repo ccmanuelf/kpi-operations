@@ -15,15 +15,8 @@ from typing import Dict, List
 
 import pytest
 
-from backend.tests.contract.param_resolution import (
-    COMPOSITES,
-    FAMILY_ROUTER,
-    REGISTRY,
-    Kind,
-    UnresolvableParam,
-    blocked_shape,
-    spec_key,
-)
+from backend.tests.contract.param_resolution import UnresolvableParam, blocked_shape, spec_key
+from backend.tests.contract.param_specs import COMPOSITES, FAMILY_ROUTER, REGISTRY, Kind
 
 GOLDEN = Path(__file__).parent / "golden" / "api_shapes.json"
 

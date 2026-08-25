@@ -103,6 +103,30 @@ def capture_all(client, routes, urls: "dict | None" = None) -> dict:
     return captured
 
 
+def is_status_only(shape) -> bool:
+    """True for an entry that records only an error status."""
+    return len(shape) == 1 and shape[0].startswith("<status:")
+
+
+def was_never_reached(shape) -> bool:
+    """True when no 2xx was ever recorded for this route -- an error status, or
+    a route no id could reach at all.
+
+    `<non-json>` is deliberately NOT here: a 204 with an empty body and a PNG
+    are both successful answers, and both are evidence about whether the id
+    was right.
+    """
+    return len(shape) == 1 and (shape[0].startswith("<status:") or shape[0].startswith("<blocked:"))
+
+
+def is_placeholder(shape) -> bool:
+    """True for any entry that carries no field information at all --
+    `<status:404>`, `<blocked:job_id>`, `<non-json>`. Distinct from
+    `is_status_only` because a route moving from a real shape to ANY of these
+    is a regression, whatever flavour of nothing it landed on."""
+    return len(shape) == 1 and shape[0].startswith("<")
+
+
 def capture_isolated(client, routes, urls, restore) -> dict:
     """Capture each route against a FRESHLY RESTORED database.
 
