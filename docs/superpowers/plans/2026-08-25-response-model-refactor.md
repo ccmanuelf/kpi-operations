@@ -686,3 +686,62 @@ do them last so the risk-bearing work lands first.
 
 **Completion:** the ratchet allowlist is empty, and `test_no_api_route_has_a_loose_response_model`
 passes with no exceptions beyond those documented per spec §6.
+
+---
+
+### Task 8b: Real path-parameter id resolution, and recapture (BLOCKS Task 9)
+
+**Inserted 2026-08-25**, after measuring Task 9's work list. Runs before Task 9.
+
+**Files:**
+- Modify: `backend/tests/contract/capture.py`, `backend/tests/contract/test_golden_master.py`
+- Regenerate: `backend/tests/contract/golden/api_shapes.json`
+
+`capture_all`'s own docstring states the hazard exactly: *"the caller owns id resolution — the
+harness deliberately does not guess ids, because a wrong id yields a 404 whose shape is
+recorded as if it were the real answer."* But `loose_routes()` returns `(method, route.path,
+{})` — the raw template — so the caller resolves nothing, and every path-param route was
+captured by requesting a URL containing **literal braces**.
+
+Measured across the golden master's 63 path-param entries: 32 `<status:404>`, 22
+`<status:422>`, 1 `<status:400>`, and 8 recording a 200 shape captured for an entity whose id
+is the literal string `{client_id}`.
+
+**The 8 are worse than the 54.** A probe against a real seeded client:
+
+```
+GET /api/workflow/statistics/{client_id}/status-distribution
+    literal braces : 200, 3 keys
+    REAL client    : 200, 5 keys
+    missing: by_status[].count, by_status[].percentage, by_status[].status
+```
+
+That golden entry is wrong, not thin — it omits an entire nested object. A model built from it
+would drop those three fields from production responses, or reject real responses under
+`extra="forbid"`. That is the bug class this refactor exists to remove, sitting inside the
+instrument meant to detect it.
+
+62 of the 140 remaining routes (44%) carry a path param, so this blocks most of the work ahead.
+
+- [ ] **Step 1: Resolve ids from seeded rows.** For each path param, select a real id from the
+      seeded database — `client_id` from the seeded clients, `work_order_id` from a seeded work
+      order, and so on. Derive them; do not hardcode a list that will drift from the seed.
+- [ ] **Step 2: Fail loudly on an unresolvable param.** A param the resolver cannot fill must
+      raise, naming the route and the param — NOT fall through to a literal-brace request. The
+      whole defect is that an unresolved param silently produced a recordable answer.
+- [ ] **Step 3: Recapture the golden master.** Expect large, legitimate churn: ~54 entries move
+      from a status placeholder to a real shape, and some of the 8 change. Every changed entry
+      must be explained in the report — a diff this large is exactly where a real regression
+      hides, so do not wave it through as "expected churn". Confirm no entry moves from a real
+      shape to a status placeholder; that direction means resolution got worse.
+- [ ] **Step 4: Prove it.** Assert that no captured route records a status placeholder purely
+      because its id was unresolved, and that no golden key contains a literal `{`. Mutation:
+      break one resolver and confirm the guard fires, naming the route.
+- [ ] **Step 5: Recheck `coverage_of`.** Task 8's `_real_field_names` reads the golden master.
+      Routes that had no field names now have them, so coverage readings change — re-measure and
+      report the new number. Some `KNOWN_BLIND` entries may no longer be needed.
+- [ ] **Step 6: Commit.**
+
+**Exit criterion:** no golden key contains `{`; every path-param route records either a real
+shape or a status explained by something other than an unresolved id (a genuine 422 from a
+missing request body is fine and expected for mutations, which Task 15 handles).
