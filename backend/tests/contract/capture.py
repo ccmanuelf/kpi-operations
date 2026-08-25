@@ -103,6 +103,35 @@ def capture_all(client, routes, urls: "dict | None" = None) -> dict:
     return captured
 
 
+def capture_isolated(client, routes, urls, restore) -> dict:
+    """Capture each route against a FRESHLY RESTORED database.
+
+    Resolving real ids turns every mutating route into a real mutation, and a
+    mutation that survives into the next request makes the capture
+    order-dependent: `DELETE /api/clients/{client_id}` resolves to a seeded
+    client, and the next route to touch that client would record whatever is
+    left behind rather than what the route does.
+
+    `restore()` is called exactly once here, per request, and this is the only
+    call site in the capture path -- `test_the_isolated_phase_restores_between_
+    mutations` drives this same function with the same route twice and asserts
+    the second answer matches the first, so deleting or neutering the call
+    below fails a test instead of silently producing an identical golden file.
+
+    The boundary is the DATABASE FILE, and only that. In-process state a route
+    mutates -- notably the cache `DELETE /api/cache/invalidate/{pattern}`
+    empties -- is NOT restored, because the snapshot is a file copy. No golden
+    entry depends on that today (the cache route records a fixed envelope), but
+    a future route whose shape varies with cache contents would not be isolated
+    by this mechanism.
+    """
+    captured: dict = {}
+    for request in routes:
+        restore()
+        captured.update(capture_all(client, [request], urls=urls))
+    return captured
+
+
 class ShiftActivePin(datetime):
     """Deterministic stand-in for `datetime.now()` inside
     `backend.routes.reference`, whose only caller

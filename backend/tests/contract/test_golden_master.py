@@ -59,7 +59,7 @@ from backend.db.migrate import upgrade_to_head
 from backend.main import app
 from backend.seed.cli import ALLOWLIST as ALLOWLIST_CLIENTS
 from backend.seed.cli import seed
-from backend.tests.contract.capture import ShiftActivePin, capture_all
+from backend.tests.contract.capture import ShiftActivePin, capture_all, capture_isolated
 from backend.tests.contract.frontend_usage import KNOWN_BLIND
 from backend.tests.contract.param_resolution import (
     REGISTRY,
@@ -143,12 +143,34 @@ def harness(tmp_path_factory: pytest.TempPathFactory) -> Iterator[_Harness]:
     is required.
 
     The snapshot taken right after seeding is what makes it safe to request
-    mutating path-param routes with REAL ids. `DELETE /api/clients/{client_id}`
-    resolves to `DEMO-HOURLY`, and golden keys are captured in sorted order, so
-    without isolation it would delete the seeded client BEFORE every GET ran.
-    Restoring the file between mutations is possible only because this is
-    SQLite in `journal_mode=delete` with `NullPool`: no connection is open
-    between requests, so the database is exactly one file to copy.
+    mutating path-param routes with REAL ids, and it is worth being precise
+    about which hazard it closes, because the wrong reason is what gets a
+    correct mechanism deleted later.
+
+    It is NOT mutation-versus-read. `plan_capture` already defers every
+    mutating path-param route into `plan.isolated`, which runs after the whole
+    read pass, so no GET can see a DELETE's damage regardless of the snapshot.
+    What the snapshot closes is MUTATION-versus-MUTATION: within the isolated
+    phase, `DELETE /api/clients/{client_id}` resolves to a seeded client and
+    every later mutation touching that client would otherwise record what the
+    earlier one left behind.
+
+    Today no golden entry would move if the restore vanished -- the collisions
+    that exist are masked by the `soft_delete()` bug that makes seven DELETEs
+    404 for any id. That makes the mechanism silently inert, which is why
+    `test_the_isolated_phase_restores_between_mutations` drives it directly
+    rather than relying on the golden file to notice.
+
+    Restoring the file at all is possible only because this is SQLite in
+    `journal_mode=delete` with `NullPool`: no connection is open between
+    requests, so the database is exactly one file to copy. The boundary is that
+    file -- in-process state (the cache) is not restored; see `capture_isolated`.
+
+    Runs from `backend/` as cwd. `POST /api/predictions/demo/seed` has a lazy
+    import missing its `backend.` prefix (see the module docstring), so it
+    resolves to `<status:500>` only when the interpreter's directory is
+    `backend/`; a full recapture driven from the repo root records a different
+    entry for that route.
     """
     db_path = tmp_path_factory.mktemp("golden") / "golden.db"
     snapshot = db_path.with_suffix(".pristine.db")
@@ -226,9 +248,7 @@ def captured_shapes(harness: _Harness) -> Dict[str, List[str]]:
     restored-snapshot request per mutating path-param route, then the declared
     placeholders for routes no id can reach."""
     shapes = capture_all(harness.client, harness.plan.requests, urls=harness.plan.urls)
-    for request in harness.plan.isolated:
-        harness.restore()
-        shapes.update(capture_all(harness.client, [request], urls=harness.plan.urls))
+    shapes.update(capture_isolated(harness.client, harness.plan.isolated, harness.plan.urls, harness.restore))
     shapes.update({route: blocked_shape(key) for route, key in harness.plan.blocked.items()})
     return shapes
 
@@ -390,3 +410,60 @@ def test_a_known_wrong_shape_entry_gained_its_nested_object(captured_shapes: Dic
         "client_id",
         "total_work_orders",
     ]
+
+
+def _request(route: str) -> tuple:
+    method, path = route.split(" ", 1)
+    return (method, path, {})
+
+
+def test_the_isolated_phase_restores_between_mutations(harness: _Harness, captured_shapes) -> None:
+    """The snapshot restore is the largest new mechanism in this harness, and
+    the golden file cannot see it.
+
+    Disabling it leaves all 164 entries byte-identical, because the only
+    collisions available today are masked by the `soft_delete()` bug that makes
+    seven DELETEs 404 for any id -- and most of the DELETEs that DO succeed are
+    soft deletes, so repeating them still answers 204. A mechanism whose
+    absence looks exactly like its presence is gated by nothing, so this drives
+    `capture_isolated` directly against the two genuinely non-idempotent routes
+    in the plan, once with the real restore and once with a no-op.
+
+    `DELETE /api/kpi-thresholds/{client_id}/{kpi_key}` HARD-deletes its row:
+    200 `{message}` first, 404 forever after. `capture_all` keys by route
+    template, so running it twice records the SECOND answer -- which is the
+    real shape if and only if the database was restored in between.
+
+    `POST /api/work-orders/{work_order_id}/approve-qc` is the sharper of the
+    two, because it does not fail loudly: approving an already-approved work
+    order answers 200 and silently DROPS the `message` key. That is a golden
+    entry quietly losing a field to a neighbouring route -- precisely the class
+    of accident this whole task exists to remove, reproduced one layer down.
+
+    Boundary, stated rather than discovered later: this gates the `restore()`
+    call inside `capture_isolated`, which is the only one in the capture path.
+    It cannot catch a fixture rewired to pass a no-op in place of
+    `harness.restore`; that would need the module-scoped capture to be re-run.
+    """
+    thresholds = "DELETE /api/kpi-thresholds/{client_id}/{kpi_key}"
+    approve_qc = "POST /api/work-orders/{work_order_id}/approve-qc"
+    urls = harness.plan.urls
+    approved = ["message", "qc_approved", "qc_approved_by", "qc_approved_date", "status", "work_order_id"]
+
+    try:
+        harness.restore()
+        twice_restored = capture_isolated(
+            harness.client, [_request(thresholds)] * 2, urls, harness.restore
+        ) | capture_isolated(harness.client, [_request(approve_qc)] * 2, urls, harness.restore)
+
+        harness.restore()
+        twice_unrestored = capture_isolated(
+            harness.client, [_request(thresholds)] * 2, urls, lambda: None
+        ) | capture_isolated(harness.client, [_request(approve_qc)] * 2, urls, lambda: None)
+    finally:
+        harness.restore()
+
+    assert twice_restored == {thresholds: ["message"], approve_qc: approved}
+    # The control: without the restore both routes record something else, so
+    # the assertion above is not passing because these routes are inert.
+    assert twice_unrestored == {thresholds: ["<status:404>"], approve_qc: approved[1:]}
