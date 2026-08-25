@@ -216,24 +216,31 @@ def _real_field_names(endpoint: str, method: str = "GET") -> frozenset:
     field records e.g. `trends.efficiency[].date` (segments `["trends",
     "efficiency", "date"]` -> top segment `trends`).
 
-    Two golden master shapes carry NO real field information, and both MUST
-    resolve to an empty set here so a caller can never manufacture a COVERED
-    verdict out of them:
-      - `["<status:422>"]` etc.: the capture harness never reached a real
-        response body for this route.
+    Golden master shapes that carry NO real field information MUST resolve to
+    an empty set here so a caller can never manufacture a COVERED verdict out
+    of them. There are two kinds:
+      - A PLACEHOLDER entry, written `<...>`: `<status:422>` (the capture
+        harness never reached a real response body), `<non-json>` (it did, and
+        the body was a PNG or a 204 with no body at all), or `<blocked:job_id>`
+        (Task 8b: no id could reach this route, because its backing table has
+        zero seeded rows). Every one of these is skipped by the leading `<`,
+        NOT by matching `<status:` alone: `<non-json>` predates Task 8b on 17
+        entries and was already being counted as a field named `<non-json>`,
+        which no frontend read could ever match but which is nonsense in the
+        real-field set regardless. Task 8b took that from 17 entries to 29 and
+        added `<blocked:...>`, so the general rule replaces the special case.
       - `[]`: the route was reached but the recorded shape has no keys at
         all (e.g. GET /api/kpi/otd/by-client returns an empty list against
         this harness's default seed data). This is a golden-master DATA gap,
-        not a code defect -- and this task does not touch the golden master
-        -- but it means "real fields unknown", not "real fields are zero",
-        so it must be treated exactly like the status-placeholder case.
+        not a code defect, but it means "real fields unknown", not "real
+        fields are zero", so it must be treated exactly like a placeholder.
     """
     entry = json.loads(GOLDEN.read_text(encoding="utf-8")).get(f"{method} {endpoint}")
     if not entry:
         return frozenset()
     names = set()
     for path in entry:
-        if path.startswith("<status:"):
+        if path.startswith("<"):
             continue
         segments = [s[:-2] if s.endswith("[]") else s for s in path.split(".")]
         segments = [s for s in segments if s]

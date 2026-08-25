@@ -158,3 +158,23 @@ def test_real_field_names_empty_for_status_placeholder_entry():
     from backend.tests.contract.frontend_usage import _real_field_names
 
     assert _real_field_names("/api/kpi/labor-hours") == frozenset()
+
+
+def test_real_field_names_empty_for_a_non_json_entry():
+    """`GET /api/reports/comprehensive/excel`'s golden master entry is
+    `["<non-json>"]` -- the route WAS reached, and answered with an .xlsx
+    stream rather than JSON. That carries no field information either, but it
+    does not start with `<status:`, so the original special case let the
+    literal string `<non-json>` through as if it were a field named
+    `<non-json>`.
+
+    It never flipped a verdict, because no frontend read matches that string
+    -- which is exactly why it survived unnoticed on 17 entries. Task 8b took
+    it to 29 (nine DELETEs that answer 204 with an empty body, three QR image
+    routes) and added a second placeholder flavour, so the rule is now
+    "anything that starts with `<` is a placeholder" rather than a list of the
+    ones seen so far.
+    """
+    from backend.tests.contract.frontend_usage import _real_field_names
+
+    assert _real_field_names("/api/reports/comprehensive/excel") == frozenset()
