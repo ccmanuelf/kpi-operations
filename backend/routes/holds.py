@@ -13,6 +13,7 @@ from backend.database import get_db
 from backend.db.sql_functions import date_diff_days
 from backend.orm.hold_entry import HoldEntry
 from backend.schemas.hold import WIPHoldCreate, WIPHoldUpdate, WIPHoldResponse, WIPAgingResponse
+from backend.schemas.kpi_contracts import TrendPoint
 from backend.services.hold_service import (
     create_hold as create_wip_hold,
     get_hold as get_wip_hold,
@@ -511,7 +512,7 @@ def get_top_aging_items(
     return items
 
 
-@wip_aging_router.get("/wip-aging/trend")
+@wip_aging_router.get("/wip-aging/trend", response_model=List[TrendPoint])
 def get_wip_aging_trend(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
