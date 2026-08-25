@@ -233,11 +233,16 @@ class OTDSummary(BaseModel):
     true_otd/standard_otd/late_counts/justified_by_reason are added by the
     route ONLY when scope resolves to exactly one client (source inspection,
     calculate_otd_kpi in routes/kpi/otd.py). Measured 2026-08-25: the smoke
-    seed's admin fixture actually DOES resolve to a single client, so this
-    branch fires under the very auth the golden master was captured with --
-    but the committed golden entry for GET /api/kpi/otd only has the 7 base
-    keys, meaning it was captured before this branch existed or under a
-    different scope resolution. Declared Optional, with the route also
+    seed's admin fixture (`_mock_admin`, role="admin") resolves to
+    `scope.client_ids is None` (all clients) via `resolve_client_scope` ->
+    `get_user_client_filter` (backend/auth/jwt.py:339-358 ->
+    backend/middleware/client_auth.py:99-101) -- so this branch does NOT
+    fire under the auth the golden master was captured with, and the
+    committed golden entry's 7 base keys are the real, current shape, not a
+    stale one. Verified live both ways: `GET /api/kpi/otd` with no
+    `client_id` returns exactly those 7 keys; `GET
+    /api/kpi/otd?client_id=SAMPLE_REF` (forcing scope to a single client)
+    returns all 11, with real content. Declared Optional, with the route also
     setting `response_model_exclude_unset=True`, so: (a) when the branch
     does NOT fire, these 4 keys are genuinely absent from the JSON (matching
     the golden entry exactly, not emitted as `null`), and (b) when it DOES
