@@ -20,7 +20,7 @@
 - **No endpoint may change what it returns.** Field sets stay identical; only declared types change.
 - The golden master compares **key sets, never value types** — changing a type is the goal.
 - `/api/metrics/results` and `/api/floating-pool/simulation/insights` return numeric-looking strings deliberately. Their models keep `str`.
-- Capture runs against a disposable database, never the VM. 52 of the 160 routes are mutations.
+- Capture runs against a disposable database, never the VM. 52 of the 164 routes are mutations.
 - Backend tests run from `backend/` with `pytest tests/ --no-cov -q`. Full suite is the controller's job, not the implementer's.
 
 ---
@@ -163,7 +163,8 @@ git commit -m "test(contract): shape-capture harness for the response-model refa
 
 ```python
 def test_every_loose_route_is_inventoried_and_none_is_silently_dropped():
-    """160 loose routes were measured on 2026-08-25. The count is pinned so a
+    """164 loose routes, measured 2026-08-25 with the STRUCTURAL predicate. The
+    count is pinned so a
     route that stops being enumerated — a decorator change, a router rename —
     fails here instead of quietly leaving the refactor's scope."""
     from backend.main import app
@@ -171,7 +172,7 @@ def test_every_loose_route_is_inventoried_and_none_is_silently_dropped():
 
     routes = loose_routes(app)
 
-    assert len(routes) == 160
+    assert len(routes) == 164
     methods = {m for m, _, _ in routes}
     assert methods == {"GET", "POST", "PUT", "DELETE"}
 ```
@@ -187,20 +188,26 @@ Expected: FAIL with `ImportError: cannot import name 'loose_routes'`
 import typing
 from fastapi.routing import APIRoute
 
-LOOSE_MARKERS = ("typing.Any", "dict", "list[dict", "typing.Dict", "<class 'dict'>", "<class 'list'>")
-
-
 def is_loose(response_model) -> bool:
     """True when the declared model cannot constrain a Decimal.
 
-    `None`, `Any`, bare `dict`/`list` all let Pydantic serialise a Decimal as a
-    string. This is the predicate the ratchet guard shrinks to zero.
+    STRUCTURAL, not a string match on the repr. An earlier draft of this plan
+    used `str(model).startswith(...)`, which cannot see through a wrapper --
+    `typing.List[dict]` tested as TYPED -- and silently dropped four live routes
+    from the refactor's scope AND from the ratchet allowlist. Corrected before
+    Task 2 shipped; see the spec's section 3 note.
     """
     if response_model is None:
         return True
     if response_model in (typing.Any, dict, list):
         return True
-    return str(response_model).startswith(LOOSE_MARKERS)
+    origin = typing.get_origin(response_model)
+    if origin is None:
+        return False
+    args = [a for a in typing.get_args(response_model) if a is not type(None)]
+    if not args:
+        return True
+    return any(is_loose(a) for a in args)
 
 
 def loose_routes(app) -> list:

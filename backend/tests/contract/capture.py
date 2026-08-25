@@ -80,20 +80,40 @@ def capture_all(client, routes) -> dict:
     return captured
 
 
-LOOSE_MARKERS = ("typing.Any", "dict", "list[dict", "typing.Dict", "<class 'dict'>", "<class 'list'>")
-
-
 def is_loose(response_model) -> bool:
     """True when the declared model cannot constrain a Decimal.
 
-    `None`, `Any`, bare `dict`/`list` all let Pydantic serialise a Decimal as a
-    string. This is the predicate the ratchet guard shrinks to zero.
+    `None`, `Any`, and bare `dict`/`list` all let Pydantic serialise a Decimal as
+    a JSON string. So does any wrapper around one of those -- `List[dict]`,
+    `Optional[dict]`, `Dict[str, Any]` -- because the wrapper constrains the
+    container, not the values inside it.
+
+    STRUCTURAL, via get_origin/get_args, NOT a string match on the repr. The
+    first version of this predicate did `str(model).startswith(("typing.Any",
+    "dict", "list[dict", ...))`, which cannot see through a wrapper: wrapping
+    moves the marker away from position 0, so `typing.List[dict]` tested as
+    TYPED. That silently dropped four live routes -- GET /api/products,
+    GET /api/shifts, GET /api/shifts/active and
+    GET /api/workflow/work-orders/{work_order_id}/transition-times -- from both
+    the refactor's work list and the ratchet allowlist, where nothing would ever
+    have flagged them again. `typing.List[...]` is the dominant annotation style
+    in this codebase, so the blind spot was aimed squarely at the common case.
     """
     if response_model is None:
         return True
     if response_model in (typing.Any, dict, list):
         return True
-    return str(response_model).startswith(LOOSE_MARKERS)
+
+    origin = typing.get_origin(response_model)
+    if origin is None:
+        return False
+
+    # Optional[X] is Union[X, None]; X | None has a different origin in 3.11+.
+    args = [a for a in typing.get_args(response_model) if a is not type(None)]
+    if not args:
+        # A bare `List`/`Dict` with no parameters constrains nothing.
+        return True
+    return any(is_loose(a) for a in args)
 
 
 def loose_routes(app) -> list:
