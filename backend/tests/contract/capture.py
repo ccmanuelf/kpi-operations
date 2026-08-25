@@ -6,6 +6,30 @@ churn constantly and be ignored within a week.
 
 from typing import Any, List
 
+#: Fields whose dict KEYS are data, not field names -- a value->count map rather
+#: than an object with fixed attributes. `shape_of` records these as `field.*`
+#: and never recurses into their keys.
+#:
+#: Without this, /api/alerts/dashboard records `by_severity.critical` only while
+#: a critical alert happens to be active, so the SAME endpoint with UNCHANGED
+#: code yields a different shape between captures -- and a severity with zero
+#: active alerts is indistinguishable from a dropped field. That is precisely
+#: the signal this harness exists to give, so the harness must not manufacture
+#: false ones.
+#:
+#: CANNOT be derived: nothing in the payload distinguishes {"critical": 2} from
+#: an object with a "critical" attribute. It is listed, and pinned by
+#: test_map_fields_are_exactly_the_known_five so a new one is a deliberate act.
+MAP_FIELDS = frozenset(
+    {
+        "by_severity",  # GET /api/alerts/dashboard, /api/alerts/summary
+        "by_category",  # GET /api/alerts/dashboard, /api/alerts/summary
+        "weekly_demand",  # POST /api/v2/simulation/plan-horizon
+        "pieces_by_product",  # POST /api/v2/simulation/plan-horizon
+        "fulfillment_by_product",  # POST /api/v2/simulation/plan-horizon
+    }
+)
+
 
 def shape_of(payload: Any, prefix: str = "") -> List[str]:
     """Sorted dotted key paths. A list contributes `name[]` and recurses into
@@ -16,6 +40,14 @@ def shape_of(payload: Any, prefix: str = "") -> List[str]:
     if isinstance(payload, dict):
         for key, value in payload.items():
             path = f"{prefix}.{key}" if prefix else str(key)
+            if key in MAP_FIELDS:
+                # Treated like a list: one stable entry, recursing into the first
+                # VALUE so a map of objects still has its inner shape recorded,
+                # while the data-derived keys never reach the record.
+                inner = next(iter(value.values()), None) if isinstance(value, dict) and value else None
+                child = shape_of(inner, f"{path}.*") if inner is not None else []
+                keys.extend(child if child else [f"{path}.*"])
+                continue
             child = shape_of(value, path)
             keys.extend(child if child else [path])
     elif isinstance(payload, list):
