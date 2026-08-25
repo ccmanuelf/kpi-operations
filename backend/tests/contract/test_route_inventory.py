@@ -44,6 +44,16 @@ def test_is_loose_sees_through_typing_wrappers():
     assert is_loose(List[Dict]) is True
     assert is_loose(Dict[str, Any]) is True
 
+    # a RootModel is a wrapper too, and get_origin() sees only a plain class --
+    # dormant today, but this refactor is precisely when someone might reach for
+    # one while "fixing" a loose route, and it would escape the ratchet as well
+    from pydantic import RootModel
+
+    class LooseRoot(RootModel[Dict[str, Any]]):
+        pass
+
+    assert is_loose(LooseRoot) is True
+
     # wrapped-and-typed: these must NOT be swept into the refactor's scope
     assert is_loose(List[Modelled]) is False
     assert is_loose(Optional[Modelled]) is False

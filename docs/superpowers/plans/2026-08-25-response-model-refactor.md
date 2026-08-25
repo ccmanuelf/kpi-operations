@@ -225,17 +225,17 @@ def loose_routes(app) -> list:
 - [ ] **Step 4: Run, confirm pass**
 
 Run: `cd backend && python -m pytest tests/contract/test_route_inventory.py -v --no-cov`
-Expected: PASS, 160 collected
+Expected: PASS, 164 collected
 
 - [ ] **Step 5: Mutation-prove the count pin**
 
-Temporarily give one loose route a real `response_model` in its router, re-run, and paste the failure (`assert 159 == 160`). Restore, confirm `git diff HEAD` empty.
+Temporarily give one loose route a real `response_model` in its router, re-run, and paste the failure (`assert 163 == 164`). Restore, confirm `git diff HEAD` empty.
 
 - [ ] **Step 6: Commit**
 
 ```bash
 git add backend/tests/contract/
-git commit -m "test(contract): pin the 160-route refactor scope"
+git commit -m "test(contract): pin the 164-route refactor scope"
 ```
 
 ---
@@ -428,7 +428,7 @@ Give one route a response model declaring one FEWER field than it returns, re-ru
 
 ```bash
 git add backend/tests/contract/
-git commit -m "test(contract): golden-master shapes for all 160 loose routes"
+git commit -m "test(contract): golden-master shapes for all 164 loose routes"
 ```
 
 ---
@@ -549,9 +549,9 @@ Write the pilot measurement file with: routes converted, distinct models needed,
 
 - [ ] **Step 3: THE REASSESSMENT GATE — do not continue without it**
 
-The spec's D2 says all 160. The pilot exists to test whether that survives contact. With the measured per-route cost, state a recommendation:
+The spec's D2 says all 164. The pilot exists to test whether that survives contact. With the measured per-route cost, state a recommendation:
 
-- continue to all 160 as specified;
+- continue to all 164 as specified;
 - narrow to the ~48 numeric-risk routes and allowlist the rest permanently;
 - stop after `/api/kpi` and keep the AST guards for the remainder.
 

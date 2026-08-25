@@ -61,7 +61,8 @@ wrapper around one of those — `List[dict]`, `Optional[dict]`, `Dict[str, Any]`
 The leaking endpoints were not un-modelled — they had models of `Any` and `dict`, which is
 why "add response models" understates the work.
 
-By method: GET 108, DELETE 27, POST 23, PUT 2.
+By method: GET 112, DELETE 27, POST 23, PUT 2. (The four routes the original
+predicate missed are all GETs.)
 
 By capture feasibility — this is the constraint that shapes Phase 0:
 
@@ -170,7 +171,7 @@ model that is wrong.
 will not appear in a static grep. The golden master is the backstop for exactly this case:
 it does not care why a field is read, only that it is still sent.
 
-**DELETE routes are probably trivial and should be checked early.** 27 of the 160 are
+**DELETE routes are probably trivial and should be checked early.** 27 of the 164 are
 DELETEs, which usually return a status message or 204. If they are as uniform as expected,
 they are one shared model and the effective route count drops by roughly a sixth. Worth
 confirming in Phase 0 rather than assuming.

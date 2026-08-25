@@ -5,6 +5,8 @@ churn constantly and be ignored within a week.
 """
 
 import typing
+
+from pydantic import RootModel
 from typing import Any, List
 
 from fastapi.routing import APIRoute
@@ -103,6 +105,18 @@ def is_loose(response_model) -> bool:
         return True
     if response_model in (typing.Any, dict, list):
         return True
+
+    # A Pydantic RootModel wraps a single `root` field, and get_origin() sees a
+    # plain class and returns None -- so without this it hides whatever it holds,
+    # the same "cannot see through a wrapper" shape as the string-prefix bug this
+    # function replaced. Dormant today (no RootModel is used as a response model
+    # anywhere), but this refactor is exactly the context in which someone might
+    # reach for one while "fixing" a loose route, and it would then escape both
+    # the work list and the ratchet.
+    if isinstance(response_model, type) and issubclass(response_model, RootModel):
+        root_field = response_model.model_fields.get("root")
+        if root_field is not None:
+            return is_loose(root_field.annotation)
 
     origin = typing.get_origin(response_model)
     if origin is None:
