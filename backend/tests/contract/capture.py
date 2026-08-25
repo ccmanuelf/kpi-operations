@@ -63,23 +63,43 @@ def shape_of(payload: Any, prefix: str = "") -> List[str]:
     return sorted(set(keys))
 
 
-def capture_all(client, routes) -> dict:
+def capture_all(client, routes, urls: "dict | None" = None) -> dict:
     """Exercise every route and record its shape.
 
     `routes` is a list of (method, path, kwargs) prepared by the caller, which
     owns id resolution — the harness deliberately does not guess ids, because a
     wrong id yields a 404 whose shape is recorded as if it were the real answer.
+
+    `path` is the route TEMPLATE and stays the record key: it is the route's
+    stable identity, and it is what `test_no_route_lost_a_field` compares
+    across captures. `urls` maps that key to the concrete URL actually
+    requested (see `param_resolution.plan_capture`). The two are deliberately
+    kept apart: freezing a resolved id into the record key would bake a
+    seed-derived value — `DEMO-HYBRID-HOLD-0001`, `AE-20260812-1-1` — into the
+    golden file, where the next reseed silently turns it into a 404 recorded
+    as if it were the answer. That is the same bug one level up.
+
+    The brace guard below is the last line of defence and is UNCONDITIONAL: a
+    caller that forgets `urls`, or a resolver that returns None and gets
+    stringified into a URL, fails here instead of quietly requesting
+    `/api/jobs/%7Bjob_id%7D` and recording the 404 it deserves. Raised rather
+    than `assert`ed so `python -O` cannot delete it.
     """
     captured = {}
+    urls = urls or {}
     for method, path, kwargs in routes:
-        response = client.request(method, path, **kwargs)
+        key = f"{method} {path}"
+        url = urls.get(key, path)
+        if "{" in url or "}" in url:
+            raise AssertionError(f"unsubstituted path param in {url!r} for {key}")
+        response = client.request(method, url, **kwargs)
         if response.status_code >= 400:
-            captured[f"{method} {path}"] = [f"<status:{response.status_code}>"]
+            captured[key] = [f"<status:{response.status_code}>"]
             continue
         try:
-            captured[f"{method} {path}"] = shape_of(response.json())
+            captured[key] = shape_of(response.json())
         except ValueError:
-            captured[f"{method} {path}"] = ["<non-json>"]
+            captured[key] = ["<non-json>"]
     return captured
 
 

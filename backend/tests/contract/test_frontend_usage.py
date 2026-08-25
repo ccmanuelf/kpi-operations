@@ -178,3 +178,16 @@ def test_real_field_names_empty_for_a_non_json_entry():
     from backend.tests.contract.frontend_usage import _real_field_names
 
     assert _real_field_names("/api/reports/comprehensive/excel") == frozenset()
+
+
+def test_real_field_names_empty_for_a_blocked_entry():
+    """`GET /api/jobs/{job_id}/yield`'s golden master entry is
+    `["<blocked:job_id>"]`: Task 8b could not resolve a `job_id` because `JOB`
+    has zero seeded rows, so no request was ever issued. A `<blocked:...>`
+    entry is the strongest possible statement that this route's real fields
+    are UNKNOWN, so it must never contribute a field name -- least of all one
+    that reads like the param that blocked it.
+    """
+    from backend.tests.contract.frontend_usage import _real_field_names
+
+    assert _real_field_names("/api/jobs/{job_id}/yield") == frozenset()

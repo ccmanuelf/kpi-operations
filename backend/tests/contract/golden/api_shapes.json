@@ -3,7 +3,7 @@
     "<status:404>"
   ],
   "DELETE /api/break-times/{break_id}": [
-    "<status:422>"
+    "<blocked:break_id>"
   ],
   "DELETE /api/cache/invalidate/{pattern}": [
     "entries_invalidated",
@@ -12,16 +12,16 @@
     "timestamp"
   ],
   "DELETE /api/client-config/{client_id}": [
-    "<status:404>"
+    "<non-json>"
   ],
   "DELETE /api/clients/{client_id}": [
-    "<status:404>"
+    "<non-json>"
   ],
   "DELETE /api/coverage/{coverage_id}": [
-    "<status:422>"
+    "<blocked:coverage_id>"
   ],
   "DELETE /api/defect-types/{defect_type_id}": [
-    "<status:404>"
+    "<non-json>"
   ],
   "DELETE /api/defects/{defect_detail_id}": [
     "<status:404>"
@@ -30,40 +30,40 @@
     "<status:404>"
   ],
   "DELETE /api/employees/{employee_id}": [
-    "<status:422>"
+    "<non-json>"
   ],
   "DELETE /api/equipment/{equipment_id}": [
-    "<status:422>"
+    "<blocked:equipment_id>"
   ],
   "DELETE /api/filters/history": [
     "<status:422>"
   ],
   "DELETE /api/filters/{filter_id}": [
-    "<status:422>"
+    "<blocked:filter_id>"
   ],
   "DELETE /api/floating-pool/{pool_id}": [
-    "<status:422>"
+    "<blocked:pool_id>"
   ],
   "DELETE /api/hold-catalogs/reasons/{catalog_id}": [
-    "<status:422>"
+    "<non-json>"
   ],
   "DELETE /api/hold-catalogs/statuses/{catalog_id}": [
-    "<status:422>"
+    "<non-json>"
   ],
   "DELETE /api/holds/{hold_id}": [
     "<status:404>"
   ],
   "DELETE /api/jobs/{job_id}": [
-    "<status:404>"
+    "<blocked:job_id>"
   ],
   "DELETE /api/kpi-thresholds/{client_id}/{kpi_key}": [
-    "<status:404>"
+    "message"
   ],
   "DELETE /api/part-opportunities/{part_number}": [
-    "<status:404>"
+    "<blocked:part_number>"
   ],
   "DELETE /api/production-lines/{line_id}": [
-    "<status:422>"
+    "<non-json>"
   ],
   "DELETE /api/production/{entry_id}": [
     "<status:404>"
@@ -72,13 +72,13 @@
     "<status:404>"
   ],
   "DELETE /api/shifts/{shift_id}": [
-    "<status:422>"
+    "<non-json>"
   ],
   "DELETE /api/users/{user_id}": [
-    "<status:404>"
+    "<non-json>"
   ],
   "DELETE /api/v2/simulation/scenarios/{scenario_id}": [
-    "<status:422>"
+    "<blocked:scenario_id@simulation>"
   ],
   "DELETE /api/work-orders/{work_order_id}": [
     "<status:404>"
@@ -295,7 +295,10 @@
   ],
   "GET /api/floating-pool/available/list": [],
   "GET /api/floating-pool/check-availability/{employee_id}": [
-    "<status:422>"
+    "conflict_dates",
+    "current_assignment",
+    "is_available",
+    "message"
   ],
   "GET /api/floating-pool/simulation/insights": [
     "current_status.currently_assigned",
@@ -336,7 +339,16 @@
   ],
   "GET /api/import-logs": [],
   "GET /api/inference/cycle-time/{product_id}": [
-    "<status:422>"
+    "confidence",
+    "confidence_score",
+    "ideal_cycle_time",
+    "is_estimated",
+    "needs_review",
+    "product_id",
+    "recommendation",
+    "shift_id",
+    "source_level",
+    "warning"
   ],
   "GET /api/jobs/kpi/rty-summary": [
     "average_job_yield",
@@ -350,22 +362,22 @@
     "total_units_scrapped"
   ],
   "GET /api/jobs/{job_id}/dpmo": [
-    "<status:404>"
+    "<blocked:job_id>"
   ],
   "GET /api/jobs/{job_id}/efficiency": [
-    "<status:404>"
+    "<blocked:job_id>"
   ],
   "GET /api/jobs/{job_id}/kpi-summary": [
-    "<status:404>"
+    "<blocked:job_id>"
   ],
   "GET /api/jobs/{job_id}/performance": [
-    "<status:404>"
+    "<blocked:job_id>"
   ],
   "GET /api/jobs/{job_id}/ppm": [
-    "<status:404>"
+    "<blocked:job_id>"
   ],
   "GET /api/jobs/{job_id}/yield": [
-    "<status:404>"
+    "<blocked:job_id>"
   ],
   "GET /api/kpi-thresholds": [
     "client_id",
@@ -637,16 +649,16 @@
     "[].product_name"
   ],
   "GET /api/qr/employee/{employee_id}/image": [
-    "<status:404>"
+    "<non-json>"
   ],
   "GET /api/qr/job/{job_id}/image": [
-    "<status:404>"
+    "<blocked:job_id>"
   ],
   "GET /api/qr/product/{product_id}/image": [
-    "<status:404>"
+    "<non-json>"
   ],
   "GET /api/qr/work-order/{work_order_id}/image": [
-    "<status:404>"
+    "<non-json>"
   ],
   "GET /api/quality/kpi/by-product": [
     "[].defects",
@@ -1018,21 +1030,62 @@
     "type"
   ],
   "GET /api/work-orders/{work_order_id}/capacity-order": [
-    "<status:404>"
+    "capacity_order",
+    "linked"
   ],
   "GET /api/work-orders/{work_order_id}/progress": [
-    "<status:404>"
+    "actual_quantity",
+    "hold_history",
+    "is_on_track",
+    "planned_quantity",
+    "production_entries[].defect_count",
+    "production_entries[].employees_assigned",
+    "production_entries[].product_name",
+    "production_entries[].production_date",
+    "production_entries[].production_entry_id",
+    "production_entries[].run_time_hours",
+    "production_entries[].scrap_count",
+    "production_entries[].shift_name",
+    "production_entries[].units_produced",
+    "progress_percentage",
+    "quality_inspections[].defects_found",
+    "quality_inspections[].inspection_date",
+    "quality_inspections[].inspection_id",
+    "quality_inspections[].inspection_type",
+    "quality_inspections[].notes",
+    "quality_inspections[].result",
+    "remaining_quantity",
+    "status",
+    "style_model",
+    "total_defects",
+    "total_production_entries",
+    "total_scrap",
+    "work_order_id"
   ],
   "GET /api/work-orders/{work_order_id}/rty": [
     "<status:404>"
   ],
   "GET /api/work-orders/{work_order_id}/timeline": [
-    "<status:404>"
+    "events[].color",
+    "events[].description",
+    "events[].event_type",
+    "events[].icon",
+    "events[].timestamp",
+    "events[].title",
+    "total_events",
+    "work_order_id"
   ],
   "GET /api/workflow/analytics/{client_id}/average-times": [
-    "averages",
+    "averages.lead_time_days",
+    "averages.lead_time_hours",
+    "averages.lifecycle_days",
+    "averages.lifecycle_hours",
+    "averages.processing_time_days",
+    "averages.processing_time_hours",
     "client_id",
-    "count"
+    "count",
+    "overdue_count",
+    "overdue_percentage"
   ],
   "GET /api/workflow/analytics/{client_id}/stage-durations": [
     "client_id",
@@ -1057,13 +1110,19 @@
     "workflow_version"
   ],
   "GET /api/workflow/statistics/{client_id}/status-distribution": [
-    "by_status",
+    "by_status[].count",
+    "by_status[].percentage",
+    "by_status[].status",
     "client_id",
     "total_work_orders"
   ],
   "GET /api/workflow/statistics/{client_id}/transitions": [
-    "by_source",
-    "by_transition",
+    "by_source[].count",
+    "by_source[].trigger_source",
+    "by_transition[].avg_elapsed_hours",
+    "by_transition[].count",
+    "by_transition[].from_status",
+    "by_transition[].to_status",
     "client_id",
     "total_transitions"
   ],
@@ -1076,13 +1135,39 @@
     "templates[].workflow_statuses[]"
   ],
   "GET /api/workflow/work-orders/{work_order_id}/allowed-transitions": [
-    "<status:404>"
+    "allowed_next_statuses[]",
+    "client_id",
+    "current_status",
+    "work_order_id"
   ],
   "GET /api/workflow/work-orders/{work_order_id}/elapsed-time": [
-    "<status:404>"
+    "dates.closure_date",
+    "dates.dispatch_date",
+    "dates.received_date",
+    "dates.shipped_date",
+    "forecast.expected_date",
+    "forecast.time_to_expected_hours",
+    "lifecycle.days_early_or_late",
+    "lifecycle.is_overdue",
+    "lifecycle.total_days",
+    "lifecycle.total_hours",
+    "stages.lead_time_days",
+    "stages.lead_time_hours",
+    "stages.processing_time_days",
+    "stages.processing_time_hours",
+    "stages.shipping_time_hours",
+    "status",
+    "work_order_id"
   ],
   "GET /api/workflow/work-orders/{work_order_id}/transition-times": [
-    "<status:404>"
+    "[].elapsed_from_previous_hours",
+    "[].elapsed_from_received_hours",
+    "[].from_status",
+    "[].notes",
+    "[].to_status",
+    "[].transition_id",
+    "[].transitioned_at",
+    "[].trigger_source"
   ],
   "POST /api/alerts/generate/check-all": [
     "alerts[].acknowledged_at",
@@ -1183,7 +1268,12 @@
     "<status:422>"
   ],
   "POST /api/work-orders/{work_order_id}/approve-qc": [
-    "<status:404>"
+    "message",
+    "qc_approved",
+    "qc_approved_by",
+    "qc_approved_date",
+    "status",
+    "work_order_id"
   ],
   "POST /api/workflow/bulk-transition": [
     "<status:422>"
