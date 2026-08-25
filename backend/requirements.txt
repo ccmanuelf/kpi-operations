@@ -49,7 +49,7 @@ qrcode[pil]==8.2
 simpy==4.1.2
 
 # Production WSGI/ASGI process manager (VM compose stack; Render stays on plain uvicorn)
-gunicorn==26.0.0
+gunicorn==26.1.0
 # The gunicorn worker class, split out of uvicorn itself. uvicorn 0.30
 # deprecated `uvicorn.workers` (it still ships in 0.52 but warns on import,
 # pointing here); the VM's docker-compose.prod.yml command uses
