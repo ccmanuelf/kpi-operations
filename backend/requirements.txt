@@ -23,7 +23,7 @@ bcrypt==5.0.0          # Retained for legacy-hash verification path (rehash-on-v
 python-multipart==0.0.32  # GHSA-v9pg-7xvm-68hf + GHSA-5rvq-cxj2-64vf + GHSA-6jv3-5f52-599m + prior CVEs
 
 # CORS & Security
-python-dotenv==1.2.2   # CVE-2026-28684 fix
+python-dotenv==1.2.3   # CVE-2026-28684 fix
 slowapi==0.1.10
 
 # Date Utilities
