@@ -101,6 +101,22 @@ def test_a_seeded_spec_reads_the_table_it_names():
     assert len(reads) == 16
 
 
+def test_only_literal_specs_declare_a_bogus_probe_value():
+    """`bogus` answers "what should the probe substitute here?", and only a
+    LITERAL needs to answer it.
+
+    A SEEDED_ROW's probe value is DERIVED from the id it resolved, so a
+    declared one there would be a hardcoded id -- the drift this whole module
+    exists to prevent, reintroduced through the back door. A BLOCKED spec is
+    never requested at all.
+    """
+    declared = {key for key, spec in REGISTRY.items() if spec.bogus is not None}
+    literals = {key for key, spec in REGISTRY.items() if spec.kind is Kind.LITERAL}
+
+    assert declared <= literals
+    assert declared == {"pattern"}
+
+
 def test_registry_keys_parse_as_param_or_param_at_family():
     """A key is either a bare param name or `param@family`. Anything else
     means `spec_key` can never produce it, so the spec is unreachable."""

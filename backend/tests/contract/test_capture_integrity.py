@@ -200,7 +200,10 @@ def test_the_isolated_phase_restores_between_mutations(harness: _Harness, captur
 
 
 def test_a_2xx_is_proof_the_id_was_right_except_where_declared(
-    captured_shapes: Dict[str, List[str]], bogus_id_shapes: Dict[str, List[str]]
+    harness: _Harness,
+    captured_shapes: Dict[str, List[str]],
+    bogus_id_shapes: Dict[str, List[str]],
+    bogus_urls: Dict[str, str],
 ) -> None:
     """The brief's requirement: the harness must not treat a 200 as proof the
     id was right, but record per route whether it is.
@@ -226,6 +229,15 @@ def test_a_2xx_is_proof_the_id_was_right_except_where_declared(
 
     assert id_insensitive == NEVER_404
     assert len(succeeded) == 30
+    # Third side, and the one that keeps the other two honest: a route whose
+    # probe URL equals its real URL was compared against ITSELF, so it lands in
+    # `id_insensitive` for free and its NEVER_404 membership proves nothing.
+    # This is reachable -- `bogus_url_for` deliberately does not substitute a
+    # LITERAL param unless its spec declares a `bogus` value, so dropping
+    # `{pattern}`'s would silently turn the cache route into a vacuous pass.
+    unprobed = sorted(route for route in succeeded if bogus_urls[route] == harness.plan.urls[route])
+
+    assert unprobed == []
 
 
 def test_never_404_entries_all_answered_2xx(captured_shapes: Dict[str, List[str]]) -> None:

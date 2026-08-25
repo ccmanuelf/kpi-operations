@@ -196,7 +196,7 @@ def _substitute(route_path: str, values: Dict[str, str]) -> str:
 
 
 def bogus_url_for(route_path: str, resolver: Resolver) -> str:
-    """The same URL with every id replaced by one that cannot exist.
+    """The same URL with every ID replaced by one that cannot exist.
 
     Derived from the REAL value's shape rather than hardcoded per param: an
     all-digits id becomes `999999999` (no seeded integer PK comes near it, and
@@ -204,9 +204,29 @@ def bogus_url_for(route_path: str, resolver: Resolver) -> str:
     nothing about the id), anything else becomes `NO-SUCH-ID`. Composite halves
     are substituted too, since a right id under a wrong client is a 404 that
     looks like a bad id.
+
+    A `Kind.LITERAL` param is NOT an id, so it is substituted only when its
+    spec declares a `bogus` value -- see `ParamSpec.bogus` for why feeding an
+    id sentinel to `{kpi_type}` is both meaningless and noisy. A route left
+    entirely unsubstituted returns its real URL; the caller must treat that as
+    "not probeable" rather than as "id-insensitive", and
+    `test_a_2xx_is_proof_the_id_was_right_except_where_declared` asserts no
+    such route reaches its comparison.
     """
-    real = resolver.values_for(route_path)
-    return _substitute(route_path, {p: "999999999" if v.isdigit() else "NO-SUCH-ID" for p, v in real.items()})
+    # Starts from the REAL values and overrides, so a param left unsubstituted
+    # keeps a valid value rather than a brace -- `capture_all`'s guard would
+    # (correctly) refuse to request a URL still carrying one.
+    values = dict(resolver.values_for(route_path))
+    for param, value in list(values.items()):
+        spec = REGISTRY.get(spec_key(param, route_path))
+        if spec is not None and spec.kind is Kind.LITERAL:
+            if spec.bogus is not None:
+                values[param] = spec.bogus
+            continue
+        # Composite halves have no standalone spec (spec is None) and are ids
+        # like any other, so they fall through to the sentinel deliberately.
+        values[param] = "999999999" if value.isdigit() else "NO-SUCH-ID"
+    return _substitute(route_path, values)
 
 
 @dataclass(frozen=True)

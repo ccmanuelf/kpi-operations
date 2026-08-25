@@ -41,6 +41,23 @@ class ParamSpec:
     literal: Optional[str] = None
     reason: Optional[str] = None
     note: Optional[str] = None
+    #: What to substitute when asking "does this route's answer depend on this
+    #: param?" -- LITERAL only, and only where the question makes sense.
+    #:
+    #: A SEEDED_ROW param needs no declaration: an id that cannot exist is
+    #: derived from the real one's shape. For a LITERAL there IS no id, so
+    #: "an id that cannot exist" is a category error -- feeding `NO-SUCH-ID`
+    #: to `{kpi_type}` reaches `raise ValueError(f"Unknown KPI type: ...")`
+    #: and prints a real traceback inside a green run, which teaches readers
+    #: to ignore tracebacks. Left None, the param is not substituted at all.
+    #:
+    #: `{pattern}` is the exception and carries one, because there the
+    #: substitution IS the question being asked: the param is a free-form
+    #: cache-key prefix, so "does the shape depend on the prefix?" is exactly
+    #: what the probe should ask. Without it that route would be compared
+    #: against itself -- a vacuous pass, which
+    #: `test_a_2xx_is_proof_the_id_was_right_except_where_declared` refuses.
+    bogus: Optional[str] = None
 
 
 #: param name -> ordered (path fragment, spec key). First match wins; a param
@@ -107,8 +124,8 @@ def _seeded(key: str, table: str, sql: str, note: Optional[str] = None) -> Param
     return ParamSpec(key=key, kind=Kind.SEEDED_ROW, table=table, sql=sql, note=note)
 
 
-def _literal(key: str, literal: str, note: Optional[str] = None) -> ParamSpec:
-    return ParamSpec(key=key, kind=Kind.LITERAL, literal=literal, note=note)
+def _literal(key: str, literal: str, note: Optional[str] = None, bogus: Optional[str] = None) -> ParamSpec:
+    return ParamSpec(key=key, kind=Kind.LITERAL, literal=literal, note=note, bogus=bogus)
 
 
 def _blocked(key: str, table: str, reason: str) -> ParamSpec:
@@ -229,6 +246,7 @@ REGISTRY: Dict[str, ParamSpec] = {
     "pattern": _literal(
         "pattern",
         "client_config:",
+        bogus="no-such-prefix:",
         note="An in-process cache-key PREFIX, not an entity. This route can never 404, so the "
         "old literal-brace capture returned a perfectly plausible 200 with "
         "entries_invalidated=0; the real prefix invalidates 2.",

@@ -185,7 +185,9 @@ def captured_shapes(harness: _Harness) -> Dict[str, List[str]]:
 
 
 @pytest.fixture(scope="module")
-def bogus_id_shapes(harness: _Harness, captured_shapes: Dict[str, List[str]]) -> Dict[str, List[str]]:
+def bogus_id_shapes(
+    harness: _Harness, captured_shapes: Dict[str, List[str]], bogus_urls: Dict[str, str]
+) -> Dict[str, List[str]]:
     """Every path-param route, re-requested with an id that cannot exist.
 
     Depends on `captured_shapes` so the real capture is already finished:
@@ -193,13 +195,22 @@ def bogus_id_shapes(harness: _Harness, captured_shapes: Dict[str, List[str]]) ->
     `POST .../approve-qc` with a real id is not, and the fixture restores
     around all of them anyway) and must not run first.
     """
-    resolver = Resolver(harness.engine)
     shapes: Dict[str, List[str]] = {}
-    for route, url in sorted(harness.plan.urls.items()):
+    for route, url in sorted(bogus_urls.items()):
         method, path = route.split(" ", 1)
-        if "{" not in path:
-            continue
         harness.restore()
-        shapes.update(capture_all(harness.client, [(method, path, {})], urls={route: bogus_url_for(path, resolver)}))
+        shapes.update(capture_all(harness.client, [(method, path, {})], urls={route: url}))
     harness.restore()
     return shapes
+
+
+@pytest.fixture(scope="module")
+def bogus_urls(harness: _Harness) -> Dict[str, str]:
+    """Each path-param route's probe URL, exposed separately from the shapes it
+    produced so a test can assert the probe actually differs from the real
+    request. A probe URL equal to the real one compares a route against itself,
+    which reads as "id-insensitive" while proving nothing."""
+    resolver = Resolver(harness.engine)
+    return {
+        route: bogus_url_for(route.split(" ", 1)[1], resolver) for route in sorted(harness.plan.urls) if "{" in route
+    }
