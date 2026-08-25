@@ -48,7 +48,7 @@
     "vue-qrcode-reader": "^5.7.3",
     "vue-router": "^5.2.0",
     "vuedraggable": "^4.1.0",
-    "vuetify": "^4.1.8"
+    "vuetify": "^4.1.11"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
