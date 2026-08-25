@@ -93,6 +93,28 @@ once. Sequenced by area so it can be stopped at any boundary with the work so fa
 differently. A golden master catches a field that disappears; a frontend audit catches a
 field that was already never sent but is read anyway. Neither alone is sufficient.
 
+> **NARROWED 2026-08-25, for eight routes only.** The frontend extractor is structurally
+> blind to the eight `/api/kpi/*/trend` endpoints: `kpiChartConfig.ts::unwrapTrend`
+> destructures points as `r`, reads the axios envelope through a TypeScript cast, and states
+> `date`/`value` partly as type annotations rather than runtime accesses. It reports
+> non-empty field sets for all eight containing neither `date` nor `value` — bleed from
+> unrelated code — so its coverage metric read 10/10 while real protection was 0/10.
+> `coverage_of()` now returns `NO_COVERAGE` for them so silence cannot be mistaken for
+> assurance.
+>
+> The e2e suite is **not** a substitute, and was checked rather than assumed: no spec
+> mentions `trend` or `chart`, and the specs touching KPI screens assert navigation and
+> visibility (`expect(locator('text=/kpi/i')).toBeVisible()`). A chart missing its data
+> renders empty and every one of those assertions still passes.
+>
+> So those eight run on the golden master alone. That is the direct check — it compares the
+> real response key set before and after and fails naming the route and the key — and it is
+> the stronger of the two for the failure this refactor actually risks. The other 156 routes
+> keep both nets.
+>
+> **Separate finding, not this refactor's to fix:** the e2e estate has no chart-content
+> coverage at all. Any chart in the product could render empty with the suite staying green.
+
 **D4 — capture against a disposable seeded database, never against the VM.** 52 of the 164
 are mutations. Capturing them means issuing real writes, which must not happen against
 production. The hermetic pattern already used for the local e2e run applies: temp file →
