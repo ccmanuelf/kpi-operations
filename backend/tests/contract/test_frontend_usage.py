@@ -68,3 +68,93 @@ def test_a_blind_endpoint_reports_no_coverage_rather_than_silence():
 
     assert coverage_of("/api/kpi/efficiency/trend") == "NO_COVERAGE"
     assert coverage_of("/api/attendance/kpi/absenteeism") == "COVERED"
+
+
+def test_bleed_does_not_count_as_coverage():
+    """Task 8's exact measured case. `GET /api/kpi/efficiency/by-product`'s
+    real fields (from the golden master) are `actual_output`, `efficiency`,
+    `product_id`, `product_name`. The extractor finds `avg_efficiency` for
+    this endpoint -- bled in from the unrelated `/api/kpi/dashboard` wrapper
+    in the same kpi.ts file, which really does have an `avg_efficiency`
+    field. Zero intersection with this route's own fields, so this must
+    report NO_FIELDS_FOUND, not COVERED. Before Task 8's fix this asserted
+    (and got) COVERED -- the bug this whole task exists to repair.
+    """
+    from backend.tests.contract.frontend_usage import coverage_of, fields_read_by_frontend
+
+    usage = fields_read_by_frontend()
+
+    # the trap: non-empty, and even plausible-looking, yet none of it is
+    # this route's own field.
+    assert "avg_efficiency" in usage["/api/kpi/efficiency/by-product"]
+    assert "efficiency" not in usage["/api/kpi/efficiency/by-product"]
+
+    assert coverage_of("/api/kpi/efficiency/by-product") == "NO_FIELDS_FOUND"
+
+
+def test_genuine_field_overlap_still_reports_covered():
+    """Guards against over-correcting the other way. `GET /api/kpi/dashboard`
+    is the one honest COVERED the Task 7 pilot measured: the extractor finds
+    `avg_efficiency` and `avg_performance`, and both are real top-level
+    fields of this route's own golden master shape (`[].avg_efficiency`,
+    `[].avg_performance`, alongside `date`, `entry_count`, `total_units`).
+    If the intersection rule were tightened until nothing reports COVERED,
+    this is the case that would catch it.
+    """
+    from backend.tests.contract.frontend_usage import coverage_of
+
+    assert coverage_of("/api/kpi/dashboard") == "COVERED"
+
+
+def test_missing_golden_truth_cannot_report_covered():
+    """`GET /api/kpi/otd/by-client`'s golden master entry is `[]` -- reached,
+    but no fields were ever recorded (no matching seed data at capture
+    time) -- so this route's real field names are unknown, not empty-by-fact.
+    The extractor still finds a non-empty (bleed) field set for it. Without
+    a real target to intersect against, COVERED can never be trustworthy
+    here, so this must report NO_FIELDS_FOUND -- the same as the `<status:
+    ...>` case the brief calls out, reached by a different golden-master
+    shape (an empty list rather than a status placeholder).
+    """
+    from backend.tests.contract.frontend_usage import coverage_of, fields_read_by_frontend
+
+    usage = fields_read_by_frontend()
+
+    # the trap: found is NOT empty, so a naive "found or not" check would
+    # short-circuit straight to COVERED.
+    assert usage.get("/api/kpi/otd/by-client")
+
+    assert coverage_of("/api/kpi/otd/by-client") == "NO_FIELDS_FOUND"
+
+
+def test_real_field_names_uses_top_level_segments_only():
+    """`GET /api/kpi/dashboard/aggregated`'s golden master records nested
+    dotted paths, e.g. `trends.efficiency[].date`. `_FIELD` can only ever
+    capture a field name immediately after one of its receiver tokens
+    (`d.`, `data.`, ...) -- never a chained `d.trends.efficiency.date` -- so
+    the only name it could legitimately produce here is the TOP segment,
+    `trends`. Real field names must be exactly that top segment, not every
+    segment in the path: `date` is two levels deep and must NOT count as one
+    of this route's real fields, or a `.date` bleed from anywhere in the
+    file (an extremely common property name elsewhere in this codebase)
+    would falsely intersect against a route the extractor never actually
+    read.
+    """
+    from backend.tests.contract.frontend_usage import _real_field_names
+
+    real = _real_field_names("/api/kpi/dashboard/aggregated")
+
+    assert "trends" in real
+    assert "date" not in real
+
+
+def test_real_field_names_empty_for_status_placeholder_entry():
+    """`GET /api/kpi/labor-hours`'s golden master entry is `["<status:422>"]`
+    -- the capture harness never reached a real response body. That carries
+    no field information at all, so the real field set must be empty, never
+    `{"<status:422>"}` or any other artifact of the placeholder string
+    itself leaking through as if it were a field name.
+    """
+    from backend.tests.contract.frontend_usage import _real_field_names
+
+    assert _real_field_names("/api/kpi/labor-hours") == frozenset()

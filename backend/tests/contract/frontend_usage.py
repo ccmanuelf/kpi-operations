@@ -69,11 +69,13 @@ that it is still sent. Do not treat a clean extractor run as proof no field
 is needed.
 """
 
+import json
 import pathlib
 import re
 
 FRONTEND = pathlib.Path(__file__).resolve().parents[3] / "frontend" / "src"
 API_DIR = FRONTEND / "services" / "api"
+GOLDEN = pathlib.Path(__file__).resolve().parent / "golden" / "api_shapes.json"
 
 # api.get('/kpi/dashboard') and friends. The leading /api comes from the axios
 # baseURL, so endpoint literals in the client are written without it. Some
@@ -167,6 +169,25 @@ def fields_read_by_frontend() -> dict:
 #: destructures points as `r`, reads the axios envelope through a TypeScript cast,
 #: and states date/value partly as type ANNOTATIONS rather than runtime accesses.
 #: Recovering those needs type-shape mining, not another pass of accessor matching.
+#:
+#: Task 8 note (2026-08-25): `coverage_of()` now requires found fields to
+#: intersect the route's real field names, so today's bleed for these eight
+#: (`data`, `data_quality`, `has_estimated`, `inference`, `was_inferred`)
+#: already fails the intersection on its own -- none of it is `date` or
+#: `value`. This set is kept anyway, not shrunk, because that non-collision
+#: is incidental rather than structural: `date` and `value` are two of the
+#: most generic property names in this codebase (every trend cluster member
+#: and the dashboard list endpoint use them), and kpi.ts is one large shared
+#: file that Pass 2 scans at whole-file granularity. A future edit that adds
+#: an unrelated `.date` or `.value` read anywhere near one of these wrapper
+#: names would flip the intersection to a coincidental, non-attributable
+#: COVERED, even though unwrapTrend's `r`-destructuring/type-cast/annotation
+#: pattern means the extractor still cannot see the real per-point read. The
+#: intersection rule cannot distinguish a genuine hit from that coincidence
+#: for a two-letter, ubiquitous field name -- KNOWN_BLIND is what does.
+#: `/api/kpi/on-time-delivery/trend` carries a second, independent reason:
+#: its own golden master entry is `[]` (no data at capture time), so
+#: `_real_field_names` already returns an empty set for it regardless.
 KNOWN_BLIND = frozenset(
     {
         "/api/kpi/availability/trend",
@@ -181,14 +202,80 @@ KNOWN_BLIND = frozenset(
 )
 
 
-def coverage_of(endpoint: str) -> str:
+def _real_field_names(endpoint: str, method: str = "GET") -> frozenset:
+    """Top-level field names the golden master recorded for `endpoint`.
+
+    `_FIELD` above only ever captures the field name immediately following
+    one of its receiver tokens (`d.`, `data.`, ...) -- a single hop; it
+    cannot chain through `d.otd.rate` and capture `rate`. So the only names
+    this extractor could ever legitimately produce are the TOP-LEVEL keys of
+    a response. Real field names are therefore the first dot-segment of each
+    golden master key path, after stripping a trailing `[]` from any
+    segment: a flat list route records `[].date` (segments `["", "date"]`
+    after stripping -> top segment `date`), while a nested list-of-object
+    field records e.g. `trends.efficiency[].date` (segments `["trends",
+    "efficiency", "date"]` -> top segment `trends`).
+
+    Two golden master shapes carry NO real field information, and both MUST
+    resolve to an empty set here so a caller can never manufacture a COVERED
+    verdict out of them:
+      - `["<status:422>"]` etc.: the capture harness never reached a real
+        response body for this route.
+      - `[]`: the route was reached but the recorded shape has no keys at
+        all (e.g. GET /api/kpi/otd/by-client returns an empty list against
+        this harness's default seed data). This is a golden-master DATA gap,
+        not a code defect -- and this task does not touch the golden master
+        -- but it means "real fields unknown", not "real fields are zero",
+        so it must be treated exactly like the status-placeholder case.
+    """
+    entry = json.loads(GOLDEN.read_text(encoding="utf-8")).get(f"{method} {endpoint}")
+    if not entry:
+        return frozenset()
+    names = set()
+    for path in entry:
+        if path.startswith("<status:"):
+            continue
+        segments = [s[:-2] if s.endswith("[]") else s for s in path.split(".")]
+        segments = [s for s in segments if s]
+        if segments:
+            names.add(segments[0])
+    return frozenset(names)
+
+
+def coverage_of(endpoint: str, method: str = "GET") -> str:
     """Whether this extractor can say anything trustworthy about `endpoint`.
 
     Exists so a caller cannot mistake silence for assurance. A cross-check that
     prints "read-but-not-sent: []" looks identical whether the extractor examined
     the endpoint and found nothing wrong, or could not see it at all -- and the
     second is not a pass. Callers must branch on this rather than on emptiness.
+
+    Three distinguishable states:
+
+    - `COVERED` -- fields were found AND at least one intersects the route's
+      real field names (from the golden master, see `_real_field_names`).
+      This is the only state that means something was actually verified.
+    - `NO_FIELDS_FOUND` -- the extractor found nothing, or found only fields
+      that do not match any of the route's real fields (bleed). Also the
+      verdict whenever the golden master itself carries no real field names
+      for this route (a `<status:...>` entry or an empty shape) -- there is
+      nothing to intersect against, so COVERED can never be trustworthy.
+    - `NO_COVERAGE` -- known-blind (KNOWN_BLIND): a documented, structural
+      extraction gap, independent of what today's bleed happens to contain.
+
+    Until Task 8, this returned COVERED whenever `fields_read_by_frontend()`
+    found ANY field name for `endpoint`, with no check that the fields found
+    were the endpoint's own. Measured during the Task 7 pilot: 8 of the 24
+    /api/kpi routes reported COVERED off bleed from unrelated code in the
+    same frontend source file, with ZERO real field overlap (see
+    task-8-brief.md's evidence table) -- a broken extractor and a working
+    one were indistinguishable from this function's output. Fixed by
+    requiring intersection with the route's real field names.
     """
     if endpoint in KNOWN_BLIND:
         return "NO_COVERAGE"
-    return "COVERED" if fields_read_by_frontend().get(endpoint) else "NO_FIELDS_FOUND"
+    found = fields_read_by_frontend().get(endpoint)
+    if not found:
+        return "NO_FIELDS_FOUND"
+    real = _real_field_names(endpoint, method)
+    return "COVERED" if found & real else "NO_FIELDS_FOUND"
