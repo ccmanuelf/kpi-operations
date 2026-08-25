@@ -745,3 +745,64 @@ instrument meant to detect it.
 **Exit criterion:** no golden key contains `{`; every path-param route records either a real
 shape or a status explained by something other than an unresolved id (a genuine 422 from a
 missing request body is fine and expected for mutations, which Task 15 handles).
+
+---
+
+### Task 8c: Cross-tenant authorization sweep and fix (own PR, off main)
+
+**Found 2026-08-25** while building Task 8b's resolution map. Not part of the response-model
+refactor; sequenced after Task 8b because that task builds the id resolution the sweep needs.
+**Ships as its own PR branched from `main`, not on the refactor branch** — a security fix
+buried in a 140-route contract diff is neither reviewable nor backportable.
+
+**Confirmed exploitable**, verified behaviourally against a seeded DB:
+
+```
+attacker: role=supervisor, client_id_assigned=DEMO-HOURLY
+GET    /api/shifts/3   -> 200, body client_id=DEMO-HYBRID    cross-tenant READ
+DELETE /api/shifts/3   -> 204                                cross-tenant DELETE
+GET    /api/shifts     -> correctly scoped
+GET    /api/production-lines/1 -> 200, owner DEMO-PIECE      cross-tenant READ
+```
+
+`routes/shifts.py:42` (list) uses `resolve_client_scope`; the `GET/PUT/DELETE /{shift_id}`
+routes in the same file do not. `crud/shift.py:164` filters on `shift_id` alone. Same class as
+PR #144's uniform client-scope work — these were missed.
+
+- [ ] **Step 1: Build a two-tenant fixture, independent of the seeder.** Insert rows directly
+      for every client-scoped ORM model, for two distinct clients. Do NOT depend on demo seed
+      data: `CoverageEntry`, `Alert`, `FloatingPool`, `SimulationScenario` and
+      `CalculationAssumption` have zero rows in both profiles, and a security test that inherits
+      the seeder's gaps is narrowed by every future seeder change.
+- [ ] **Step 2: Probe every by-id route behaviourally.** For each, request tenant B's row as a
+      user scoped to tenant A and assert the response is 403/404, never 200-with-B's-data.
+      **Grep is not a substitute** — an earlier grep for scope markers in endpoint bodies gave
+      139 candidates, of which the behavioural probe showed work-orders, holds, production,
+      quality, downtime, defect-types and client-config all correctly return 403. They enforce
+      scope in the CRUD layer, invisible to the grep. Probe behaviour, not text.
+- [ ] **Step 3: Resolve the integer-PK correlation.** Both confirmed-vulnerable entities use
+      sequential integer PKs; every confirmed-protected one uses a client-prefixed string PK.
+      Determine whether protection is riding on id format rather than an explicit tenant check.
+      If it is, that is a design gap — any future integer-PK entity ships unscoped by default —
+      and needs a structural guard, not two point fixes.
+- [ ] **Step 4: Fix every route the sweep confirms**, following the existing
+      `resolve_client_scope` pattern.
+- [ ] **Step 5: Pin it.** Extend `test_permission_matrix.py` so cross-tenant denial is asserted
+      per route. Mutation-proof: remove one scope check and confirm the matrix fails naming the
+      route.
+
+**Exit criterion:** no by-id route returns another tenant's row to a scoped user, and a test
+fails loudly if one ever does again.
+
+---
+
+### Task 8d: Seed the unseeded tables
+
+Measured during Task 8c prep: `COVERAGE_ENTRY`, `ALERT`, `FLOATING_POOL`,
+`SIMULATION_SCENARIO` and `CALCULATION_ASSUMPTION` have **zero rows in both the smoke and full
+profiles** — the seeder never writes them. The Task 8b resolution map identifies 19 path params
+blocked on the same gap.
+
+Consequences beyond this refactor: those features have no demo data, and their routes cannot be
+contract-captured. Sequenced last because the seeder was cut over in S1c and this is real work
+against it, not a harness tweak. Task 8b's blocked manifest is this task's input.
