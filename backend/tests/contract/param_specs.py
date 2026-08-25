@@ -62,10 +62,18 @@ class ParamSpec:
 #: And the golden master cannot see it. Both routes record `<non-json>` -- a
 #: 204 with an empty body -- so if family routing broke and both resolved
 #: against one table, the golden file would not move a single byte. A reader
-#: must not take those two green entries as evidence the routing works: the
-#: only thing that checks it is
-#: `test_param_resolution.test_catalog_id_resolves_to_a_different_table_per_route_family`,
-#: which compares the two specs structurally.
+#: must not take those two green entries as evidence the routing works.
+#:
+#: TWO structural tests check it, and it takes both, because routing to the
+#: right spec and that spec reading the right table are separate failures:
+#:   * `test_catalog_id_resolves_to_a_different_table_per_route_family`
+#:     -- each route reaches its own spec, and the two name different tables;
+#:   * `test_a_seeded_spec_reads_the_table_it_names`
+#:     -- the table a spec NAMES is the table its SQL queries. Without this
+#:     one, the first is a check on a decorative label: resolution executes
+#:     `spec.sql` and never reads `spec.table` at all, so the reason spec
+#:     could read HOLD_STATUS_CATALOG with its label untouched and the whole
+#:     suite stayed green. Verified, then closed.
 #:
 #: The `@capacity` / `@capacity-calendar` keys are deliberately NOT registered:
 #: no capacity route carries a path param in the golden master's 164, so a

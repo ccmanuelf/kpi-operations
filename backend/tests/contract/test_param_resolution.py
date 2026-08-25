@@ -62,6 +62,44 @@ def test_row_backed_specs_name_the_table_they_read():
     assert {key for key, table in tables.items() if table} == row_backed
 
 
+def test_a_seeded_spec_reads_the_table_it_names():
+    """`spec.table` must be the table `spec.sql` actually queries.
+
+    Resolution never reads `.table` -- `Resolver.resolve` executes `spec.sql`
+    and nothing else -- so for a SEEDED_ROW spec the label is decorative: it
+    feeds error text and the staleness gate. Nothing tied it to the query,
+    which meant a spec could name one table and read another and stay green.
+
+    Reproduced before this test existed: pointing `catalog_id@hold-reason` at
+    `SELECT catalog_id FROM HOLD_STATUS_CATALOG ... OFFSET 5` -- an id that
+    exists in both catalogs, so it cannot 404 -- left the label untouched and
+    the whole suite passed, 41 tests, golden file unmoved. That is a DELETE
+    issued against hold reason #6 with an id taken from the status table: the
+    exact wrong-entity resolution this harness exists to prevent, invisible
+    because both catalog routes record `<non-json>`.
+
+    Checks the FROM clause, not `spec.table in spec.sql`: a substring test
+    passes on a mention in a trailing comment or in a column name. Exactly one
+    FROM per spec is asserted too, so a JOIN -- which would make "the table
+    this spec reads" ambiguous -- has to be a deliberate widening of this rule
+    rather than a silent exemption.
+
+    COMPOSITES have no `table` to compare against and are deliberately out of
+    scope here; their only route's golden entry DISCRIMINATES (a bogus id
+    404s), so a wrong table there fails `test_no_route_lost_a_field`.
+    """
+    from_clause = re.compile(r'\bFROM\s+"?(\w+)"?', re.IGNORECASE)
+    reads = {
+        key: from_clause.findall(spec.sql or "")
+        for key, spec in sorted(REGISTRY.items())
+        if spec.kind is Kind.SEEDED_ROW
+    }
+    mismatched = {key: tables for key, tables in reads.items() if tables != [REGISTRY[key].table]}
+
+    assert mismatched == {}
+    assert len(reads) == 16
+
+
 def test_registry_keys_parse_as_param_or_param_at_family():
     """A key is either a bare param name or `param@family`. Anything else
     means `spec_key` can never produce it, so the spec is unreachable."""
