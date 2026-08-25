@@ -15,7 +15,7 @@ from backend.utils.logging_utils import get_module_logger
 from backend.database import get_db
 from backend.auth.jwt import get_current_user, ClientScope, resolve_client_scope
 from backend.orm.user import User
-from backend.schemas.kpi_contracts import TrendPoint
+from backend.schemas.kpi_contracts import PerformanceByProduct, PerformanceByShift, TrendPoint
 
 logger = get_module_logger(__name__)
 
@@ -63,7 +63,7 @@ def get_performance_trend(
     return [{"date": str(r.date), "value": round(float(r.value), 2) if r.value else 0} for r in results]
 
 
-@trends_router.get("/performance/by-shift")
+@trends_router.get("/performance/by-shift", response_model=List[PerformanceByShift])
 def get_performance_by_shift(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
@@ -124,7 +124,7 @@ def get_performance_by_shift(
     ]
 
 
-@trends_router.get("/performance/by-product")
+@trends_router.get("/performance/by-product", response_model=List[PerformanceByProduct])
 def get_performance_by_product(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,

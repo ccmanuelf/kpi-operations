@@ -16,13 +16,14 @@ from backend.utils.logging_utils import get_module_logger
 from backend.database import get_db
 from backend.auth.jwt import get_current_user, ClientScope, resolve_client_scope
 from backend.orm.user import User
+from backend.schemas.kpi_contracts import AggregatedDashboard
 
 logger = get_module_logger(__name__)
 
 dashboard_router = APIRouter(prefix="/api/kpi", tags=["KPI Calculations"])
 
 
-@dashboard_router.get("/dashboard/aggregated")
+@dashboard_router.get("/dashboard/aggregated", response_model=AggregatedDashboard, response_model_exclude_unset=True)
 def get_aggregated_dashboard(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,

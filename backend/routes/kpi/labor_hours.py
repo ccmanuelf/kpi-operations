@@ -16,6 +16,7 @@ from backend.auth.jwt import ClientScope, get_current_user, resolve_client_scope
 from backend.calculations.labor_hours import earned_hours, summarize_labor_hours
 from backend.database import get_db
 from backend.orm.user import User
+from backend.schemas.kpi_contracts import LaborHoursSummary
 from backend.utils.date_range import validate_date_range
 from backend.utils.logging_utils import get_module_logger
 
@@ -24,7 +25,7 @@ logger = get_module_logger(__name__)
 labor_hours_router = APIRouter(prefix="/api/kpi", tags=["KPI Calculations"])
 
 
-@labor_hours_router.get("/labor-hours")
+@labor_hours_router.get("/labor-hours", response_model=LaborHoursSummary)
 def get_labor_hours_summary(
     start_date: date,
     end_date: date,

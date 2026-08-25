@@ -6,12 +6,13 @@ Core KPI calculation endpoints and the basic dashboard summary.
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from typing import Any, Optional
+from typing import Any, List, Optional
 from datetime import date, datetime, timedelta, timezone
 
 from backend.utils.logging_utils import get_module_logger
 from backend.database import get_db
 from backend.schemas.production import KPICalculationResponse
+from backend.schemas.kpi_contracts import DailyProductionSummary
 from backend.services.production_crud_service import (
     get_entry as get_production_entry,
     get_daily_production_summary as get_daily_summary,
@@ -58,7 +59,7 @@ def calculate_kpis(entry_id: str, db: Session = Depends(get_db), current_user: U
     )
 
 
-@calculations_router.get("/dashboard")
+@calculations_router.get("/dashboard", response_model=List[DailyProductionSummary])
 def get_kpi_dashboard(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,

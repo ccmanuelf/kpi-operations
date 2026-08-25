@@ -1,8 +1,11 @@
 def test_every_loose_route_is_inventoried_and_none_is_silently_dropped():
-    """155 loose routes, re-measured 2026-08-25 after Task 6 converted the nine
-       `/api/kpi/*trend` routes (eight in trends.py/efficiency.py, plus
-       wip-aging/trend in holds.py) to `response_model=List[TrendPoint]`,
-       shrinking this count from its prior 164.
+    """140 loose routes, re-measured 2026-08-25 after Task 7 converted the
+       remaining 15 `/api/kpi/*` routes (availability, dashboard, dashboard/
+       aggregated, efficiency/by-product, efficiency/by-shift, labor-hours,
+       late-orders, otd, otd/by-client, otd/late-deliveries, performance/
+       by-product, performance/by-shift, wip-aging/top, chronic-holds,
+       {metric}/cause) to typed response models, shrinking this count from
+       its prior 155 (itself shrunk from 164 by Task 6's nine trend routes).
 
        The original 160 came from a string-prefix predicate that could not see through
        typing.List[...] wrappers and silently dropped four live routes. See is_loose.
@@ -14,7 +17,7 @@ def test_every_loose_route_is_inventoried_and_none_is_silently_dropped():
 
     routes = loose_routes(app)
 
-    assert len(routes) == 155
+    assert len(routes) == 140
     methods = {m for m, _, _ in routes}
     assert methods == {"GET", "POST", "PUT", "DELETE"}
 

@@ -16,7 +16,7 @@ from backend.utils.logging_utils import get_module_logger
 from backend.database import get_db
 from backend.auth.jwt import get_current_user, ClientScope, resolve_client_scope
 from backend.orm.user import User
-from backend.schemas.kpi_contracts import TrendPoint
+from backend.schemas.kpi_contracts import EfficiencyByProduct, EfficiencyByShift, TrendPoint
 from backend.services.calculations.performance import (
     ExpectedOutputInputs,
     calculate_expected_output,
@@ -27,7 +27,7 @@ logger = get_module_logger(__name__)
 efficiency_router = APIRouter(prefix="/api/kpi", tags=["KPI Calculations"])
 
 
-@efficiency_router.get("/efficiency/by-shift")
+@efficiency_router.get("/efficiency/by-shift", response_model=List[EfficiencyByShift])
 def get_efficiency_by_shift(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
@@ -95,7 +95,7 @@ def get_efficiency_by_shift(
     ]
 
 
-@efficiency_router.get("/efficiency/by-product")
+@efficiency_router.get("/efficiency/by-product", response_model=List[EfficiencyByProduct])
 def get_efficiency_by_product(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,

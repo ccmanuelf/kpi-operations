@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from backend.database import get_db
 from backend.auth.jwt import get_current_user, ClientScope, resolve_client_scope
 from backend.orm.user import User
+from backend.schemas.kpi_contracts import KPICauseResponse
 from backend.services import kpi_cause_service as svc
 
 cause_router = APIRouter(prefix="/api/kpi", tags=["KPI Calculations"])
@@ -29,7 +30,7 @@ _FALLBACK_METRICS = {"efficiency", "performance", "throughput"}
 _ALL_METRICS = set(_DRIVERS) | _FALLBACK_METRICS
 
 
-@cause_router.get("/{metric}/cause")
+@cause_router.get("/{metric}/cause", response_model=KPICauseResponse)
 def get_kpi_cause(
     metric: str,
     date: date_cls,
