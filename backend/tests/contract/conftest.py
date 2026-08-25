@@ -180,7 +180,7 @@ def captured_shapes(harness: _Harness) -> Dict[str, List[str]]:
     placeholders for routes no id can reach."""
     shapes = capture_all(harness.client, harness.plan.requests, urls=harness.plan.urls)
     shapes.update(capture_isolated(harness.client, harness.plan.isolated, harness.plan.urls, harness.restore))
-    shapes.update({route: blocked_shape(key) for route, key in harness.plan.blocked.items()})
+    shapes.update({route: blocked_shape(exc.key) for route, exc in harness.plan.blocked.items()})
     return shapes
 
 

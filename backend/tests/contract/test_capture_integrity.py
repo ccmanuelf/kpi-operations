@@ -32,7 +32,7 @@ from sqlalchemy import func, select, table
 
 from backend.tests.contract.capture import capture_isolated, was_never_reached
 from backend.tests.contract.conftest import _Harness
-from backend.tests.contract.param_specs import NEVER_404, REGISTRY
+from backend.tests.contract.param_specs import NEVER_404, REGISTRY, Kind
 
 BLOCKED_ROUTES = frozenset(
     {
@@ -84,6 +84,32 @@ def test_blocked_routes_are_exactly_the_declared_manifest(harness: _Harness) -> 
     assert frozenset(harness.plan.blocked) == BLOCKED_ROUTES
 
 
+def test_no_route_was_blocked_by_anything_but_a_declared_gap(harness: _Harness) -> None:
+    """A blocked route must be blocked by a DECLARED gap, and the failure must
+    say which kind it was.
+
+    `UnresolvableParam` covers two unrelated situations. A `Kind.BLOCKED` spec
+    is an expected, documented gap: the table has no rows and Task 8d will add
+    them. A `Kind.SEEDED_ROW` spec that finds no row is a SEEDER REGRESSION --
+    a table the seeder is supposed to write and stopped writing -- and
+    `Resolver.resolve` raises it with a deliberately different, louder message
+    for exactly that reason.
+
+    Without this test the two collapse: the manifest gate notices that the set
+    of blocked routes changed, but reports it as a manifest mismatch, pointing
+    the reader at the declaration rather than at the seeder. This asserts on
+    the SPEC KIND, not on message text, and puts `exc.reason` in the failure
+    output so the louder message is the first thing read.
+    """
+    undeclared = {
+        route: exc.reason
+        for route, exc in harness.plan.blocked.items()
+        if REGISTRY.get(exc.key) is None or REGISTRY[exc.key].kind is not Kind.BLOCKED
+    }
+
+    assert undeclared == {}
+
+
 def test_every_blocked_spec_still_has_zero_rows(harness: _Harness) -> None:
     """The staleness half of the gate, asserted against the seeded database
     rather than against a comment. Each blocked spec claims its table is
@@ -94,7 +120,7 @@ def test_every_blocked_spec_still_has_zero_rows(harness: _Harness) -> None:
     # HAS a table is gated separately by
     # test_param_resolution.test_row_backed_specs_name_the_table_they_read,
     # so a None here cannot silently shrink this set unnoticed.
-    specs = [REGISTRY[key] for key in set(harness.plan.blocked.values())]
+    specs = [REGISTRY[exc.key] for exc in harness.plan.blocked.values() if exc.key in REGISTRY]
     blocked_tables = sorted({spec.table for spec in specs if spec.table})
     # `select(func.count()).select_from(table(name))` rather than an f-string
     # SQL literal: the name comes from our own REGISTRY, but interpolating it

@@ -220,8 +220,17 @@ class CapturePlan:
     isolated: List[Tuple[str, str, dict]] = field(default_factory=list)
     #: route key -> concrete URL. Never contains a brace; `capture_all` asserts it.
     urls: Dict[str, str] = field(default_factory=dict)
-    #: route key -> the REGISTRY key that blocked it.
-    blocked: Dict[str, str] = field(default_factory=dict)
+    #: route key -> the exception that blocked it, NOT just its spec key.
+    #:
+    #: The whole exception, because `UnresolvableParam` carries two very
+    #: different failures under one type and only its `reason` tells them
+    #: apart: a declared BLOCKED gap ("JOB has zero seeded rows... Task 8d"),
+    #: and a SEEDED_ROW spec that found nothing, which is a SEEDER REGRESSION
+    #: and says so in a deliberately louder message. Storing only the key threw
+    #: that message away and left the two indistinguishable at every consumer
+    #: -- which is precisely the collapse `Resolver.resolve` writes two
+    #: separate messages to prevent.
+    blocked: Dict[str, "UnresolvableParam"] = field(default_factory=dict)
 
 
 def plan_capture(route_keys: Iterable[str], resolver: Resolver) -> CapturePlan:
@@ -239,7 +248,7 @@ def plan_capture(route_keys: Iterable[str], resolver: Resolver) -> CapturePlan:
         try:
             plan.urls[route_key] = resolver.url_for(path)
         except UnresolvableParam as exc:
-            plan.blocked[route_key] = exc.key
+            plan.blocked[route_key] = exc
             continue
         target = plan.isolated if (method in MUTATING_METHODS and "{" in path) else plan.requests
         target.append((method, path, {}))
