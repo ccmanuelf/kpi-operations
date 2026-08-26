@@ -4,25 +4,31 @@
 `kpi_contracts.py` (413 lines, KPI-scoped) or `workflow_contracts.py`
 (workflow-scoped); see docs/superpowers/plans/2026-08-25-response-model-refactor.md.
 
-Declared types are what close the Decimal class: MariaDB's `SUM()` over an
-INTEGER column returns DECIMAL at the driver level even though the column
-itself is a plain integer, Pydantic renders a `Decimal` field as a JSON
-*string* under `Any`/`Dict`, and a declared `int`/`float` coerces the value
-instead of forwarding it as-is. `MyShiftStatsResponse.units_produced` and
-`.efficiency` are the one live instance of this in this batch -- see that
-model's docstring for the exact code path and
-`backend/tests/contract/test_ops_contracts.py` for the mutation-tested proof.
+Declared types close TWO normalisation classes -- intentional field-VALUE
+changes on an unchanged field-SET ("no endpoint may change what it returns"
+means key sets; the golden master compares key sets by design):
+
+1. Decimal->number (MariaDB `SUM()` over `Integer` returns DECIMAL; a bare
+   `Decimal` field serialises as a JSON string). Live instance:
+   `MyShiftStatsResponse.units_produced`/`.efficiency` -- see that model and
+   `test_ops_contracts.py`.
+2. int->float on a `float` field whose producer has a branch yielding a bare
+   int literal instead of the computed float -- a `min(ratio, 100)` cap
+   (returns literal `100`), or an `else 0` fallback. Confirmed:
+   `CacheStatistics`/`CacheHealthResponse.hit_rate` (`cache/kpi_cache.py:189`,
+   `else 0`) and `CompletenessCategory.percentage` (`routes/
+   data_completeness.py`, `min(ratio*100, 100)` past 100%). `float` is
+   correct either way (`int` truncates 87.5); TypeScript/`JSON.parse` reads
+   `100`/`100.0` alike, a strict Python client would not.
 
 Most of this batch has real golden-master evidence (`backend/tests/contract/
 golden/api_shapes.json`). Three models -- `ActiveShiftResponse`,
-`KPIHealthAssessmentResponse`, and `PlanVsActualEntry` (+ nested
-`LineBreakdownEntry`) -- carry NO captured evidence: their routes' golden
-entries are placeholders (`<status:404>`, `<status:400>`, `[]`), so they are
-built from reading the producing function directly, exactly as Task 9's
-`StageDurationEntry` was. `ThresholdEntry` and `ActivityLogEntry` are a
-narrower version of the same gap: their routes have real captured top-level
-evidence, but the smoke seed never populates the collection each lives
-inside, so each interior is source-inspected the same way.
+`KPIHealthAssessmentResponse`, `PlanVsActualEntry` (+ `LineBreakdownEntry`)
+-- carry NO captured evidence (placeholder golden entries); built from
+reading the producing function, per Task 9's `StageDurationEntry`.
+`ThresholdEntry`/`ActivityLogEntry` are narrower: real top-level evidence,
+but the smoke seed never populates the collection each lives inside, so
+each INTERIOR is source-inspected the same way.
 """
 
 from datetime import datetime
@@ -38,16 +44,15 @@ from pydantic import BaseModel
 class CacheHealthResponse(BaseModel):
     """GET /api/cache/health -- golden evidence, 4 keys.
 
-    `cache_health()` (routes/cache.py) wraps its body in a bare
-    `try/except Exception`: on the (never-seen-in-capture, defensive-only)
-    exception path it returns a 3-key dict -- `status`, `timestamp`, `error`
-    -- with `entries`/`hit_rate` absent entirely, not null. Without
-    `response_model_exclude_unset=True`, `Optional[int] = None` fields would
-    emit `entries: null`/`hit_rate: null` on that branch (a key the original
-    route never sent), and without `Optional` at all the missing keys would
-    fail response validation outright, turning a graceful in-band error into
-    a 500. Registered in `EXCLUDE_UNSET_ROUTES`; forced directly in
-    `test_conditional_branches.py::test_cache_health_error_branch_omits_entries_and_hit_rate`.
+    `cache_health()` (routes/cache.py) wraps its body in a bare `try/except
+    Exception`: the (never-seen-in-capture, defensive-only) exception path
+    returns a DIFFERENT 3-key dict (`status`, `timestamp`, `error`), with
+    `entries`/`hit_rate` absent, not null. Without `exclude_unset`, `Optional
+    [int] = None` fields would emit `null` for those two on that branch (a
+    key the pre-conversion route never sent), and without `Optional` at all
+    the missing keys would 500 instead of forwarding the error. Registered
+    in `EXCLUDE_UNSET_ROUTES`; forced in `test_conditional_branches.py::
+    test_cache_health_error_branch_omits_entries_and_hit_rate`.
     """
 
     status: str
@@ -61,7 +66,9 @@ class CacheStatistics(BaseModel):
     """The `statistics` object nested in GET /api/cache/stats.
 
     `KPICache.get_stats()` (backend/cache/kpi_cache.py) is a plain in-memory
-    dict of Python ints plus one `round(float, 2)` -- no SQL, no Decimal.
+    dict of Python ints plus one `round(hit_rate, 2)` -- no SQL, no Decimal,
+    but `hit_rate` is the literal int `0` (not `0.0`) before any request is
+    served -- see the module docstring's int->float class.
     """
 
     entries: int
@@ -91,10 +98,8 @@ class CacheClearResponse(BaseModel):
 
 class CacheInvalidateResponse(BaseModel):
     """DELETE /api/cache/invalidate/{pattern} -- golden evidence, 4 keys.
-
     `pattern` is an in-process cache-key prefix, not an id -- see
-    `param_specs.py`'s `NEVER_404` entry for this route.
-    """
+    `param_specs.py`'s `NEVER_404` entry for this route."""
 
     status: str
     pattern: str
@@ -109,14 +114,11 @@ class CacheInvalidateResponse(BaseModel):
 
 
 class ThresholdEntry(BaseModel):
-    """One value of the `thresholds` map in GET /api/kpi-thresholds.
-
-    NOT captured: the smoke seed carries zero KPI_THRESHOLD rows, so the
-    golden entry's `thresholds` key is bare with no dotted children.
-    Modeled from `get_kpi_thresholds` (routes/kpi/thresholds.py), which
-    builds this exact 8-key dict per threshold from the KPI_THRESHOLD ORM
-    row (`target_value`/`warning_threshold`/`critical_threshold` are plain
-    `Float` columns, never `Numeric` -- no Decimal risk here).
+    """One value of the `thresholds` map in GET /api/kpi-thresholds. NOT
+    captured (smoke seed has zero KPI_THRESHOLD rows -- bare `thresholds`
+    key). Modeled from `get_kpi_thresholds` (routes/kpi/thresholds.py)'s
+    8-key dict per threshold; `target_value`/`warning_threshold`/
+    `critical_threshold` are plain `Float` columns, never `Numeric`.
     """
 
     threshold_id: str
@@ -130,13 +132,10 @@ class ThresholdEntry(BaseModel):
 
 
 class KPIThresholdsResponse(BaseModel):
-    """GET /api/kpi-thresholds -- golden evidence, 3 keys.
-
-    `thresholds`'s VALUES are data-shaped (see `ThresholdEntry`), but its
-    KEYS are `kpi_key` strings -- data, not fixed field names, the same
-    reason `capture.py`'s `MAP_FIELDS` treats `by_severity`/`by_category`
-    specially. An empty dict serializes identically either way, so typing
-    the value side costs nothing today and is correct once a row exists.
+    """GET /api/kpi-thresholds -- golden evidence, 3 keys. `thresholds`'s
+    VALUES are data-shaped (`ThresholdEntry`), but its KEYS are `kpi_key`
+    strings -- data, not fixed names, same reason `capture.py`'s
+    `MAP_FIELDS` special-cases `by_severity`/`by_category`.
     """
 
     client_id: Optional[str] = None
@@ -210,20 +209,21 @@ class PredictionsDemoSeedResponse(BaseModel):
 
 class KPIHealthAssessmentResponse(BaseModel):
     """GET /api/predictions/health/{kpi_type} -- SOURCE INSPECTION, NO
-    CAPTURED EVIDENCE. Golden entry is `<status:400>`: `get_kpi_health`
-    (routes/predictions.py) queries a 7-day window and requires >= 3 points,
-    but `get_historical_kpi_data` returns `[]` under this smoke seed (its
-    query raises internally and is swallowed by a broad `except Exception`),
-    so the 400 fires every time. Pre-existing; not fixed here, per the brief.
-
-    Modeled from `get_kpi_health`'s own literal return dict, unconditional
-    once construction begins -- all 9 keys always present together, so no
-    `exclude_unset` is needed for the route's own dict. (Separately,
-    `health_data["current_vs_target"]` can `KeyError` for an unknown
-    `kpi_type`, since -- unlike sibling route `/predictions/{kpi_type}` --
-    this route never validates `kpi_type` first; a pre-existing latent bug,
-    also not fixed here.) `assessed_at` is a real `datetime` object
-    (`datetime.now(tz=timezone.utc)`), not a pre-formatted string.
+    CAPTURED EVIDENCE. Golden `<status:400>`: `get_kpi_health` (routes/
+    predictions.py) needs >= 3 points from a 7-day window, but
+    `get_historical_kpi_data` returns `[]` under this smoke seed (an internal
+    query error swallowed by a broad `except Exception`) -- pre-existing, not
+    fixed here. Modeled from the route's own literal dict, unconditional once
+    construction begins (all 9 keys together, no `exclude_unset` needed).
+    Two more pre-existing, undisclosed-until-now latent issues, neither fixed
+    here: `health_data["current_vs_target"]` can `KeyError` for an unvalidated
+    `kpi_type` (unlike sibling route `/predictions/{kpi_type}`); and
+    `assessed_at` -- a real `datetime.now(tz=timezone.utc)` object, correctly
+    typed `datetime` (a bare `str` field would reject it) -- changes wire
+    format if this route ever reaches 2xx: legacy `jsonable_encoder` emitted
+    `"...+00:00"`, Pydantic's default emits `"...Z"` (both valid ISO-8601).
+    Left undecorated (no `field_serializer`) since nothing has ever exercised
+    this branch; revisit alongside the 30-point-floor bug above.
     """
 
     kpi_type: str
@@ -276,7 +276,8 @@ class DataCompletenessResponse(BaseModel):
 class CompletenessCategoryDetail(BaseModel):
     """One entry of `categories` in GET /api/data-completeness/categories --
     `get_completeness_by_category` merges 5 nav-hint keys with the same
-    4-key shape as `CompletenessCategory` into one flat dict."""
+    4-key shape as `CompletenessCategory` into one flat dict, `percentage`'s
+    int->float caveat included (module docstring)."""
 
     id: str
     name: str
@@ -299,7 +300,11 @@ class DataCompletenessCategoriesResponse(BaseModel):
 
 
 class DailyCompletenessEntry(BaseModel):
-    """One entry of GET /api/data-completeness/summary's `daily` list."""
+    """One entry of GET /api/data-completeness/summary's `daily` list.
+    `production`/`downtime`/`attendance`/`quality` share `CompletenessCategory
+    .percentage`'s int->float caveat (module docstring); `overall_percentage`
+    does not -- it is a weighted sum through float weight literals, always
+    float regardless of its inputs."""
 
     date: str
     overall_percentage: float
@@ -399,13 +404,11 @@ class ShiftListEntry(BaseModel):
 
 class ActiveShiftResponse(BaseModel):
     """GET /api/shifts/active -- SOURCE INSPECTION, NO CAPTURED EVIDENCE.
-
-    Golden entry is `<status:404>`: the capture pins the clock to 15:00 UTC
-    (`ShiftActivePin`, capture.py), a deliberate dead zone between the smoke
-    seed's two shift windows, so a 200 is never recorded. Do NOT change the
-    pin. Modeled from `get_active_shift`'s (routes/reference.py) two return
-    statements -- identical 5-key dicts; the no-match branch raises
-    `HTTPException(404)` instead of returning a dict at all.
+    Golden `<status:404>`: the capture pins the clock to 15:00 UTC
+    (`ShiftActivePin`, capture.py), a dead zone between seeded shifts -- do
+    NOT change the pin. Modeled from `get_active_shift`'s (routes/
+    reference.py) two identical 5-key return statements; the no-match
+    branch raises `HTTPException(404)` rather than returning a dict.
     """
 
     shift_id: int
@@ -433,17 +436,13 @@ class LineBreakdownEntry(BaseModel):
 
 class PlanVsActualEntry(BaseModel):
     """GET /api/plan-vs-actual -- SOURCE INSPECTION, NO CAPTURED EVIDENCE
-    (golden entry is `[]`: the smoke seed's capacity orders don't clear this
-    route's default active-status filter). Also reused for the `orders`
-    field of GET /api/plan-vs-actual/summary, whose `orders` is empty for
-    the identical reason (a bare key with no `[].` children).
-
-    Modeled from `_build_plan_vs_actual_entry` (services/plan_vs_actual_service.py),
-    unconditional -- always the same 18 keys -- and never touching a SQL
-    aggregate: `wo_actual_total`/`production_total` are Python `sum()` over
-    already-fetched ORM rows (`WorkOrder.actual_quantity` and
-    `ProductionEntry.units_produced` are both `Integer`, not `Numeric`), so
-    no Decimal hazard reaches this path despite the arithmetic.
+    (golden `[]`: the smoke seed's capacity orders don't clear the route's
+    active-status filter). Reused for `/plan-vs-actual/summary`'s `orders`
+    field too (empty there for the same reason). Modeled from
+    `_build_plan_vs_actual_entry` (services/plan_vs_actual_service.py),
+    unconditional (always 18 keys), never a SQL aggregate: `wo_actual_total`/
+    `production_total` are Python `sum()` over already-fetched `Integer`
+    (not `Numeric`) ORM columns -- no Decimal hazard despite the arithmetic.
     """
 
     capacity_order_id: int
