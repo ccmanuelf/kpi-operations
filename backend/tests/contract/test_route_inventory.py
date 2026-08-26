@@ -1,13 +1,24 @@
 def test_every_loose_route_is_inventoried_and_none_is_silently_dropped():
-    """131 loose routes, re-measured 2026-08-25 after Task 9 converted the 9
-       `/api/workflow` GET routes (templates, config/{client_id},
-       analytics/{client_id}/average-times, analytics/{client_id}/
-       stage-durations, statistics/{client_id}/status-distribution,
-       statistics/{client_id}/transitions, work-orders/{id}/
-       allowed-transitions, work-orders/{id}/elapsed-time, work-orders/{id}/
-       transition-times) to typed response models, shrinking this count from
-       its prior 140 (itself shrunk from 155 by Task 7's fifteen remaining
-       `/api/kpi/*` routes, and from 164 by Task 6's nine trend routes).
+    """113 routes still needing a response model, re-measured 2026-08-25
+       after Task 10. That task found its 20-route area was mostly file
+       downloads, not JSON: 17 `/api/export` + `/api/reports/*/{pdf,excel}`
+       routes were annotated `-> Any` while actually returning
+       `StreamingResponse`, so they were never loose in substance, only in
+       declaration. Fixing the annotation and scoping them out of the
+       ratchet via `response_scope.routes_needing_a_response_model` (gated
+       two-sided in test_response_scope.py) drops 17; converting the one
+       genuine JSON route, GET /api/reports/available, drops 1 more. 131 - 17
+       - 1 = 113.
+
+       131 itself came from Task 9 converting the 9 `/api/workflow` GET
+       routes (templates, config/{client_id}, analytics/{client_id}/
+       average-times, analytics/{client_id}/stage-durations,
+       statistics/{client_id}/status-distribution, statistics/{client_id}/
+       transitions, work-orders/{id}/allowed-transitions, work-orders/{id}/
+       elapsed-time, work-orders/{id}/transition-times) to typed response
+       models, shrinking a prior 140 (itself shrunk from 155 by Task 7's
+       fifteen remaining `/api/kpi/*` routes, and from 164 by Task 6's nine
+       trend routes).
 
        The original 160 came from a string-prefix predicate that could not see through
        typing.List[...] wrappers and silently dropped four live routes. See is_loose.
@@ -15,11 +26,11 @@ def test_every_loose_route_is_inventoried_and_none_is_silently_dropped():
        route that stops being enumerated — a decorator change, a router rename —
        fails here instead of quietly leaving the refactor's scope."""
     from backend.main import app
-    from backend.tests.contract.capture import loose_routes
+    from backend.tests.contract.response_scope import routes_needing_a_response_model
 
-    routes = loose_routes(app)
+    routes = routes_needing_a_response_model(app)
 
-    assert len(routes) == 131
+    assert len(routes) == 113
     methods = {m for m, _, _ in routes}
     assert methods == {"GET", "POST", "PUT", "DELETE"}
 
