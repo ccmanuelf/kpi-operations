@@ -64,14 +64,33 @@ def test_flatten_api_routes_changes_the_observed_route_set():
     wraps each include in an `_IncludedRouter`, so a naive `isinstance
     (route, APIRoute)` walk sees zero of the ~470 `/api` routes.
 
-    Both halves matter: the first assertion is what stops this test passing
-    vacuously if a future FastAPI version reverts to flattening includes at
+    Both halves are exact, per the repo's "one exact expected value, never
+    a bound" rule -- a first version used `< 5`/`> 400`, which a PARTIAL
+    regression (a handful of routes losing coverage, the realistic failure
+    mode since includes are per-router, not all-or-nothing) would pass
+    right through.
+
+    Half 1 is `== []`: the wrapping this helper routes around is real
+    today, not hypothetical -- a naive walk finds NONE of the app's real
+    `/api` routes. This is what stops the test passing vacuously if a
+    future FastAPI version reverts to flattening includes at
     `include_router()` time (the mechanism `flatten_api_routes` exists to
-    route around would then have nothing to route around, and this test
+    route around would then have nothing to route around, and this half
     would fail LOUDLY naming that -- the exact signal PR #110/commit
-    c516ed9's regression lacked). The second is what proves
-    `flatten_api_routes` is not a no-op today: with it, real `/api` routes
-    with real `.response_model` are visible; with the naive walk, none are.
+    c516ed9's regression lacked).
+
+    Half 2 compares two INDEPENDENTLY computed sets for exact equality
+    rather than pinning a hardcoded count: `flatten_api_routes`'s own
+    `/api` (method, path) pairs against the same pairs read off
+    `app.openapi()`'s `paths` -- FastAPI's own, separately-implemented
+    route-surface computation, used for `/docs` and `/openapi.json` today.
+    A hardcoded count would churn every time an UNRELATED route is added
+    or removed anywhere in the app; this doesn't, because both sides move
+    together, and it still fails if `flatten_api_routes` itself diverges
+    from what FastAPI considers the real surface -- confirmed non-vacuous:
+    `test_route_inventory.py`'s golden-master-derived 164 keys are a
+    proper subset of both sets today, so an accidentally-empty `openapi()`
+    response could not pass this by both sides coincidentally going empty.
     """
     from fastapi.routing import APIRoute
 
@@ -79,12 +98,19 @@ def test_flatten_api_routes_changes_the_observed_route_set():
     from backend.tests.contract.capture import flatten_api_routes
 
     naive = [r for r in app.routes if isinstance(r, APIRoute) and r.path.startswith("/api")]
-    flattened = [r for r in flatten_api_routes(app.routes) if r.path.startswith("/api")]
+    assert naive == []
 
-    # Half 1: the wrapping this helper routes around is real today, not
-    # hypothetical -- a naive walk finds (effectively) none of the app's
-    # real `/api` routes.
-    assert len(naive) < 5
-    # Half 2: flattening recovers them -- proving the helper does real,
-    # necessary work rather than passing every route through unchanged.
-    assert len(flattened) > 400
+    via_flatten = {
+        (method, route.path)
+        for route in flatten_api_routes(app.routes)
+        if route.path.startswith("/api")
+        for method in set(route.methods) - {"HEAD", "OPTIONS"}
+    }
+    via_openapi = {
+        (method.upper(), path)
+        for path, operations in app.openapi()["paths"].items()
+        if path.startswith("/api")
+        for method in operations
+        if method.upper() in {"GET", "POST", "PUT", "DELETE", "PATCH"}
+    }
+    assert via_flatten == via_openapi
