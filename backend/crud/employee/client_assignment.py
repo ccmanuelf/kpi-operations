@@ -10,7 +10,7 @@ from fastapi import HTTPException
 
 from backend.orm.employee import Employee
 from backend.orm.user import User, SUPERVISORY_ROLES
-from backend.middleware.client_auth import verify_client_access
+from backend.middleware.client_auth import client_token_clause, verify_client_access
 
 
 def get_employees_by_client(
@@ -38,7 +38,9 @@ def get_employees_by_client(
 
     return (
         db.query(Employee)
-        .filter(Employee.client_id_assigned.like(f"%{client_id}%"))
+        # Whole-token match: a substring LIKE would also return the
+        # employees of any client whose id CONTAINS this one (ACME/ACME-WEST).
+        .filter(client_token_clause(Employee.client_id_assigned, client_id))
         .order_by(Employee.employee_name)
         .offset(skip)
         .limit(limit)

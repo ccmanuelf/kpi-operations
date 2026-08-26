@@ -289,12 +289,19 @@ async def acknowledge_alert(
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
 
+    # SECURITY: alert_id alone carried no tenant check, so a scoped caller
+    # could mutate another client's alert. The AttributeError below used to
+    # mask this as a 500 AFTER the state assignment — a crash is not a denial.
+    # Client-less alerts are system-wide and stay actionable.
+    if alert.client_id is not None:
+        verify_client_access(current_user, alert.client_id, db)
+
     if alert.status != "active":
         raise HTTPException(status_code=400, detail="Only active alerts can be acknowledged")
 
     alert.status = "acknowledged"
     alert.acknowledged_at = datetime.now(tz=timezone.utc)
-    alert.acknowledged_by = current_user.get("user_id")
+    alert.acknowledged_by = current_user.user_id
 
     db.commit()
     db.refresh(alert)
@@ -318,12 +325,19 @@ async def resolve_alert(
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
 
+    # SECURITY: alert_id alone carried no tenant check, so a scoped caller
+    # could mutate another client's alert. The AttributeError below used to
+    # mask this as a 500 AFTER the state assignment — a crash is not a denial.
+    # Client-less alerts are system-wide and stay actionable.
+    if alert.client_id is not None:
+        verify_client_access(current_user, alert.client_id, db)
+
     if alert.status == "resolved":
         raise HTTPException(status_code=400, detail="Alert already resolved")
 
     alert.status = "resolved"
     alert.resolved_at = datetime.now(tz=timezone.utc)
-    alert.resolved_by = current_user.get("user_id")
+    alert.resolved_by = current_user.user_id
     alert.resolution_notes = resolve_data.resolution_notes
 
     # Track prediction accuracy if this was a prediction-based alert
@@ -359,9 +373,16 @@ async def dismiss_alert(
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
 
+    # SECURITY: alert_id alone carried no tenant check, so a scoped caller
+    # could mutate another client's alert. The AttributeError below used to
+    # mask this as a 500 AFTER the state assignment — a crash is not a denial.
+    # Client-less alerts are system-wide and stay actionable.
+    if alert.client_id is not None:
+        verify_client_access(current_user, alert.client_id, db)
+
     alert.status = "dismissed"
     alert.resolved_at = datetime.now(tz=timezone.utc)
-    alert.resolved_by = current_user.get("user_id")
+    alert.resolved_by = current_user.user_id
 
     db.commit()
     db.refresh(alert)

@@ -36,6 +36,14 @@ EMPLOYEE_B = 201
 #: test_permission_matrix.py::TestCrossTenantByIdRoutes
 #: ::test_unassigned_employee_is_visible_to_every_tenant.
 EMPLOYEE_SHARED = 301
+#: A client whose id CONTAINS tenant A's, and an employee that belongs to it.
+#: A substring `LIKE '%TEN-A%'` matches this row while the by-id route's
+#: comma-exact check does not, so the listing and the by-id route disagree
+#: about the same employee. Pinned by
+#: test_permission_matrix.py::TestCrossTenantByIdRoutes
+#: ::test_employee_listing_agrees_with_by_id_route_on_colliding_client_ids.
+TENANT_A_LOOKALIKE = "TEN-A-WEST"
+EMPLOYEE_LOOKALIKE = 401
 
 _INT_PK = {TENANT_A: 1, TENANT_B: 2}
 
@@ -334,6 +342,16 @@ def build_two_tenant_db(db: Session) -> None:
         )
         db.flush()
         db.add(EmployeeClientAssignment(assignment_id=int_pk(c), employee_id=emp, client_id=c))
+    db.add(Client(client_id=TENANT_A_LOOKALIKE, client_name="Lookalike Manufacturing"))
+    db.flush()
+    db.add(
+        Employee(
+            employee_id=EMPLOYEE_LOOKALIKE,
+            employee_code="WEST-E1",
+            employee_name="Lookalike Employee",
+            client_id_assigned=TENANT_A_LOOKALIKE,
+        )
+    )
     db.add(
         Employee(
             employee_id=EMPLOYEE_SHARED,

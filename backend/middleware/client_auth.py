@@ -10,6 +10,7 @@ Phase 2.2: Updated to support both:
 import logging
 from typing import Any, Optional, List
 from fastapi import HTTPException, status
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 from backend.orm.user import User, UserRole
 
@@ -244,6 +245,50 @@ def verify_employee_access(user: User, employee: Any, db: Optional[Session] = No
         raise ClientAccessError(detail=f"Access denied: User {user.username} cannot access client '{owners[0]}'")
 
     return True
+
+
+#: LIKE metacharacters. A client id is interpolated into a LIKE pattern below,
+#: and `_` is a single-character wildcard — seed/cli.py's SAMPLE_REF already
+#: contains one, so an unescaped pattern would match ids nobody assigned.
+_LIKE_ESCAPE = str.maketrans({"\\": "\\\\", "%": "\\%", "_": "\\_"})
+
+
+def client_token_clause(column: Any, client_id: str) -> Any:
+    """SQL clause: comma-separated ``column`` contains ``client_id`` as an EXACT token.
+
+    ``column.like(f"%{client_id}%")`` is wrong twice and both ways leak:
+
+    * it matches a client id that is a SUBSTRING of another — a caller scoped
+      to ``ACME`` lists ``ACME-WEST``'s employees, and a plain ``DEMO`` client
+      would pull in every ``DEMO-*`` tenant; and
+    * it treats ``%`` and ``_`` inside a client id as wildcards.
+
+    Anchoring the token between commas and escaping the pattern fixes both, so
+    this listing agrees exactly with ``verify_employee_access``, which splits
+    on commas in Python. Spaces are stripped from the stored value first so
+    ``"A, B"`` and ``"A,B"`` mean the same thing, matching the ``.strip()`` in
+    ``_get_clients_from_legacy_field``.
+
+    Portable across SQLite and MariaDB: ``REPLACE``/``COALESCE``/``LIKE …
+    ESCAPE`` only. Pinned by test_permission_matrix.py's
+    ``test_client_token_clause_*`` tests.
+
+    Args:
+        column: comma-separated client column (e.g. ``Employee.client_id_assigned``)
+        client_id: the single client id that must appear as a whole token
+
+    Returns:
+        SQLAlchemy boolean clause
+    """
+    normalized = func.replace(func.coalesce(column, ""), " ", "")
+    wanted = client_id.strip()
+    token = wanted.translate(_LIKE_ESCAPE)
+    return or_(
+        normalized == wanted,
+        normalized.like(f"{token},%", escape="\\"),
+        normalized.like(f"%,{token},%", escape="\\"),
+        normalized.like(f"%,{token}", escape="\\"),
+    )
 
 
 def build_client_filter_clause(user: User, client_id_column: Any) -> Any:

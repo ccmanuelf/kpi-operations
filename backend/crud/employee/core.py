@@ -12,6 +12,7 @@ from fastapi import HTTPException
 from backend.orm.employee import Employee
 from backend.orm.user import User, SUPERVISORY_ROLES
 from backend.middleware.client_auth import (
+    client_token_clause,
     get_user_client_filter,
     verify_client_access,
     verify_employee_access,
@@ -112,16 +113,20 @@ def get_employees(
     query = db.query(Employee)
 
     # SECURITY: confine the listing to the caller's clients. EMPLOYEE ownership
-    # is the comma-separated client_id_assigned, so this is an OR of LIKEs (the
-    # shape routes/export.py already uses) rather than an IN. Employees with no
-    # assignment are shared floating-pool resources and stay visible — the same
-    # rule verify_employee_access applies to the by-id routes. Without this the
-    # listing returned every tenant's employees to any authenticated user.
+    # is the comma-separated client_id_assigned, so this matches whole tokens
+    # via client_token_clause rather than an IN. It must agree exactly with
+    # verify_employee_access, which the by-id routes use: a substring LIKE made
+    # the listing MORE permissive than the by-id route on the same row (a caller
+    # scoped to ACME saw ACME-WEST's employees but got 403 fetching one).
+    # Employees with no assignment are shared floating-pool resources and stay
+    # visible — the same rule verify_employee_access applies. Without any of
+    # this the listing returned every tenant's employees to any authenticated
+    # user.
     user_clients = get_user_client_filter(current_user, db)
     if user_clients is not None:
         query = query.filter(
             or_(
-                *[Employee.client_id_assigned.like(f"%{c}%") for c in user_clients],
+                *[client_token_clause(Employee.client_id_assigned, c) for c in user_clients],
                 Employee.client_id_assigned.is_(None),
             )
         )
@@ -131,7 +136,7 @@ def get_employees(
         # SECURITY: an explicit client_id must be one the caller may see.
         verify_client_access(current_user, client_id, db)
         # Filter employees assigned to specific client
-        query = query.filter(Employee.client_id_assigned.like(f"%{client_id}%"))
+        query = query.filter(client_token_clause(Employee.client_id_assigned, client_id))
 
     if is_floating_pool is not None:
         query = query.filter(Employee.is_floating_pool == (1 if is_floating_pool else 0))

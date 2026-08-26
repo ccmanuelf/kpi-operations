@@ -24,6 +24,7 @@ import pytest
 
 from backend.auth.jwt import get_current_user
 from backend.main import app
+from backend.tests.fixtures import cross_tenant_probe
 
 
 def _capacity_write_targets() -> list[tuple[str, str]]:
@@ -267,111 +268,6 @@ class TestCapacityWriteGuardRequestLevel:
 CROSS_TENANT_403 = "Cross-tenant denial is 403 — the code verify_client_access already returns."
 
 
-def _two_tenant_client():
-    """Fresh two-tenant DB + a TestClient acting as tenant A's supervisor.
-
-    A supervisor (not an admin) is essential: get_user_client_filter returns
-    None for ADMIN/POWERUSER, meaning "all clients", so an admin persona can
-    never exercise cross-tenant denial.
-    """
-    from fastapi.testclient import TestClient
-    from sqlalchemy.orm import sessionmaker
-
-    from backend.database import get_db
-    from backend.orm.user import User
-    from backend.tests.conftest import clone_template_engine
-    from backend.tests.fixtures.two_tenant import TENANT_A, build_two_tenant_db
-
-    engine = clone_template_engine()
-    db = sessionmaker(autocommit=False, autoflush=False, bind=engine)()
-    build_two_tenant_db(db)
-    actor = db.query(User).filter(User.client_id_assigned == TENANT_A).one()
-
-    def _get_db():
-        yield db
-
-    app.dependency_overrides[get_db] = _get_db
-    app.dependency_overrides[get_current_user] = lambda: actor
-    return TestClient(app, raise_server_exceptions=False), db, engine
-
-
-@pytest.fixture
-def tenant_a_client():
-    """Function-scoped: several probed routes soft-delete or rename rows."""
-    client, db, engine = _two_tenant_client()
-    try:
-        yield client
-    finally:
-        app.dependency_overrides.pop(get_current_user, None)
-        from backend.database import get_db
-
-        app.dependency_overrides.pop(get_db, None)
-        db.close()
-        engine.dispose()
-
-
-# (method, path, expected status for OWN tenant, expected status for the OTHER
-# tenant). Every row returned 2xx-with-the-other-tenant's-row before the fix;
-# the OWN column is the non-vacuity control — a denial proves nothing if the
-# route is broken for its rightful owner too.
-BY_ID_MATRIX = [
-    ("GET", "/api/shifts/{shift_id}", 200, 403),
-    ("PUT", "/api/shifts/{shift_id}", 200, 403),
-    ("DELETE", "/api/shifts/{shift_id}", 204, 403),
-    ("GET", "/api/production-lines/{line_id}", 200, 403),
-    ("PUT", "/api/production-lines/{line_id}", 200, 403),
-    ("DELETE", "/api/production-lines/{line_id}", 204, 403),
-    ("POST", "/api/production-lines/{line_id}/link-capacity", 200, 403),
-    ("DELETE", "/api/production-lines/{line_id}/link-capacity", 200, 403),
-    ("PUT", "/api/break-times/{break_id}", 200, 403),
-    ("DELETE", "/api/break-times/{break_id}", 204, 403),
-    ("GET", "/api/equipment/{equipment_id}", 200, 403),
-    ("PUT", "/api/equipment/{equipment_id}", 200, 403),
-    ("DELETE", "/api/equipment/{equipment_id}", 204, 403),
-    ("GET", "/api/employee-line-assignments/employee/{employee_id}", 200, 403),
-    ("GET", "/api/employee-line-assignments/line/{line_id}", 200, 403),
-    ("PUT", "/api/employee-line-assignments/{assignment_id}", 200, 403),
-    ("DELETE", "/api/employee-line-assignments/{assignment_id}", 200, 403),
-    ("GET", "/api/floating-pool/{pool_id}", 200, 403),
-    ("PUT", "/api/floating-pool/{pool_id}", 200, 403),
-    ("GET", "/api/employees/{employee_id}", 200, 403),
-    ("PUT", "/api/employees/{employee_id}", 200, 403),
-    ("POST", "/api/employees/{employee_id}/floating-pool/assign", 200, 403),
-    ("POST", "/api/employees/{employee_id}/floating-pool/remove", 200, 403),
-    ("GET", "/api/attendance/kpi/bradford-factor/{employee_id}", 200, 403),
-    ("GET", "/api/qr/employee/{employee_id}/image", 200, 403),
-    ("GET", "/api/calendar/{calendar_date}", 200, 403),
-    ("GET", "/api/inference/cycle-time/{product_id}", 200, 403),
-    ("GET", "/api/alerts/{alert_id}", 200, 403),
-    # DELETE floating-pool is 404 for its OWN tenant too: soft_delete() on a
-    # model with no is_active column returns False (the seven-broken-DELETEs
-    # bug, out of scope here). The authorization check still runs first, so the
-    # cross-tenant answer is a 403 and not a misleading 404.
-    ("DELETE", "/api/floating-pool/{pool_id}", 404, 403),
-]
-
-# Routes where client_id arrives as a QUERY parameter and replaced the
-# role-derived filter with no authorization. Same defect, different carrier;
-# found by extending the sweep to every route declaring a client_id query.
-CLIENT_ID_QUERY_MATRIX = [
-    ("GET", "/api/employees", 200, 403),
-    ("GET", "/api/employee-line-assignments/", 200, 403),
-    ("GET", "/api/equipment/", 200, 403),
-    ("GET", "/api/production-lines/tree", 200, 403),
-    ("GET", "/api/production-lines/unlinked", 200, 403),
-    ("POST", "/api/production-lines/sync-capacity", 200, 403),
-    ("GET", "/api/reports/email-config", 200, 403),
-    ("GET", "/api/export/attendance", 200, 403),
-    ("GET", "/api/export/downtime-events", 200, 403),
-    ("GET", "/api/export/employees", 200, 403),
-    ("GET", "/api/export/holds", 200, 403),
-    ("GET", "/api/export/products", 200, 403),
-    ("GET", "/api/export/quality-inspections", 200, 403),
-    ("GET", "/api/export/shifts", 200, 403),
-    ("GET", "/api/export/work-orders", 200, 403),
-]
-
-
 def _by_id_targets():
     from backend.tests.fixtures.cross_tenant_probe import by_id_targets
 
@@ -379,6 +275,10 @@ def _by_id_targets():
 
 
 BY_ID_TARGETS = _by_id_targets()
+BY_ID_MATRIX = cross_tenant_probe.BY_ID_MATRIX
+CLIENT_ID_QUERY_MATRIX = cross_tenant_probe.CLIENT_ID_QUERY_MATRIX
+tenant_a_client = cross_tenant_probe.tenant_a_client
+tenant_a_db = cross_tenant_probe.tenant_a_db
 
 
 class TestCrossTenantByIdRoutes:
@@ -429,18 +329,22 @@ class TestCrossTenantByIdRoutes:
             response.status_code == other_status
         ), f"{method} {path} cross-tenant: {response.status_code}. {CROSS_TENANT_403}"
 
-    @pytest.mark.parametrize("method,path,own_status,other_status", CLIENT_ID_QUERY_MATRIX)
-    def test_own_tenant_client_id_query_still_works(self, tenant_a_client, method, path, own_status, other_status):
+    @pytest.mark.parametrize("method,path,own_status,other_status,extra", CLIENT_ID_QUERY_MATRIX)
+    def test_own_tenant_client_id_query_still_works(
+        self, tenant_a_client, method, path, own_status, other_status, extra
+    ):
         from backend.tests.fixtures.two_tenant import TENANT_A
 
-        response = tenant_a_client.request(method, path, params={"client_id": TENANT_A}, json={})
+        response = tenant_a_client.request(method, path, params={"client_id": TENANT_A, **extra}, json={})
         assert response.status_code == own_status, f"{method} {path} own-tenant: {response.status_code}"
 
-    @pytest.mark.parametrize("method,path,own_status,other_status", CLIENT_ID_QUERY_MATRIX)
-    def test_cross_tenant_client_id_query_is_denied(self, tenant_a_client, method, path, own_status, other_status):
+    @pytest.mark.parametrize("method,path,own_status,other_status,extra", CLIENT_ID_QUERY_MATRIX)
+    def test_cross_tenant_client_id_query_is_denied(
+        self, tenant_a_client, method, path, own_status, other_status, extra
+    ):
         from backend.tests.fixtures.two_tenant import TENANT_B
 
-        response = tenant_a_client.request(method, path, params={"client_id": TENANT_B}, json={})
+        response = tenant_a_client.request(method, path, params={"client_id": TENANT_B, **extra}, json={})
         assert (
             response.status_code == other_status
         ), f"{method} {path} cross-tenant: {response.status_code}. {CROSS_TENANT_403}"
@@ -486,6 +390,97 @@ class TestCrossTenantByIdRoutes:
         response = tenant_a_client.get("/api/alerts/")
         assert response.status_code == 200
         assert TENANT_B not in response.text, f"unscoped alert listing leaked tenant B: {response.text[:200]}"
+
+    def test_employee_listing_agrees_with_by_id_route_on_colliding_client_ids(self, tenant_a_client):
+        """A listing must never be MORE permissive than the by-id route.
+
+        `client_id_assigned LIKE '%TEN-A%'` also matches 'TEN-A-WEST', so the
+        listing showed an employee that GET /api/employees/{id} refuses with
+        403 — the two halves disagreeing about the same row. Harmless with
+        today's ids, armed the moment one client id contains another (a plain
+        'DEMO' client would pull in every DEMO-* tenant).
+        """
+        from backend.tests.fixtures.two_tenant import EMPLOYEE_LOOKALIKE, TENANT_A_LOOKALIKE
+
+        listing = tenant_a_client.get("/api/employees")
+        assert listing.status_code == 200
+        assert (
+            TENANT_A_LOOKALIKE not in listing.text
+        ), f"listing leaked the look-alike client's employee: {listing.text[:200]}"
+
+        by_id = tenant_a_client.get(f"/api/employees/{EMPLOYEE_LOOKALIKE}")
+        assert by_id.status_code == 403, f"by-id route disagrees with the listing: {by_id.status_code}"
+
+    def test_client_token_clause_matches_whole_tokens_only(self, tenant_a_db):
+        """Direct test of the clause both halves now share."""
+        from backend.middleware.client_auth import client_token_clause
+        from backend.orm.employee import Employee
+
+        rows = {
+            9001: "ACME",
+            9002: "ACME-WEST",
+            9003: "OTHER,ACME,MORE",
+            9004: "OTHER, ACME",
+            9005: "ACMES",
+            9006: None,
+        }
+        for emp_id, assigned in rows.items():
+            tenant_a_db.add(
+                Employee(
+                    employee_id=emp_id,
+                    employee_code=f"TOK-{emp_id}",
+                    employee_name=f"Token {emp_id}",
+                    client_id_assigned=assigned,
+                )
+            )
+        tenant_a_db.commit()
+
+        matched = {
+            e.employee_id
+            for e in tenant_a_db.query(Employee)
+            .filter(Employee.employee_id >= 9000, client_token_clause(Employee.client_id_assigned, "ACME"))
+            .all()
+        }
+        assert matched == {9001, 9003, 9004}, f"matched {matched}"
+
+    def test_client_token_clause_treats_like_wildcards_literally(self, tenant_a_db):
+        """`_` is a single-character LIKE wildcard and seed/cli.py's SAMPLE_REF
+        already contains one, so an unescaped pattern matches ids nobody
+        assigned."""
+        from backend.middleware.client_auth import client_token_clause
+        from backend.orm.employee import Employee
+
+        for emp_id, assigned in {9101: "SAMPLE_REF", 9102: "SAMPLEXREF"}.items():
+            tenant_a_db.add(
+                Employee(
+                    employee_id=emp_id,
+                    employee_code=f"WC-{emp_id}",
+                    employee_name=f"Wildcard {emp_id}",
+                    client_id_assigned=assigned,
+                )
+            )
+        tenant_a_db.commit()
+
+        matched = {
+            e.employee_id
+            for e in tenant_a_db.query(Employee)
+            .filter(Employee.employee_id >= 9100, client_token_clause(Employee.client_id_assigned, "SAMPLE_REF"))
+            .all()
+        }
+        assert matched == {9101}, f"matched {matched}"
+
+    def test_calendar_aggregates_are_per_tenant(self, tenant_a_client):
+        """The calendar routes leak tenant B's TOTALS, never its ids, so no
+        marker check can see them. Asserting tenant A's own number is what
+        makes a removed check visible."""
+        from backend.tests.fixtures.two_tenant import TENANT_A, asym
+
+        response = tenant_a_client.get(
+            "/api/calendar/summary",
+            params={"client_id": TENANT_A, "start_date": "2026-08-01", "end_date": "2026-08-31"},
+        )
+        assert response.status_code == 200
+        assert response.json()["total_planned_hours"] == float(asym(TENANT_A, "cal_shift1_hours"))
 
     def test_employee_listing_is_scoped_without_any_client_id(self, tenant_a_client):
         from backend.tests.fixtures.two_tenant import TENANT_B

@@ -3,8 +3,10 @@
 Enumerates every by-id route from the LIVE app and resolves each path
 parameter to a row owned by a chosen tenant, so one request can be issued "as
 tenant A, for tenant B's row". Assertions live in
-``backend/tests/test_security/test_permission_matrix.py``; this module only
-builds requests.
+``backend/tests/test_security/test_permission_matrix.py``; this module holds
+only the request machinery, the expectation table and the client fixtures —
+data and plumbing, so every assertion can stay in the one test file without
+pushing it past the 500-line limit.
 
 Route enumeration walks the app rather than a hand-written list: FastAPI holds
 each ``include_router`` as an ``_IncludedRouter`` wrapper whose own path is
@@ -18,9 +20,15 @@ from __future__ import annotations
 import re
 from typing import Any, Callable, Iterable
 
+import pytest
 from fastapi.routing import APIRoute
 
+from backend.auth.jwt import get_current_user
+from backend.main import app
+
 from backend.tests.fixtures.two_tenant import employee_of, int_pk, str_pk
+
+CROSS_TENANT_403 = "Cross-tenant denial is 403 — the code verify_client_access already returns."
 
 _WRITE_SAFE_METHODS = {"HEAD", "OPTIONS"}
 
@@ -216,3 +224,153 @@ def request_for_tenant(client: Any, method: str, path: str, tenant: str) -> Any:
         if response.status_code != 422 or not _fill_missing(response, tenant, params, body):
             break
     return response
+
+
+# ===========================================================================
+# The cross-tenant matrix itself, and the client that drives it.
+#
+# Data and plumbing live here so every ASSERTION stays in the one test file
+# (test_security/test_permission_matrix.py) without pushing it past the
+# 500-line limit.
+# ===========================================================================
+
+
+def _two_tenant_client():
+    """Fresh two-tenant DB + a TestClient acting as tenant A's supervisor.
+
+    A supervisor (not an admin) is essential: get_user_client_filter returns
+    None for ADMIN/POWERUSER, meaning "all clients", so an admin persona can
+    never exercise cross-tenant denial.
+    """
+    from fastapi.testclient import TestClient
+    from sqlalchemy.orm import sessionmaker
+
+    from backend.database import get_db
+    from backend.orm.user import User
+    from backend.tests.conftest import clone_template_engine
+    from backend.tests.fixtures.two_tenant import TENANT_A, build_two_tenant_db
+
+    engine = clone_template_engine()
+    db = sessionmaker(autocommit=False, autoflush=False, bind=engine)()
+    build_two_tenant_db(db)
+    actor = db.query(User).filter(User.client_id_assigned == TENANT_A).one()
+
+    def _get_db():
+        yield db
+
+    app.dependency_overrides[get_db] = _get_db
+    app.dependency_overrides[get_current_user] = lambda: actor
+    return TestClient(app, raise_server_exceptions=False), db, engine
+
+
+@pytest.fixture
+def tenant_a_client():
+    """Function-scoped: several probed routes soft-delete or rename rows."""
+    client, db, engine = _two_tenant_client()
+    try:
+        yield client
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+        from backend.database import get_db
+
+        app.dependency_overrides.pop(get_db, None)
+        db.close()
+        engine.dispose()
+
+
+@pytest.fixture
+def tenant_a_db():
+    """The same two-tenant database, as a Session, for clause-level tests."""
+    client, db, engine = _two_tenant_client()
+    try:
+        yield db
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+        from backend.database import get_db
+
+        app.dependency_overrides.pop(get_db, None)
+        db.close()
+        engine.dispose()
+
+
+# (method, path, expected status for OWN tenant, expected status for the OTHER
+# tenant). Every row returned 2xx-with-the-other-tenant's-row before the fix;
+# the OWN column is the non-vacuity control — a denial proves nothing if the
+# route is broken for its rightful owner too.
+BY_ID_MATRIX = [
+    ("GET", "/api/shifts/{shift_id}", 200, 403),
+    ("PUT", "/api/shifts/{shift_id}", 200, 403),
+    ("DELETE", "/api/shifts/{shift_id}", 204, 403),
+    ("GET", "/api/production-lines/{line_id}", 200, 403),
+    ("PUT", "/api/production-lines/{line_id}", 200, 403),
+    ("DELETE", "/api/production-lines/{line_id}", 204, 403),
+    ("POST", "/api/production-lines/{line_id}/link-capacity", 200, 403),
+    ("DELETE", "/api/production-lines/{line_id}/link-capacity", 200, 403),
+    ("PUT", "/api/break-times/{break_id}", 200, 403),
+    ("DELETE", "/api/break-times/{break_id}", 204, 403),
+    ("GET", "/api/equipment/{equipment_id}", 200, 403),
+    ("PUT", "/api/equipment/{equipment_id}", 200, 403),
+    ("DELETE", "/api/equipment/{equipment_id}", 204, 403),
+    ("GET", "/api/employee-line-assignments/employee/{employee_id}", 200, 403),
+    ("GET", "/api/employee-line-assignments/line/{line_id}", 200, 403),
+    ("PUT", "/api/employee-line-assignments/{assignment_id}", 200, 403),
+    ("DELETE", "/api/employee-line-assignments/{assignment_id}", 200, 403),
+    ("GET", "/api/floating-pool/{pool_id}", 200, 403),
+    ("PUT", "/api/floating-pool/{pool_id}", 200, 403),
+    ("GET", "/api/employees/{employee_id}", 200, 403),
+    ("PUT", "/api/employees/{employee_id}", 200, 403),
+    ("POST", "/api/employees/{employee_id}/floating-pool/assign", 200, 403),
+    ("POST", "/api/employees/{employee_id}/floating-pool/remove", 200, 403),
+    ("GET", "/api/attendance/kpi/bradford-factor/{employee_id}", 200, 403),
+    ("GET", "/api/qr/employee/{employee_id}/image", 200, 403),
+    ("GET", "/api/calendar/{calendar_date}", 200, 403),
+    ("GET", "/api/inference/cycle-time/{product_id}", 200, 403),
+    ("GET", "/api/alerts/{alert_id}", 200, 403),
+    # State MUTATIONS, and the reason a crash must never be mistaken for a
+    # denial: these three had no tenant check at all. They answered 500 only
+    # because current_user.get("user_id") blew up AFTER the status assignment,
+    # so the one-line .get() -> .user_id fix would have turned three silent
+    # crashes into three live cross-tenant writes.
+    ("POST", "/api/alerts/{alert_id}/acknowledge", 200, 403),
+    ("POST", "/api/alerts/{alert_id}/resolve", 200, 403),
+    ("POST", "/api/alerts/{alert_id}/dismiss", 200, 403),
+    # DELETE floating-pool is 404 for its OWN tenant too: soft_delete() on a
+    # model with no is_active column returns False (the seven-broken-DELETEs
+    # bug, out of scope here). The authorization check still runs first, so the
+    # cross-tenant answer is a 403 and not a misleading 404.
+    ("DELETE", "/api/floating-pool/{pool_id}", 404, 403),
+]
+
+# Routes where client_id arrives as a QUERY parameter and replaced the
+# role-derived filter with no authorization. Same defect, different carrier;
+# found by extending the sweep to every route declaring a client_id query.
+# (method, path, own status, cross-tenant status, extra query params). The
+# extras only satisfy other REQUIRED parameters so the request reaches
+# authorization instead of dying in validation.
+_RANGE = {"start_date": "2026-08-01", "end_date": "2026-08-31"}
+CLIENT_ID_QUERY_MATRIX = [
+    ("GET", "/api/employees", 200, 403, {}),
+    ("GET", "/api/employee-line-assignments/", 200, 403, {}),
+    ("GET", "/api/equipment/", 200, 403, {}),
+    # /shared returns [] for both tenants under this fixture, so only the
+    # status discriminates — which is exactly why it needs a row: nothing else
+    # in the suite would notice its check disappearing.
+    ("GET", "/api/equipment/shared", 200, 403, {}),
+    ("GET", "/api/production-lines/tree", 200, 403, {}),
+    ("GET", "/api/production-lines/unlinked", 200, 403, {}),
+    ("POST", "/api/production-lines/sync-capacity", 200, 403, {}),
+    ("GET", "/api/reports/email-config", 200, 403, {}),
+    # The two calendar aggregates leak tenant B's TOTALS, not its ids, so no
+    # marker check can see them — see test_calendar_aggregates_are_per_tenant.
+    ("GET", "/api/calendar/working-days", 200, 403, _RANGE),
+    ("GET", "/api/calendar/summary", 200, 403, _RANGE),
+    ("GET", "/api/export/attendance", 200, 403, {}),
+    ("GET", "/api/export/downtime-events", 200, 403, {}),
+    ("GET", "/api/export/employees", 200, 403, {}),
+    ("GET", "/api/export/holds", 200, 403, {}),
+    ("GET", "/api/export/production-entries", 200, 403, {}),
+    ("GET", "/api/export/products", 200, 403, {}),
+    ("GET", "/api/export/quality-inspections", 200, 403, {}),
+    ("GET", "/api/export/shifts", 200, 403, {}),
+    ("GET", "/api/export/work-orders", 200, 403, {}),
+]
