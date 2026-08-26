@@ -34,7 +34,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Dict, Optional
 
-from fastapi.routing import APIRoute
+from backend.tests.contract.capture import flatten_api_routes
 
 
 @dataclass(frozen=True)
@@ -88,11 +88,13 @@ EXCLUDE_UNSET_ROUTES: Dict[str, ExcludeUnsetEntry] = {
 def declared_exclude_unset_routes(app) -> frozenset:
     """The empirical side of the gate: every `/api` route that actually has
     `response_model_exclude_unset=True` set, regardless of what anyone wrote
-    down. Mirrors `capture.loose_routes`'s route-walking shape.
+    down. Mirrors `capture.loose_routes`'s route-walking shape, `flatten_api_routes`
+    included -- see that function's docstring for why a plain `app.routes`
+    walk sees zero routes under this repo's pinned FastAPI.
     """
     found = set()
-    for route in app.routes:
-        if not isinstance(route, APIRoute) or not route.path.startswith("/api"):
+    for route in flatten_api_routes(app.routes):
+        if not route.path.startswith("/api"):
             continue
         if not route.response_model_exclude_unset:
             continue

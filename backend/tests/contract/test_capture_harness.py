@@ -54,3 +54,37 @@ def test_map_fields_are_exactly_the_known_five():
     assert MAP_FIELDS == frozenset(
         {"by_severity", "by_category", "weekly_demand", "pieces_by_product", "fulfillment_by_product"}
     )
+
+
+def test_flatten_api_routes_changes_the_observed_route_set():
+    """Pins the fact `flatten_api_routes` exists to close, so it stops being
+    prose someone has to take on faith: today, on this repo's pinned
+    fastapi (`backend/requirements.lock`), `app.routes` is NOT a flat list
+    of `APIRoute` objects -- `APIRouter.include_router` unconditionally
+    wraps each include in an `_IncludedRouter`, so a naive `isinstance
+    (route, APIRoute)` walk sees zero of the ~470 `/api` routes.
+
+    Both halves matter: the first assertion is what stops this test passing
+    vacuously if a future FastAPI version reverts to flattening includes at
+    `include_router()` time (the mechanism `flatten_api_routes` exists to
+    route around would then have nothing to route around, and this test
+    would fail LOUDLY naming that -- the exact signal PR #110/commit
+    c516ed9's regression lacked). The second is what proves
+    `flatten_api_routes` is not a no-op today: with it, real `/api` routes
+    with real `.response_model` are visible; with the naive walk, none are.
+    """
+    from fastapi.routing import APIRoute
+
+    from backend.main import app
+    from backend.tests.contract.capture import flatten_api_routes
+
+    naive = [r for r in app.routes if isinstance(r, APIRoute) and r.path.startswith("/api")]
+    flattened = [r for r in flatten_api_routes(app.routes) if r.path.startswith("/api")]
+
+    # Half 1: the wrapping this helper routes around is real today, not
+    # hypothetical -- a naive walk finds (effectively) none of the app's
+    # real `/api` routes.
+    assert len(naive) < 5
+    # Half 2: flattening recovers them -- proving the helper does real,
+    # necessary work rather than passing every route through unchanged.
+    assert len(flattened) > 400

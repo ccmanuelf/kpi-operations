@@ -244,10 +244,62 @@ def is_loose(response_model) -> bool:
     return any(is_loose(a) for a in args)
 
 
+def flatten_api_routes(routes):
+    """Expand FastAPI's `_IncludedRouter` wrappers into their real,
+    fully-prefixed routes.
+
+    `APIRouter.include_router` in fastapi==0.141.1 (this repo's pinned
+    version -- `backend/requirements.lock`) unconditionally appends an
+    `_IncludedRouter(original_router=router, ...)` wrapper to `self.routes`
+    -- read directly from the installed package
+    (`fastapi/routing.py::APIRouter.include_router`, the final
+    `self.routes.append(...)` line, no conditional branch around it -- this
+    is not a maybe. Confirmed independently by walking `app.routes`
+    directly on a clean checkout of this branch: 60 `_IncludedRouter` + 4
+    plain `Route` + 1 bare `APIRoute` (the root `/`), so `for route in
+    app.routes: isinstance(route, APIRoute)` sees ZERO of the ~470 `/api`
+    routes today, not merely "if a future FastAPI regresses" --
+    `test_flatten_api_routes_changes_the_observed_route_set` below pins
+    both halves of that fact so neither claim is unverified prose. (A
+    measurement showing `app.routes` already flat almost certainly comes
+    from a different, unpinned fastapi -- e.g. a system/default Python
+    picked up without activating `backend/.venv` -- not from this repo's
+    actual dependency.)
+
+    A naive recursive walk of `original_router.routes` is not enough
+    either: a router included WITHOUT its own prefix (e.g. `quality_router.
+    include_router(pareto_router)`, no prefix on `pareto_router` itself)
+    leaves the underlying route's `.path` as the router-LOCAL fragment
+    (`/kpi/by-product`), not the effective `/api/quality/kpi/by-product` --
+    the combined prefix exists only in the wrapper's `include_context`,
+    applied lazily by `effective_route_contexts()`.
+
+    Duck-typed on that method (same detection `test_openapi_surface.py`'s
+    `_effective_routes` uses, avoiding a private-API import), so a plain
+    route (the app-level `/`, `/docs`, …) is yielded as-is and an included
+    one is expanded to `_EffectiveRouteContext` objects that already carry
+    the fully-composed `path`/`methods`/`response_model`/
+    `response_model_exclude_unset`/`endpoint` -- everything every caller in
+    this module (and `conditional_branches.py`, `test_response_scope.py`)
+    needs, duck-compatible with a plain `APIRoute`. Same class of bug as
+    commit c516ed9 "FastAPI 0.138 route-include fallout", which fixed it
+    independently for `routes/capacity`'s write-auth injection and
+    `test_write_access.py`'s own introspection of a SUB-router's `.routes`
+    (`_flatten_api_routes`) -- this is the top-level `app.routes` instance
+    of the identical shape.
+    """
+    for route in routes:
+        expand = getattr(route, "effective_route_contexts", None)
+        if callable(expand):
+            yield from expand()
+        elif isinstance(route, APIRoute):
+            yield route
+
+
 def loose_routes(app) -> list:
     found: List[tuple] = []
-    for route in app.routes:
-        if not isinstance(route, APIRoute) or not route.path.startswith("/api"):
+    for route in flatten_api_routes(app.routes):
+        if not route.path.startswith("/api"):
             continue
         if not is_loose(route.response_model):
             continue

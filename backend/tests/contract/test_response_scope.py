@@ -64,7 +64,7 @@ from __future__ import annotations
 
 import json
 
-from backend.tests.contract.capture import is_placeholder
+from backend.tests.contract.capture import flatten_api_routes, is_placeholder
 from backend.tests.contract.conftest import GOLDEN
 from backend.tests.contract.response_scope import (
     NO_CONTENT_204,
@@ -81,8 +81,8 @@ def _golden() -> dict:
 
 def _route(app, route_key: str):
     method, path = route_key.split(" ", 1)
-    for candidate in app.routes:
-        if getattr(candidate, "path", None) == path and method in getattr(candidate, "methods", set()):
+    for candidate in flatten_api_routes(app.routes):
+        if candidate.path == path and method in candidate.methods:
             return candidate
     raise AssertionError(f"no route registered for {route_key!r}")
 
