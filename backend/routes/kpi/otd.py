@@ -23,6 +23,8 @@ logger = get_module_logger(__name__)
 otd_router = APIRouter(prefix="/api/kpi", tags=["KPI Calculations"])
 
 
+# Conditional keys on the single-client-scope branch -- declared and gated
+# two-sided in backend/tests/contract/conditional_branches.py::EXCLUDE_UNSET_ROUTES.
 @otd_router.get("/otd", response_model=OTDSummary, response_model_exclude_unset=True)
 def calculate_otd_kpi(
     start_date: Optional[date] = None,

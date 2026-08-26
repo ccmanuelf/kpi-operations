@@ -303,6 +303,8 @@ def get_work_order_transition_times(
     return get_transition_elapsed_times(db=db, work_order_id=work_order_id, client_id=work_order.client_id)
 
 
+# Conditional keys on the empty-orders branch -- declared and gated two-sided in
+# backend/tests/contract/conditional_branches.py::EXCLUDE_UNSET_ROUTES.
 @router.get(
     "/analytics/{client_id}/average-times", response_model=AverageTimesSummary, response_model_exclude_unset=True
 )

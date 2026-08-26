@@ -23,6 +23,8 @@ logger = get_module_logger(__name__)
 dashboard_router = APIRouter(prefix="/api/kpi", tags=["KPI Calculations"])
 
 
+# Conditional keys on the per-section error fallback -- declared and gated
+# two-sided in backend/tests/contract/conditional_branches.py::EXCLUDE_UNSET_ROUTES.
 @dashboard_router.get("/dashboard/aggregated", response_model=AggregatedDashboard, response_model_exclude_unset=True)
 def get_aggregated_dashboard(
     start_date: Optional[date] = None,
