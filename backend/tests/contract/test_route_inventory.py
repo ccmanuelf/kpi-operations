@@ -1,14 +1,22 @@
 def test_every_loose_route_is_inventoried_and_none_is_silently_dropped():
-    """113 routes still needing a response model, re-measured 2026-08-25
-       after Task 10. That task found its 20-route area was mostly file
-       downloads, not JSON: 17 `/api/export` + `/api/reports/*/{pdf,excel}`
-       routes were annotated `-> Any` while actually returning
-       `StreamingResponse`, so they were never loose in substance, only in
-       declaration. Fixing the annotation and scoping them out of the
-       ratchet via `response_scope.routes_needing_a_response_model` (gated
-       two-sided in test_response_scope.py) drops 17; converting the one
-       genuine JSON route, GET /api/reports/available, drops 1 more. 131 - 17
-       - 1 = 113.
+    """108 routes still needing a response model, re-measured 2026-08-25
+       after Task 10 and its review follow-up. Task 10 found its 20-route
+       area was mostly file downloads, not JSON: 17 `/api/export` +
+       `/api/reports/*/{pdf,excel}` routes were annotated `-> Any` while
+       actually returning `StreamingResponse`, so they were never loose in
+       substance, only in declaration. Fixing the annotation and scoping
+       them out of the ratchet via `response_scope.routes_needing_a_response_model`
+       (gated two-sided in test_response_scope.py) drops 17; converting the
+       one genuine JSON route, GET /api/reports/available, drops 1 more.
+       131 - 17 - 1 = 113.
+
+       The review follow-up found /api/qr's 5 routes (employee/product/
+       work-order/job/generate image, one of them a POST) are the SAME
+       class as those 17 -- all `-> Response`, already `response_model=None`
+       -- and appear in NO Task 11-14 grouping, so leaving them in ALLOWLIST
+       would make them a permanent, unclaimed exception, exactly what the
+       scope rule exists to avoid. Folded into OUT_OF_SCOPE_ROUTES the same
+       way. 113 - 5 = 108, the corrected target.
 
        131 itself came from Task 9 converting the 9 `/api/workflow` GET
        routes (templates, config/{client_id}, analytics/{client_id}/
@@ -30,7 +38,7 @@ def test_every_loose_route_is_inventoried_and_none_is_silently_dropped():
 
     routes = routes_needing_a_response_model(app)
 
-    assert len(routes) == 113
+    assert len(routes) == 108
     methods = {m for m, _, _ in routes}
     assert methods == {"GET", "POST", "PUT", "DELETE"}
 

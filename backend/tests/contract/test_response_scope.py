@@ -2,31 +2,69 @@
 golden master -- see `response_scope.py` for the mechanism under test.
 
 1. `test_every_declared_out_of_scope_route_is_actually_non_json` -- every
-   route in `OUT_OF_SCOPE_ROUTES` really has no JSON body: it must record
-   `<non-json>` in the golden master. This is what stops a route dodging the
-   ratchet by CLAIMING a return type it does not have: declare a route
-   `-> StreamingResponse` while it actually still returns a dict, and its
-   golden entry keeps recording real keys -- this fails, naming the route.
+   route in `OUT_OF_SCOPE_ROUTES` must NOT have live evidence of a JSON
+   body: its golden entry must be a placeholder (`is_placeholder` --
+   `<non-json>`, `<status:...>`, or `<blocked:...>`), never real field
+   keys. This is what stops a route dodging the ratchet by CLAIMING a
+   return type it does not have: declare a route `-> StreamingResponse`
+   while it actually still returns a dict, and a captured 2xx keeps
+   recording real keys -- this fails, naming the route.
+
+   Not narrowed to literal `<non-json>` -- two of the five `/api/qr`
+   routes never reach a live 2xx at all during capture (`GET /api/qr/job/
+   {job_id}/image` is `<blocked:job_id>`, JOB has zero seeded rows; `POST
+   /api/qr/generate/image` is `<status:422>`, the capture harness sends no
+   body). The golden master offers no confirming *or* contradicting
+   evidence for those two, so requiring literal `<non-json>` would reject
+   a legitimate declaration for lack of proof it cannot obtain.
+   `is_placeholder` accepts "no evidence either way" without accepting
+   "evidence against" -- a real captured JSON shape is never a
+   placeholder, so the dodge this check exists to catch is still caught
+   (mutation-proven below). The routes this can't confirm from golden
+   evidence are exactly where
+   `test_declared_reason_matches_the_structural_classification` carries
+   the full weight: it reads the endpoint's own return annotation
+   directly, never the golden master, so it doesn't need a live 2xx to be
+   authoritative.
 
 2. `test_every_non_json_golden_entry_is_explained` -- every `<non-json>`
    entry currently in the golden master, whether or not it is declared in
    `OUT_OF_SCOPE_ROUTES`, must be explained by `classify_non_json_route` (a
    `Response` subclass, or a 204 DELETE). An unexplained entry is a route
    returning something unparseable that nobody accounted for; this fails
-   naming it, rather than letting it pass as unnoticed debt.
+   naming it, rather than letting it pass as unnoticed debt. NOTE this
+   check's domain is golden entries that already read `<non-json>` -- it
+   says nothing about `GET /api/qr/job/{job_id}/image` or `POST /api/qr/
+   generate/image`, whose golden entries are a different placeholder
+   flavour and never enter this check's `non_json_routes` set at all,
+   declared or not. Their protection is (1) and structural
+   classification, not this check.
 
-Neither check alone is enough. (1) alone says nothing about routes NOT in
-the registry -- an unrelated route could start recording `<non-json>` for a
-reason nobody wrote down and nothing would notice. (2) alone would not catch
-a WRONGLY declared entry -- one that IS structurally explained, but for a
-different reason than the one written down -- which
-`test_declared_reason_matches_the_structural_classification` closes.
+Neither (1) nor (2) alone is enough, and together they still don't cover
+every declared route with golden evidence -- see the two notes above. (1)
+alone says nothing about routes NOT in the registry -- an unrelated route
+could start recording `<non-json>` for a reason nobody wrote down and
+nothing would notice. (2) alone would not catch a WRONGLY declared entry --
+one that IS structurally explained, but for a different reason than the one
+written down -- which `test_declared_reason_matches_the_structural_classification`
+closes. And an entirely REMOVED declaration (e.g. someone deletes the
+`POST /api/qr/generate/image` entry by mistake) is caught by neither test in
+this file -- it is caught by the main ratchet,
+`test_no_api_route_has_a_loose_response_model` in
+`test_no_loose_response_models.py`: with no `OUT_OF_SCOPE_ROUTES` entry the
+route reappears in `routes_needing_a_response_model`'s output, and with no
+`ALLOWLIST` entry either (both were removed together when the route was
+scoped out) it fails there as "unexpected", naming the route. Mutation-proven
+below for the POST specifically, and that division of labour -- this file
+proves a DECLARATION is trustworthy, the ratchet proves nothing DISAPPEARS
+without one -- is deliberate, not a gap.
 """
 
 from __future__ import annotations
 
 import json
 
+from backend.tests.contract.capture import is_placeholder
 from backend.tests.contract.conftest import GOLDEN
 from backend.tests.contract.response_scope import (
     NO_CONTENT_204,
@@ -52,7 +90,7 @@ def _route(app, route_key: str):
 def test_every_declared_out_of_scope_route_is_actually_non_json():
     golden = _golden()
     for route_key in sorted(OUT_OF_SCOPE_ROUTES):
-        assert golden[route_key] == ["<non-json>"], route_key
+        assert is_placeholder(golden[route_key]), route_key
 
 
 def test_every_non_json_golden_entry_is_explained():

@@ -17,18 +17,29 @@ both collapse to the same `None` -- so telling them apart means reading the
 endpoint's OWN return annotation directly (`classify_non_json_route`,
 below), never `route.response_model`.
 
-`OUT_OF_SCOPE_ROUTES` declares the routes THIS task removes from the ratchet
--- the 17 `/api/export/*` and `/api/reports/*/{pdf,excel}` routes corrected
-from a false `-> Any` to their real `-> StreamingResponse` in
-`backend/routes/export.py` and `backend/routes/reports/*.py`. It is
-deliberately NOT populated with the 9 pre-existing 204 DELETEs or the 3
-pre-existing `-> Response` QR-image routes: those routes' files are outside
-this task's edits, and `routes_needing_a_response_model` only ever shrinks
-the ratchet for routes actually declared here -- see
-`test_response_scope.py` for the two-sided gate that keeps this trustworthy,
-and Task 10's brief for why the 204 taxonomy is built as a REUSABLE
-predicate (`classify_non_json_route`) rather than inlined, for Task 17 to
-extend when it takes on the DELETE routes.
+`OUT_OF_SCOPE_ROUTES` declares the routes removed from the ratchet: the 17
+`/api/export/*` and `/api/reports/*/{pdf,excel}` routes corrected from a
+false `-> Any` to their real `-> StreamingResponse` in
+`backend/routes/export.py` and `backend/routes/reports/*.py`, plus 5
+`/api/qr` routes (`backend/routes/qr.py`, untouched by this task's edits --
+already `-> Response`) folded in on review: a classification sweep over the
+remaining routes found `/api/qr` claimed by no Task 11-14 grouping at all,
+so leaving its 5 routes in `ALLOWLIST` would make them a permanent,
+unclaimed exception -- precisely the outcome this scope rule exists to
+prevent. One of the 5, `POST /api/qr/generate/image`, is a POST: the scope
+rule is about JSON-body-or-not, never about method, and
+`classify_non_json_route` never inspects `route.methods` for the
+`RESPONSE_SUBCLASS` branch, so it classifies correctly regardless (verified
+directly, and mutation-proven in `test_response_scope.py`).
+
+Deliberately NOT populated with the 9 pre-existing 204 DELETEs: those
+routes' files are outside every task run so far, and
+`routes_needing_a_response_model` only ever shrinks the ratchet for routes
+actually declared here -- see `test_response_scope.py` for the two-sided
+gate that keeps this trustworthy, and Task 10's brief for why the 204
+taxonomy is built as a REUSABLE predicate (`classify_non_json_route`)
+rather than inlined, for Task 17 to extend when it takes on the DELETE
+routes.
 """
 
 from __future__ import annotations
@@ -77,6 +88,14 @@ OUT_OF_SCOPE_ROUTES: Dict[str, ScopeEntry] = {
     "GET /api/reports/attendance/excel": ScopeEntry("-> StreamingResponse wrapping an Excel buffer."),
     "GET /api/reports/production/pdf": ScopeEntry("-> StreamingResponse wrapping a PDF buffer."),
     "GET /api/reports/production/excel": ScopeEntry("-> StreamingResponse wrapping an Excel buffer."),
+    "GET /api/qr/employee/{employee_id}/image": ScopeEntry("-> Response wrapping a raw PNG QR image."),
+    "GET /api/qr/job/{job_id}/image": ScopeEntry("-> Response wrapping a raw PNG QR image."),
+    "GET /api/qr/product/{product_id}/image": ScopeEntry("-> Response wrapping a raw PNG QR image."),
+    "GET /api/qr/work-order/{work_order_id}/image": ScopeEntry("-> Response wrapping a raw PNG QR image."),
+    "POST /api/qr/generate/image": ScopeEntry(
+        "-> Response wrapping a raw PNG QR image. A POST, deliberately: the scope "
+        "rule is about whether a route has a JSON body, never about its method."
+    ),
 }
 
 
