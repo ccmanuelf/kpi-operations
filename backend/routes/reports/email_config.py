@@ -30,6 +30,7 @@ _email_configs: dict = {}
 async def get_email_report_config(
     client_id: Optional[str] = Query(None, description="Client ID"),
     current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ) -> Any:
     """
     Get email report configuration for a client
@@ -41,9 +42,12 @@ async def get_email_report_config(
     - Report content options
     """
     # SECURITY: client_id arrives from the caller and selects whose stored
-    # config is returned; confirm they own it.
+    # config is returned; confirm they own it. `db` is required, not optional:
+    # without it get_user_client_filter cannot read USER_CLIENT_ASSIGNMENT and
+    # falls back to the legacy column, so a leader whose assignment lives only
+    # in the junction table would be denied their OWN client.
     if client_id:
-        verify_client_access(current_user, client_id)
+        verify_client_access(current_user, client_id, db)
 
     config_key = client_id or f"user_{current_user.user_id}"
 

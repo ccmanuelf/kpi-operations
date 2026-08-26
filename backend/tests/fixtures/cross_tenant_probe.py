@@ -235,12 +235,14 @@ def request_for_tenant(client: Any, method: str, path: str, tenant: str) -> Any:
 # ===========================================================================
 
 
-def _two_tenant_client():
-    """Fresh two-tenant DB + a TestClient acting as tenant A's supervisor.
+def _two_tenant_client(actor_user_id: str | None = None):
+    """Fresh two-tenant DB + a TestClient acting as one persona.
 
-    A supervisor (not an admin) is essential: get_user_client_filter returns
-    None for ADMIN/POWERUSER, meaning "all clients", so an admin persona can
-    never exercise cross-tenant denial.
+    Defaults to tenant A's supervisor. A supervisor (not an admin) is
+    essential for the DENIAL direction: get_user_client_filter returns None for
+    ADMIN/POWERUSER, meaning "all clients", so an admin persona can never
+    exercise cross-tenant denial. ``actor_user_id`` selects one of the
+    over-denial personas instead, for the opposite direction.
     """
     from fastapi.testclient import TestClient
     from sqlalchemy.orm import sessionmaker
@@ -253,7 +255,10 @@ def _two_tenant_client():
     engine = clone_template_engine()
     db = sessionmaker(autocommit=False, autoflush=False, bind=engine)()
     build_two_tenant_db(db)
-    actor = db.query(User).filter(User.client_id_assigned == TENANT_A).one()
+    if actor_user_id is None:
+        actor = db.query(User).filter(User.client_id_assigned == TENANT_A).one()
+    else:
+        actor = db.query(User).filter(User.user_id == actor_user_id).one()
 
     def _get_db():
         yield db
@@ -274,6 +279,31 @@ def tenant_a_client():
         from backend.database import get_db
 
         app.dependency_overrides.pop(get_db, None)
+        db.close()
+        engine.dispose()
+
+
+@pytest.fixture
+def two_tenant_as():
+    """Return a factory: user_id -> TestClient on a fresh two-tenant DB.
+
+    Function-scoped and one database per persona, because several probed
+    routes soft-delete or rename the rows the next persona would read.
+    """
+    made: list[Any] = []
+
+    def _make(actor_user_id: str):
+        client, db, engine = _two_tenant_client(actor_user_id)
+        made.append((db, engine))
+        return client
+
+    yield _make
+
+    app.dependency_overrides.pop(get_current_user, None)
+    from backend.database import get_db
+
+    app.dependency_overrides.pop(get_db, None)
+    for db, engine in made:
         db.close()
         engine.dispose()
 
@@ -352,9 +382,8 @@ CLIENT_ID_QUERY_MATRIX = [
     ("GET", "/api/employees", 200, 403, {}),
     ("GET", "/api/employee-line-assignments/", 200, 403, {}),
     ("GET", "/api/equipment/", 200, 403, {}),
-    # /shared returns [] for both tenants under this fixture, so only the
-    # status discriminates — which is exactly why it needs a row: nothing else
-    # in the suite would notice its check disappearing.
+    # /shared returns [] for both tenants here, so only the status
+    # discriminates — which is exactly why it needs a row.
     ("GET", "/api/equipment/shared", 200, 403, {}),
     ("GET", "/api/production-lines/tree", 200, 403, {}),
     ("GET", "/api/production-lines/unlinked", 200, 403, {}),
@@ -374,3 +403,97 @@ CLIENT_ID_QUERY_MATRIX = [
     ("GET", "/api/export/shifts", 200, 403, {}),
     ("GET", "/api/export/work-orders", 200, 403, {}),
 ]
+
+
+# ===========================================================================
+# Declarations that keep the universal guard from going blind.
+#
+# The guard used to early-return on any non-2xx and then only look for the
+# tenant id in the body. Measured consequences: blind on every route that
+# answers 2xx, trivially satisfied by a 204's empty body, and silently
+# classing a 500 as a denial — which is precisely how
+# GET /api/alerts/{alert_id} hid a real leak for a whole pass of this task.
+# Both lists below are gated two-sided by the tests that read them.
+# ===========================================================================
+
+#: (method, path) -> why a cross-tenant request legitimately answers 2xx.
+#: An UNDECLARED 2xx is a finding, so a new leak cannot slip through as one.
+LITERAL_PARAM = "literal_param"  # the parameter is not a tenant id at all
+NO_TENANT_ROWS = "no_tenant_rows"  # correctly scoped: nothing of B's comes back
+
+CROSS_TENANT_2XX_ALLOWED: dict[tuple[str, str], str] = {
+    ("GET", "/api/filters/default/{filter_type}"): LITERAL_PARAM,
+    ("GET", "/api/kpi/{metric}/cause"): LITERAL_PARAM,
+    ("GET", "/api/pivot/{dataset}"): LITERAL_PARAM,
+    ("GET", "/api/pivot/{dataset}/csv"): LITERAL_PARAM,
+    ("GET", "/api/preferences/defaults/{role}"): LITERAL_PARAM,
+    ("GET", "/api/work-orders/status/{status}"): LITERAL_PARAM,
+    ("GET", "/api/attendance/by-employee/{employee_id}"): NO_TENANT_ROWS,
+    ("GET", "/api/capacity/orders/{order_id}/work-orders"): NO_TENANT_ROWS,
+    ("GET", "/api/coverage/by-shift/{shift_id}"): NO_TENANT_ROWS,
+    ("GET", "/api/defects/by-quality-entry/{quality_entry_id}"): NO_TENANT_ROWS,
+    ("GET", "/api/floating-pool/check-availability/{employee_id}"): NO_TENANT_ROWS,
+    ("GET", "/api/part-opportunities/category/{category}"): NO_TENANT_ROWS,
+    ("GET", "/api/quality/by-work-order/{work_order_id}"): NO_TENANT_ROWS,
+    ("GET", "/api/work-orders/{work_order_id}/jobs"): NO_TENANT_ROWS,
+}
+
+#: (method, path) -> why a cross-tenant request answers 5xx. A crash is NOT a
+#: denial: these three had no tenant check at all and only looked safe because
+#: they blew up. Kept so the taxonomy stays explicit and the day they stop
+#: crashing, the guard re-classifies them instead of staying quiet.
+CROSS_TENANT_5XX_KNOWN: dict[tuple[str, str], str] = {
+    ("POST", "/api/defect-types/upload/{client_id}"): (
+        "the route's `except Exception` swallows ClientAccessError into a 500 "
+        "'Failed to process defect type catalog' — it denies, but reports the "
+        "denial as a server error"
+    ),
+}
+
+
+#: Quantities that must differ between the tenants; a symmetric fixture makes
+#: an unscoped aggregate route indistinguishable from a scoped one.
+ASYMMETRY_KEYS = (
+    "cal_shift1_hours",
+    "units_produced",
+    "run_time_hours",
+    "units_inspected",
+    "defect_count",
+    "downtime_minutes",
+    "absence_hours",
+)
+
+#: Rows for the client_token_clause tests: a client id that is a prefix of
+#: another, a multi-value list, the whitespace variant, an unassigned row, and
+#: a pair that differ only in a LIKE wildcard position.
+TOKEN_ROWS: dict[int, str | None] = {
+    9001: "ACME",
+    9002: "ACME-WEST",
+    9003: "OTHER,ACME,MORE",
+    9004: "OTHER, ACME",
+    9005: "ACMES",
+    9006: None,
+    9101: "SAMPLE_REF",
+    9102: "SAMPLEXREF",
+}
+#: (client id asked for, employee ids that must come back)
+TOKEN_CASES = [
+    ("ACME", {9001, 9003, 9004}),
+    ("SAMPLE_REF", {9101}),
+]
+
+
+def seed_token_rows(db: Any) -> None:
+    """Insert TOKEN_ROWS as EMPLOYEE rows in the 9000+ id range."""
+    from backend.orm.employee import Employee
+
+    for employee_id, assigned in TOKEN_ROWS.items():
+        db.add(
+            Employee(
+                employee_id=employee_id,
+                employee_code=f"TOK-{employee_id}",
+                employee_name=f"Token {employee_id}",
+                client_id_assigned=assigned,
+            )
+        )
+    db.commit()

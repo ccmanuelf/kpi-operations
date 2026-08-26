@@ -73,25 +73,55 @@ _ASYM: dict[str, dict[str, Any]] = {
     },
     TENANT_B: {
         "shift_end": time(12, 0),
-        "cal_shift1_hours": 6,
+        "cal_shift1_hours": 5.25,
         "cal_shifts_available": 2,
-        "units_produced": 70,
+        "units_produced": 7771,
         "run_time_hours": 6,
-        "units_inspected": 100,
-        "units_passed": 80,
-        "units_defective": 20,
-        "defect_count": 7,
-        "downtime_minutes": 90,
+        "units_inspected": 8881,
+        "units_passed": 7890,
+        "units_defective": 991,
+        "defect_count": 771,
+        "downtime_minutes": 6661,
         "is_absent": 1,
-        "absence_hours": 8,
-        "actual_hours": 0,
+        "absence_hours": 7,
+        "actual_hours": 1,
     },
 }
+
+
+#: Values that appear ONLY in tenant B's rows and are odd enough that they
+#: cannot show up by accident in an id, a timestamp or a count. A cross-tenant
+#: 2xx body containing any of these is carrying tenant B's data even when it
+#: contains no tenant id at all — which is how the calendar aggregates leaked.
+#: Consumed by test_permission_matrix.py's universal guard.
+_MARKER_KEYS = (
+    "units_produced",
+    "units_inspected",
+    "units_passed",
+    "units_defective",
+    "defect_count",
+    "downtime_minutes",
+    "cal_shift1_hours",
+)
 
 
 def asym(client_id: str, key: str) -> Any:
     """Per-tenant value that makes an aggregate response discriminating."""
     return _ASYM[client_id][key]
+
+
+def marker_values(client_id: str) -> tuple[str, ...]:
+    """Stringified values unique to ``client_id``'s rows, for body scanning."""
+    other = TENANT_B if client_id == TENANT_A else TENANT_A
+    out = []
+    for key in _MARKER_KEYS:
+        mine, theirs = _ASYM[client_id][key], _ASYM[other][key]
+        if mine == theirs:
+            continue
+        out.append(str(mine))
+        if isinstance(mine, float):
+            out.append(str(int(mine)) if mine.is_integer() else f"{mine}")
+    return tuple(dict.fromkeys(out))
 
 
 def str_pk(client_id: str, kind: str) -> str:
@@ -320,6 +350,7 @@ def build_two_tenant_db(db: Session) -> None:
     from backend.orm.client import Client
     from backend.orm.employee import Employee
     from backend.orm.employee_client_assignment import EmployeeClientAssignment
+    from backend.orm.user_client_assignment import UserClientAssignment
     from backend.orm.saved_filter import SavedFilter
     from backend.orm.user import User
 
@@ -367,6 +398,38 @@ def build_two_tenant_db(db: Session) -> None:
         for row in _tenant_rows(c):
             db.add(row)
         db.flush()
+
+    # Personas that must NOT be denied. Over-denial is the failure mode a
+    # tenant fix causes, and it is invisible unless something exercises the
+    # roles that legitimately see more than one client:
+    #   * admin/poweruser  -> get_user_client_filter returns None ("all")
+    #   * multi-client leader -> a comma list
+    #   * the whitespace variant, which only works because
+    #     _get_clients_from_legacy_field strips each token
+    for user_id, username, role, assigned in (
+        ("USR-ADMIN", "admin_all", "admin", None),
+        ("USR-POWER", "power_all", "poweruser", None),
+        ("USR-LEADER-AB", "leader_ab", "leader", f"{TENANT_A},{TENANT_B}"),
+        ("USR-LEADER-WS", "leader_ws", "leader", f"{TENANT_A}, {TENANT_B}"),
+        # Assignment lives ONLY in USER_CLIENT_ASSIGNMENT (added below), which
+        # get_user_client_filter can read only when it is handed a db session.
+        # A call site that omits `db` denies this leader their own client.
+        ("USR-JUNCTION", "junction_leader", "leader", None),
+    ):
+        db.add(
+            User(
+                user_id=user_id,
+                username=username,
+                email=f"{username}@test.com",
+                password_hash="x",
+                role=role,
+                client_id_assigned=assigned,
+                is_active=True,
+            )
+        )
+    db.flush()
+    db.add(UserClientAssignment(user_id="USR-JUNCTION", client_id=TENANT_A, is_active=True))
+    db.flush()
 
     for c in (TENANT_A, TENANT_B):
         db.add(
