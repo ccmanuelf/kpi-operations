@@ -12,6 +12,12 @@ from datetime import datetime, timezone
 from backend.auth.jwt import get_current_user, get_current_admin
 from backend.orm.user import User
 from backend.cache import get_cache
+from backend.schemas.ops_contracts import (
+    CacheClearResponse,
+    CacheHealthResponse,
+    CacheInvalidateResponse,
+    CacheStatsResponse,
+)
 from backend.utils.logging_utils import get_module_logger
 
 logger = get_module_logger(__name__)
@@ -24,7 +30,7 @@ router = APIRouter(
 )
 
 
-@router.get("/stats", response_model=Dict[str, Any])
+@router.get("/stats", response_model=CacheStatsResponse)
 async def get_cache_stats(current_user: User = Depends(get_current_user)) -> Dict[str, Any]:
     """
     Get cache statistics.
@@ -45,7 +51,7 @@ async def get_cache_stats(current_user: User = Depends(get_current_user)) -> Dic
     return {"status": "healthy", "timestamp": datetime.now(tz=timezone.utc).isoformat(), "statistics": stats}
 
 
-@router.post("/clear", response_model=Dict[str, Any])
+@router.post("/clear", response_model=CacheClearResponse)
 async def clear_cache(current_user: User = Depends(get_current_admin)) -> Dict[str, Any]:
     """
     Clear all cache entries.
@@ -68,7 +74,7 @@ async def clear_cache(current_user: User = Depends(get_current_admin)) -> Dict[s
     }
 
 
-@router.delete("/invalidate/{pattern}", response_model=Dict[str, Any])
+@router.delete("/invalidate/{pattern}", response_model=CacheInvalidateResponse)
 async def invalidate_cache_pattern(pattern: str, current_user: User = Depends(get_current_admin)) -> Dict[str, Any]:
     """
     Invalidate cache entries matching a pattern prefix.
@@ -99,7 +105,7 @@ async def invalidate_cache_pattern(pattern: str, current_user: User = Depends(ge
     }
 
 
-@router.get("/health", response_model=Dict[str, Any])
+@router.get("/health", response_model=CacheHealthResponse, response_model_exclude_unset=True)
 async def cache_health() -> Dict[str, Any]:
     """
     Check cache health status.

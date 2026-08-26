@@ -48,6 +48,11 @@ from backend.generators.sample_data_phase5 import (
     calculate_kpi_health_score,
     KPITypePhase5,
 )
+from backend.schemas.ops_contracts import (
+    KPIBenchmarksResponse,
+    KPIHealthAssessmentResponse,
+    PredictionsDemoSeedResponse,
+)
 from backend.utils.logging_utils import get_module_logger
 
 logger = get_module_logger(__name__)
@@ -239,6 +244,7 @@ def build_comprehensive_prediction(
 
 @router.get(
     "/benchmarks",
+    response_model=KPIBenchmarksResponse,
     summary="Get KPI Benchmarks",
     description="Get industry benchmark values for all 10 KPIs",
     responses={200: {"description": "Benchmarks retrieved successfully"}},
@@ -485,6 +491,7 @@ async def get_all_kpi_predictions(
 
 @router.post(
     "/demo/seed",
+    response_model=PredictionsDemoSeedResponse,
     summary="Seed Demo Prediction Data",
     description="""
     Generate and seed demo historical data for prediction testing.
@@ -521,6 +528,7 @@ async def seed_demo_data(
 
 @router.get(
     "/health/{kpi_type}",
+    response_model=KPIHealthAssessmentResponse,
     summary="Get KPI Health Assessment",
     description="Get health assessment for a specific KPI without full forecast",
     responses={200: {"description": "Health assessment retrieved successfully"}},

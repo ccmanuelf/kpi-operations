@@ -1,6 +1,26 @@
 def test_every_loose_route_is_inventoried_and_none_is_silently_dropped():
-    """108 routes still needing a response model, re-measured 2026-08-25
-       after Task 10 and its review follow-up. Task 10 found its 20-route
+    """90 routes still needing a response model, after Batch R4 converts 18
+       of the prior 108 across `/api/cache`, `/api/kpi-thresholds`,
+       `/api/predictions`, `/api/data-completeness`, `/api/my-shift`,
+       `/api/shifts`, `/api/plan-vs-actual` (`backend/schemas/ops_contracts.py`).
+       108 - 18 = 90, mirrored by `ALLOWLIST` shrinking by the same 18 entries.
+
+       This measurement is also where `flatten_api_routes` (capture.py) earned
+       its second iteration: FastAPI's `_IncludedRouter` wrapper only bakes a
+       route's full prefix into `.path` for a SINGLE include level. A router
+       included without its own prefix and then included again one level up
+       (`quality_router.include_router(pareto_router)`, `pareto_router` itself
+       unprefixed) leaves the underlying route's `.path` as the router-local
+       fragment (`/kpi/by-product`), not the effective `/api/quality/kpi/
+       by-product` -- a naive recursive `original_router.routes` walk (the
+       first version of this fix) silently missed such routes entirely rather
+       than mis-measuring by one, undercounting this test's own assertion by
+       16 before `effective_route_contexts()` (the mechanism FastAPI itself
+       exposes for exactly this, already used by `test_openapi_surface.py`)
+       replaced it.
+
+       108 itself was re-measured 2026-08-25 after Task 10 and its review
+       follow-up. Task 10 found its 20-route
        area was mostly file downloads, not JSON: 17 `/api/export` +
        `/api/reports/*/{pdf,excel}` routes were annotated `-> Any` while
        actually returning `StreamingResponse`, so they were never loose in
@@ -38,7 +58,7 @@ def test_every_loose_route_is_inventoried_and_none_is_silently_dropped():
 
     routes = routes_needing_a_response_model(app)
 
-    assert len(routes) == 108
+    assert len(routes) == 90
     methods = {m for m, _, _ in routes}
     assert methods == {"GET", "POST", "PUT", "DELETE"}
 

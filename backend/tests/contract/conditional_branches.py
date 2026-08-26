@@ -82,6 +82,15 @@ EXCLUDE_UNSET_ROUTES: Dict[str, ExcludeUnsetEntry] = {
         ),
         forcing_test="test_average_times_empty_orders_branch_omits_overdue_keys",
     ),
+    "GET /api/cache/health": ExcludeUnsetEntry(
+        reason=(
+            "entries/hit_rate are absent, not null, and error is present-only, on "
+            "cache_health()'s (routes/cache.py) bare except Exception branch -- never seen in "
+            "capture (the in-memory cache cannot organically raise), but structurally present. "
+            "Batch R4."
+        ),
+        forcing_test="test_cache_health_error_branch_omits_entries_and_hit_rate",
+    ),
 }
 
 

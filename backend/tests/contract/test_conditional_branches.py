@@ -37,12 +37,15 @@ model the same way `average-times` does, so it carries the same trap and
 gets the same two-assertion treatment.
 """
 
-from unittest.mock import Mock
+import asyncio
+from unittest.mock import Mock, patch
 
 from backend.calculations.elapsed_time import (
     calculate_client_average_times,
     calculate_stage_duration_summary,
 )
+from backend.routes.cache import cache_health
+from backend.schemas.ops_contracts import CacheHealthResponse
 from backend.schemas.workflow_contracts import AverageTimesSummary, StageDurationsResponse
 from backend.tests.contract.conditional_branches import EXCLUDE_UNSET_ROUTES, declared_exclude_unset_routes
 
@@ -150,3 +153,29 @@ def test_stage_durations_non_empty_interior_pins_its_key_set():
         "transition_count",
     }
     assert entry == raw_entry
+
+
+def test_cache_health_error_branch_omits_entries_and_hit_rate():
+    """Forces GET /api/cache/health's `except Exception` branch (routes/cache.py
+    ::cache_health) by making `get_cache()` raise, and pins its exact 3-key
+    shape on BOTH sides of validation -- the golden master cannot do this at
+    all, since the in-memory cache never organically raises, so a captured
+    entry only ever shows the 4-key success shape.
+
+    Calls the real route coroutine directly (`asyncio.run`), the same
+    "build the branch, don't hand-copy it" approach as
+    `test_average_times_empty_orders_branch_omits_overdue_keys` -- patching
+    a dependency to force a branch, not re-typing the branch's literal.
+    """
+    with patch("backend.routes.cache.get_cache", side_effect=RuntimeError("boom")):
+        raw = asyncio.run(cache_health())
+
+    # The branch's real shape, before anything normalises it away.
+    assert set(raw.keys()) == {"status", "timestamp", "error"}
+    assert raw["status"] == "error"
+    assert raw["error"] == "Cache health check failed"
+
+    dumped = CacheHealthResponse(**raw).model_dump(exclude_unset=True)
+    # What the model actually emits over the wire.
+    assert set(dumped.keys()) == {"status", "timestamp", "error"}
+    assert dumped == raw
