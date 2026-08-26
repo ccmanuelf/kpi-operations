@@ -806,3 +806,51 @@ blocked on the same gap.
 Consequences beyond this refactor: those features have no demo data, and their routes cannot be
 contract-captured. Sequenced last because the seeder was cut over in S1c and this is real work
 against it, not a harness tweak. Task 8b's blocked manifest is this task's input.
+
+---
+
+### Task 10 — CORRECTED 2026-08-25, after measuring what these routes actually return
+
+The Tasks 9–14 table sizes Task 10 as "`/api/reports` + `/api/export`, 20 routes, 20 explicit,
+18 GET" and flags spec §8's open question ("benefit close to zero") as something to verify
+first. Verified. The premise was wrong, and the answer is not "convert 18 routes".
+
+Measured against the golden master and the route sources:
+
+| what | count | truth |
+|---|---:|---|
+| `/api/export/*` + `/api/reports/*/pdf|excel` | **17** | annotated `-> Any`, actually return `StreamingResponse`/`FileResponse`. Golden entry `<non-json>`. **A response model is not low-value here, it is wrong** — there is no JSON body to model. |
+| `GET /api/reports/available` | **1** | genuine JSON, 10 keys. The only convertible route in this area. |
+| `POST /api/reports/send-manual`, `POST /api/reports/email-config/test` | 2 | `<status:422>`, no body sent. Task 16. |
+
+**So spec §8's open question is answered by measurement, not judgement: these 20 routes contain
+exactly one response model worth writing.**
+
+The remaining 17 are not an allowlist exception to be tolerated — they are **mis-annotated**.
+`-> Any` is a false statement about a route that returns a CSV stream, and it is what puts them
+in the explicit-risk bucket. Annotating the real return type is truthful, fixes the OpenAPI lie
+(D1's stated secondary goal), and moves them from "explicit, real Decimal risk" to "no response
+model by nature". Verified: `-> StreamingResponse` yields `response_model=None` and leaves the
+response byte-identical.
+
+**The ratchet needs a principled scope rule, not 17 permanent allowlist entries.** A route that
+returns a `Response` subclass has no JSON body and therefore cannot leak a Decimal — it never
+reaches Pydantic's serializer. Excluding it is correcting the guard's domain, not weakening it.
+
+Gate it two-sided against the golden master, whose `<non-json>` marker is the independent
+evidence. All 29 `<non-json>` entries decompose into exactly three categories:
+
+- 3 already annotated as a `Response` subclass
+- 9 `DELETE` returning 204 No Content (`-> None`)
+- 17 the mis-annotated export/report routes
+
+So the gate is: **every route declared out-of-scope must record `<non-json>`, and every
+`<non-json>` entry must be explained by exactly one of {`Response` subclass, 204 No Content}.**
+An unexplained `<non-json>` is a route returning something unparseable that nobody declared —
+which is a finding, not noise. The 204 taxonomy built here is Task 17's input.
+
+Allowlist: 131 → **113** (17 scoped out, 1 converted).
+
+**Do not let a route dodge the ratchet by claiming a return type it does not have.** The
+two-sided gate is what prevents that: a route annotated `-> StreamingResponse` that actually
+returns a dict would record real JSON keys in the golden master and fail.
