@@ -855,18 +855,56 @@ class TestPartOpportunitiesEndpoints:
 class TestInferenceEndpoints:
     """Test inference engine endpoints"""
 
-    def test_infer_cycle_time(self, test_client, admin_auth_headers):
+    @pytest.fixture
+    def inference_product(self, test_client):
+        """A real PRODUCT row in the engine ``test_client`` actually queries.
+
+        The route now resolves the product and authorizes its client before
+        inferring (it used to answer 200 for a product id that did not exist,
+        including another tenant's). ``admin_auth_headers`` is an admin, so the
+        client scope is unrestricted; the row only has to exist. Written
+        through the app's OWN ``get_db`` override so it lands in the engine the
+        request will read — importing the conftest helpers directly re-executes
+        conftest as a second module with a separate engine.
+        """
+        from backend.database import get_db
+        from backend.main import app
+        from backend.orm.client import Client
+        from backend.orm.product import Product
+
+        session = next(app.dependency_overrides[get_db]())
+        try:
+            if session.query(Client).filter(Client.client_id == "INF-CLIENT").first() is None:
+                session.add(Client(client_id="INF-CLIENT", client_name="Inference Client"))
+                session.flush()
+            product = session.query(Product).filter(Product.product_code == "INF-P1").first()
+            if product is None:
+                product = Product(
+                    client_id="INF-CLIENT",
+                    product_code="INF-P1",
+                    product_name="Inference Product",
+                )
+                session.add(product)
+                session.commit()
+            product_id = product.product_id
+        finally:
+            session.close()
+        return product_id
+
+    def test_infer_cycle_time(self, test_client, admin_auth_headers, inference_product):
         """Test cycle time inference endpoint"""
-        response = test_client.get("/api/inference/cycle-time/1", headers=admin_auth_headers)
+        response = test_client.get(f"/api/inference/cycle-time/{inference_product}", headers=admin_auth_headers)
         assert response.status_code == 200
         data = response.json()
         assert "product_id" in data
         assert "ideal_cycle_time" in data
         assert "confidence_score" in data
 
-    def test_infer_cycle_time_with_shift(self, test_client, admin_auth_headers):
+    def test_infer_cycle_time_with_shift(self, test_client, admin_auth_headers, inference_product):
         """Test cycle time inference with shift filter"""
-        response = test_client.get("/api/inference/cycle-time/1?shift_id=1", headers=admin_auth_headers)
+        response = test_client.get(
+            f"/api/inference/cycle-time/{inference_product}?shift_id=1", headers=admin_auth_headers
+        )
         assert response.status_code == 200
 
 

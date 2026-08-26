@@ -6,7 +6,7 @@ Enforces allocation rules: max 2 active lines per employee, total <= 100%.
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import or_, func as sqlfunc
-from typing import Any, List, Optional
+from typing import Sequence, Any, List, Optional
 from datetime import date
 from decimal import Decimal
 
@@ -182,6 +182,7 @@ def list_assignments(
     line_id: Optional[int] = None,
     client_id: Optional[str] = None,
     active_only: bool = True,
+    client_ids: Optional[Sequence[str]] = None,
 ) -> List[EmployeeLineAssignment]:
     """
     List employee line assignments with optional filters.
@@ -192,11 +193,18 @@ def list_assignments(
         line_id: Filter by production line.
         client_id: Filter by client.
         active_only: If True, only return active assignments (end_date IS NULL or > today).
+        client_ids: SECURITY — the caller's authorized clients
+            (``ClientScope.client_ids``). ``None`` means all clients, which is
+            correct only for admin/poweruser. Without it this listing returned
+            every tenant's assignments to any authenticated user.
 
     Returns:
         List of EmployeeLineAssignment ORM objects.
     """
     query = db.query(EmployeeLineAssignment)
+
+    if client_ids is not None:
+        query = query.filter(EmployeeLineAssignment.client_id.in_(list(client_ids)))
 
     if employee_id is not None:
         query = query.filter(EmployeeLineAssignment.employee_id == employee_id)

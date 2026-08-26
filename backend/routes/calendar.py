@@ -6,8 +6,10 @@ This is a read-only thin wrapper around the capacity calendar CRUD layer,
 providing working-day/holiday information to KPI dashboards and other
 operational consumers that do not need full capacity planning access.
 
-All endpoints require authentication (any role) and enforce multi-tenant
-isolation via the required client_id query parameter.
+All endpoints require authentication (any role). The client_id query
+parameter is REQUIRED and, since it arrives from the caller, is checked
+against the caller's authorized clients by verify_client_access before any
+data is read — requiring the parameter is not by itself isolation.
 """
 
 from datetime import date
@@ -18,6 +20,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from backend.auth.jwt import get_current_user
+from backend.middleware.client_auth import verify_client_access
 from backend.services.calendar_service import (
     get_calendar_entry as get_calendar_entry_by_date,
     get_calendar_period as get_calendar_for_period,
@@ -105,6 +108,8 @@ def get_working_days(
         extra={"client_id": client_id, "start_date": str(start_date), "end_date": str(end_date)},
     )
 
+    verify_client_access(current_user, client_id, db)
+
     entries = get_calendar_for_period(db, client_id, start_date, end_date)
 
     return [
@@ -140,6 +145,8 @@ def get_summary(
         extra={"client_id": client_id, "start_date": str(start_date), "end_date": str(end_date)},
     )
 
+    verify_client_access(current_user, client_id, db)
+
     entries = get_calendar_for_period(db, client_id, start_date, end_date)
 
     working = [e for e in entries if e.is_working_day]
@@ -172,6 +179,8 @@ def get_single_day(
         "GET /{calendar_date} requested",
         extra={"client_id": client_id, "calendar_date": str(calendar_date)},
     )
+
+    verify_client_access(current_user, client_id, db)
 
     entry = get_calendar_entry_by_date(db, client_id, calendar_date)
     if entry is None:

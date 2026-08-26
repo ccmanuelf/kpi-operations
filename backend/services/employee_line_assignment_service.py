@@ -4,7 +4,7 @@ Thin service layer wrapping Employee Line Assignment CRUD operations.
 Routes should import from this module instead of backend.crud.employee_line_assignment directly.
 """
 
-from typing import List, Optional
+from typing import List, Optional, Sequence
 from sqlalchemy.orm import Session
 
 from backend.crud.employee_line_assignment import (
@@ -34,9 +34,10 @@ def list_line_assignments(
     line_id: Optional[int] = None,
     client_id: Optional[str] = None,
     active_only: bool = True,
+    client_ids: Optional[Sequence[str]] = None,
 ) -> List[EmployeeLineAssignment]:
-    """List employee line assignments with filters."""
-    return list_assignments(db, employee_id, line_id, client_id, active_only)
+    """List employee line assignments with filters (``client_ids`` = caller scope)."""
+    return list_assignments(db, employee_id, line_id, client_id, active_only, client_ids=client_ids)
 
 
 def get_line_assignment(db: Session, assignment_id: int) -> Optional[EmployeeLineAssignment]:

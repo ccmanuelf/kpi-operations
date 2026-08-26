@@ -585,7 +585,11 @@ class TestRouteAuth:
         response = client.get("/api/employee-line-assignments/")
         assert response.status_code == 200
 
-        response = client.get("/api/employee-line-assignments/employee/1")
+        # A REAL employee of the caller's client: the by-employee route now
+        # resolves the employee and authorizes its client, so a hardcoded id
+        # that does not exist is a 404 rather than an empty 200.
+        emp = _seed_employee(db)
+        response = client.get(f"/api/employee-line-assignments/employee/{emp.employee_id}")
         assert response.status_code == 200
 
         response = client.get(

@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from backend.crud.break_time import (
     create_break_time,
+    get_break_time,
     list_break_times,
     list_break_times_for_client,
     get_total_break_minutes,
@@ -35,6 +36,11 @@ def list_all_break_times_for_client(db: Session, client_id: str) -> Any:
 def get_total_break_minutes_for_shift(db: Session, shift_id: int, client_id: str) -> int:
     """Get total break minutes for a shift."""
     return get_total_break_minutes(db, shift_id, client_id)
+
+
+def get_break_time_record(db: Session, break_id: int) -> Any:
+    """Fetch a break time by id."""
+    return get_break_time(db, break_id)
 
 
 def update_break_time_record(db: Session, break_id: int, data: Any) -> Any:

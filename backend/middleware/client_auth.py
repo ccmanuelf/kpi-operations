@@ -197,6 +197,55 @@ def verify_client_access(user: User, resource_client_id: str, db: Optional[Sessi
     return True
 
 
+def verify_employee_access(user: User, employee: Any, db: Optional[Session] = None) -> bool:
+    """
+    Verify user has access to a specific EMPLOYEE row.
+
+    EMPLOYEE has no ``client_id`` column: ownership lives in the
+    comma-separated ``EMPLOYEE.client_id_assigned``, which is the shape the
+    seeder writes (``seed/writers_master.py``) and the shape
+    ``crud/employee/client_assignment.get_employees_by_client`` filters on.
+    Access is granted when at least ONE of the employee's assigned clients is
+    in the caller's authorized set — an employee may legitimately be shared by
+    several clients.
+
+    An employee with no assignment is a shared floating-pool resource
+    (``EmployeeCreate.client_id_assigned`` is documented as "NULL for floating
+    pool") and stays visible to every authenticated user. Both halves of that
+    rule are pinned by ``test_permission_matrix.py``'s cross-tenant tests
+    (``test_unassigned_employee_is_visible_to_every_tenant`` and the
+    ``/api/employees/{employee_id}`` matrix row).
+
+    Args:
+        user: Authenticated user object (loaded from DB by get_current_user)
+        employee: EMPLOYEE ORM row whose access is being checked
+        db: Optional database session for junction table lookup
+
+    Returns:
+        True if user has access
+
+    Raises:
+        ClientAccessError: If the employee is owned and none of its clients
+            is in the caller's authorized set
+    """
+    if user.role in [UserRole.ADMIN, UserRole.POWERUSER]:
+        return True
+
+    assigned = getattr(employee, "client_id_assigned", None) or ""
+    owners = [c.strip() for c in assigned.split(",") if c.strip()]
+    if not owners:
+        # Unowned = shared floating-pool resource; no tenant to deny against.
+        return True
+
+    user_clients = get_user_client_filter(user, db)
+    assert user_clients is not None  # ADMIN/POWERUSER returned True above
+
+    if not any(owner in user_clients for owner in owners):
+        raise ClientAccessError(detail=f"Access denied: User {user.username} cannot access client '{owners[0]}'")
+
+    return True
+
+
 def build_client_filter_clause(user: User, client_id_column: Any) -> Any:
     """
     Build SQLAlchemy filter clause for client isolation

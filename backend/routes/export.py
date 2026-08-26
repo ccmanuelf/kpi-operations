@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session
 from backend.database import get_db
 from backend.auth.jwt import get_current_user
 from backend.orm.user import User
-from backend.middleware.client_auth import build_client_filter_clause
+from backend.middleware.client_auth import build_client_filter_clause, verify_client_access
 from backend.services.csv_export_service import stream_csv_export
 from backend.utils.logging_utils import get_module_logger
 
@@ -69,6 +69,10 @@ def _build_csv_response(
     """
     # Build client isolation filter
     if client_id:
+        # SECURITY: client_id comes from the caller and REPLACES the
+        # role-derived filter below, so it must be authorized first —
+        # otherwise any authenticated user can dump another tenant's table.
+        verify_client_access(current_user, client_id, db)
         # If explicit client_id is provided, filter to just that client
         client_filter = model_class.client_id == client_id
     else:
@@ -418,6 +422,8 @@ async def export_employees(
     # to unify the variants.
     client_filter: Any = None
     if client_id:
+        # SECURITY: same caller-supplied override as _build_csv_response.
+        verify_client_access(current_user, client_id, db)
         client_filter = Employee.client_id_assigned.like(f"%{client_id}%")
     else:
         # For non-admin users, we still need to filter based on their assigned clients

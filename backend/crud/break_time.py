@@ -113,6 +113,20 @@ def get_total_break_minutes(db: Session, shift_id: int, client_id: str) -> int:
     return int(result)
 
 
+def get_break_time(db: Session, break_id: int) -> Optional[BreakTime]:
+    """
+    Fetch a single break time entry by id.
+
+    Args:
+        db: Database session
+        break_id: ID of the break to fetch
+
+    Returns:
+        BreakTime instance, or None if not found
+    """
+    return db.query(BreakTime).filter(BreakTime.break_id == break_id).first()
+
+
 def update_break_time(db: Session, break_id: int, data: BreakTimeUpdate) -> Optional[BreakTime]:
     """
     Update an existing break time entry.

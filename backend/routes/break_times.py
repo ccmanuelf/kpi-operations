@@ -12,17 +12,33 @@ from backend.utils.logging_utils import get_module_logger, log_operation, log_er
 from backend.schemas.break_time import BreakTimeCreate, BreakTimeUpdate, BreakTimeResponse
 from backend.services.break_time_service import (
     create_break_time_record as create_break_time,
+    get_break_time_record as get_break_time,
     list_break_times_for_shift as list_break_times,
     list_all_break_times_for_client as list_break_times_for_client,
     update_break_time_record as update_break_time,
     deactivate_break_time_record as deactivate_break_time,
 )
 from backend.auth.jwt import get_current_user, get_current_active_supervisor, ClientScope, resolve_client_scope
+from backend.middleware.client_auth import verify_client_access
 from backend.orm.user import User
 
 logger = get_module_logger(__name__)
 
 router = APIRouter(prefix="/api/break-times", tags=["Break Times"])
+
+
+def _authorize_break(db: Session, break_id: int, current_user: User) -> None:
+    """Authorize a break time entry for the caller before mutating it.
+
+    SECURITY: ``update_break_time``/``deactivate_break_time`` filter on
+    break_id alone, so without this check a supervisor of one client could
+    rename or soft-delete another client's break. 404 when absent, 403 when
+    owned by a client the caller is not assigned to.
+    """
+    db_break = get_break_time(db, break_id)
+    if not db_break:
+        raise HTTPException(status_code=404, detail="Break time not found")
+    verify_client_access(current_user, db_break.client_id, db)
 
 
 @router.get("", response_model=List[BreakTimeResponse])
@@ -80,6 +96,7 @@ def update_break(
     current_user: User = Depends(get_current_active_supervisor),
 ) -> Any:
     """Update an existing break time entry (supervisor or admin required)."""
+    _authorize_break(db, break_id, current_user)
     try:
         result = update_break_time(db, break_id, break_data)
         if not result:
@@ -106,6 +123,7 @@ def delete_break(
     current_user: User = Depends(get_current_active_supervisor),
 ) -> None:
     """Soft-delete a break time entry (supervisor or admin required)."""
+    _authorize_break(db, break_id, current_user)
     try:
         success = deactivate_break_time(db, break_id)
         if not success:

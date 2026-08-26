@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from backend.database import get_db
 from backend.auth.jwt import get_current_active_supervisor, get_current_user
+from backend.middleware.client_auth import verify_client_access
 from backend.orm.user import User
 from backend.reports.pdf_generator import PDFReportGenerator
 from backend.utils.logging_utils import get_module_logger
@@ -39,6 +40,11 @@ async def get_email_report_config(
     - Recipients list
     - Report content options
     """
+    # SECURITY: client_id arrives from the caller and selects whose stored
+    # config is returned; confirm they own it.
+    if client_id:
+        verify_client_access(current_user, client_id)
+
     config_key = client_id or f"user_{current_user.user_id}"
 
     if config_key in _email_configs:

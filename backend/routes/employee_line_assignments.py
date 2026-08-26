@@ -8,7 +8,14 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 
 from backend.database import get_db
-from backend.auth.jwt import get_current_user, get_current_active_supervisor
+from backend.auth.jwt import (
+    ClientScope,
+    get_current_user,
+    get_current_active_supervisor,
+    resolve_client_scope,
+)
+from backend.middleware.client_auth import verify_client_access, verify_employee_access
+from backend.orm.employee import Employee
 from backend.orm.employee_line_assignment import EmployeeLineAssignment
 from backend.orm.user import User
 from backend.utils.logging_utils import get_module_logger
@@ -19,6 +26,7 @@ from backend.schemas.employee_line_assignment import (
 )
 from backend.services.employee_line_assignment_service import (
     create_line_assignment as create_assignment,
+    get_line_assignment as get_assignment,
     list_line_assignments as list_assignments,
     get_lines_for_employee as get_employee_lines,
     get_employees_for_line as get_line_employees,
@@ -34,6 +42,38 @@ router = APIRouter(
 )
 
 
+def _authorize_assignment(db: Session, assignment_id: int, current_user: User) -> None:
+    """Authorize one line assignment for the caller before mutating it.
+
+    SECURITY: ``update_assignment``/``end_assignment`` filter on assignment_id
+    alone. 404 when absent, 403 when owned by a client the caller is not
+    assigned to.
+    """
+    assignment = get_assignment(db, assignment_id)
+    if not assignment:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Assignment not found",
+        )
+    verify_client_access(current_user, assignment.client_id, db)
+
+
+def _authorize_employee(db: Session, employee_id: int, current_user: User) -> None:
+    """Authorize reads keyed by employee id.
+
+    SECURITY: the assignments of an employee carry that employee's client, so
+    listing them for an employee outside the caller's scope leaks the other
+    tenant's line topology.
+    """
+    employee = db.query(Employee).filter(Employee.employee_id == employee_id).first()
+    if not employee:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Employee not found",
+        )
+    verify_employee_access(current_user, employee, db)
+
+
 @router.get("/", response_model=List[EmployeeLineAssignmentResponse])
 def list_assignments_endpoint(
     employee_id: Optional[int] = Query(None, description="Filter by employee ID"),
@@ -42,12 +82,17 @@ def list_assignments_endpoint(
     active_only: bool = Query(True, description="Only return active assignments"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    scope: ClientScope = Depends(resolve_client_scope),
 ) -> List[EmployeeLineAssignment]:
     """
-    List employee line assignments with optional filters.
+    List employee line assignments for the caller's authorized client scope.
 
     Filters can be combined: employee_id, line_id, client_id.
     By default returns only active assignments (end_date IS NULL or > today).
+
+    SECURITY: ``scope`` confines the result to the caller's clients (and 403s
+    an unauthorized explicit client_id). Without it this route returned every
+    tenant's assignments, with or without a client_id filter.
     """
     logger.info(
         "Listing line assignments (employee_id=%s, line_id=%s, client_id=%s, active_only=%s) by user=%s",
@@ -63,6 +108,7 @@ def list_assignments_endpoint(
         line_id=line_id,
         client_id=client_id,
         active_only=active_only,
+        client_ids=scope.client_ids,
     )
 
 
@@ -80,6 +126,7 @@ def get_employee_lines_endpoint(
 
     Returns the employee's current line assignments ordered by primary first.
     """
+    _authorize_employee(db, employee_id, current_user)
     logger.info(
         "Getting lines for employee_id=%d by user=%s",
         employee_id,
@@ -104,6 +151,8 @@ def get_line_employees_endpoint(
     Requires client_id for multi-tenant isolation.
     Returns assignments ordered by primary first.
     """
+    # SECURITY: client_id arrives from the caller; confirm they own it.
+    verify_client_access(current_user, client_id, db)
     logger.info(
         "Getting employees for line_id=%d, client_id=%s by user=%s",
         line_id,
@@ -171,6 +220,7 @@ def update_assignment_endpoint(
     Requires supervisor or admin role.
     Re-validates allocation if percentage changes.
     """
+    _authorize_assignment(db, assignment_id, current_user)
     try:
         result = update_assignment(db, assignment_id, data)
     except ValueError as exc:
@@ -207,6 +257,7 @@ def end_assignment_endpoint(
     Requires supervisor or admin role.
     Does NOT hard-delete; sets end_date for audit trail.
     """
+    _authorize_assignment(db, assignment_id, current_user)
     result = end_assignment(db, assignment_id)
     if not result:
         raise HTTPException(
