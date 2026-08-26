@@ -854,3 +854,65 @@ Allowlist: 131 → **113** (17 scoped out, 1 converted).
 **Do not let a route dodge the ratchet by claiming a return type it does not have.** The
 two-sided gate is what prevents that: a route annotated `-> StreamingResponse` that actually
 returns a dict would record real JSON keys in the golden master and fail.
+
+---
+
+## Tasks 11–14 REPLACED by R1–R5 — 2026-08-26, sized from a measured classification
+
+A 10-agent sweep classified all 111 then-remaining routes. The Tasks 9–14 table grouped by
+route COUNT, before anyone knew what the routes return. Measured:
+
+| class | count | can it take a response model? |
+|---|---:|---|
+| `json_body` | **69** | yes — this is the real remaining work |
+| `no_content_204` | 25 | no — all DELETEs, Task 17 / the scope rule |
+| `needs_request_body` | 11 | not until Task 15's write-capture harness |
+| `file_download` | 6 | no — Task 10's scope rule covers them |
+
+**38% of what remained can never take a response model.** `/api/qr` (5 routes, all PNG) was
+mis-sized exactly as `/api/export` was, and appeared in **no** Task 11–14 grouping — it has
+since been scoped out (`f0092c9`). `/api/workflow` residue is 5 routes, all Task 16's.
+
+### The new batches, weighted by cost rather than count
+
+Weight: 1 base, **+2** conditional shape (needs `exclude_unset` + a registry entry + a forcing
+test — the expensive part), **+1** no usable golden evidence, **+1** Decimal hazard.
+69 routes, 130 total weight, five batches of 26 each. The old four were 26 / 8 / 13 / 33.
+
+| batch | areas | routes | weight |
+|---|---|---:|---:|
+| **R1** | `/jobs` | 7 | 26 |
+| **R2** | `/quality` 8, `/capacity` 2, `/pivot` 1 | 11 | 26 |
+| **R3** | `/floating-pool` 4, `/work-orders` 5, `/attendance` 4, `/alerts` 2 | 15 | 26 |
+| **R4** | `/cache` 4, `/kpi-thresholds` 3, `/predictions` 3, `/data-completeness` 3, `/my-shift` 2, `/shifts` 2, `/plan-vs-actual` 2 | 19 | 26 |
+| **R5** | `/auth` 4, `/v2` 2, `/defect-types` 2, + 9 single-route areas | 17 | 26 |
+
+**Order: R4 → R3 → R2 → R5 → R1.** R4 is evidence-backed with near-zero conditionals — the
+most routes closed for the least risk. R1 is last and has a hard prerequisite.
+
+### R1's prerequisite — seed JOB first
+
+`/jobs` is 10% of the convertible routes and 20% of the weight: 6 of its 7 routes have a
+conditional shape (the highest concentration anywhere) and 6 of 7 have **no golden evidence at
+all**, every one `<blocked:job_id>`. `param_specs.py:285` already records why:
+
+> `job_id` … *"JOB has zero seeded rows; named in `seed/cli.py`'s never-written list. Blocks 8
+> of the 15 blocked routes — the highest route-count payoff of any single seeder gap."*
+
+Seed JOB (a slice of Task 8d) **before** R1, so R1 works from evidence rather than source
+reading. Do not discover this during R1.
+
+### Two standing instructions for every remaining batch
+
+**1. Declare `float`, never `Decimal`.** A model field typed `Decimal` *creates* the
+string bug this refactor exists to remove. And the golden master compares key sets, never value
+types, **by design** — so it is structurally blind to exactly that regression: a `Decimal`-typed
+field would leave the whole suite green. These routes need a narrow value-type assertion of
+their own; do not weaken the golden master to get one.
+
+**2. The remaining Decimal risk is live, not hypothetical.** Of the allowlisted routes, ~80
+carry an explicit loose `response_model` and route through Pydantic's serializer; only ~33 are
+undeclared and therefore already immune. `GET /api/inference/cycle-time/{product_id}` emits
+`"ideal_cycle_time":"0.034260326879026824"` on **SQLite today**. See the CONTROLLER CORRECTION
+at the head of §6 in `remaining-route-classification.md` — that document's §6 originally claimed
+the opposite, and anything quoting it uncorrected inherits the error.
