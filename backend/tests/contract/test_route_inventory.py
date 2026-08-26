@@ -1,11 +1,13 @@
 def test_every_loose_route_is_inventoried_and_none_is_silently_dropped():
-    """140 loose routes, re-measured 2026-08-25 after Task 7 converted the
-       remaining 15 `/api/kpi/*` routes (availability, dashboard, dashboard/
-       aggregated, efficiency/by-product, efficiency/by-shift, labor-hours,
-       late-orders, otd, otd/by-client, otd/late-deliveries, performance/
-       by-product, performance/by-shift, wip-aging/top, chronic-holds,
-       {metric}/cause) to typed response models, shrinking this count from
-       its prior 155 (itself shrunk from 164 by Task 6's nine trend routes).
+    """131 loose routes, re-measured 2026-08-25 after Task 9 converted the 9
+       `/api/workflow` GET routes (templates, config/{client_id},
+       analytics/{client_id}/average-times, analytics/{client_id}/
+       stage-durations, statistics/{client_id}/status-distribution,
+       statistics/{client_id}/transitions, work-orders/{id}/
+       allowed-transitions, work-orders/{id}/elapsed-time, work-orders/{id}/
+       transition-times) to typed response models, shrinking this count from
+       its prior 140 (itself shrunk from 155 by Task 7's fifteen remaining
+       `/api/kpi/*` routes, and from 164 by Task 6's nine trend routes).
 
        The original 160 came from a string-prefix predicate that could not see through
        typing.List[...] wrappers and silently dropped four live routes. See is_loose.
@@ -17,7 +19,7 @@ def test_every_loose_route_is_inventoried_and_none_is_silently_dropped():
 
     routes = loose_routes(app)
 
-    assert len(routes) == 140
+    assert len(routes) == 131
     methods = {m for m, _, _ in routes}
     assert methods == {"GET", "POST", "PUT", "DELETE"}
 
