@@ -14,41 +14,73 @@ anyone writing down why -- which is the same enshrined-accident risk
 `NEVER_404` (`param_specs.py`) exists to close for id-insensitivity, applied
 to this different claim.
 
-A declaration alone is not a guarantee: THIS module makes exclude_unset
-usage inspectable and complete, but it does not by itself prove the omitted
-branch's shape is right. That is `test_conditional_branches.py`'s forcing
-tests' job -- see that module's docstring for which entries have one.
+A declaration alone is not a guarantee: registration only proves the flag is
+inspectable and complete, never that the omitted branch's shape is right.
+Each entry's `forcing_test` field says, AT A GLANCE, whether something
+actually proves that: `None` means the branch is registered but UNFORCED --
+real, disclosed debt, not silently-assumed coverage -- and a name means a
+test in `test_conditional_branches.py` builds that exact branch and pins its
+key set. Do not read `forcing_test` as a claim the test also checks the
+right THING: a naive version of `average-times`' own forcing test round-
+tripped its branch through the very model it was checking and was blind to
+an added field as a result (Pydantic silently discards what a model does not
+declare) -- see that test's docstring. A forcing test is only as good as
+checking the RAW value before anything normalises it, not just the
+validated one.
 """
 
 from __future__ import annotations
 
-from typing import Dict
+from dataclasses import dataclass
+from typing import Dict, Optional
 
 from fastapi.routing import APIRoute
 
-#: route -> why its response model needs response_model_exclude_unset=True.
-#: Each reason names the producing function and the branch that omits keys.
-EXCLUDE_UNSET_ROUTES: Dict[str, str] = {
-    "GET /api/kpi/otd": (
-        "true_otd/standard_otd/late_counts/justified_by_reason are added only "
-        "when scope resolves to exactly one client (routes/kpi/otd.py::calculate_otd_kpi) "
-        "-- absent, not null, when the caller sees all clients. Task 7. "
-        "No forcing test yet (pre-dates this registry) -- see OTDSummary in "
-        "schemas/kpi_contracts.py for the manual verification on record."
+
+@dataclass(frozen=True)
+class ExcludeUnsetEntry:
+    """`reason` names the producing function and the branch that omits keys.
+    `forcing_test` is the `test_conditional_branches.py` function name that
+    builds that branch and pins its exact key set, or `None` if no such test
+    exists yet -- see the module docstring for what `None` does and does not
+    mean.
+    """
+
+    reason: str
+    forcing_test: Optional[str]
+
+
+#: route -> ExcludeUnsetEntry. See the module docstring for the two-sided
+#: gate this is checked against and what `forcing_test` promises.
+EXCLUDE_UNSET_ROUTES: Dict[str, ExcludeUnsetEntry] = {
+    "GET /api/kpi/otd": ExcludeUnsetEntry(
+        reason=(
+            "true_otd/standard_otd/late_counts/justified_by_reason are added only "
+            "when scope resolves to exactly one client (routes/kpi/otd.py::calculate_otd_kpi) "
+            "-- absent, not null, when the caller sees all clients. Task 7 -- pre-dates this "
+            "registry; see OTDSummary in schemas/kpi_contracts.py for the manual verification "
+            "on record."
+        ),
+        forcing_test=None,
     ),
-    "GET /api/kpi/dashboard/aggregated": (
-        "Each of efficiency/performance/quality/availability/absenteeism/wip_aging/otd "
-        "narrows to just current/target/error on its own SQLAlchemyError/Exception "
-        "fallback (routes/kpi/dashboard.py::get_aggregated_dashboard) -- the other "
-        "fields are absent, not null, on that path. Task 7. No forcing test yet "
-        "(pre-dates this registry) -- see AggregatedDashboard in schemas/kpi_contracts.py "
-        "for the manual verification on record."
+    "GET /api/kpi/dashboard/aggregated": ExcludeUnsetEntry(
+        reason=(
+            "Each of efficiency/performance/quality/availability/absenteeism/wip_aging/otd "
+            "narrows to just current/target/error on its own SQLAlchemyError/Exception "
+            "fallback (routes/kpi/dashboard.py::get_aggregated_dashboard) -- the other fields "
+            "are absent, not null, on that path. Task 7 -- pre-dates this registry; see "
+            "AggregatedDashboard in schemas/kpi_contracts.py for the manual verification on "
+            "record."
+        ),
+        forcing_test=None,
     ),
-    "GET /api/workflow/analytics/{client_id}/average-times": (
-        "overdue_count/overdue_percentage are absent, not null, when a client has "
-        "zero matching work orders (calculations/elapsed_time.py::calculate_client_average_times). "
-        "Task 9. Forced by "
-        "test_conditional_branches.py::test_average_times_empty_orders_branch_omits_overdue_keys."
+    "GET /api/workflow/analytics/{client_id}/average-times": ExcludeUnsetEntry(
+        reason=(
+            "overdue_count/overdue_percentage are absent, not null, when a client has zero "
+            "matching work orders (calculations/elapsed_time.py::calculate_client_average_times). "
+            "Task 9."
+        ),
+        forcing_test="test_average_times_empty_orders_branch_omits_overdue_keys",
     ),
 }
 
