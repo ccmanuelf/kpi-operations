@@ -916,3 +916,62 @@ undeclared and therefore already immune. `GET /api/inference/cycle-time/{product
 `"ideal_cycle_time":"0.034260326879026824"` on **SQLite today**. See the CONTROLLER CORRECTION
 at the head of §6 in `remaining-route-classification.md` — that document's §6 originally claimed
 the opposite, and anything quoting it uncorrected inherits the error.
+
+---
+
+## Two plan-wide facts established in Batch R4 — 2026-08-26
+
+### 1. `int` → `float` widening is an ACCEPTED, DISCLOSED consequence
+
+Declaring a field `float` where the producer can emit a Python `int` widens the wire value:
+
+```
+GET /api/cache/health               "hit_rate":0    -> 0.0
+GET /api/cache/stats                "hit_rate":0    -> 0.0
+GET /api/data-completeness/summary   daily[].*:100  -> 100.0
+```
+
+Mechanism: `round(0, 2)` is the int `0`; `min(float, 100)` returns the int `100` when the ratio
+exceeds 100. Pydantic then renders `0.0` / `100.0`.
+
+**This is accepted, not a defect.** `float` is the correct declaration — `int` would truncate
+87.5 — and it is the same intentional normalisation as `"93.50"` → `93.5`, which is the point
+of the refactor. This plan's "no endpoint may change what it returns" means **field sets**,
+which is exactly why the golden master compares key sets and never value types.
+
+Benign for this product: the frontend is TypeScript, and `JSON.parse` yields the same `Number`
+for `100` and `100.0`. A strict Python consumer would see `int` vs `float` — worth knowing, not
+worth reverting.
+
+**Every batch must disclose its own instances.** The golden master is structurally blind to
+this, so it will not surface on its own, and a report claiming "no endpoint changed what it
+returns" without checking is asserting something nobody measured. A/B capture the bodies if in
+doubt.
+
+### 2. The `Decimal` guard does NOT run in the contract suite
+
+`tests/test_models/test_decimal_response_serialization.py::test_no_response_model_carries_a_decimal_field`
+is the only thing enforcing "declare `float`, never `Decimal`" — the instruction that protects
+against *creating* the bug this refactor removes. Measured in R4: with a `Decimal` field
+deliberately in place, `pytest tests/contract/` stayed **53 passed**; only that separate module
+failed.
+
+So an implementer running the contract suite constantly — which every brief tells them to do —
+gets **no signal** on the single most dangerous mistake available to them. Until that changes,
+every batch must run
+`backend/.venv/bin/python -m pytest tests/test_models/test_decimal_response_serialization.py`
+explicitly before committing. The guard does recurse through nested models, so it is
+comprehensive once run.
+
+### 3. Interpreter — non-negotiable
+
+Run everything through **`backend/.venv/bin/python`**. A bare `python`/`pytest` on this machine
+is Anaconda with **fastapi 0.129.0**; the repo pins **0.141.1**. Under 0.129 `app.routes` is
+flat, so the whole contract harness reads green while the route walk sees nothing under the
+pinned version — measured at the pre-fix commit: **9 failed / 41 passed**, with the ratchet
+finding 0 loose routes where the fixed walk finds 112.
+
+`tests/contract/test_capture_harness.py::test_flatten_api_routes_changes_the_observed_route_set`
+fails under 0.129 and passes under 0.141.1, so it detects a wrong interpreter by construction.
+**If the contract suite shows exactly that one failure, the code is fine and the interpreter is
+wrong.**
