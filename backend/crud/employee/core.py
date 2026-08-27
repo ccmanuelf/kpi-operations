@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from fastapi import HTTPException
 
 from backend.orm.employee import Employee
-from backend.orm.user import User, SUPERVISORY_ROLES
+from backend.orm.user import User, PLANNER_ROLES, SUPERVISORY_ROLES
 from backend.middleware.client_auth import (
     client_token_clause,
     get_user_client_filter,
@@ -173,6 +173,21 @@ def update_employee(db: Session, employee_id: int, employee_update: dict, curren
 
     # SECURITY: the role check above does not bind the caller to a tenant.
     verify_employee_access(current_user, db_employee, db)
+
+    # SECURITY: passing the tenant check on the CURRENT owner does not entitle
+    # the caller to change who the owner is. Without this a supervisor could
+    # move an employee out of their own tenant, or blank the assignment and
+    # (before verify_employee_access stopped treating blank as shared) publish
+    # it to every tenant. Reassignment is a planner action and has its own
+    # endpoint, POST /api/employees/{id}/assign-client, which verifies access
+    # to the TARGET client.
+    if "client_id_assigned" in employee_update:
+        requested = employee_update["client_id_assigned"]
+        if requested != db_employee.client_id_assigned and current_user.role not in PLANNER_ROLES:
+            raise HTTPException(
+                status_code=403,
+                detail="Only admins and powerusers can change an employee's client assignment",
+            )
 
     # Update fields
     for field, value in employee_update.items():

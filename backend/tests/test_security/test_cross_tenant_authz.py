@@ -34,6 +34,7 @@ CROSS_TENANT_403 = cross_tenant_probe.CROSS_TENANT_403
 BY_ID_TARGETS = by_id_targets(app)
 BY_ID_MATRIX = cross_tenant_probe.BY_ID_MATRIX
 CLIENT_ID_QUERY_MATRIX = cross_tenant_probe.CLIENT_ID_QUERY_MATRIX
+tenant_a_env = cross_tenant_probe.tenant_a_env
 tenant_a_client = cross_tenant_probe.tenant_a_client
 two_tenant_as = cross_tenant_probe.two_tenant_as
 tenant_a_db = cross_tenant_probe.tenant_a_db
@@ -266,6 +267,92 @@ class TestCrossTenantByIdRoutes:
         admin.username = "admin_all"
         with pytest.raises(ClientAccessError):
             verify_employee_access(admin, None)
+
+    def test_supervisor_cannot_rewrite_an_employees_client_assignment(self, tenant_a_client):
+        """Passing the tenant check on the CURRENT owner does not entitle the
+        caller to change who the owner is. Reassignment is a planner action
+        with its own endpoint that verifies access to the TARGET client."""
+        from backend.tests.fixtures.two_tenant import EMPLOYEE_A
+
+        moved = tenant_a_client.put(f"/api/employees/{EMPLOYEE_A}", json={"client_id_assigned": TENANT_B})
+        assert moved.status_code == 403, f"supervisor moved an employee to another tenant: {moved.text[:200]}"
+
+        blanked = tenant_a_client.put(f"/api/employees/{EMPLOYEE_A}", json={"client_id_assigned": ""})
+        assert blanked.status_code == 403, f"supervisor blanked an assignment: {blanked.text[:200]}"
+
+        unchanged = tenant_a_client.put(
+            f"/api/employees/{EMPLOYEE_A}", json={"client_id_assigned": TENANT_A, "department": "Cutting"}
+        )
+        assert unchanged.status_code == 200, "a no-op assignment must not be rejected"
+
+    def test_system_wide_alerts_survive_an_explicit_client_filter(self, tenant_a_db, tenant_a_client):
+        """`... AND client_id = 'X'` dropped every NULL row, so a comment
+        claiming system-wide alerts "stay visible" was false on the branch a
+        dashboard takes."""
+        from backend.orm.alert import Alert
+
+        tenant_a_db.add(
+            Alert(
+                alert_id="GLOBAL-AL-1",
+                client_id=None,
+                category="quality",
+                severity="critical",
+                title="System-wide alert",
+                message="affects everyone",
+            )
+        )
+        tenant_a_db.commit()
+
+        narrowed = tenant_a_client.get("/api/alerts/", params={"client_id": TENANT_A})
+        assert narrowed.status_code == 200
+        assert "GLOBAL-AL-1" in narrowed.text, "system-wide alert vanished when narrowed to a client"
+
+    def test_only_an_all_client_caller_may_mutate_a_system_wide_alert(self, tenant_a_db, tenant_a_client):
+        """A client-less alert is readable by everyone but writable only by a
+        caller with all-client scope: acknowledge_alert stamps the caller's
+        user_id into a row every other tenant can read."""
+        from backend.orm.alert import Alert
+
+        tenant_a_db.add(
+            Alert(
+                alert_id="GLOBAL-AL-2",
+                client_id=None,
+                category="quality",
+                severity="critical",
+                title="System-wide alert",
+                message="affects everyone",
+            )
+        )
+        tenant_a_db.commit()
+
+        readable = tenant_a_client.get("/api/alerts/GLOBAL-AL-2")
+        assert readable.status_code == 200, "system-wide alerts must stay readable"
+
+        mutated = tenant_a_client.post("/api/alerts/GLOBAL-AL-2/acknowledge", json={})
+        assert mutated.status_code == 403, f"scoped caller mutated a system-wide alert: {mutated.text[:200]}"
+
+        tenant_a_db.expire_all()
+        assert tenant_a_db.query(Alert).filter(Alert.alert_id == "GLOBAL-AL-2").one().status == "active"
+
+    def test_admin_may_mutate_a_system_wide_alert(self, two_tenant_as):
+        """Non-vacuity: the denial above must not be a blanket block."""
+        client = two_tenant_as("USR-ADMIN")
+        from backend.orm.alert import Alert  # noqa: F401
+
+        created = client.post(
+            "/api/alerts/",
+            json={
+                "client_id": None,
+                "category": "quality",
+                "severity": "critical",
+                "title": "System-wide",
+                "message": "affects everyone",
+            },
+        )
+        assert created.status_code == 201, created.text[:200]
+        alert_id = created.json()["alert_id"]
+        acked = client.post(f"/api/alerts/{alert_id}/acknowledge", json={})
+        assert acked.status_code == 200, f"admin blocked from a system-wide alert: {acked.text[:200]}"
 
     def test_alerts_listing_is_scoped_without_any_client_id(self, tenant_a_client):
         """The worst shape, no crafted request needed: /api/alerts/ returned

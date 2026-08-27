@@ -10,7 +10,7 @@ Phase 2.2: Updated to support both:
 import logging
 from typing import Any, Optional, List
 from fastapi import HTTPException, status
-from sqlalchemy import func, or_
+from sqlalchemy import false, func, or_
 from sqlalchemy.orm import Session
 from backend.orm.user import User, UserRole
 
@@ -274,30 +274,42 @@ def verify_employee_access(user: User, employee: Any, db: Optional[Session] = No
     return True
 
 
-#: LIKE metacharacters. A client id is interpolated into a LIKE pattern below,
-#: and `_` is a single-character wildcard — seed/cli.py's SAMPLE_REF already
-#: contains one, so an unescaped pattern would match ids nobody assigned.
-_LIKE_ESCAPE = str.maketrans({"\\": "\\\\", "%": "\\%", "_": "\\_"})
+#: Hex of a comma. HEX() renders every byte as two uppercase hex digits, so a
+#: comma-delimited list becomes a hex string in which token boundaries are
+#: exactly this sequence and nothing else can look like one.
+_COMMA_HEX = ",".encode().hex().upper()
 
 
 def client_token_clause(column: Any, client_id: str) -> Any:
     """SQL clause: comma-separated ``column`` contains ``client_id`` as an EXACT token.
 
-    ``column.like(f"%{client_id}%")`` is wrong twice and both ways leak:
+    Three ways the obvious spellings are wrong, and all three leak or diverge:
 
-    * it matches a client id that is a SUBSTRING of another — a caller scoped
-      to ``ACME`` lists ``ACME-WEST``'s employees, and a plain ``DEMO`` client
-      would pull in every ``DEMO-*`` tenant; and
-    * it treats ``%`` and ``_`` inside a client id as wildcards.
+    * ``column.like(f"%{client_id}%")`` matches a client id that is a SUBSTRING
+      of another — a caller scoped to ``ACME`` lists ``ACME-WEST``'s employees,
+      and a plain ``DEMO`` client would pull in every ``DEMO-*`` tenant.
+    * It also treats ``%`` and ``_`` inside a client id as wildcards, and
+      ``seed/cli.py``'s ``SAMPLE_REF`` already contains one.
+    * Anchored ``LIKE`` fixes both but introduces a third: ``=`` is
+      case-SENSITIVE on SQLite while ``LIKE`` is case-INsensitive, so the same
+      clause matched ``'acme,OTHER'`` and not ``'acme'`` — case-sensitive for a
+      single token, case-insensitive for a list, on one engine, and neither
+      agreeing with the case-sensitive Python split in
+      ``verify_employee_access``. Collations make it engine-dependent too.
 
-    Anchoring the token between commas and escaping the pattern fixes both, so
-    this listing agrees exactly with ``verify_employee_access``, which splits
-    on commas in Python. Spaces are stripped from the stored value first so
-    ``"A, B"`` and ``"A,B"`` mean the same thing, matching the ``.strip()`` in
-    ``_get_clients_from_legacy_field``.
+    So the comparison is done on ``HEX()`` output instead. Hex is
+    collation-independent and byte-exact on both SQLite and MariaDB, which
+    makes the clause agree with the Python split character for character; the
+    hex alphabet contains no ``%`` or ``_``, so the token needs no escaping at
+    all; and two hex strings differing only in digit case denote the same
+    bytes, so ``LIKE``'s case-insensitivity cannot conflate anything.
 
-    Portable across SQLite and MariaDB: ``REPLACE``/``COALESCE``/``LIKE …
-    ESCAPE`` only. Pinned by test_permission_matrix.py's
+    Spaces are stripped from the stored value first so ``"A, B"`` and ``"A,B"``
+    mean the same thing, matching ``_get_clients_from_legacy_field``'s
+    ``.strip()``. A blank ``client_id`` matches nothing.
+
+    Portable across SQLite and MariaDB: ``HEX``/``REPLACE``/``COALESCE``/
+    ``LIKE`` only. Pinned by test_cross_tenant_authz.py's
     ``test_client_token_clause_*`` tests.
 
     Args:
@@ -307,14 +319,20 @@ def client_token_clause(column: Any, client_id: str) -> Any:
     Returns:
         SQLAlchemy boolean clause
     """
-    normalized = func.replace(func.coalesce(column, ""), " ", "")
-    wanted = client_id.strip()
-    token = wanted.translate(_LIKE_ESCAPE)
+    wanted = (client_id or "").strip()
+    if not wanted:
+        # No token to look for. `normalized == ""` would otherwise match every
+        # blank assignment, which is exactly the row class that must never be
+        # treated as shared (see verify_employee_access).
+        return false()
+
+    hex_column = func.hex(func.replace(func.coalesce(column, ""), " ", ""))
+    token = wanted.encode().hex().upper()
     return or_(
-        normalized == wanted,
-        normalized.like(f"{token},%", escape="\\"),
-        normalized.like(f"%,{token},%", escape="\\"),
-        normalized.like(f"%,{token}", escape="\\"),
+        hex_column == token,
+        hex_column.like(f"{token}{_COMMA_HEX}%"),
+        hex_column.like(f"%{_COMMA_HEX}{token}{_COMMA_HEX}%"),
+        hex_column.like(f"%{_COMMA_HEX}{token}"),
     )
 
 

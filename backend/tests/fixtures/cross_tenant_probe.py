@@ -269,11 +269,19 @@ def _two_tenant_client(actor_user_id: str | None = None):
 
 
 @pytest.fixture
-def tenant_a_client():
-    """Function-scoped: several probed routes soft-delete or rename rows."""
+def tenant_a_env():
+    """One two-tenant database, exposed as both a client and a Session.
+
+    tenant_a_client and tenant_a_db derive from THIS fixture rather than each
+    building their own. They used to call _two_tenant_client() separately,
+    which made two databases while `app.dependency_overrides[get_db]` — a
+    global — pointed at whichever ran last. A test asking for both got a
+    Session and a client on different databases, and whether it worked
+    depended on the order the parameters happened to be listed in.
+    """
     client, db, engine = _two_tenant_client()
     try:
-        yield client
+        yield client, db
     finally:
         app.dependency_overrides.pop(get_current_user, None)
         from backend.database import get_db
@@ -281,6 +289,18 @@ def tenant_a_client():
         app.dependency_overrides.pop(get_db, None)
         db.close()
         engine.dispose()
+
+
+@pytest.fixture
+def tenant_a_client(tenant_a_env):
+    """Function-scoped: several probed routes soft-delete or rename rows."""
+    return tenant_a_env[0]
+
+
+@pytest.fixture
+def tenant_a_db(tenant_a_env):
+    """The Session behind tenant_a_client — same database, always."""
+    return tenant_a_env[1]
 
 
 @pytest.fixture
@@ -304,21 +324,6 @@ def two_tenant_as():
 
     app.dependency_overrides.pop(get_db, None)
     for db, engine in made:
-        db.close()
-        engine.dispose()
-
-
-@pytest.fixture
-def tenant_a_db():
-    """The same two-tenant database, as a Session, for clause-level tests."""
-    client, db, engine = _two_tenant_client()
-    try:
-        yield db
-    finally:
-        app.dependency_overrides.pop(get_current_user, None)
-        from backend.database import get_db
-
-        app.dependency_overrides.pop(get_db, None)
         db.close()
         engine.dispose()
 
@@ -464,8 +469,12 @@ ASYMMETRY_KEYS = (
 )
 
 #: Rows for the client_token_clause tests: a client id that is a prefix of
-#: another, a multi-value list, the whitespace variant, an unassigned row, and
-#: a pair that differ only in a LIKE wildcard position.
+#: another, a multi-value list, the whitespace variant, an unassigned row, a
+#: pair differing only in a LIKE wildcard position, and CASE variants — `=` is
+#: case-sensitive on SQLite but case-INsensitive under MariaDB's default
+#: collation, while `LIKE` is case-insensitive on both, so the previous
+#: anchored-LIKE clause disagreed with itself, with the other engine, and with
+#: the case-sensitive Python split in verify_employee_access.
 TOKEN_ROWS: dict[int, str | None] = {
     9001: "ACME",
     9002: "ACME-WEST",
@@ -473,13 +482,24 @@ TOKEN_ROWS: dict[int, str | None] = {
     9004: "OTHER, ACME",
     9005: "ACMES",
     9006: None,
+    9007: "acme",
+    9008: "acme,OTHER",
+    9009: "OTHER,acme",
+    9010: "",
+    9011: "   ",
     9101: "SAMPLE_REF",
     9102: "SAMPLEXREF",
+    9103: "A%C",
+    9104: "ABC",
 }
-#: (client id asked for, employee ids that must come back)
+#: (client id asked for, employee ids that must come back). Mirrors exactly what
+#: `client_id in [t.strip() for t in stored.split(",")]` returns in Python.
 TOKEN_CASES = [
     ("ACME", {9001, 9003, 9004}),
+    ("acme", {9007, 9008, 9009}),
     ("SAMPLE_REF", {9101}),
+    ("A%C", {9103}),
+    ("", set()),
 ]
 
 

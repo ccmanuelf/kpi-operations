@@ -26,7 +26,7 @@ from backend.schemas.alert import (
 )
 from backend.calculations.alerts import generate_alert_id
 from backend.auth.jwt import ClientScope, get_current_user, resolve_client_scope
-from backend.middleware.client_auth import verify_client_access
+from backend.middleware.client_auth import ClientAccessError, get_user_client_filter, verify_client_access
 from backend.orm.user import User
 from backend.constants import (
     LOOKBACK_DAILY_HOURS,
@@ -74,7 +74,12 @@ def _build_alerts_query(
         query = query.filter(or_(Alert.client_id.in_(list(client_ids)), Alert.client_id.is_(None)))
 
     if client_id:
-        query = query.filter(Alert.client_id == client_id)
+        # Keep client-less alerts on this branch too. `AND client_id = 'X'`
+        # drops every NULL row, which silently contradicted the comment above
+        # ("system-wide ... stay visible") on exactly the path a dashboard
+        # takes. Over-restrictive rather than leaky, but a comment with no gate
+        # behind it is how the rest of this class started.
+        query = query.filter(or_(Alert.client_id == client_id, Alert.client_id.is_(None)))
     if category:
         query = query.filter(Alert.category == category.value)
     if severity:
@@ -88,6 +93,26 @@ def _build_alerts_query(
         query = query.filter(Alert.created_at >= from_date)
 
     return query
+
+
+def _authorize_alert_mutation(alert: Alert, current_user: User, db: Session) -> None:
+    """Authorize a state change on one alert.
+
+    SECURITY: alert_id alone carried no tenant check, so a scoped caller could
+    mutate another client's alert. The routes answered 500 only because
+    `current_user.get("user_id")` raises — and it raises AFTER the status
+    assignment, so a crash was never the denial it looked like.
+
+    A client-less alert is system-wide: readable by everyone (it carries no
+    tenant data) but writable only by a caller with all-client scope. Anyone
+    could otherwise acknowledge it, and acknowledge_alert stamps their user_id
+    into a row every other tenant can read.
+    """
+    if alert.client_id is not None:
+        verify_client_access(current_user, alert.client_id, db)
+        return
+    if get_user_client_filter(current_user, db) is not None:
+        raise ClientAccessError(detail=f"Access denied: User {current_user.username} cannot modify a system-wide alert")
 
 
 @crud_router.get("/", response_model=List[AlertResponse])
@@ -289,12 +314,7 @@ async def acknowledge_alert(
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
 
-    # SECURITY: alert_id alone carried no tenant check, so a scoped caller
-    # could mutate another client's alert. The AttributeError below used to
-    # mask this as a 500 AFTER the state assignment — a crash is not a denial.
-    # Client-less alerts are system-wide and stay actionable.
-    if alert.client_id is not None:
-        verify_client_access(current_user, alert.client_id, db)
+    _authorize_alert_mutation(alert, current_user, db)
 
     if alert.status != "active":
         raise HTTPException(status_code=400, detail="Only active alerts can be acknowledged")
@@ -325,12 +345,7 @@ async def resolve_alert(
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
 
-    # SECURITY: alert_id alone carried no tenant check, so a scoped caller
-    # could mutate another client's alert. The AttributeError below used to
-    # mask this as a 500 AFTER the state assignment — a crash is not a denial.
-    # Client-less alerts are system-wide and stay actionable.
-    if alert.client_id is not None:
-        verify_client_access(current_user, alert.client_id, db)
+    _authorize_alert_mutation(alert, current_user, db)
 
     if alert.status == "resolved":
         raise HTTPException(status_code=400, detail="Alert already resolved")
@@ -373,12 +388,7 @@ async def dismiss_alert(
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
 
-    # SECURITY: alert_id alone carried no tenant check, so a scoped caller
-    # could mutate another client's alert. The AttributeError below used to
-    # mask this as a 500 AFTER the state assignment — a crash is not a denial.
-    # Client-less alerts are system-wide and stay actionable.
-    if alert.client_id is not None:
-        verify_client_access(current_user, alert.client_id, db)
+    _authorize_alert_mutation(alert, current_user, db)
 
     alert.status = "dismissed"
     alert.resolved_at = datetime.now(tz=timezone.utc)
