@@ -49,16 +49,10 @@ def test_dpmo_by_part_empty_branch_decimal_fields_serialize_as_numbers():
 
     dumped = json.loads(DPMOByPartResponse(**raw).model_dump_json())
 
-    for field in ("overall_dpmo", "overall_sigma_level"):
-        value = dumped[field]
-        assert isinstance(value, (int, float)) and not isinstance(value, bool), (
-            f"DPMOByPartResponse.{field} serialized as {value!r} ({type(value).__name__}), "
-            "expected a JSON number -- a Decimal-typed field regressed back in."
-        )
-
     assert dumped["overall_dpmo"] == 0.0
     assert type(dumped["overall_dpmo"]) is float
     assert dumped["overall_sigma_level"] == 0.0
+    assert type(dumped["overall_sigma_level"]) is float
 
 
 def test_top_defects_raw_decimal_percentage_fields_serialize_as_numbers():
@@ -77,22 +71,22 @@ def test_top_defects_raw_decimal_percentage_fields_serialize_as_numbers():
 
     dumped = json.loads(TopDefectItem(**raw).model_dump_json())
 
-    value = dumped["percentage"]
-    assert isinstance(value, (int, float)) and not isinstance(value, bool), (
-        f"TopDefectItem.percentage serialized as {value!r} ({type(value).__name__}), "
-        "expected a JSON number -- a Decimal-typed field regressed back in."
-    )
     assert dumped["percentage"] == 60.416666666666664
     assert type(dumped["percentage"]) is float
 
 
-def test_top_defects_exact_100_percent_share_widens_int_to_float():
-    """Disclosed in the module docstring: when a single item holds 100% of
+def test_top_defects_exact_100_percent_share_serializes_as_a_number():
+    """`GET /api/quality/kpi/top-defects` is annotated `-> list`
+    (`pareto.py:40`), so FastAPI already infers a response model from that
+    annotation and Pydantic's inferred-model serializer renders a bare
+    `Decimal` as a JSON STRING regardless of its exponent -- see the module
+    docstring's corrected mechanism. When a single item holds 100% of
     `total_defects`, `Decimal(str(n)) / Decimal(str(n)) * 100` reduces to
-    `Decimal('100')` (exponent 0) -- a JSON int TODAY via `jsonable_encoder`
-    (this route currently carries no `response_model`). Declaring `float`
-    is an accepted, disclosed widening (`100` -> `100.0`), not a defect --
-    this pins the widened value is still numerically 100.
+    `Decimal('100')` -- `"100"` (a JSON string) on the wire TODAY, not
+    `100` the int an exponent-based rule would predict. Declaring `float`
+    fixes the leak to `100.0`. Unlike the fractional-share case above,
+    `Decimal('100')` has no fractional digits, so this case is
+    string -> number only, with no precision truncation to disclose.
     """
     raw = dict(
         defect_type="Solo",
