@@ -347,9 +347,15 @@ COMPOSITES: Dict[str, Tuple[str, Tuple[str, ...]]] = {
 #:                     number, with `current_assignment` and `conflict_dates`
 #:                     both null -- so the recorded shape is a FLOOR, and a
 #:                     response model built from it alone under-declares.
-#:   inference/cycle-time  echoes the path input back as `product_id` and
-#:                     falls through to a global average; both branches of
-#:                     `flag_low_confidence` emit the same ten keys.
+#:   inference/cycle-time  LEFT this set on 2026-08-27. It used to echo the
+#:                     path input back as `product_id` and fall through to a
+#:                     global average for any id. The cross-tenant fix (#238)
+#:                     made it look the product up and 404 when absent, then
+#:                     verify_client_access on the owner -- so it now
+#:                     discriminates and must NOT be declared id-insensitive.
+#:                     The two-sided gate caught this on rebase: the
+#:                     declaration was true when written and stopped being
+#:                     true, which is exactly what it exists to detect.
 #:   workflow/.../stage-durations  echoes client_id, and `stage_durations` is
 #:                     `[]` even for a real client (a seed-data gap).
 #:   workflow/config   static per-status config, echoes client_id, never 404s.
@@ -359,7 +365,6 @@ NEVER_404 = frozenset(
         "GET /api/capacity/workbook/{client_id}",
         "GET /api/client-config/{client_id}/effective",
         "GET /api/floating-pool/check-availability/{employee_id}",
-        "GET /api/inference/cycle-time/{product_id}",
         "GET /api/workflow/analytics/{client_id}/stage-durations",
         "GET /api/workflow/config/{client_id}",
     }
