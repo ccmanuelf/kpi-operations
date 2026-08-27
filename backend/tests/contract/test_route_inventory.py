@@ -1,9 +1,21 @@
 def test_every_loose_route_is_inventoried_and_none_is_silently_dropped():
-    """78 routes still needing a response model, after Batch R3 converts 12
-       of the prior 90 across `/api/floating-pool` (4), `/api/work-orders`
-       (3 GET + 1 POST), `/api/attendance` (2), `/api/alerts` (2)
-       (`backend/schemas/floor_contracts.py` + `workorder_contracts.py`).
-       90 - 12 = 78, mirrored by `ALLOWLIST` shrinking by the same 12 entries.
+    """71 routes still needing a response model, after Batch R2 converts 7
+       of the prior 78 across `/api/quality` (6 of 8) and `/api/capacity`
+       (1 of 2) (`backend/schemas/quality_contracts.py` +
+       `capacity_contracts.py`). 78 - 7 = 71, mirrored by `ALLOWLIST`
+       shrinking by the same 7 entries. `/api/pivot`'s 2 routes and 6 more
+       across the batch's 3 areas need query params or a request body and
+       stay allowlisted for Task 16's write-capture harness.
+
+       78 itself is Batch R3's count: 90 - 12 across `/api/floating-pool`
+       (4), `/api/work-orders` (3 GET + 1 POST), `/api/attendance` (2),
+       `/api/alerts` (2) (`backend/schemas/floor_contracts.py` +
+       `workorder_contracts.py`).
+
+       90 itself is Batch R4's count: 108 - 18 across `/api/cache`,
+       `/api/kpi-thresholds`, `/api/predictions`, `/api/data-completeness`,
+       `/api/my-shift`, `/api/shifts`, `/api/plan-vs-actual`
+       (`backend/schemas/ops_contracts.py`).
 
        90 itself is Batch R4's count: 108 - 18 across `/api/cache`,
        `/api/kpi-thresholds`, `/api/predictions`, `/api/data-completeness`,
@@ -63,7 +75,7 @@ def test_every_loose_route_is_inventoried_and_none_is_silently_dropped():
 
     routes = routes_needing_a_response_model(app)
 
-    assert len(routes) == 78
+    assert len(routes) == 71
     methods = {m for m, _, _ in routes}
     assert methods == {"GET", "POST", "PUT", "DELETE"}
 

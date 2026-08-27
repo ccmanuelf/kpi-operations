@@ -6,7 +6,7 @@ Used for Pareto root-cause analysis.
 """
 
 from datetime import date, datetime
-from typing import Optional
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
@@ -15,6 +15,11 @@ from backend.database import get_db
 from backend.auth.jwt import ClientScope, get_current_user, resolve_client_scope
 from backend.orm.user import User
 from backend.calculations.ppm import identify_top_defects
+from backend.schemas.quality_contracts import (
+    DefectsByTypeItem,
+    QualityByProductItem,
+    TopDefectItem,
+)
 from backend.utils.logging_utils import get_module_logger
 
 logger = get_module_logger(__name__)
@@ -22,7 +27,7 @@ logger = get_module_logger(__name__)
 pareto_router = APIRouter()
 
 
-@pareto_router.get("/kpi/top-defects")
+@pareto_router.get("/kpi/top-defects", response_model=List[TopDefectItem])
 def get_top_defects(
     work_order_id: Optional[str] = None,
     start_date: Optional[date] = None,
@@ -56,7 +61,7 @@ def get_top_defects(
     )
 
 
-@pareto_router.get("/kpi/defects-by-type")
+@pareto_router.get("/kpi/defects-by-type", response_model=List[DefectsByTypeItem])
 def get_defects_by_type(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
@@ -121,7 +126,7 @@ def get_defects_by_type(
     ]
 
 
-@pareto_router.get("/kpi/by-product")
+@pareto_router.get("/kpi/by-product", response_model=List[QualityByProductItem])
 def get_quality_by_product(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
