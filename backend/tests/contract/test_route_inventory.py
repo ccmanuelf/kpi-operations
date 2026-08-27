@@ -17,11 +17,6 @@ def test_every_loose_route_is_inventoried_and_none_is_silently_dropped():
        `/api/my-shift`, `/api/shifts`, `/api/plan-vs-actual`
        (`backend/schemas/ops_contracts.py`).
 
-       90 itself is Batch R4's count: 108 - 18 across `/api/cache`,
-       `/api/kpi-thresholds`, `/api/predictions`, `/api/data-completeness`,
-       `/api/my-shift`, `/api/shifts`, `/api/plan-vs-actual`
-       (`backend/schemas/ops_contracts.py`).
-
        This measurement is also where `flatten_api_routes` (capture.py) earned
        its second iteration: FastAPI's `_IncludedRouter` wrapper only bakes a
        route's full prefix into `.path` for a SINGLE include level. A router

@@ -5,35 +5,59 @@ it is an unrelated area; see
 docs/superpowers/plans/2026-08-25-response-model-refactor.md and
 `.superpowers/sdd/2026-08-25-response-model-refactor/task-R2-brief.md`).
 
-Two Decimal exponent hazards found by reading the producers, not by
-sampling a value (the brief's own central warning: FastAPI's
-`decimal_encoder` returns `int()` for a Decimal with exponent >= 0 and
-`float()` only for a negative exponent):
+Two live Decimal-string leaks found by reading the producers, not by
+sampling a value -- and the mechanism is NOT the exponent rule an earlier
+draft of this docstring assumed. FastAPI only reaches `decimal_encoder`
+(the function that renders an integral Decimal as a JSON int) when a route
+carries NO return-type annotation at all. Both routes below already had one
+(`-> dict`, `-> list`) before this batch touched them, which means FastAPI
+was already building an INFERRED response model from that annotation --
+and Pydantic's own inferred-model serializer renders a bare `Decimal` field
+as a JSON STRING, not a number, regardless of its exponent. Verified
+directly:
 
-1. `GET /api/quality/kpi/dpmo-by-part` -- `calculations/dpmo.py::
+```
+def f():                   -> {"d95": 95}      number   (no annotation: decimal_encoder)
+def f() -> Dict[str, Any]: -> {"d95": "95"}     STRING   (inferred model: Pydantic)
+def f() -> Any:            -> {"d95": "95"}     STRING
+def f() -> dict:           -> {"d95": "95"}     STRING
+```
+
+So both hazards below are the refactor's actual purpose -- closing a
+Decimal-serializes-as-a-JSON-string leak -- not an int -> float widening.
+Declaring `float` fixes each leak; nothing here changes what these fields
+mean.
+
+1. `GET /api/quality/kpi/dpmo-by-part` -- annotated `-> dict`
+   (`ppm_dpmo.py:237`). `calculations/dpmo.py::
    calculate_dpmo_with_part_lookup`'s zero-quality-entries branch returns
    raw, un-`float()`-cast `Decimal("0")` for `overall_dpmo`/
-   `overall_sigma_level` (exponent 0 -- a JSON INTEGER `0` on the wire
-   today, via `jsonable_encoder`, since this route carries no
-   `response_model` yet). The populated branch already `float(...)`-casts
-   both. Declaring both fields `float` here means every response is a
-   consistent JSON float regardless of branch -- a genuine, disclosed
-   int -> float widening on the zero-entries branch (`0` -> `0.0`), the
-   same accepted-consequence class as Batch R4's `cache/health` `hit_rate`.
-   No captured evidence exists for this branch (the golden entry reflects
-   the populated one); `test_quality_capacity_contracts.py` feeds the
-   model the exact raw `Decimal("0")` the empty branch produces and proves
-   it serializes as a JSON number, never a Decimal-as-string.
+   `overall_sigma_level`. Measured before/after: `"overall_dpmo": "0"` (a
+   JSON string, via the inferred `dict` model) -> `0.0` (a JSON number).
+   The populated branch already `float(...)`-casts both, so it was already
+   correct; only the empty branch leaked. No captured evidence exists for
+   this branch (the golden entry reflects the populated one);
+   `test_quality_contracts.py` feeds the model the exact raw `Decimal("0")`
+   the empty branch produces and proves it serializes as a JSON number,
+   never a Decimal-as-string.
 
-2. `GET /api/quality/kpi/top-defects` -- golden entry is `[]` (the smoke
-   seed has no QUALITY_ENTRY row with `process_step` set); modeled purely
-   from `calculations/ppm.py::identify_top_defects`, which is NEVER
+2. `GET /api/quality/kpi/top-defects` -- annotated `-> list`
+   (`pareto.py:40`). Golden entry is `[]` (the smoke seed has no
+   QUALITY_ENTRY row with `process_step` set); modeled purely from
+   `calculations/ppm.py::identify_top_defects`, which is NEVER
    `float()`-cast: `percentage`/`cumulative_percentage` are raw Decimal
-   division results. Declared `float` (never `Decimal`) here. Disclosed,
-   not fixed: when a single item holds 100% of the total (`Decimal(str(n))
-   / Decimal(str(n)) * 100` reduces to `Decimal('100')`, exponent 0), this
-   route would render that share as a JSON int TODAY -- declaring `float`
-   widens that one case to `100.0`, the same accepted class as (1).
+   division results. Declared `float` (never `Decimal`) here. Two measured
+   consequences, both real wire changes, both disclosed:
+   a. The string -> number fix applies on EVERY item this route can
+      return, not only an edge case -- e.g. a 1/3 share:
+      `"percentage": "33.33333333333333333333333333"` (28-digit Decimal
+      string) -> `33.333333333333336` (a JSON number).
+   b. That same example shows a genuine PRECISION change, not just a type
+      change: Python's default Decimal context carries 28 significant
+      digits, which does not fit in a float64 -- converting to `float`
+      rounds to `33.333333333333336`, an 18-digit approximation. The
+      exact-share edge case (`Decimal('100')`, no fractional digits) has
+      nothing to round and is unaffected: `"100"` -> `100.0`.
    Also disclosed, not fixed (out of scope -- a response model cannot
    affect code that raises before serialization is ever reached):
    `identify_top_defects` unconditionally reads `item["percentage"]` in its
@@ -160,12 +184,17 @@ class DPMOByPartItem(BaseModel):
 class DPMOByPartResponse(BaseModel):
     """`routes/quality/ppm_dpmo.py::calculate_dpmo_by_part`. `client_id` is
     the raw incoming query param (never scope-resolved by this route --
-    pre-existing, unrelated to this task, not touched). `overall_dpmo`/
-    `overall_sigma_level` carry the module docstring's HAZARD (1): the
-    zero-quality-entries branch returns raw `Decimal("0")`, never
-    `float()`-cast. `total_units`/`total_defects`/`total_opportunities` are
-    plain Python ints on every branch (`0` int literals in the empty
-    branch, Python-summed ints in the populated one).
+    benign: `resolve_client_scope` already 403s an unauthorized `client_id`
+    before this handler runs, so the echo can only mirror a value the
+    caller was already entitled to; the same echo exists on
+    `fpy-rty-breakdown`). `overall_dpmo`/`overall_sigma_level` carry the
+    module docstring's leak (1): the zero-quality-entries branch returns
+    raw `Decimal("0")`, never `float()`-cast -- a JSON STRING on the wire
+    today (this route is annotated `-> dict`, so FastAPI already infers a
+    response model; see the module docstring for the measured mechanism).
+    `total_units`/`total_defects`/`total_opportunities` are plain Python
+    ints on every branch (`0` int literals in the empty branch,
+    Python-summed ints in the populated one).
     """
 
     period: DPMOPeriod
@@ -258,7 +287,10 @@ class FPYRTYBreakdownResponse(BaseModel):
     """`routes/quality/fpy_rty.py::get_fpy_rty_breakdown` -- 34 keys, the
     largest in this batch. `product_id`/`client_id`/`inspection_stage_filter`
     are the raw incoming query params, echoed unconditionally (never
-    scope-resolved, never omitted)."""
+    scope-resolved, never omitted) -- the same benign echo as
+    `DPMOByPartResponse.client_id` (see that model's docstring): `resolve_
+    client_scope` already 403s an unauthorized `client_id` before this
+    handler runs."""
 
     period: FPYRTYPeriod
     product_id: Optional[int] = None
@@ -277,8 +309,10 @@ class FPYRTYBreakdownResponse(BaseModel):
 class TopDefectItem(BaseModel):
     """`calculations/ppm.py::identify_top_defects` -- golden entry is `[]`;
     modeled entirely from the producing function, no captured evidence for
-    a non-empty response. See the module docstring's HAZARD (2) for the
-    Decimal-exponent widening disclosure and the confirmed, unfixed,
+    a non-empty response. See the module docstring's leak (2) for the
+    measured Decimal-string-to-number fix (this route is annotated
+    `-> list`, so FastAPI already infers a response model) and its
+    precision-truncation disclosure, plus the confirmed, unfixed,
     out-of-scope `KeyError` this route's own code can raise before a
     response model is ever consulted.
     """
