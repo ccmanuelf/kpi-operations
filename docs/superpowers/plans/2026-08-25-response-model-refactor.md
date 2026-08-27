@@ -975,3 +975,47 @@ finding 0 loose routes where the fixed walk finds 112.
 fails under 0.129 and passes under 0.141.1, so it detects a wrong interpreter by construction.
 **If the contract suite shows exactly that one failure, the code is fine and the interpreter is
 wrong.**
+
+---
+
+## CORRECTION to "int → float widening" — 2026-08-27, found in Batch R3
+
+The plan-wide fact recorded after R4 describes the widening mechanism as **plain-`int`
+producers** (`round(0, 2)` returning int `0`; `min(float, 100)` returning int `100`). That is
+one of two mechanisms, and the smaller one. The other went unnoticed until a raw `Decimal`
+first reached an unmodelled route in R3.
+
+**FastAPI's `decimal_encoder` switches on the Decimal's exponent:**
+
+```
+jsonable_encoder(Decimal('95'))     exponent  0  ->  95     (int)
+jsonable_encoder(Decimal('0'))      exponent  0  ->  0      (int)
+jsonable_encoder(Decimal('13.60'))  exponent -2  ->  13.6   (float)
+jsonable_encoder(Decimal('0.5'))    exponent -1  ->  0.5    (float)
+```
+
+`int()` when `exponent >= 0`, `float()` only when negative. So a `Decimal` built from an
+integer — `Decimal(a - b)`, `Decimal(int(x))` — is on the wire as a JSON **integer** today.
+Declaring that field `float` changes `95` to `95.0` on **every** response.
+
+R3 hit this on `simulation/insights`: 16 values per response, 4 field paths × 4 scenarios,
+100% of calls. It was mis-diagnosed at first because the obvious probe
+(`jsonable_encoder(Decimal("13.60")) → 13.6`) samples a *negative* exponent and looks
+reassuring.
+
+**The rule for every remaining batch:**
+
+- A `Decimal` field that is **always integral** (built from `int` arithmetic, a count, a
+  difference) should be declared **`int`** — the wire stays byte-identical, and `int` still
+  rejects a non-integral `Decimal` loudly.
+- A `Decimal` field that is **quantized** (`.quantize(Decimal("0.01"))`, a rate, a percentage)
+  should be declared **`float`** — it is already a float on the wire.
+- Never declare `Decimal`. That *creates* the JSON-string bug this refactor removes.
+
+**Check the producer, not a sample value.** `Decimal(x)` where `x` is an int has exponent 0
+no matter how large; `Decimal("13.60")` has exponent −2 no matter that it looks similar. The
+golden master compares key sets and is structurally blind to the whole class.
+
+**Earlier batches were audited against this and are clean:** Tasks 6, 7, 9 and 10 declared
+`float` only on values already float-typed in Python or produced by `round(...)`, and R4's
+disclosed instances are the plain-`int` mechanism, correctly recorded.
