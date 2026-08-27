@@ -226,23 +226,16 @@ def request_for_tenant(client: Any, method: str, path: str, tenant: str) -> Any:
     return response
 
 
-# ===========================================================================
-# The cross-tenant matrix itself, and the client that drives it.
-#
-# Data and plumbing live here so every ASSERTION stays in the one test file
-# (test_security/test_permission_matrix.py) without pushing it past the
-# 500-line limit.
-# ===========================================================================
+# The cross-tenant matrix itself, and the client that drives it. Data and
+# plumbing live here so every ASSERTION stays in the test files.
 
 
 def _two_tenant_client(actor_user_id: str | None = None):
     """Fresh two-tenant DB + a TestClient acting as one persona.
 
-    Defaults to tenant A's supervisor. A supervisor (not an admin) is
-    essential for the DENIAL direction: get_user_client_filter returns None for
-    ADMIN/POWERUSER, meaning "all clients", so an admin persona can never
-    exercise cross-tenant denial. ``actor_user_id`` selects one of the
-    over-denial personas instead, for the opposite direction.
+    Defaults to tenant A's supervisor: a supervisor (not an admin) is essential
+    for the DENIAL direction, since get_user_client_filter returns None for
+    ADMIN/POWERUSER. ``actor_user_id`` selects an over-denial persona instead.
     """
     from fastapi.testclient import TestClient
     from sqlalchemy.orm import sessionmaker
@@ -410,16 +403,11 @@ CLIENT_ID_QUERY_MATRIX = [
 ]
 
 
-# ===========================================================================
-# Declarations that keep the universal guard from going blind.
-#
-# The guard used to early-return on any non-2xx and then only look for the
-# tenant id in the body. Measured consequences: blind on every route that
-# answers 2xx, trivially satisfied by a 204's empty body, and silently
-# classing a 500 as a denial — which is precisely how
-# GET /api/alerts/{alert_id} hid a real leak for a whole pass of this task.
-# Both lists below are gated two-sided by the tests that read them.
-# ===========================================================================
+# Declarations that keep the universal guard from going blind. It used to
+# early-return on any non-2xx and then only look for the tenant id in the body:
+# blind on every 2xx route, trivially satisfied by a 204's empty body, and
+# classing a 500 as a denial — how GET /api/alerts/{alert_id} hid a real leak
+# for a whole pass. Both lists are gated two-sided by the tests that read them.
 
 #: (method, path) -> why a cross-tenant request legitimately answers 2xx.
 #: An UNDECLARED 2xx is a finding, so a new leak cannot slip through as one.
@@ -467,53 +455,3 @@ ASYMMETRY_KEYS = (
     "downtime_minutes",
     "absence_hours",
 )
-
-#: Rows for the client_token_clause tests: a client id that is a prefix of
-#: another, a multi-value list, the whitespace variant, an unassigned row, a
-#: pair differing only in a LIKE wildcard position, and CASE variants — `=` is
-#: case-sensitive on SQLite but case-INsensitive under MariaDB's default
-#: collation, while `LIKE` is case-insensitive on both, so the previous
-#: anchored-LIKE clause disagreed with itself, with the other engine, and with
-#: the case-sensitive Python split in verify_employee_access.
-TOKEN_ROWS: dict[int, str | None] = {
-    9001: "ACME",
-    9002: "ACME-WEST",
-    9003: "OTHER,ACME,MORE",
-    9004: "OTHER, ACME",
-    9005: "ACMES",
-    9006: None,
-    9007: "acme",
-    9008: "acme,OTHER",
-    9009: "OTHER,acme",
-    9010: "",
-    9011: "   ",
-    9101: "SAMPLE_REF",
-    9102: "SAMPLEXREF",
-    9103: "A%C",
-    9104: "ABC",
-}
-#: (client id asked for, employee ids that must come back). Mirrors exactly what
-#: `client_id in [t.strip() for t in stored.split(",")]` returns in Python.
-TOKEN_CASES = [
-    ("ACME", {9001, 9003, 9004}),
-    ("acme", {9007, 9008, 9009}),
-    ("SAMPLE_REF", {9101}),
-    ("A%C", {9103}),
-    ("", set()),
-]
-
-
-def seed_token_rows(db: Any) -> None:
-    """Insert TOKEN_ROWS as EMPLOYEE rows in the 9000+ id range."""
-    from backend.orm.employee import Employee
-
-    for employee_id, assigned in TOKEN_ROWS.items():
-        db.add(
-            Employee(
-                employee_id=employee_id,
-                employee_code=f"TOK-{employee_id}",
-                employee_name=f"Token {employee_id}",
-                client_id_assigned=assigned,
-            )
-        )
-    db.commit()

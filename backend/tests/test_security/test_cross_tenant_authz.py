@@ -9,7 +9,7 @@ keeps the tenant guards.
 import pytest
 
 from backend.main import app
-from backend.tests.fixtures import cross_tenant_probe
+from backend.tests.fixtures import cross_tenant_probe, two_tenant
 from backend.tests.fixtures.cross_tenant_probe import (
     CROSS_TENANT_2XX_ALLOWED,
     CROSS_TENANT_5XX_KNOWN,
@@ -378,7 +378,7 @@ class TestCrossTenantByIdRoutes:
         by_id = tenant_a_client.get(f"/api/employees/{EMPLOYEE_LOOKALIKE}")
         assert by_id.status_code == 403, f"by-id route disagrees with the listing: {by_id.status_code}"
 
-    @pytest.mark.parametrize("wanted,expected", cross_tenant_probe.TOKEN_CASES)
+    @pytest.mark.parametrize("wanted,expected", two_tenant.TOKEN_CASES)
     def test_client_token_clause_matches_whole_tokens_only(self, tenant_a_db, wanted, expected):
         """Direct test of the clause both halves of the employee surface share.
 
@@ -388,7 +388,7 @@ class TestCrossTenantByIdRoutes:
         from backend.middleware.client_auth import client_token_clause
         from backend.orm.employee import Employee
 
-        cross_tenant_probe.seed_token_rows(tenant_a_db)
+        two_tenant.seed_token_rows(tenant_a_db)
         matched = {
             e.employee_id
             for e in tenant_a_db.query(Employee)

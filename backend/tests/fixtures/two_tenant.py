@@ -1,11 +1,10 @@
 """Two-tenant database fixture for cross-tenant authorization probing.
 
-Built by INSERTing rows directly for two clients across every client-scoped
-ORM model that a by-id route can reach. Deliberately independent of
-``backend.seed`` — ``COVERAGE_ENTRY``, ``ALERT``, ``FLOATING_POOL``,
-``SIMULATION_SCENARIO`` and ``CALCULATION_ASSUMPTION`` have zero rows in both
-seed profiles, so a security fixture built on the seeder inherits its gaps and
-is silently narrowed by every future seeder change.
+INSERTs rows directly for two clients across every client-scoped ORM model a
+by-id route can reach. Deliberately independent of ``backend.seed``:
+``COVERAGE_ENTRY``, ``ALERT``, ``FLOATING_POOL``, ``SIMULATION_SCENARIO`` and
+``CALCULATION_ASSUMPTION`` have zero rows in both seed profiles, so a security
+fixture built on the seeder inherits its gaps.
 
 Ids are deterministic and tenant-encoded so a probe can name what it asked for:
 integer PKs are ``1`` for tenant A and ``2`` for tenant B; string PKs are
@@ -27,21 +26,15 @@ TENANT_B = "TEN-B"
 
 # Employee ids are global: EMPLOYEE has no client_id column. Ownership is the
 # comma-separated EMPLOYEE.client_id_assigned (what the employee CRUD filters
-# on, and what seed/writers_master.py writes); the EMPLOYEE_CLIENT_ASSIGNMENT
-# junction row is populated too because it exists in the schema.
+# on and what seed/writers_master.py writes).
 EMPLOYEE_A = 101
 EMPLOYEE_B = 201
 #: Employee with client_id_assigned NULL — the documented "floating pool"
-#: shape (EmployeeCreate). Deliberately visible to both tenants; pinned by
-#: test_permission_matrix.py::TestCrossTenantByIdRoutes
-#: ::test_unassigned_employee_is_visible_to_every_tenant.
+#: shape (EmployeeCreate), deliberately visible to both tenants.
 EMPLOYEE_SHARED = 301
-#: A client whose id CONTAINS tenant A's, and an employee that belongs to it.
-#: A substring `LIKE '%TEN-A%'` matches this row while the by-id route's
-#: comma-exact check does not, so the listing and the by-id route disagree
-#: about the same employee. Pinned by
-#: test_permission_matrix.py::TestCrossTenantByIdRoutes
-#: ::test_employee_listing_agrees_with_by_id_route_on_colliding_client_ids.
+#: A client whose id CONTAINS tenant A's, plus an employee belonging to it: a
+#: substring `LIKE '%TEN-A%'` matches this row while the by-id route's
+#: comma-exact check does not, so the two disagree about the same employee.
 TENANT_A_LOOKALIKE = "TEN-A-WEST"
 EMPLOYEE_LOOKALIKE = 401
 
@@ -452,6 +445,55 @@ def build_two_tenant_db(db: Session) -> None:
                 filter_type="production",
                 filter_config="{}",
                 is_default=True,
+            )
+        )
+    db.commit()
+
+
+#: Rows for the client_token_clause tests: a prefix collision, a multi-value
+#: list, the whitespace variant, an unassigned row, LIKE-wildcard pairs, and
+#: CASE variants — `=` is case-sensitive on SQLite but case-INsensitive under
+#: MariaDB's default collation while `LIKE` is case-insensitive on both, so the
+#: previous spelling disagreed with itself, the other engine, and Python.
+TOKEN_ROWS: dict[int, str | None] = {
+    9001: "ACME",
+    9002: "ACME-WEST",
+    9003: "OTHER,ACME,MORE",
+    9004: "OTHER, ACME",
+    9005: "ACMES",
+    9006: None,
+    9007: "acme",
+    9008: "acme,OTHER",
+    9009: "OTHER,acme",
+    9010: "",
+    9011: "   ",
+    9101: "SAMPLE_REF",
+    9102: "SAMPLEXREF",
+    9103: "A%C",
+    9104: "ABC",
+}
+#: (client id asked for, employee ids that must come back). Mirrors exactly what
+#: `client_id in [t.strip() for t in stored.split(",")]` returns in Python.
+TOKEN_CASES = [
+    ("ACME", {9001, 9003, 9004}),
+    ("acme", {9007, 9008, 9009}),
+    ("SAMPLE_REF", {9101}),
+    ("A%C", {9103}),
+    ("", set()),
+]
+
+
+def seed_token_rows(db: Any) -> None:
+    """Insert TOKEN_ROWS as EMPLOYEE rows in the 9000+ id range."""
+    from backend.orm.employee import Employee
+
+    for employee_id, assigned in TOKEN_ROWS.items():
+        db.add(
+            Employee(
+                employee_id=employee_id,
+                employee_code=f"TOK-{employee_id}",
+                employee_name=f"Token {employee_id}",
+                client_id_assigned=assigned,
             )
         )
     db.commit()

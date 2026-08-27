@@ -93,7 +93,7 @@ from sqlalchemy import inspect, select  # noqa: E402
 
 from backend.database import SessionLocal, engine  # noqa: E402
 from backend.orm.event_store import EventStore  # noqa: E402
-from backend.tests.fixtures import cross_tenant_probe  # noqa: E402
+from backend.tests.fixtures import two_tenant  # noqa: E402
 
 _IS_MARIADB = "mysql" in str(engine.url).lower()
 requires_mariadb = pytest.mark.skipif(
@@ -2050,7 +2050,7 @@ def test_no_aggregate_reaches_a_response_dict_through_a_local():
 
 
 @requires_mariadb
-@pytest.mark.parametrize("wanted,expected", cross_tenant_probe.TOKEN_CASES)
+@pytest.mark.parametrize("wanted,expected", two_tenant.TOKEN_CASES)
 def test_client_token_clause_agrees_with_python_on_mariadb(wanted, expected):
     """Same rows, same clause, same expectations as the SQLite test in
     test_security/test_cross_tenant_authz.py — run against the real engine."""
@@ -2063,7 +2063,7 @@ def test_client_token_clause_agrees_with_python_on_mariadb(wanted, expected):
     try:
         session.query(Employee).filter(Employee.employee_id >= 9000).delete(synchronize_session=False)
         session.commit()
-        cross_tenant_probe.seed_token_rows(session)
+        two_tenant.seed_token_rows(session)
         matched = {
             e.employee_id
             for e in session.query(Employee)
