@@ -23,7 +23,7 @@ test_conditional_branches.py: `AlertsHistoryAccuracyResponse` (GET
 orders/{id}/approve-qc, whose already-approved branch omits `message`).
 """
 
-from typing import Any, List, Optional
+from typing import List, Optional
 
 from pydantic import BaseModel
 
@@ -99,16 +99,20 @@ class HoldHistoryItem(BaseModel):
     (bare `hold_history` key: the captured work order has no HOLD_ENTRY
     rows), interior source-inspected from the route's own dict literal
     (routes/work_orders.py). `quantity` is a hardcoded `None` literal in
-    EVERY branch -- never assigned a real value anywhere in this route -- so
-    its true type is unconstrained; kept `Optional[Any]` rather than
-    guessing one.
+    EVERY branch (routes/work_orders.py:283) -- never assigned a real value
+    anywhere in this route -- so it is declared the bare `None` type, not
+    `Optional[Any]`: `Any` would silently accept and stringify a future
+    Decimal (the exact leak this refactor exists to close), while `None`
+    rejects anything else loudly. If this field is ever assigned a real
+    value, the fix is to declare ITS ACTUAL TYPE at that moment, not to
+    widen this back to `Any`.
     """
 
     hold_id: str
     hold_date: Optional[str] = None
     resume_date: Optional[str] = None
     reason: Optional[str] = None
-    quantity: Optional[Any] = None
+    quantity: None = None
     status: Optional[str] = None
 
 
@@ -196,16 +200,21 @@ class AlertsHistoryAccuracyResponse(BaseModel):
     Registered in `EXCLUDE_UNSET_ROUTES` (all 6 non-shared fields Optional);
     forced in test_conditional_branches.py, which also proves the golden
     branch's `accuracy_metrics`/`message` are correctly ABSENT on the other
-    side. `accuracy_metrics` is a hardcoded `None` literal, never assigned a
-    real value anywhere in the route -- kept `Optional[Any]`, same reasoning
-    as `HoldHistoryItem.quantity`. `average_error_percent` is an int->float
-    widening instance when every `error_percent` in the window is falsy
-    (`errors` is then `[]` and `avg_error` the bare int `0`).
+    side. `accuracy_metrics` is a hardcoded `None` literal
+    (routes/alerts/config_history.py:120), never assigned a real value
+    anywhere in the route -- declared the bare `None` type, same reasoning
+    as `HoldHistoryItem.quantity`: `Optional[Any]` would silently accept and
+    stringify a future Decimal instead of rejecting it, which is the exact
+    leak this refactor exists to close. If this field is ever assigned a
+    real value, the fix is to declare its actual type then, not to widen
+    this back to `Any`. `average_error_percent` is an int->float widening
+    instance when every `error_percent` in the window is falsy (`errors` is
+    then `[]` and `avg_error` the bare int `0`).
     """
 
     period_days: int
     total_predictions: int
-    accuracy_metrics: Optional[Any] = None
+    accuracy_metrics: None = None
     message: Optional[str] = None
     accurate_predictions: Optional[int] = None
     accuracy_rate_percent: Optional[float] = None
