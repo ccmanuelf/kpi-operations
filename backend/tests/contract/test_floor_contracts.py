@@ -2,11 +2,13 @@
 returns numeric-looking STRINGS on purpose in `input_parameters`/
 `projected_output` (explicit `str(Decimal)` calls, calculations/
 simulation.py:332-339) but raw `Decimal` arithmetic -- never `str()`'d -- in
-`kpi_impact`/`comparison_to_baseline`. Two mutation-provable properties, one
-class of test each. The golden master cannot check either: it compares key
-sets, never value types, by design (`capture.py`'s `is_loose` docstring), so
-a field silently mistyped either direction would leave the whole contract
-suite green.
+`kpi_impact`/`comparison_to_baseline`. Three mutation-provable properties.
+The golden master cannot check any of them: it compares key sets, never
+value types, by design (`capture.py`'s `is_loose` docstring), so a field
+silently mistyped any direction would leave the whole contract suite green
+-- confirmed directly by a coordinator review round: flipping `hourly_rate`
+to `float` left `pytest tests/contract/` green and only this file's own
+hazard test caught it.
 
 1. The deliberate `str` fields must NOT be declared `float`: feeding the
    model the exact numeric-looking strings the producing function emits
@@ -17,10 +19,26 @@ suite green.
    as JSON NUMBERS, never Decimal-as-string -- the same guarantee
    `test_ops_contracts.py` proves for `MyShiftStatsResponse`, applied here
    to this batch's own live use of `Decimal`.
+3. Those JSON numbers are not uniformly `float`. FastAPI's own
+   `decimal_encoder` (fastapi/encoders.py) branches on the Decimal's
+   EXPONENT: `int(value)` when `exponent >= 0`, `float(value)` only when
+   `exponent < 0`. `employee_change`/`baseline_units`/`scenario_units`/
+   `difference` all wrap `Decimal(<already-int>)` -- exponent 0, always
+   `int` on the wire TODAY (this route carries no `response_model`, so
+   `jsonable_encoder` handles them directly) -- so they are declared `int`
+   here, not `float`: declaring `float` would turn every response's value
+   from a JSON int into `X.0`, a real per-response wire change, not a
+   no-op. `production_change_percent`/`employee_change_percent` are
+   `.quantize(Decimal("0.01"))`'d and `efficiency` inherits `base_
+   efficiency`'s exponent -1 -- all three genuinely always `float` and
+   stay so.
 """
 
 import json
 from decimal import Decimal
+
+import pytest
+from pydantic import ValidationError
 
 from backend.schemas.floor_contracts import (
     SimulationStaffingComparison,
@@ -67,7 +85,9 @@ def test_simulation_projected_output_keeps_the_deliberate_str_idiom():
 def test_simulation_kpi_impact_decimal_fields_serialize_as_numbers():
     """`kpi_impact` is raw `Decimal` arithmetic (calculations/simulation.py:
     341-346), never `str()`'d -- feeding the model `Decimal` input, exactly
-    as the calculation layer produces, must yield JSON numbers.
+    as the calculation layer produces, must yield JSON numbers. `employee_
+    change` wraps `Decimal(<int>)` (exponent 0) and is an `int` field, not
+    `float` -- see the module docstring's exponent rule.
     """
     raw = dict(
         production_change_percent=Decimal("13.60"),
@@ -81,18 +101,49 @@ def test_simulation_kpi_impact_decimal_fields_serialize_as_numbers():
     assert dumped["production_change_percent"] == 13.6
     assert type(dumped["production_change_percent"]) is float
     assert dumped["efficiency"] == 85.0
-    assert dumped["employee_change"] == 2.0
+    assert dumped["employee_change"] == 2
+    assert type(dumped["employee_change"]) is int
     assert dumped["employee_change_percent"] == 16.67
 
 
+def test_simulation_kpi_impact_employee_change_rejects_a_fractional_decimal():
+    """`employee_change: int` must still reject a genuinely fractional
+    Decimal loudly -- proving the `int` declaration is strict, not merely
+    the value that happens to match today's inputs.
+    """
+    raw = dict(
+        production_change_percent=Decimal("0.00"),
+        efficiency=Decimal("85.00"),
+        employee_change=Decimal("2.5"),
+        employee_change_percent=Decimal("0.00"),
+    )
+
+    with pytest.raises(ValidationError) as exc_info:
+        SimulationStaffingKPIImpact(**raw)
+
+    assert exc_info.value.errors()[0]["loc"] == ("employee_change",)
+
+
 def test_simulation_comparison_to_baseline_decimal_fields_serialize_as_numbers():
-    """`comparison_to_baseline` -- same reasoning as `kpi_impact`: raw
-    `Decimal`, never `str()`'d."""
+    """`comparison_to_baseline` -- all three fields wrap `Decimal(<int>)`
+    (exponent 0, see the module docstring's exponent rule) and are `int`
+    fields, not `float`."""
     raw = dict(baseline_units=Decimal("100"), scenario_units=Decimal("120"), difference=Decimal("20"))
 
     dumped = json.loads(SimulationStaffingComparison(**raw).model_dump_json())
 
-    assert dumped["baseline_units"] == 100.0
-    assert type(dumped["baseline_units"]) is float
-    assert dumped["scenario_units"] == 120.0
-    assert dumped["difference"] == 20.0
+    assert dumped["baseline_units"] == 100
+    assert type(dumped["baseline_units"]) is int
+    assert dumped["scenario_units"] == 120
+    assert dumped["difference"] == 20
+
+
+def test_simulation_comparison_to_baseline_rejects_a_fractional_decimal():
+    """`baseline_units: int` must still reject a genuinely fractional
+    Decimal loudly."""
+    raw = dict(baseline_units=Decimal("100.5"), scenario_units=Decimal("120"), difference=Decimal("20"))
+
+    with pytest.raises(ValidationError) as exc_info:
+        SimulationStaffingComparison(**raw)
+
+    assert exc_info.value.errors()[0]["loc"] == ("baseline_units",)

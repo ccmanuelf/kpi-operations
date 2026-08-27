@@ -175,27 +175,47 @@ class SimulationStaffingKPIImpact(BaseModel):
     raw `Decimal` arithmetic results (calculations/simulation.py:341-346),
     never passed through `str()`. Today, because this route carries NO
     `response_model` at all, FastAPI serializes them via `jsonable_encoder`
-    directly (no Pydantic model in the path), which already renders a bare
-    `Decimal` as a JSON number -- verified directly:
-    `jsonable_encoder(Decimal("13.60"))` -> `13.6`. Declaring `float` here
-    matches that EXISTING wire behaviour; it does not change it.
+    directly (no Pydantic model in the path). FastAPI's own `decimal_encoder`
+    (fastapi/encoders.py) branches on the Decimal's EXPONENT, not its value:
+    `int(value)` when `exponent >= 0`, `float(value)` only when `exponent <
+    0` -- verified directly: `jsonable_encoder(Decimal("95"))` -> `95` (int,
+    exponent 0), `jsonable_encoder(Decimal("13.60"))` -> `13.6` (float,
+    exponent -2). `production_change_percent`/`employee_change_percent` are
+    `.quantize(Decimal("0.01"))`'d (exponent -2, always float) and
+    `efficiency` inherits `base_efficiency`'s exponent -1 (`Decimal(str(
+    85.0))`) on every branch -- all three correctly stay `float`.
+    `employee_change`, below, does NOT: `Decimal(employee_change)` wraps a
+    plain Python `int` (`employee_count - base_employees`), which `Decimal()`
+    always renders at exponent 0 -- declaring it `float` would turn today's
+    JSON int into `X.0` on every response, a real wire change, not a
+    no-op. Declared `int`: byte-identical to current behaviour, and still
+    rejects a genuinely fractional Decimal loudly (`Decimal("95.5")` ->
+    `ValidationError`, `Decimal("95")` -> `95`).
     """
 
     production_change_percent: float
     efficiency: float
-    employee_change: float
+    employee_change: int
     employee_change_percent: float
 
 
 class SimulationStaffingComparison(BaseModel):
-    """The `comparison_to_baseline` object -- same reasoning as `kpi_impact`:
-    raw Decimal, already numbers on the wire via `jsonable_encoder`; `float`
-    matches, and does not change, current behaviour.
+    """The `comparison_to_baseline` object. All three fields wrap
+    `Decimal(<already-int>)` -- `calculate_production_capacity` `int(...)`-
+    casts `units_capacity` at calculations/simulation.py:233, and `Decimal`
+    subtraction of two exponent-0 operands stays exponent 0 -- so, per
+    `decimal_encoder`'s exponent rule (see `SimulationStaffingKPIImpact`'s
+    docstring), all three are ALWAYS integral on the wire today. Declared
+    `int`, not `float`: `float` would turn every response's `baseline_units`/
+    `scenario_units`/`difference` from a JSON int into `X.0` -- confirmed by
+    a real A/B capture of this route's response body, not just the type
+    annotation (see test_floor_contracts.py). `int` matches current
+    behaviour exactly and still rejects a non-integral Decimal loudly.
     """
 
-    baseline_units: float
-    scenario_units: float
-    difference: float
+    baseline_units: int
+    scenario_units: int
+    difference: int
 
 
 class SimulationStaffingResult(BaseModel):
