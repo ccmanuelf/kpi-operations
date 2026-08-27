@@ -93,6 +93,7 @@ from sqlalchemy import inspect, select  # noqa: E402
 
 from backend.database import SessionLocal, engine  # noqa: E402
 from backend.orm.event_store import EventStore  # noqa: E402
+from backend.tests.fixtures import two_tenant  # noqa: E402
 
 _IS_MARIADB = "mysql" in str(engine.url).lower()
 requires_mariadb = pytest.mark.skipif(
@@ -2032,3 +2033,45 @@ def test_no_aggregate_reaches_a_response_dict_through_a_local():
                         )
 
     assert sorted(offenders) == []
+
+
+# ---------------------------------------------------------------------------
+# client_token_clause: the SQL half of employee tenancy must agree with the
+# Python half on BOTH engines.
+#
+# This exists because a SQLite-only measurement said the clause was portable
+# and it was not: `=` is case-sensitive on SQLite and case-INsensitive under
+# MariaDB's default collation, while `LIKE` is case-insensitive on both, so
+# the previous anchored-LIKE spelling matched 'acme,OTHER' but not 'acme' on
+# SQLite, and matched both on MariaDB — three different answers to one
+# question. The current spelling compares HEX() output, which is
+# collation-independent and byte-exact on both engines.
+# ---------------------------------------------------------------------------
+
+
+@requires_mariadb
+@pytest.mark.parametrize("wanted,expected", two_tenant.TOKEN_CASES)
+def test_client_token_clause_agrees_with_python_on_mariadb(wanted, expected):
+    """Same rows, same clause, same expectations as the SQLite test in
+    test_security/test_cross_tenant_authz.py — run against the real engine."""
+    from sqlalchemy.orm import sessionmaker
+
+    from backend.middleware.client_auth import client_token_clause
+    from backend.orm.employee import Employee
+
+    session = sessionmaker(bind=engine)()
+    try:
+        session.query(Employee).filter(Employee.employee_id >= 9000).delete(synchronize_session=False)
+        session.commit()
+        two_tenant.seed_token_rows(session)
+        matched = {
+            e.employee_id
+            for e in session.query(Employee)
+            .filter(Employee.employee_id >= 9000, client_token_clause(Employee.client_id_assigned, wanted))
+            .all()
+        }
+        assert matched == expected, f"{wanted!r} matched {matched} on MariaDB"
+    finally:
+        session.query(Employee).filter(Employee.employee_id >= 9000).delete(synchronize_session=False)
+        session.commit()
+        session.close()

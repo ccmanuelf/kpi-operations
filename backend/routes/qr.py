@@ -13,7 +13,7 @@ from backend.database import get_db
 from backend.utils.logging_utils import get_module_logger
 from backend.auth.jwt import get_current_user
 from backend.orm.user import User
-from backend.middleware.client_auth import verify_client_access
+from backend.middleware.client_auth import verify_client_access, verify_employee_access
 from backend.schemas.qr import QREntityType, QRGenerateRequest, QRLookupResponse, QRCodeResponse
 from backend.services.qr_service import QRService, QRServiceError
 
@@ -347,6 +347,11 @@ async def get_employee_qr_image(
 
     if not employee:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Employee '{employee_id}' not found")
+
+    # Enforce client access control (the sibling product/job/work-order QR
+    # routes already do; this one was missed and minted a scannable badge for
+    # another tenant's employee).
+    verify_employee_access(current_user, employee, db)
 
     # Use employee_code as the identifier in the QR code for consistency
     qr_identifier = employee.employee_code

@@ -10,10 +10,16 @@ Phase 2.2: Updated to support both:
 import logging
 from typing import Any, Optional, List
 from fastapi import HTTPException, status
+from sqlalchemy import false, func, or_
 from sqlalchemy.orm import Session
 from backend.orm.user import User, UserRole
 
 logger = logging.getLogger(__name__)
+
+
+#: Sentinel distinguishing "column absent" from "column is NULL". `or \"\"`
+#: collapsed the two, turning an uninspectable row into an access grant.
+_UNSET = object()
 
 
 class ClientAccessError(HTTPException):
@@ -195,6 +201,139 @@ def verify_client_access(user: User, resource_client_id: str, db: Optional[Sessi
         )
 
     return True
+
+
+def verify_employee_access(user: User, employee: Any, db: Optional[Session] = None) -> bool:
+    """
+    Verify user has access to a specific EMPLOYEE row.
+
+    EMPLOYEE has no ``client_id`` column: ownership lives in the
+    comma-separated ``EMPLOYEE.client_id_assigned``, which is the shape the
+    seeder writes (``seed/writers_master.py``) and the shape
+    ``crud/employee/client_assignment.get_employees_by_client`` filters on.
+    Access is granted when at least ONE of the employee's assigned clients is
+    in the caller's authorized set — an employee may legitimately be shared by
+    several clients.
+
+    **NULL, and only NULL, means "shared floating-pool resource"** —
+    ``EmployeeCreate.client_id_assigned`` documents it as "Comma-separated
+    client IDs, NULL for floating pool". A blank or whitespace-only string is a
+    MALFORMED assignment, not a shared one, and is denied. Treating it as
+    shared was a privilege-escalation path: ``EmployeeUpdate`` has no
+    ``min_length`` and ``PUT /api/employees/{id}`` is supervisor-tier, so a
+    supervisor could set ``client_id_assigned=""`` on an employee they own and
+    publish it to every tenant — while ``get_employees`` (which admits only
+    ``IS NULL``) went on hiding it, making the by-id route MORE permissive than
+    the listing. The two now agree; pinned by
+    ``test_cross_tenant_authz.py::test_blank_client_assignment_is_not_shared``.
+
+    Fails CLOSED. If the employee row is missing, or does not expose
+    ``client_id_assigned`` at all (a partial projection, a ``Row``, ``None``),
+    this raises rather than granting: an authorization helper that cannot
+    inspect the field it authorizes on has no basis to allow anything.
+
+    Args:
+        user: Authenticated user object (loaded from DB by get_current_user)
+        employee: EMPLOYEE ORM row whose access is being checked
+        db: Optional database session for junction table lookup
+
+    Returns:
+        True if user has access
+
+    Raises:
+        ClientAccessError: if the row cannot be inspected, if its assignment is
+            malformed, or if none of its clients is in the caller's set
+    """
+    # Fail closed BEFORE the role bypass: an uninspectable row is a caller bug,
+    # and a loud 403 is the safe way to surface it.
+    if employee is None:
+        raise ClientAccessError(detail="Access denied: no employee record to authorize")
+    assigned = getattr(employee, "client_id_assigned", _UNSET)
+    if assigned is _UNSET:
+        raise ClientAccessError(detail="Access denied: employee record does not expose client_id_assigned")
+
+    if user.role in [UserRole.ADMIN, UserRole.POWERUSER]:
+        return True
+
+    if assigned is None:
+        # The documented shared floating-pool marker.
+        return True
+
+    owners = [c.strip() for c in str(assigned).split(",") if c.strip()]
+    if not owners:
+        raise ClientAccessError(
+            detail=f"Access denied: User {user.username} cannot access an employee " f"whose client assignment is blank"
+        )
+
+    user_clients = get_user_client_filter(user, db)
+    assert user_clients is not None  # ADMIN/POWERUSER returned True above
+
+    if not any(owner in user_clients for owner in owners):
+        raise ClientAccessError(detail=f"Access denied: User {user.username} cannot access client '{owners[0]}'")
+
+    return True
+
+
+#: Hex of a comma. HEX() renders every byte as two uppercase hex digits, so a
+#: comma-delimited list becomes a hex string in which token boundaries are
+#: exactly this sequence and nothing else can look like one.
+_COMMA_HEX = ",".encode().hex().upper()
+
+
+def client_token_clause(column: Any, client_id: str) -> Any:
+    """SQL clause: comma-separated ``column`` contains ``client_id`` as an EXACT token.
+
+    Three ways the obvious spellings are wrong, and all three leak or diverge:
+
+    * ``column.like(f"%{client_id}%")`` matches a client id that is a SUBSTRING
+      of another — a caller scoped to ``ACME`` lists ``ACME-WEST``'s employees,
+      and a plain ``DEMO`` client would pull in every ``DEMO-*`` tenant.
+    * It also treats ``%`` and ``_`` inside a client id as wildcards, and
+      ``seed/cli.py``'s ``SAMPLE_REF`` already contains one.
+    * Anchored ``LIKE`` fixes both but introduces a third: ``=`` is
+      case-SENSITIVE on SQLite while ``LIKE`` is case-INsensitive, so the same
+      clause matched ``'acme,OTHER'`` and not ``'acme'`` — case-sensitive for a
+      single token, case-insensitive for a list, on one engine, and neither
+      agreeing with the case-sensitive Python split in
+      ``verify_employee_access``. Collations make it engine-dependent too.
+
+    So the comparison is done on ``HEX()`` output instead. Hex is
+    collation-independent and byte-exact on both SQLite and MariaDB, which
+    makes the clause agree with the Python split character for character; the
+    hex alphabet contains no ``%`` or ``_``, so the token needs no escaping at
+    all; and two hex strings differing only in digit case denote the same
+    bytes, so ``LIKE``'s case-insensitivity cannot conflate anything.
+
+    Spaces are stripped from the stored value first so ``"A, B"`` and ``"A,B"``
+    mean the same thing, matching ``_get_clients_from_legacy_field``'s
+    ``.strip()``. A blank ``client_id`` matches nothing.
+
+    Portable across SQLite and MariaDB: ``HEX``/``REPLACE``/``COALESCE``/
+    ``LIKE`` only. Pinned by test_cross_tenant_authz.py's
+    ``test_client_token_clause_*`` tests.
+
+    Args:
+        column: comma-separated client column (e.g. ``Employee.client_id_assigned``)
+        client_id: the single client id that must appear as a whole token
+
+    Returns:
+        SQLAlchemy boolean clause
+    """
+    wanted = (client_id or "").strip()
+    if not wanted:
+        # No token to look for. `normalized == ""` would otherwise match every
+        # blank assignment, which is exactly the row class that must never be
+        # treated as shared (see verify_employee_access).
+        return false()
+
+    hex_column = func.hex(func.replace(func.coalesce(column, ""), " ", ""))
+    token = wanted.encode().hex().upper()
+    return or_(
+        hex_column == token,
+        hex_column.like(f"{token}{_COMMA_HEX}%"),
+        hex_column.like(f"%{_COMMA_HEX}{token}{_COMMA_HEX}%"),
+        hex_column.like(f"%{_COMMA_HEX}{token}"),
+    )
 
 
 def build_client_filter_clause(user: User, client_id_column: Any) -> Any:

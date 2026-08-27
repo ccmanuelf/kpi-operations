@@ -140,17 +140,22 @@ class TestAttendanceEndpoints:
 class TestAlertEndpoints:
     """Test alert endpoints (ALERT table may not exist in test DB)."""
 
+    # These three now go through resolve_client_scope, like /api/attendance
+    # above: a scoped role with no client assignment cannot be given a tenant
+    # scope, so the tenant gate answers 403. Before the cross-tenant fix they
+    # answered 200 with EVERY tenant's alerts — see
+    # test_security/test_permission_matrix.py::TestCrossTenantByIdRoutes.
     def test_get_alerts(self, authenticated_client):
         response = authenticated_client.get("/api/alerts/")
-        assert response.status_code == 200
+        assert response.status_code == 403
 
     def test_get_alert_dashboard(self, authenticated_client):
         response = authenticated_client.get("/api/alerts/dashboard")
-        assert response.status_code == 200
+        assert response.status_code == 403
 
     def test_get_alert_summary(self, authenticated_client):
         response = authenticated_client.get("/api/alerts/summary")
-        assert response.status_code == 200
+        assert response.status_code == 403
 
 
 class TestClientEndpoints:
@@ -188,8 +193,11 @@ class TestEmployeeEndpoints:
     """Test employee endpoints."""
 
     def test_get_employees(self, authenticated_client):
+        # Same tenant gate as /api/attendance above: the listing is now scoped
+        # to the caller's clients, and this supervisor fixture has none. Before
+        # the cross-tenant fix it answered 200 with EVERY tenant's employees.
         response = authenticated_client.get("/api/employees/")
-        assert response.status_code == 200
+        assert response.status_code == 403
 
 
 class TestDefectEndpoints:

@@ -5,11 +5,18 @@ SECURITY: Multi-tenant client filtering enabled
 """
 
 from typing import List, Optional
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
 
 from backend.orm.employee import Employee
-from backend.orm.user import User, SUPERVISORY_ROLES
+from backend.orm.user import User, PLANNER_ROLES, SUPERVISORY_ROLES
+from backend.middleware.client_auth import (
+    client_token_clause,
+    get_user_client_filter,
+    verify_client_access,
+    verify_employee_access,
+)
 from backend.utils.soft_delete import soft_delete
 
 
@@ -66,11 +73,17 @@ def get_employee(db: Session, employee_id: int, current_user: User) -> Optional[
 
     Raises:
         HTTPException 404: If employee not found
+        HTTPException 403: If the employee belongs to a client the caller is
+            not assigned to
     """
     employee = db.query(Employee).filter(Employee.employee_id == employee_id).first()
 
     if not employee:
         raise HTTPException(status_code=404, detail="Employee not found")
+
+    # SECURITY: current_user was accepted but unused here, so any authenticated
+    # user could read any client's employee by id.
+    verify_employee_access(current_user, employee, db)
 
     return employee
 
@@ -99,10 +112,31 @@ def get_employees(
     """
     query = db.query(Employee)
 
+    # SECURITY: confine the listing to the caller's clients. EMPLOYEE ownership
+    # is the comma-separated client_id_assigned, so this matches whole tokens
+    # via client_token_clause rather than an IN. It must agree exactly with
+    # verify_employee_access, which the by-id routes use: a substring LIKE made
+    # the listing MORE permissive than the by-id route on the same row (a caller
+    # scoped to ACME saw ACME-WEST's employees but got 403 fetching one).
+    # Employees with no assignment are shared floating-pool resources and stay
+    # visible — the same rule verify_employee_access applies. Without any of
+    # this the listing returned every tenant's employees to any authenticated
+    # user.
+    user_clients = get_user_client_filter(current_user, db)
+    if user_clients is not None:
+        query = query.filter(
+            or_(
+                *[client_token_clause(Employee.client_id_assigned, c) for c in user_clients],
+                Employee.client_id_assigned.is_(None),
+            )
+        )
+
     # Apply filters
     if client_id:
+        # SECURITY: an explicit client_id must be one the caller may see.
+        verify_client_access(current_user, client_id, db)
         # Filter employees assigned to specific client
-        query = query.filter(Employee.client_id_assigned.like(f"%{client_id}%"))
+        query = query.filter(client_token_clause(Employee.client_id_assigned, client_id))
 
     if is_floating_pool is not None:
         query = query.filter(Employee.is_floating_pool == (1 if is_floating_pool else 0))
@@ -136,6 +170,24 @@ def update_employee(db: Session, employee_id: int, employee_update: dict, curren
 
     if not db_employee:
         raise HTTPException(status_code=404, detail="Employee not found")
+
+    # SECURITY: the role check above does not bind the caller to a tenant.
+    verify_employee_access(current_user, db_employee, db)
+
+    # SECURITY: passing the tenant check on the CURRENT owner does not entitle
+    # the caller to change who the owner is. Without this a supervisor could
+    # move an employee out of their own tenant, or blank the assignment and
+    # (before verify_employee_access stopped treating blank as shared) publish
+    # it to every tenant. Reassignment is a planner action and has its own
+    # endpoint, POST /api/employees/{id}/assign-client, which verifies access
+    # to the TARGET client.
+    if "client_id_assigned" in employee_update:
+        requested = employee_update["client_id_assigned"]
+        if requested != db_employee.client_id_assigned and current_user.role not in PLANNER_ROLES:
+            raise HTTPException(
+                status_code=403,
+                detail="Only admins and powerusers can change an employee's client assignment",
+            )
 
     # Update fields
     for field, value in employee_update.items():

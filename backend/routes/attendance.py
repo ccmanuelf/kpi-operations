@@ -36,7 +36,12 @@ from backend.auth.jwt import (
     resolve_client_scope,
 )
 from backend.orm.user import User
-from backend.middleware.client_auth import build_client_filter_clause, verify_client_access
+from backend.middleware.client_auth import (
+    build_client_filter_clause,
+    verify_client_access,
+    verify_employee_access,
+)
+from backend.orm.employee import Employee
 
 logger = get_module_logger(__name__)
 
@@ -579,6 +584,14 @@ def get_bradford_factor(
 
     # Reject reversed range (Run-6 audit R6-D-001) before defaulting.
     validate_date_range(start_date, end_date)
+
+    # SECURITY: the score is computed from the employee's attendance rows, so
+    # answering for an employee outside the caller's scope leaks another
+    # tenant's absence data.
+    employee = db.query(Employee).filter(Employee.employee_id == employee_id).first()
+    if not employee:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    verify_employee_access(current_user, employee, db)
 
     score = calculate_bradford_factor(db, employee_id, start_date, end_date)
 

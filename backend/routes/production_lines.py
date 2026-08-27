@@ -11,6 +11,7 @@ from typing import Dict, List
 
 from backend.database import get_db
 from backend.auth.jwt import get_current_user, get_current_active_supervisor, ClientScope, resolve_client_scope
+from backend.middleware.client_auth import verify_client_access
 from backend.orm.production_line import ProductionLine
 from backend.orm.user import User
 from backend.utils.logging_utils import get_module_logger
@@ -35,6 +36,22 @@ from backend.services.production_line_service import (
 logger = get_module_logger(__name__)
 
 router = APIRouter(prefix="/api/production-lines", tags=["Production Lines"])
+
+
+def _authorized_line(db: Session, line_id: int, current_user: User) -> ProductionLine:
+    """Fetch a production line by id and authorize it for the caller.
+
+    SECURITY: every by-id route below resolves its line through here.
+    ``get_production_line`` filters on line_id alone, so without this check
+    any authenticated user could read, edit or soft-delete another client's
+    line. 404 when the line does not exist, 403 when it belongs to a client
+    the caller is not assigned to.
+    """
+    line = get_production_line(db, line_id)
+    if not line:
+        raise HTTPException(status_code=404, detail="Production line not found")
+    verify_client_access(current_user, line.client_id, db)
+    return line
 
 
 @router.get("/", response_model=List[ProductionLineResponse])
@@ -76,6 +93,8 @@ def get_production_line_tree_endpoint(
 
     Returns top-level lines with nested children.
     """
+    # SECURITY: client_id arrives from the caller; confirm they own it.
+    verify_client_access(current_user, client_id, db)
     logger.info(
         "Fetching production line tree for client_id=%s by user=%s",
         client_id,
@@ -150,6 +169,8 @@ def sync_capacity_endpoint(
     Matches are made within the same client_id. Already-linked lines are skipped.
     Requires supervisor or admin role.
     """
+    # SECURITY: client_id arrives from the caller; confirm they own it.
+    verify_client_access(current_user, client_id, db)
     logger.info(
         "Auto-syncing capacity lines for client_id=%s by user=%s",
         client_id,
@@ -168,6 +189,8 @@ def get_unlinked_lines_endpoint(
     """
     Return active operational lines that have no capacity planning link.
     """
+    # SECURITY: client_id arrives from the caller; confirm they own it.
+    verify_client_access(current_user, client_id, db)
     logger.info(
         "Fetching unlinked lines for client_id=%s by user=%s",
         client_id,
@@ -188,6 +211,7 @@ def link_capacity_endpoint(
 
     Requires supervisor or admin role.
     """
+    _authorized_line(db, line_id, current_user)
     try:
         result = link_to_capacity_line(db, line_id, body.capacity_line_id)
     except ValueError as exc:
@@ -218,6 +242,7 @@ def unlink_capacity_endpoint(
 
     Requires supervisor or admin role.
     """
+    _authorized_line(db, line_id, current_user)
     result = unlink_from_capacity_line(db, line_id)
     if not result:
         raise HTTPException(status_code=404, detail="Production line not found")
@@ -238,10 +263,7 @@ def get_production_line_endpoint(
     """
     Get a single production line by ID.
     """
-    result = get_production_line(db, line_id)
-    if not result:
-        raise HTTPException(status_code=404, detail="Production line not found")
-    return result
+    return _authorized_line(db, line_id, current_user)
 
 
 @router.put("/{line_id}", response_model=ProductionLineResponse)
@@ -256,6 +278,7 @@ def update_production_line_endpoint(
 
     Requires supervisor or admin role.
     """
+    _authorized_line(db, line_id, current_user)
     result = update_production_line(db, line_id, data)
     if not result:
         raise HTTPException(status_code=404, detail="Production line not found")
@@ -273,6 +296,7 @@ def delete_production_line_endpoint(
 
     Requires supervisor or admin role.
     """
+    _authorized_line(db, line_id, current_user)
     success = deactivate_production_line(db, line_id)
     if not success:
         raise HTTPException(status_code=404, detail="Production line not found")

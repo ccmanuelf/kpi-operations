@@ -49,17 +49,52 @@ async function navigateToAttendance(page: Page) {
   })
 }
 
-// Seeds one already-persisted attendance entry for TODAY. The grid's
-// existingMap merge (useAttendanceGridData.ts loadEmployees) keys by
-// employee_id and takes the LAST entry seen while iterating a
-// shift_date-DESC list; even with the backend's shift_date filter fixed
-// (fix round 1, item 3) this test still targets a collision-free
-// employee to keep row-index correlation deterministic across repeated
-// runs against an accumulating dev DB. Picks the first employee (in the
-// same employee_name order /api/employees returns, which is also the
-// grid's row order) with ZERO existing entries for the target shift.
-// Returns the row index that employee will land on, computed from the
-// same ordered list the grid loads.
+// Seeds one already-persisted attendance entry for TODAY, on an employee
+// that has no entry for today's shift yet.
+//
+// Why "today's shift" and not "any date": the grid's existingMap merge
+// (useAttendanceGridData.ts loadEmployees) keys by employee_id and takes
+// the LAST entry seen, so two entries for the SAME employee on the SAME
+// shift_date would make it non-deterministic which one hydrates the row —
+// and the dialog's PUT would then target an attendance_entry_id this
+// helper never returned. Entries on OTHER dates cannot collide: that same
+// loadEmployees call passes `shift_date: selectedDate.value` (today) to
+// GET /attendance, and the backend filters it exactly
+// (crud/attendance.py::get_attendance_records, `func.date(shift_date) ==
+// shift_date`). Measured against a freshly seeded DB: every DEMO-PIECE
+// employee has 100+ prior-day entries, and
+// GET /attendance?shift_date=<today>&shift_id=1 still returns 0 rows.
+//
+// This check used to omit shift_date, i.e. it demanded an employee with
+// zero entries on ANY date. That is unsatisfiable for a correctly
+// tenant-scoped listing — the seeder backfills every one of a client's
+// employees across the whole window — so it only ever passed by picking
+// an employee belonging to ANOTHER tenant out of a listing that leaked
+// them, and then binding that employee to this client via the POST below.
+// It was a test that depended on the cross-tenant leak, not a guard
+// against it.
+//
+// What today is free at all rests on: backend/seed/emitters_master.py
+// computes activity_days = (as_of - activity_start).days and
+// emitters_operations.py iterates range(activity_days), so the last
+// seeded day is as_of - 1 and the as_of day itself carries no attendance.
+// If the seeder ever emits as_of-day rows, every candidate here collides
+// and this helper returns null again — the fix then is to move the grid
+// off today (the view's date field), NOT to widen the search back across
+// tenants.
+//
+// client_id comes from the chosen employee's own assignment rather than a
+// hardcoded 'DEMO-PIECE': if the listing ever leaks another tenant's
+// employee again, the POST is then made against THAT tenant and the
+// backend's verify_client_access returns 403, so this helper fails loudly
+// instead of silently manufacturing a cross-tenant row.
+//
+// Picks the first eligible employee in the same employee_name order
+// /api/employees returns (which is also the grid's row order — the grid's
+// extra shift_id/active params are not declared on the endpoint and are
+// ignored, so both calls get the same page). Returns the row index that
+// employee will land on, computed from the same ordered list the grid
+// loads.
 async function seedExistingAttendanceEntry(page: Page) {
   return page.evaluate(async () => {
     const token = localStorage.getItem('access_token')
@@ -74,33 +109,44 @@ async function seedExistingAttendanceEntry(page: Page) {
 
     const shift = shifts[0]
 
+    const d = new Date()
+    const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
+      d.getDate(),
+    ).padStart(2, '0')}`
+
     let employee = null
+    let clientId = ''
     let rowIndex = -1
     for (let i = 0; i < employees.length; i++) {
       const candidate = employees[i]
+      // client_id_assigned is a comma-separated token list; NULL marks a
+      // floating-pool employee who belongs to no tenant, and attendance
+      // needs a client_id, so those are not candidates.
+      const assigned = String(candidate.client_id_assigned || '')
+        .split(',')
+        .map((c: string) => c.trim())
+        .filter(Boolean)
+      if (assigned.length === 0) continue
       const existingRes = await fetch(
-        `/api/attendance?employee_id=${candidate.employee_id}&shift_id=${shift.shift_id}`,
+        `/api/attendance?employee_id=${candidate.employee_id}&shift_id=${shift.shift_id}` +
+          `&shift_date=${today}`,
         { headers },
       )
       const existing = existingRes.ok ? await existingRes.json() : []
       if (Array.isArray(existing) && existing.length === 0) {
         employee = candidate
+        clientId = assigned[0]
         rowIndex = i
         break
       }
     }
     if (!employee) return null
 
-    const d = new Date()
-    const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
-      d.getDate(),
-    ).padStart(2, '0')}`
-
     const createRes = await fetch('/api/attendance', {
       method: 'POST',
       headers: { ...headers, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        client_id: 'DEMO-PIECE',
+        client_id: clientId,
         employee_id: employee.employee_id,
         shift_date: today,
         shift_id: shift.shift_id,
@@ -130,7 +176,11 @@ test.describe('Attendance grid — OT split + hour allocation', () => {
     await navigateToAttendance(page)
 
     const seed = await seedExistingAttendanceEntry(page)
-    expect(seed, 'setup: need at least one employee + shift for the seeded client').toBeTruthy()
+    expect(
+      seed,
+      "setup: the logged-in user's own client needs a shift and at least one " +
+        'employee with no attendance entry for it today (see seedExistingAttendanceEntry)',
+    ).toBeTruthy()
 
     // Reload so loadEmployees() picks up the freshly-seeded entry.
     await navigateToAttendance(page)

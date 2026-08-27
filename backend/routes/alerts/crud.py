@@ -5,6 +5,7 @@ Covers: list, dashboard, summary, get, create, acknowledge, resolve, dismiss.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import or_
 from sqlalchemy.orm import Query as OrmQuery, Session
 from typing import Any, List, Optional
 from datetime import datetime, timedelta, timezone
@@ -24,8 +25,8 @@ from backend.schemas.alert import (
     AlertStatus,
 )
 from backend.calculations.alerts import generate_alert_id
-from backend.auth.jwt import get_current_user
-from backend.middleware.client_auth import verify_client_access
+from backend.auth.jwt import ClientScope, get_current_user, resolve_client_scope
+from backend.middleware.client_auth import ClientAccessError, get_user_client_filter, verify_client_access
 from backend.orm.user import User
 from backend.constants import (
     LOOKBACK_DAILY_HOURS,
@@ -50,6 +51,7 @@ def _build_alerts_query(
     status: Optional[AlertStatus] = None,
     kpi_key: Optional[str] = None,
     days: Optional[int] = None,
+    client_ids: Optional[tuple[str, ...]] = None,
 ) -> "OrmQuery[Alert]":
     """Single source of truth for filtering the ALERT table.
 
@@ -63,8 +65,21 @@ def _build_alerts_query(
     """
     query = db.query(Alert)
 
+    # SECURITY: confine to the caller's clients. ``client_ids`` is
+    # ClientScope.client_ids — None means all clients, correct only for
+    # admin/poweruser. Client-less alerts are system-wide and carry no tenant
+    # data, so they stay visible. Without this every caller saw every tenant's
+    # alerts whenever they omitted client_id.
+    if client_ids is not None:
+        query = query.filter(or_(Alert.client_id.in_(list(client_ids)), Alert.client_id.is_(None)))
+
     if client_id:
-        query = query.filter(Alert.client_id == client_id)
+        # Keep client-less alerts on this branch too. `AND client_id = 'X'`
+        # drops every NULL row, which silently contradicted the comment above
+        # ("system-wide ... stay visible") on exactly the path a dashboard
+        # takes. Over-restrictive rather than leaky, but a comment with no gate
+        # behind it is how the rest of this class started.
+        query = query.filter(or_(Alert.client_id == client_id, Alert.client_id.is_(None)))
     if category:
         query = query.filter(Alert.category == category.value)
     if severity:
@@ -78,6 +93,26 @@ def _build_alerts_query(
         query = query.filter(Alert.created_at >= from_date)
 
     return query
+
+
+def _authorize_alert_mutation(alert: Alert, current_user: User, db: Session) -> None:
+    """Authorize a state change on one alert.
+
+    SECURITY: alert_id alone carried no tenant check, so a scoped caller could
+    mutate another client's alert. The routes answered 500 only because
+    `current_user.get("user_id")` raises — and it raises AFTER the status
+    assignment, so a crash was never the denial it looked like.
+
+    A client-less alert is system-wide: readable by everyone (it carries no
+    tenant data) but writable only by a caller with all-client scope. Anyone
+    could otherwise acknowledge it, and acknowledge_alert stamps their user_id
+    into a row every other tenant can read.
+    """
+    if alert.client_id is not None:
+        verify_client_access(current_user, alert.client_id, db)
+        return
+    if get_user_client_filter(current_user, db) is not None:
+        raise ClientAccessError(detail=f"Access denied: User {current_user.username} cannot modify a system-wide alert")
 
 
 @crud_router.get("/", response_model=List[AlertResponse])
@@ -96,6 +131,7 @@ async def list_alerts(
     limit: int = Query(MEDIUM_PAGE_SIZE, ge=MIN_DAYS_LOOKBACK, le=MAX_ALERT_PAGE_SIZE, description="Maximum results"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    scope: ClientScope = Depends(resolve_client_scope),
 ) -> Any:
     """
     List alerts with optional filters
@@ -105,9 +141,6 @@ async def list_alerts(
     filters (same basis /summary uses), so an unfiltered active-status list and the
     summary's total_active can never disagree.
     """
-    if client_id:
-        verify_client_access(current_user, client_id)
-
     query = _build_alerts_query(
         db,
         client_id=client_id,
@@ -116,6 +149,7 @@ async def list_alerts(
         status=status,
         kpi_key=kpi_key,
         days=days,
+        client_ids=scope.client_ids,
     )
 
     alerts = query.order_by(Alert.created_at.desc()).limit(limit).all()
@@ -128,16 +162,16 @@ async def get_alert_dashboard(
     client_id: Optional[str] = Query(None, description="Filter by client"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    scope: ClientScope = Depends(resolve_client_scope),
 ) -> Any:
     """
     Get comprehensive alert dashboard
 
     Returns summary statistics, urgent alerts, and recent activity.
     """
-    if client_id:
-        verify_client_access(current_user, client_id)
-
-    all_active = _build_alerts_query(db, client_id=client_id, status=AlertStatus.ACTIVE).all()
+    all_active = _build_alerts_query(
+        db, client_id=client_id, status=AlertStatus.ACTIVE, client_ids=scope.client_ids
+    ).all()
 
     # Build summary
     by_severity: dict[str, int] = {}
@@ -162,12 +196,11 @@ async def get_alert_dashboard(
         urgent_count=by_severity.get("urgent", 0),
     )
 
-    # Get recent alerts (last 24 hours, any status)
-    recent_query = db.query(Alert).filter(
+    # Get recent alerts (last 24 hours, any status). Built through the shared
+    # helper so the SECURITY scope filter cannot be forgotten on this branch.
+    recent_query = _build_alerts_query(db, client_id=client_id, client_ids=scope.client_ids).filter(
         Alert.created_at >= datetime.now(tz=timezone.utc) - timedelta(hours=LOOKBACK_DAILY_HOURS)
     )
-    if client_id:
-        recent_query = recent_query.filter(Alert.client_id == client_id)
 
     recent = recent_query.order_by(Alert.created_at.desc()).limit(10).all()
 
@@ -184,16 +217,14 @@ async def get_alert_summary(
     client_id: Optional[str] = Query(None, description="Filter by client"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    scope: ClientScope = Depends(resolve_client_scope),
 ) -> Any:
     """
     Get quick summary of active alerts
 
     Lightweight endpoint for status bars and quick checks.
     """
-    if client_id:
-        verify_client_access(current_user, client_id)
-
-    alerts = _build_alerts_query(db, client_id=client_id, status=AlertStatus.ACTIVE).all()
+    alerts = _build_alerts_query(db, client_id=client_id, status=AlertStatus.ACTIVE, client_ids=scope.client_ids).all()
 
     by_severity: dict[str, int] = {}
     by_category: dict[str, int] = {}
@@ -221,6 +252,10 @@ async def get_alert(
     alert = db.query(Alert).filter(Alert.alert_id == alert_id).first()
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
+    # SECURITY: alert_id alone carried no tenant check. Client-less alerts are
+    # system-wide and stay readable.
+    if alert.client_id is not None:
+        verify_client_access(current_user, alert.client_id, db)
     return AlertResponse.model_validate(alert)
 
 
@@ -279,12 +314,14 @@ async def acknowledge_alert(
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
 
+    _authorize_alert_mutation(alert, current_user, db)
+
     if alert.status != "active":
         raise HTTPException(status_code=400, detail="Only active alerts can be acknowledged")
 
     alert.status = "acknowledged"
     alert.acknowledged_at = datetime.now(tz=timezone.utc)
-    alert.acknowledged_by = current_user.get("user_id")
+    alert.acknowledged_by = current_user.user_id
 
     db.commit()
     db.refresh(alert)
@@ -308,12 +345,14 @@ async def resolve_alert(
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
 
+    _authorize_alert_mutation(alert, current_user, db)
+
     if alert.status == "resolved":
         raise HTTPException(status_code=400, detail="Alert already resolved")
 
     alert.status = "resolved"
     alert.resolved_at = datetime.now(tz=timezone.utc)
-    alert.resolved_by = current_user.get("user_id")
+    alert.resolved_by = current_user.user_id
     alert.resolution_notes = resolve_data.resolution_notes
 
     # Track prediction accuracy if this was a prediction-based alert
@@ -349,9 +388,11 @@ async def dismiss_alert(
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
 
+    _authorize_alert_mutation(alert, current_user, db)
+
     alert.status = "dismissed"
     alert.resolved_at = datetime.now(tz=timezone.utc)
-    alert.resolved_by = current_user.get("user_id")
+    alert.resolved_by = current_user.user_id
 
     db.commit()
     db.refresh(alert)

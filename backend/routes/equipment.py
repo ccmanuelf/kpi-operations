@@ -9,6 +9,7 @@ from typing import List, Optional
 
 from backend.database import get_db
 from backend.auth.jwt import get_current_user, get_current_active_supervisor
+from backend.middleware.client_auth import verify_client_access
 from backend.orm.equipment import Equipment
 from backend.orm.user import User
 from backend.utils.logging_utils import get_module_logger
@@ -27,6 +28,20 @@ logger = get_module_logger(__name__)
 router = APIRouter(prefix="/api/equipment", tags=["Equipment"])
 
 
+def _authorized_equipment(db: Session, equipment_id: int, current_user: User) -> Equipment:
+    """Fetch an equipment row by id and authorize it for the caller.
+
+    SECURITY: ``get_equipment``/``update_equipment``/``deactivate_equipment``
+    filter on equipment_id alone. 404 when absent, 403 when owned by a client
+    the caller is not assigned to.
+    """
+    result = get_equipment(db, equipment_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Equipment not found")
+    verify_client_access(current_user, result.client_id, db)
+    return result
+
+
 @router.get("/", response_model=List[EquipmentResponse])
 def list_equipment_endpoint(
     client_id: str = Query(..., description="Client ID to filter equipment"),
@@ -39,6 +54,8 @@ def list_equipment_endpoint(
 
     When line_id is provided, shared equipment is also included.
     """
+    # SECURITY: client_id arrives from the caller; confirm they own it.
+    verify_client_access(current_user, client_id, db)
     logger.info(
         "Listing equipment for client_id=%s line_id=%s by user=%s",
         client_id,
@@ -57,6 +74,8 @@ def list_shared_equipment_endpoint(
     """
     List only shared equipment (common resources) for a client.
     """
+    # SECURITY: client_id arrives from the caller; confirm they own it.
+    verify_client_access(current_user, client_id, db)
     logger.info(
         "Listing shared equipment for client_id=%s by user=%s",
         client_id,
@@ -103,10 +122,7 @@ def get_equipment_endpoint(
     """
     Get a single equipment entry by ID.
     """
-    result = get_equipment(db, equipment_id)
-    if not result:
-        raise HTTPException(status_code=404, detail="Equipment not found")
-    return result
+    return _authorized_equipment(db, equipment_id, current_user)
 
 
 @router.put("/{equipment_id}", response_model=EquipmentResponse)
@@ -121,6 +137,7 @@ def update_equipment_endpoint(
 
     Requires supervisor or admin role.
     """
+    _authorized_equipment(db, equipment_id, current_user)
     result = update_equipment(db, equipment_id, data)
     if not result:
         raise HTTPException(status_code=404, detail="Equipment not found")
@@ -138,6 +155,7 @@ def delete_equipment_endpoint(
 
     Requires supervisor or admin role.
     """
+    _authorized_equipment(db, equipment_id, current_user)
     success = deactivate_equipment(db, equipment_id)
     if not success:
         raise HTTPException(status_code=404, detail="Equipment not found")

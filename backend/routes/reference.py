@@ -14,7 +14,7 @@ from backend.auth.jwt import get_current_user
 from backend.orm.user import User
 from backend.orm.product import Product
 from backend.orm.shift import Shift
-from backend.middleware.client_auth import build_client_filter_clause
+from backend.middleware.client_auth import build_client_filter_clause, verify_client_access
 from backend.utils.logging_utils import get_module_logger
 
 logger = get_module_logger(__name__)
@@ -134,6 +134,13 @@ def infer_cycle_time(
     current_user: User = Depends(get_current_user),
 ) -> Any:
     """Infer ideal cycle time using 5-level fallback"""
+    # SECURITY: the inference reads the product's PRODUCTION_ENTRY history, so
+    # answering for another client's product leaks that client's throughput.
+    product = db.query(Product).filter(Product.product_id == product_id).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    verify_client_access(current_user, product.client_id, db)
+
     value, confidence, source, is_estimated = InferenceEngine.infer_ideal_cycle_time(db, product_id, shift_id)
 
     confidence_flag = InferenceEngine.flag_low_confidence(confidence)

@@ -10,6 +10,7 @@ from fastapi import HTTPException
 
 from backend.orm.employee import Employee
 from backend.orm.user import User, SUPERVISORY_ROLES
+from backend.middleware.client_auth import verify_employee_access
 
 
 def get_floating_pool_employees(db: Session, current_user: User, skip: int = 0, limit: int = 100) -> List[Employee]:
@@ -61,6 +62,9 @@ def assign_to_floating_pool(db: Session, employee_id: int, current_user: User) -
     if not db_employee:
         raise HTTPException(status_code=404, detail="Employee not found")
 
+    # SECURITY: the role check above does not bind the caller to a tenant.
+    verify_employee_access(current_user, db_employee, db)
+
     db_employee.is_floating_pool = 1
     db.commit()
     db.refresh(db_employee)
@@ -93,6 +97,9 @@ def remove_from_floating_pool(db: Session, employee_id: int, current_user: User)
 
     if not db_employee:
         raise HTTPException(status_code=404, detail="Employee not found")
+
+    # SECURITY: the role check above does not bind the caller to a tenant.
+    verify_employee_access(current_user, db_employee, db)
 
     db_employee.is_floating_pool = 0
     db.commit()

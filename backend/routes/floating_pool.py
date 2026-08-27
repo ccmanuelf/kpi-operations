@@ -37,12 +37,30 @@ from backend.services.floating_pool_service import (
     get_pool_summary as get_floating_pool_summary,
 )
 from backend.auth.jwt import get_current_active_supervisor, get_current_user
+from backend.middleware.client_auth import verify_client_access
 from backend.orm.user import User
 from backend.utils.logging_utils import get_module_logger
 
 logger = get_module_logger(__name__)
 
 router = APIRouter(prefix="/api/floating-pool", tags=["Floating Pool"])
+
+
+def _authorized_pool_entry(db: Session, pool_id: int, current_user: User) -> Any:
+    """Fetch a floating pool entry by id and authorize it for the caller.
+
+    SECURITY: ``crud.floating_pool.core`` filters on pool_id alone and uses
+    ``current_user`` only for the role check, so without this a supervisor of
+    one client could read or edit another client's pool entry. A pool entry
+    with ``client_id`` NULL is a shared resource by design (the column is
+    nullable "for shared resources") and stays visible to everyone.
+    """
+    entry = get_floating_pool_entry(db, pool_id, current_user)
+    if not entry:
+        raise HTTPException(status_code=404, detail="Floating pool entry not found")
+    if entry.client_id is not None:
+        verify_client_access(current_user, entry.client_id, db)
+    return entry
 
 
 @router.post("", response_model=FloatingPoolResponse, status_code=status.HTTP_201_CREATED)
@@ -137,10 +155,7 @@ def get_floating_pool_entry_endpoint(
     """
     Get floating pool entry by ID
     """
-    pool_entry = get_floating_pool_entry(db, pool_id, current_user)
-    if not pool_entry:
-        raise HTTPException(status_code=404, detail="Floating pool entry not found")
-    return pool_entry
+    return _authorized_pool_entry(db, pool_id, current_user)
 
 
 @router.put("/{pool_id}", response_model=FloatingPoolResponse)
@@ -154,6 +169,7 @@ def update_floating_pool_entry_endpoint(
     Update floating pool entry
     SECURITY: Supervisor/admin only
     """
+    _authorized_pool_entry(db, pool_id, current_user)
     pool_data = pool_update.model_dump(exclude_unset=True)
     updated = update_floating_pool_entry(db, pool_id, pool_data, current_user)
     if not updated:
@@ -169,6 +185,7 @@ def delete_floating_pool_entry_endpoint(
     Delete floating pool entry
     SECURITY: Supervisor/admin only
     """
+    _authorized_pool_entry(db, pool_id, current_user)
     success = delete_floating_pool_entry(db, pool_id, current_user)
     if not success:
         raise HTTPException(status_code=404, detail="Floating pool entry not found")

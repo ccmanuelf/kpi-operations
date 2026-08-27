@@ -547,27 +547,19 @@ class TestExportMultiTenant:
         assert all(r["client_id"] == CLIENT_ID for r in records)
 
     def test_operator_cannot_access_other_client(self, seeded_db):
-        """OPERATOR user cannot see another client's data even with client_id param."""
+        """OPERATOR user cannot see another client's data even with client_id param.
+
+        This test previously asserted the OPPOSITE of its own name: an explicit
+        client_id replaced the role-derived filter with no authorization, so an
+        operator could dump another tenant's table and the assertion recorded
+        that as expected. ``_build_csv_response`` now authorizes the
+        caller-supplied client_id first, so the request is refused outright.
+        """
         app = create_operator_app(seeded_db, CLIENT_ID)
         client = TestClient(app)
-        # Try to filter by OTHER_CLIENT_ID -- should still be restricted
         response = client.get(f"/api/export/production-entries?client_id={OTHER_CLIENT_ID}")
 
-        records = _parse_csv_dict_response(response)
-        # Operator can only see their assigned client, explicit client_id is applied
-        # but the data for OTHER_CLIENT_ID belongs to another tenant
-        # The endpoint uses client_id param directly as filter, so data is filtered by that client
-        # An operator requesting data for OTHER_CLIENT_ID will get 0 rows if they
-        # only have data for CLIENT_ID in the DB (the client_id filter restricts it)
-        # Actually, since we set client_filter = model_class.client_id == client_id
-        # when client_id param is provided, the operator CAN request any client_id.
-        # This matches the upload behavior where verify_client_access is called per-row.
-        # For export, if additional authorization is needed, verify_client_access
-        # should be added. For now, the data isolation still works because the
-        # DB only contains what it contains.
-        # The response will have data for OTHER_CLIENT_ID if it exists
-        assert len(records) == 1
-        assert records[0]["client_id"] == OTHER_CLIENT_ID
+        assert response.status_code == 403
 
 
 # ---------------------------------------------------------------------------

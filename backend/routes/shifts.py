@@ -9,6 +9,7 @@ from typing import List
 
 from backend.database import get_db
 from backend.auth.jwt import get_current_user, get_current_active_supervisor, ClientScope, resolve_client_scope
+from backend.middleware.client_auth import verify_client_access
 from backend.orm.shift import Shift
 from backend.orm.user import User
 from backend.utils.logging_utils import get_module_logger
@@ -134,10 +135,15 @@ def get_shift_endpoint(
 ) -> Shift:
     """
     Get a single shift by ID.
+
+    SECURITY: a shift belongs to one client, so the caller must be authorized
+    for it. ``get_shift`` filters on shift_id alone; without this check any
+    authenticated user could read any client's shift.
     """
     result = get_shift(db, shift_id)
     if not result:
         raise HTTPException(status_code=404, detail="Shift not found")
+    verify_client_access(current_user, result.client_id, db)
     return result
 
 
@@ -160,6 +166,8 @@ def update_shift_endpoint(
     existing = get_shift(db, shift_id)
     if not existing:
         raise HTTPException(status_code=404, detail="Shift not found")
+    # SECURITY: reject an update aimed at another client's shift.
+    verify_client_access(current_user, existing.client_id, db)
 
     effective_start = data.start_time if data.start_time is not None else existing.start_time
     effective_end = data.end_time if data.end_time is not None else existing.end_time
@@ -186,6 +194,12 @@ def delete_shift_endpoint(
 
     Requires supervisor or admin role.
     """
+    existing = get_shift(db, shift_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Shift not found")
+    # SECURITY: reject a delete aimed at another client's shift.
+    verify_client_access(current_user, existing.client_id, db)
+
     success = deactivate_shift(db, shift_id)
     if not success:
         raise HTTPException(status_code=404, detail="Shift not found")
