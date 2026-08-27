@@ -1019,3 +1019,53 @@ golden master compares key sets and is structurally blind to the whole class.
 **Earlier batches were audited against this and are clean:** Tasks 6, 7, 9 and 10 declared
 `float` only on values already float-typed in Python or produced by `round(...)`, and R4's
 disclosed instances are the plain-`int` mechanism, correctly recorded.
+
+---
+
+## CORRECTION TO THE CORRECTION — 2026-08-27, found in Batch R2's review
+
+The section above ("CORRECTION to int → float widening") states the exponent rule as though it
+governs the routes this refactor converts. **It does not, for almost all of them**, and the
+error was mine. Superseding statement:
+
+**FastAPI infers a response model from the RETURN ANNOTATION.** `decimal_encoder` — and
+therefore the exponent rule — is reached only by a handler with **no return annotation at all**.
+Measured on the pinned stack (fastapi 0.141.1, pydantic 2.13.4):
+
+```
+def f():                        -> {"d0":0,   "d95":95,   "d136":13.6}     numbers
+def f() -> Dict[str, Any]:      -> {"d0":"0", "d95":"95", "d136":"13.60"}  STRINGS
+def f() -> Any:                 -> {"d0":"0", "d95":"95", "d136":"13.60"}  STRINGS
+```
+
+This is consistent with the split measured at the very start of this plan: `response_model is
+None` (no annotation) is the *already-immune* bucket; an explicit `Any`/`dict`/`list` annotation
+routes through pydantic and **stringifies a Decimal regardless of its exponent**.
+
+### What this changes
+
+- **For an annotated route** (the ~80 explicit ones — the bulk of the work): a raw `Decimal`
+  is a JSON **string** on the wire today. Declaring `int` or `float` is a **Decimal-string leak
+  fix**, which is the refactor's entire purpose. It is *not* a widening and *not* byte-identical
+  to the previous wire. Choose `int` when the value is always integral (preserves integer
+  semantics, rejects a non-integral Decimal loudly) and `float` when it is quantized.
+- **For an unannotated route** (the ~33 immune ones): the exponent rule genuinely applies, and
+  declaring a type there *can* change `95` to `95.0`. Those are Task 17's, and are the only
+  place the earlier section's reasoning holds.
+
+### Consequences already in the tree
+
+- Commit `29547b9`'s message claims declaring `int` on four `simulation/insights` fields is
+  "byte-identical to current behaviour". **That claim is false** — the route is annotated
+  `-> Dict[str, Any]` (`routes/floating_pool.py:261`), so its pre-conversion wire was `"2"`,
+  a string. The `int` **declarations are still correct** (always-integral values, and `int` is
+  the leak fix that preserves integer-ness); only the stated reason was wrong.
+- R2's `quality_contracts.py` HAZARD 1/2 docstrings and one test name encode the same false
+  premise. Being corrected separately.
+
+### The durable lesson
+
+Both errors came from probing a *value* (`Decimal("13.60")`, `Decimal(95)`) instead of the
+*route*. The wire format is decided by the handler's return annotation, not by the value's
+exponent — so **check the annotation first, then the producer**. A probe that constructs a
+`Decimal` and encodes it in isolation cannot tell you what any real route emits.
