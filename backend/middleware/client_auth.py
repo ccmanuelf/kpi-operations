@@ -17,6 +17,11 @@ from backend.orm.user import User, UserRole
 logger = logging.getLogger(__name__)
 
 
+#: Sentinel distinguishing "column absent" from "column is NULL". `or \"\"`
+#: collapsed the two, turning an uninspectable row into an access grant.
+_UNSET = object()
+
+
 class ClientAccessError(HTTPException):
     """Custom exception for client access violations"""
 
@@ -210,12 +215,22 @@ def verify_employee_access(user: User, employee: Any, db: Optional[Session] = No
     in the caller's authorized set — an employee may legitimately be shared by
     several clients.
 
-    An employee with no assignment is a shared floating-pool resource
-    (``EmployeeCreate.client_id_assigned`` is documented as "NULL for floating
-    pool") and stays visible to every authenticated user. Both halves of that
-    rule are pinned by ``test_permission_matrix.py``'s cross-tenant tests
-    (``test_unassigned_employee_is_visible_to_every_tenant`` and the
-    ``/api/employees/{employee_id}`` matrix row).
+    **NULL, and only NULL, means "shared floating-pool resource"** —
+    ``EmployeeCreate.client_id_assigned`` documents it as "Comma-separated
+    client IDs, NULL for floating pool". A blank or whitespace-only string is a
+    MALFORMED assignment, not a shared one, and is denied. Treating it as
+    shared was a privilege-escalation path: ``EmployeeUpdate`` has no
+    ``min_length`` and ``PUT /api/employees/{id}`` is supervisor-tier, so a
+    supervisor could set ``client_id_assigned=""`` on an employee they own and
+    publish it to every tenant — while ``get_employees`` (which admits only
+    ``IS NULL``) went on hiding it, making the by-id route MORE permissive than
+    the listing. The two now agree; pinned by
+    ``test_cross_tenant_authz.py::test_blank_client_assignment_is_not_shared``.
+
+    Fails CLOSED. If the employee row is missing, or does not expose
+    ``client_id_assigned`` at all (a partial projection, a ``Row``, ``None``),
+    this raises rather than granting: an authorization helper that cannot
+    inspect the field it authorizes on has no basis to allow anything.
 
     Args:
         user: Authenticated user object (loaded from DB by get_current_user)
@@ -226,17 +241,29 @@ def verify_employee_access(user: User, employee: Any, db: Optional[Session] = No
         True if user has access
 
     Raises:
-        ClientAccessError: If the employee is owned and none of its clients
-            is in the caller's authorized set
+        ClientAccessError: if the row cannot be inspected, if its assignment is
+            malformed, or if none of its clients is in the caller's set
     """
+    # Fail closed BEFORE the role bypass: an uninspectable row is a caller bug,
+    # and a loud 403 is the safe way to surface it.
+    if employee is None:
+        raise ClientAccessError(detail="Access denied: no employee record to authorize")
+    assigned = getattr(employee, "client_id_assigned", _UNSET)
+    if assigned is _UNSET:
+        raise ClientAccessError(detail="Access denied: employee record does not expose client_id_assigned")
+
     if user.role in [UserRole.ADMIN, UserRole.POWERUSER]:
         return True
 
-    assigned = getattr(employee, "client_id_assigned", None) or ""
-    owners = [c.strip() for c in assigned.split(",") if c.strip()]
-    if not owners:
-        # Unowned = shared floating-pool resource; no tenant to deny against.
+    if assigned is None:
+        # The documented shared floating-pool marker.
         return True
+
+    owners = [c.strip() for c in str(assigned).split(",") if c.strip()]
+    if not owners:
+        raise ClientAccessError(
+            detail=f"Access denied: User {user.username} cannot access an employee " f"whose client assignment is blank"
+        )
 
     user_clients = get_user_client_filter(user, db)
     assert user_clients is not None  # ADMIN/POWERUSER returned True above
