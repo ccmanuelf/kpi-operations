@@ -305,7 +305,12 @@ def test_check_availability_existing_assignment_populates_conflict_dates():
         "message": "Employee is currently assigned to 'CLIENT-002'",
     }
 
-    dumped = FloatingPoolCheckAvailabilityResponse(**raw).model_dump(exclude_unset=True)
-    # What the model actually emits over the wire.
+    dumped = FloatingPoolCheckAvailabilityResponse(**raw).model_dump()
+    # What the model actually emits over the wire -- plain model_dump(), not
+    # exclude_unset=True: this route does not carry response_model_
+    # exclude_unset (correctly -- all 4 keys are always present, never
+    # omitted). Using exclude_unset here would hide a field this model
+    # declares but this branch never populates, shipping as a spurious
+    # `null` in production while this assertion stayed green.
     assert set(dumped.keys()) == set(raw.keys())
     assert dumped == raw

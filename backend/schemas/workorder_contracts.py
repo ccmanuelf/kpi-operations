@@ -141,8 +141,9 @@ class WorkOrderProgressResponse(BaseModel):
 
 class WorkOrderTimelineEvent(BaseModel):
     """One entry of GET /api/work-orders/{work_order_id}/timeline's `events`
-    list -- golden evidence. Every one of the route's 6 append sites
-    (routes/work_orders.py) builds this identical 6-key dict.
+    list -- golden evidence. Every one of the route's 8 append sites
+    (routes/work_orders.py:325,338,351,364,377,405,416,435) builds this
+    identical 6-key dict.
     """
 
     event_type: str
@@ -208,8 +209,13 @@ class AlertsHistoryAccuracyResponse(BaseModel):
     leak this refactor exists to close. If this field is ever assigned a
     real value, the fix is to declare its actual type then, not to widen
     this back to `Any`. `average_error_percent` is an int->float widening
-    instance when every `error_percent` in the window is falsy (`errors` is
-    then `[]` and `avg_error` the bare int `0`).
+    instance, and today it is ALWAYS the bare int `0`, unconditionally --
+    not merely "when every value happens to be falsy": no production code
+    path anywhere in this codebase ever writes ALERT_HISTORY.error_percent
+    (verified: `AlertHistory(...)` is constructed in exactly one place,
+    routes/alerts/crud.py:360, and it never sets error_percent or
+    was_accurate), so `errors` is `[]` for every row that will ever exist
+    today, and `avg_error = 0` unconditionally.
     """
 
     period_days: int

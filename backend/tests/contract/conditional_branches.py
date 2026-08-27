@@ -94,10 +94,10 @@ EXCLUDE_UNSET_ROUTES: Dict[str, ExcludeUnsetEntry] = {
     "GET /api/alerts/history/accuracy": ExcludeUnsetEntry(
         reason=(
             "accurate_predictions/accuracy_rate_percent/average_error_percent/category are "
-            "absent, not null, when the lookback window HAS matching ALERT_HISTORY rows -- "
-            "get_prediction_accuracy (routes/alerts/config_history.py) returns a completely "
-            "different dict on that branch, one that itself omits accuracy_metrics/message (the "
-            "smoke seed's captured, zero-history branch). Batch R3."
+            "absent, not null, when the lookback window has ZERO matching ALERT_HISTORY rows -- "
+            "the smoke seed's captured branch. get_prediction_accuracy (routes/alerts/"
+            "config_history.py) returns a completely different dict once the window HAS "
+            "matching rows, one that itself omits accuracy_metrics/message. Batch R3."
         ),
         forcing_test="test_prediction_accuracy_non_empty_history_branch_omits_the_other_shape",
     ),

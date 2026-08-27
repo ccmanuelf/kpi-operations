@@ -80,13 +80,16 @@ class FloatingPoolCheckAvailabilityResponse(BaseModel):
     (param_specs.py): it answers "available" for any employee_id, so the
     captured entry is always the 4-key `{is_available: true, current_
     assignment: null, conflict_dates: null, message: str}` no-existing-
-    assignment branch. Modeled from ALL FOUR of `is_employee_available_for_
-    assignment`'s (crud/floating_pool/assignments.py) return statements, not
-    just the captured one: `current_assignment` is the other client's
-    client_id string when assigned, and `conflict_dates` is populated with
-    the two datetimes above on three of those branches. All 4 keys are
-    unconditionally present in every branch (no `exclude_unset` needed) --
-    only their VALUES vary between null and populated.
+    assignment branch. Modeled from ALL FIVE of `is_employee_available_for_
+    assignment`'s (crud/floating_pool/assignments.py:186,201,213,221,230)
+    return statements, not just the captured one (:186): `current_
+    assignment` is the other client's client_id string when assigned, and
+    `conflict_dates` is populated with the two datetimes above on TWO of
+    those branches (:201 unconditionally within its branch, :230 via a
+    ternary on `existing_assignment.available_from`) -- the other three
+    (:186, :213, :221) always leave it null. All 4 keys are unconditionally
+    present in every branch (no `exclude_unset` needed) -- only their
+    VALUES vary between null and populated.
     """
 
     is_available: bool
@@ -248,8 +251,9 @@ class FloatingPoolCurrentStatus(BaseModel):
     (`target_date or date.today()`, routes/floating_pool.py) -- never a pre-
     formatted string. `utilization_percent` is `round(utilization, 1)`, an
     int->float widening instance when `total_pool_size` is 0 (`utilization`
-    is then the bare int `0`; not hit under the smoke seed's non-empty
-    pool).
+    is then the bare int `0`) -- the ORDINARY response for any client with
+    no floating-pool employees at all, not a rare edge case; this specific
+    capture's non-empty pool simply does not exercise it.
     """
 
     total_pool_size: int
@@ -354,8 +358,10 @@ class AbsenteeismKPIResponse(BaseModel):
     already `float(...)`-cast in the route (routes/attendance.py) off
     `Numeric(5, 2)` SQL `SUM()`s -- no Decimal reaches this dict. `rate`/
     `absenteeism_rate` are `round(rate, 2)`, an int->float widening instance
-    when `scheduled` is 0 for the period (`rate` is then the bare int `0`;
-    not hit under the smoke seed's non-zero scheduled hours).
+    when `scheduled` is 0 for the period (`rate` is then the bare int `0`)
+    -- the ORDINARY response for a client (or scope/date-range) with no
+    attendance data at all, not a rare edge case; this specific capture's
+    non-zero scheduled hours simply do not exercise it.
     """
 
     shift_id: int
