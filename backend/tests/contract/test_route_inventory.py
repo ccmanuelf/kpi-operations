@@ -1,9 +1,14 @@
 def test_every_loose_route_is_inventoried_and_none_is_silently_dropped():
-    """90 routes still needing a response model, after Batch R4 converts 18
-       of the prior 108 across `/api/cache`, `/api/kpi-thresholds`,
-       `/api/predictions`, `/api/data-completeness`, `/api/my-shift`,
-       `/api/shifts`, `/api/plan-vs-actual` (`backend/schemas/ops_contracts.py`).
-       108 - 18 = 90, mirrored by `ALLOWLIST` shrinking by the same 18 entries.
+    """78 routes still needing a response model, after Batch R3 converts 12
+       of the prior 90 across `/api/floating-pool` (4), `/api/work-orders`
+       (3 GET + 1 POST), `/api/attendance` (2), `/api/alerts` (2)
+       (`backend/schemas/floor_contracts.py` + `workorder_contracts.py`).
+       90 - 12 = 78, mirrored by `ALLOWLIST` shrinking by the same 12 entries.
+
+       90 itself is Batch R4's count: 108 - 18 across `/api/cache`,
+       `/api/kpi-thresholds`, `/api/predictions`, `/api/data-completeness`,
+       `/api/my-shift`, `/api/shifts`, `/api/plan-vs-actual`
+       (`backend/schemas/ops_contracts.py`).
 
        This measurement is also where `flatten_api_routes` (capture.py) earned
        its second iteration: FastAPI's `_IncludedRouter` wrapper only bakes a
@@ -58,7 +63,7 @@ def test_every_loose_route_is_inventoried_and_none_is_silently_dropped():
 
     routes = routes_needing_a_response_model(app)
 
-    assert len(routes) == 90
+    assert len(routes) == 78
     methods = {m for m, _, _ in routes}
     assert methods == {"GET", "POST", "PUT", "DELETE"}
 

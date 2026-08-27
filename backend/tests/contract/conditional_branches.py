@@ -91,6 +91,25 @@ EXCLUDE_UNSET_ROUTES: Dict[str, ExcludeUnsetEntry] = {
         ),
         forcing_test="test_cache_health_error_branch_omits_entries_and_hit_rate",
     ),
+    "GET /api/alerts/history/accuracy": ExcludeUnsetEntry(
+        reason=(
+            "accurate_predictions/accuracy_rate_percent/average_error_percent/category are "
+            "absent, not null, when the lookback window HAS matching ALERT_HISTORY rows -- "
+            "get_prediction_accuracy (routes/alerts/config_history.py) returns a completely "
+            "different dict on that branch, one that itself omits accuracy_metrics/message (the "
+            "smoke seed's captured, zero-history branch). Batch R3."
+        ),
+        forcing_test="test_prediction_accuracy_non_empty_history_branch_omits_the_other_shape",
+    ),
+    "POST /api/work-orders/{work_order_id}/approve-qc": ExcludeUnsetEntry(
+        reason=(
+            "message is absent, not null, on approve_qc's (routes/work_orders.py) "
+            "already-approved branch -- the isolated-capture harness only ever calls this route "
+            "once per restored snapshot, so the golden entry is always the freshly-approved "
+            "branch, which DOES send message. Batch R3."
+        ),
+        forcing_test="test_approve_qc_already_approved_branch_omits_message",
+    ),
 }
 
 

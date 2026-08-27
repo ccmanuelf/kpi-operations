@@ -18,6 +18,7 @@ from backend.schemas.attendance import (
     AttendanceRecordUpdate,
     AttendanceRecordResponse,
 )
+from backend.schemas.floor_contracts import AbsenteeismKPIResponse, AbsenteeismTrendPoint
 from backend.services.attendance_service import (
     create_record as create_attendance_record,
     get_record as get_attendance_record,
@@ -319,7 +320,7 @@ def delete_attendance(
 # ============================================================================
 
 
-@router.get("/kpi/absenteeism")
+@router.get("/kpi/absenteeism", response_model=AbsenteeismKPIResponse)
 def calculate_absenteeism_kpi(
     shift_id: Optional[int] = None,
     start_date: Optional[date] = None,
@@ -506,7 +507,7 @@ def calculate_absenteeism_kpi(
     }
 
 
-@router.get("/kpi/absenteeism/trend")
+@router.get("/kpi/absenteeism/trend", response_model=List[AbsenteeismTrendPoint])
 def get_absenteeism_trend(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,

@@ -38,15 +38,21 @@ gets the same two-assertion treatment.
 """
 
 import asyncio
+from datetime import datetime, timezone
 from unittest.mock import Mock, patch
 
 from backend.calculations.elapsed_time import (
     calculate_client_average_times,
     calculate_stage_duration_summary,
 )
+from backend.crud.floating_pool.assignments import is_employee_available_for_assignment
+from backend.routes.alerts.config_history import get_prediction_accuracy
 from backend.routes.cache import cache_health
+from backend.routes.work_orders import approve_qc
+from backend.schemas.floor_contracts import FloatingPoolCheckAvailabilityResponse
 from backend.schemas.ops_contracts import CacheHealthResponse
 from backend.schemas.workflow_contracts import AverageTimesSummary, StageDurationsResponse
+from backend.schemas.workorder_contracts import AlertsHistoryAccuracyResponse, WorkOrderApproveQCResponse
 from backend.tests.contract.conditional_branches import EXCLUDE_UNSET_ROUTES, declared_exclude_unset_routes
 
 
@@ -178,4 +184,128 @@ def test_cache_health_error_branch_omits_entries_and_hit_rate():
     dumped = CacheHealthResponse(**raw).model_dump(exclude_unset=True)
     # What the model actually emits over the wire.
     assert set(dumped.keys()) == {"status", "timestamp", "error"}
+    assert dumped == raw
+
+
+def test_prediction_accuracy_non_empty_history_branch_omits_the_other_shape():
+    """Forces GET /api/alerts/history/accuracy's non-empty-history branch
+    (routes/alerts/config_history.py::get_prediction_accuracy) and pins its
+    exact 6-key shape on BOTH sides of validation -- the golden master's
+    captured entry is the OTHER, entirely disjoint branch (zero ALERT_HISTORY
+    rows with a non-null actual_value in the lookback window), so there is
+    no other coverage for this branch, or proof that `accuracy_metrics`/
+    `message` are correctly absent from it, at all.
+    """
+    mock_history_row = Mock()
+    mock_history_row.was_accurate = True
+    mock_history_row.error_percent = 5.0
+
+    mock_query = Mock()
+    mock_query.filter.return_value = mock_query
+    mock_query.all.return_value = [mock_history_row]
+
+    mock_db = Mock()
+    mock_db.query.return_value = mock_query
+
+    raw = asyncio.run(get_prediction_accuracy(days=30, category=None, db=mock_db, current_user=Mock()))
+
+    # The branch's real shape, before anything normalises it away.
+    assert set(raw.keys()) == {
+        "period_days",
+        "total_predictions",
+        "accurate_predictions",
+        "accuracy_rate_percent",
+        "average_error_percent",
+        "category",
+    }
+    assert raw == {
+        "period_days": 30,
+        "total_predictions": 1,
+        "accurate_predictions": 1,
+        "accuracy_rate_percent": 100.0,
+        "average_error_percent": 5.0,
+        "category": "all",
+    }
+
+    dumped = AlertsHistoryAccuracyResponse(**raw).model_dump(exclude_unset=True)
+    # What the model actually emits over the wire -- "accuracy_metrics" and
+    # "message" (the OTHER branch's fields) must not leak in as nulls.
+    assert set(dumped.keys()) == set(raw.keys())
+    assert dumped == raw
+
+
+def test_approve_qc_already_approved_branch_omits_message():
+    """Forces POST /api/work-orders/{work_order_id}/approve-qc's already-
+    approved branch (routes/work_orders.py::approve_qc) and pins its exact
+    5-key shape on BOTH sides of validation -- the golden master's captured
+    entry is the 6-key freshly-approved branch (the isolated-capture harness
+    calls this route exactly once per restored snapshot, so it always lands
+    on that first-approval path); the already-approved branch, reached only
+    on a SECOND call against the same work order, has no other coverage.
+    """
+    mock_work_order = Mock()
+    mock_work_order.qc_approved = True
+    mock_work_order.qc_approved_date = datetime(2026, 8, 27, 12, 0, tzinfo=timezone.utc)
+    mock_work_order.qc_approved_by = "user-1"
+
+    with patch("backend.routes.work_orders.get_work_order", return_value=mock_work_order):
+        raw = approve_qc(work_order_id="WO-1", approval_data=None, db=Mock(), current_user=Mock())
+
+    # The branch's real shape, before anything normalises it away.
+    assert set(raw.keys()) == {"status", "work_order_id", "qc_approved", "qc_approved_date", "qc_approved_by"}
+    assert raw == {
+        "status": "already_approved",
+        "work_order_id": "WO-1",
+        "qc_approved": True,
+        "qc_approved_date": "2026-08-27T12:00:00+00:00",
+        "qc_approved_by": "user-1",
+    }
+
+    dumped = WorkOrderApproveQCResponse(**raw).model_dump(exclude_unset=True)
+    # What the model actually emits over the wire -- "message" (the OTHER
+    # branch's field) must not leak in as null.
+    assert set(dumped.keys()) == set(raw.keys())
+    assert dumped == raw
+
+
+def test_check_availability_existing_assignment_populates_conflict_dates():
+    """Forces GET /api/floating-pool/check-availability/{employee_id}'s
+    existing-assignment branch (crud/floating_pool/assignments.py::
+    is_employee_available_for_assignment) and pins its exact 4-key shape on
+    BOTH sides of validation -- HAZARD 2 (task-R3-brief.md): this route is
+    id-insensitive (`NEVER_404`, param_specs.py) and its ONLY captured
+    evidence is the no-existing-assignment floor
+    (`current_assignment`/`conflict_dates` both null), so the POPULATED
+    shape `FloatingPoolCheckAvailabilityResponse` claims to support has no
+    other coverage at all.
+    """
+    mock_assignment = Mock()
+    mock_assignment.current_assignment = "CLIENT-002"
+    mock_assignment.available_from = datetime(2026, 8, 1, tzinfo=timezone.utc)
+    mock_assignment.available_to = datetime(2026, 8, 15, tzinfo=timezone.utc)
+
+    mock_query = Mock()
+    mock_query.filter.return_value = mock_query
+    mock_query.first.return_value = mock_assignment
+
+    mock_db = Mock()
+    mock_db.query.return_value = mock_query
+
+    raw = is_employee_available_for_assignment(mock_db, employee_id=42)
+
+    # The branch's real shape, before anything normalises it away.
+    assert set(raw.keys()) == {"is_available", "current_assignment", "conflict_dates", "message"}
+    assert raw == {
+        "is_available": False,
+        "current_assignment": "CLIENT-002",
+        "conflict_dates": {
+            "existing_start": datetime(2026, 8, 1, tzinfo=timezone.utc),
+            "existing_end": datetime(2026, 8, 15, tzinfo=timezone.utc),
+        },
+        "message": "Employee is currently assigned to 'CLIENT-002'",
+    }
+
+    dumped = FloatingPoolCheckAvailabilityResponse(**raw).model_dump(exclude_unset=True)
+    # What the model actually emits over the wire.
+    assert set(dumped.keys()) == set(raw.keys())
     assert dumped == raw

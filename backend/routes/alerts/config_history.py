@@ -17,6 +17,7 @@ from backend.schemas.alert import (
     AlertConfigResponse,
     AlertCategory,
 )
+from backend.schemas.workorder_contracts import AlertsHistoryAccuracyResponse
 from backend.auth.jwt import get_current_active_supervisor, get_current_user
 from backend.orm.user import User
 from backend.middleware.client_auth import verify_client_access
@@ -82,7 +83,11 @@ async def create_alert_config(
 # ==================== Alert History & Accuracy ====================
 
 
-@config_history_router.get("/history/accuracy")
+@config_history_router.get(
+    "/history/accuracy",
+    response_model=AlertsHistoryAccuracyResponse,
+    response_model_exclude_unset=True,
+)
 async def get_prediction_accuracy(
     days: int = Query(LOOKBACK_MONTHLY_DAYS, ge=LOOKBACK_WEEKLY_DAYS, le=MAX_DAYS_LONG),
     category: Optional[AlertCategory] = Query(None),
