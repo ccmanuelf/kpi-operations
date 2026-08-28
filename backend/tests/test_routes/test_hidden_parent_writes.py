@@ -103,7 +103,10 @@ def test_a_job_cannot_be_created_against_a_deleted_work_order(write_env):
     response = http.post("/api/jobs", json=_job_body(work_order_id, built["client"].client_id))
 
     assert response.status_code == 422
-    assert response.json()["detail"]["hidden_parents"] == [f"WORK_ORDER '{work_order_id}'"]
+    # Structured, not a pre-formatted string: the frontend maps `table` to a
+    # localized label and shows `id` as-is. A "WORK_ORDER 'WO-1'" string would
+    # force it to regex-parse a Python repr to do that.
+    assert response.json()["detail"]["hidden_parents"] == [{"table": "WORK_ORDER", "id": work_order_id}]
 
 
 def test_a_production_entry_cannot_be_created_against_a_deleted_work_order(write_env):
