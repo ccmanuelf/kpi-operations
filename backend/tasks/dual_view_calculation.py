@@ -120,18 +120,38 @@ def run_for_client(
     return results
 
 
-def run_nightly_dual_view_calculations() -> dict[str, dict[str, int | None]]:
+def run_nightly_dual_view_calculations(db: Optional[Session] = None) -> dict[str, dict[str, int | None]]:
     """
     Iterate all active clients and run all 3 dual-view metrics for the
     previous calendar day. Returns {client_id: {metric: result_id}}.
 
     Public entrypoint for both the scheduler and the manual-trigger route.
+
+    `db`: an existing session to use, e.g. a request's injected `get_db`
+    session. When provided, this function does NOT close it -- the caller
+    that opened it owns its lifecycle. When omitted (the scheduler's cron
+    path has no request-scoped session to reuse), opens its own
+    `SessionLocal()` and closes it before returning.
+
+    FIX: this function used to always open its own `SessionLocal()`
+    regardless of caller context, so `POST /api/metrics/calculate/
+    run-nightly` silently escaped the request's injected session and wrote
+    to the AMBIENT database configured by `settings.DATABASE_URL` --
+    including, under a test harness that overrides FastAPI's `get_db` to
+    point at a disposable seeded DB, the real ambient database instead of
+    that disposable one. Measured before this fix: running the contract
+    suite against this repo's own dev DB left 12 new rows (4 active
+    clients x 3 metrics) in the ambient METRIC_CALCULATION_RESULT table --
+    exactly the outcome `tests/contract/conftest.py`'s "a seeded throwaway
+    database ... never the VM, never a real client" promise rules out.
     """
 
     period_start, period_end = _previous_day_window()
     summary: dict[str, dict[str, int | None]] = {}
 
-    db: Session = SessionLocal()
+    owns_session = db is None
+    if db is None:
+        db = SessionLocal()
     try:
         user = _system_user(db)
         active_clients = db.query(Client).filter(Client.is_active == 1).all()
@@ -151,7 +171,8 @@ def run_nightly_dual_view_calculations() -> dict[str, dict[str, int | None]]:
                 user=user,
             )
     finally:
-        db.close()
+        if owns_session:
+            db.close()
 
     logger.info("Nightly dual-view complete. Summary: %s", summary)
     return summary
