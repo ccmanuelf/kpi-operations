@@ -1069,3 +1069,92 @@ Both errors came from probing a *value* (`Decimal("13.60")`, `Decimal(95)`) inst
 *route*. The wire format is decided by the handler's return annotation, not by the value's
 exponent — so **check the annotation first, then the producer**. A probe that constructs a
 `Decimal` and encodes it in isolation cannot tell you what any real route emits.
+
+---
+
+# The 59 unreachable routes — root causes, plan, and anti-recurrence
+
+Written 2026-08-27 after the human partner asked what the plan is for everything the
+conversion batches cannot reach. The honest answer is that "unreachable" has been used as one
+word for **five different causes**, only two of which are missing infrastructure. Grouping them
+by symptom is what let the gap grow silently.
+
+## Measured breakdown of the 71 still allowlisted
+
+| bucket | count | root cause | is it a harness gap? |
+|---|---:|---|---|
+| convertible now | 12 | nothing | no — the final conversion batch |
+| `<non-json>` DELETE | 9 | 204 No Content: legitimately no JSON body | **no** — a declaration, not a gap |
+| `<status:404>` DELETE | 7 | **LIVE PRODUCT BUG** (below) | **no** — a defect the harness found |
+| `<blocked:…>` | 14 | seeder writes no rows for that entity | yes — seed gap |
+| `<status:422>` | 26 | needs a request body or required query params | yes — write-capture gap |
+| `<status:400>` / `<status:401>` | 2 | individual causes, undiagnosed | unknown |
+
+### The 7 DELETEs are a production bug, not a testing limitation
+
+`DELETE /api/{attendance,defects,downtime,holds,production,quality,work-orders}/{id}` return
+**404 for every id, including valid ones**. Cause: the CRUD layer calls `soft_delete()`, which
+sets `is_active = False`, and **none of those seven models has an `is_active` column** — so it
+returns `False` and the route raises 404. Verified against all seven ORM classes.
+
+Users cannot delete an attendance entry, defect, downtime record, hold, production entry,
+quality inspection, or work order. The contract harness detected this correctly and it was
+recorded as "cannot capture", which reads like a harness limitation and is not one.
+
+**This is the anti-recurrence lesson in miniature: an unreachable route is a finding until
+proven otherwise.** Seven real defects hid inside a bucket labelled "infrastructure gap".
+
+## Sequenced plan
+
+**S1 — Fix the seven broken DELETEs.** Own PR off `main`, like the security fix. Either add
+`is_active` to the seven models (a migration) or switch those CRUD paths to a hard delete —
+a product decision, not a mechanical one. Closes 7 routes *and* a live defect.
+
+**S2 — Declare the nine 204 DELETEs out of scope.** They have no JSON body by nature. The
+mechanism already exists (`OUT_OF_SCOPE_ROUTES` + `classify_non_json_route`, built in Task 10
+and already handling the 204 category). Roughly an hour; allowlist −9.
+
+**S3 — Close the seeder gaps (14 routes).** Two units of work, not fourteen:
+ - `job_id` alone accounts for **7**. One JOB emitter unblocks them. Generic routing sequence,
+   flagged as invented, `planned_hours` derived from each product's existing `ideal_cycle_time`
+   — no SAM, no SQFT (see the `client_type` memory: those concepts do not exist in the code and
+   the SQFT component is deliberately deferred).
+ - The other 7 are one row each: `break_id`, `coverage_id`, `equipment_id`, `filter_id`,
+   `pool_id`, `part_number`, `scenario_id@simulation`.
+ This also unblocks the five client-scoped tables the cross-tenant security tests could not
+ reach, and the `capacity_*` worksheets whose interiors are currently source-inspected only.
+
+**S4 — Build the D4 write-capture harness (26 routes).** The only genuinely missing
+infrastructure. Boot a disposable seeded DB, issue real writes with valid bodies resolved from
+seeded rows, capture the responses. Spec §D4 already describes it. **Its own exit criterion is
+the important part: a deliberately dropped field must fail and name the route.** A harness that
+records `<status:422>` for every mutation because it cannot build a valid body is the same
+false green Task 5 caught for reads.
+
+**S5 — Diagnose the remaining 2** (`onboarding/status` 400, one 401). Individually.
+
+**S6 — Convert what S1–S5 unblock**, in batches, under the existing rules.
+
+## Anti-recurrence — the gate that should have existed
+
+Today a route with `<status:422>` sits in the allowlist indefinitely and **nothing escalates**.
+The ratchet says "not yet converted"; it never asks *why not*, and never notices when the answer
+stops being true. That is exactly how seven product bugs spent months looking like a testing
+limitation.
+
+**Build an `UNREACHABLE_ROUTES` registry, gated two-sided**, in the house pattern already used
+four times (`NEVER_404`, `EXCLUDE_UNSET_ROUTES`, `OUT_OF_SCOPE_ROUTES`, the interpreter gate):
+
+- Every allowlisted route whose golden entry is a placeholder must have an entry naming its
+  **root cause**, from a closed vocabulary: `NEEDS_REQUEST_BODY`, `NEEDS_QUERY_PARAMS`,
+  `SEED_GAP:<entity>`, `NO_JSON_BODY`, `PRODUCT_BUG:<ref>`, `UNDIAGNOSED`.
+- **Forward side:** every placeholder route is declared. A new unreachable route fails the gate
+  until someone writes down why.
+- **Reverse side:** every declared route is *still* unreachable. When a fix or a seeder change
+  makes one reachable, the gate fires and says so — the signal that has been missing.
+- `UNDIAGNOSED` is permitted but **capped** (start at the current 2). The cap is the ratchet:
+  it can only go down, so unexplained routes cannot accumulate.
+
+This costs about the same as one conversion batch and is the only item here that prevents the
+gap re-forming. Without it, the next unreachable route is invisible again — and the evidence
+says that is how seven live defects stayed filed as infrastructure.
