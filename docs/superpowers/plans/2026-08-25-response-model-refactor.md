@@ -1158,3 +1158,54 @@ four times (`NEVER_404`, `EXCLUDE_UNSET_ROUTES`, `OUT_OF_SCOPE_ROUTES`, the inte
 This costs about the same as one conversion batch and is the only item here that prevents the
 gap re-forming. Without it, the next unreachable route is invisible again — and the evidence
 says that is how seven live defects stayed filed as infrastructure.
+
+---
+
+## S1 decided — 2026-08-27
+
+**Decision 1 (human partner): add `is_active` to the seven transaction models.** Not hard delete.
+*"Let's do what is right rather than what is convenient."* Soft delete is the correct model for
+auditable transaction records; a migration adds the column to `ATTENDANCE_ENTRY`,
+`DEFECT_DETAIL`, `DOWNTIME_ENTRY`, `HOLD_ENTRY`, `PRODUCTION_ENTRY`, `QUALITY_ENTRY`,
+`WORK_ORDER`.
+
+**Decision 2: ships as its own PR off `main`**, like the cross-tenant fix. It is a live
+user-facing bug (six of the seven are wired to frontend delete buttons) and unrelated to the
+refactor.
+
+**Decision 3: enforcement is automatic and scoped to the seven — not ad hoc, not global.**
+
+The reason this needed deciding: **the existing `is_active` pattern is itself broken.** Measured,
+counting chained filters rather than naive greps:
+
+```
+query(Employee) sites: 33   with is_active filtering nearby:  4
+query(Product)  sites: 29   with is_active filtering nearby:  1
+```
+
+A soft-deleted employee already reappears in ~29 of 33 read paths. Extending that pattern to
+seven high-volume transaction tables would inherit the defect at larger scale — and on these
+tables a resurrected row is a **wrong KPI**, not a stale dropdown entry.
+
+So filtering is applied automatically at the ORM/session layer for the seven, with explicit
+opt-in to see inactive rows, plus a two-sided registry gate so a future soft-deletable model
+must be classified rather than silently defaulting to unfiltered.
+
+**Why scoped and not global.** The two options carry different kinds of risk, and only one is
+gateable:
+
+- **Global** (all 26 soft-deletable models) risks **regression**: 288 attendance rows reference
+  employees, so soft-deleting a departed worker under a global `Employee` filter would hide them
+  from every join, including historical attendance and production that legitimately belongs to
+  them. KPIs would move, silently. That risk cannot be gated away, and this suite has already
+  been shown to encode wrong behaviour as expected (four tests asserted the cross-tenant
+  vulnerability).
+- **Scoped** risks **inconsistency**, which the house two-sided-registry pattern already solves
+  five times over.
+
+Decisive asymmetry: **the seven models have no existing read behaviour to regress**, because they
+cannot be soft-deleted today at all. The mechanism is proven where a mistake cannot be inherited.
+
+**S1b — the existing 19 models are a real, live defect and get their own task.** Soft-deleted
+employees and products are visible in most reads today. Sequenced after S1, under real
+verification, not bundled into a bug fix.
