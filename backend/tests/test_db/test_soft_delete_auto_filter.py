@@ -184,3 +184,87 @@ def test_identity_map_refresh_is_the_one_documented_exemption(rows, table):
 
     session.expunge_all()
     assert session.get(model, pk_value) is None  # empty identity map -> filtered
+
+
+def test_soft_deleting_a_work_order_does_not_cascade_to_its_children(rows):
+    """Characterization, not endorsement — the open design question in S1.
+
+    Soft-deleting a WORK_ORDER hides the work order itself. Its JOB,
+    HOLD_ENTRY, DOWNTIME_ENTRY and ALERT children keep their own is_active and
+    stay visible in every read that does not join WORK_ORDER, which is most of
+    them (crud/job.py, crud/downtime.py, routes/my_shift.py, routes/holds.py
+    list + WIP-aging, routes/alerts/*).
+
+    Reads that DO join WORK_ORDER get an incidental cascade instead:
+    with_loader_criteria lands in the join, so the six inner-join analytics
+    reads (crud/analytics.py x4, routes/quality/pareto.py) drop the children of
+    a deleted work order. routes/holds.py's outerjoin keeps its hold rows and
+    nulls the work-order columns — a third behaviour again.
+
+    So "what happens to the children" currently has three answers depending on
+    which query you ask. This test pins today's answer so that changing it is a
+    decision someone makes, not a side effect. The coordinator is taking the
+    question to the human partner.
+    """
+    from backend.orm.alert import Alert
+    from backend.orm.downtime_entry import DowntimeEntry
+    from backend.orm.hold_entry import HoldEntry
+    from backend.orm.job import Job
+    from backend.orm.production_entry import ProductionEntry
+    from backend.orm.work_order import WorkOrder
+    from backend.tests.fixtures.factories import TestDataFactory
+
+    session, built = rows
+    work_order = built["WORK_ORDER"]
+    client_id = built["client"].client_id
+    TestDataFactory.create_job(session, work_order_id=work_order.work_order_id, client_id=client_id)
+    session.add(
+        Alert(
+            alert_id="SD-ALERT-1",
+            client_id=client_id,
+            work_order_id=work_order.work_order_id,
+            category="hold",
+            severity="high",
+            title="t",
+            message="m",
+            status="active",
+        )
+    )
+    built["PRODUCTION_ENTRY"].work_order_id = work_order.work_order_id
+    session.commit()
+
+    def joined_production_count():
+        return (
+            session.query(func.count(ProductionEntry.production_entry_id))
+            .join(WorkOrder, ProductionEntry.work_order_id == WorkOrder.work_order_id)
+            .scalar()
+        )
+
+    def outer_joined_hold_count():
+        return (
+            session.query(func.count(HoldEntry.hold_entry_id))
+            .outerjoin(WorkOrder, HoldEntry.work_order_id == WorkOrder.work_order_id)
+            .scalar()
+        )
+
+    assert joined_production_count() == 1
+    assert outer_joined_hold_count() == 1
+
+    work_order.is_active = False
+    session.commit()
+    session.expunge_all()
+
+    assert session.query(func.count(WorkOrder.work_order_id)).scalar() == 0
+
+    # children, read without joining the parent: untouched
+    assert session.query(func.count(Job.job_id)).scalar() == 1
+    assert session.query(func.count(HoldEntry.hold_entry_id)).scalar() == 1
+    assert session.query(func.count(DowntimeEntry.downtime_entry_id)).scalar() == 1
+    assert session.query(func.count(Alert.alert_id)).scalar() == 1
+    assert session.query(func.count(ProductionEntry.production_entry_id)).scalar() == 1
+
+    # the same production row, read through an inner join on the parent: gone
+    assert joined_production_count() == 0
+
+    # and through an outer join on the parent: still there
+    assert outer_joined_hold_count() == 1
