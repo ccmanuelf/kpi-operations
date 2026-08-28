@@ -58,6 +58,14 @@ class Alert(Base):
     resolved_by: Mapped[Optional[str]] = mapped_column(String(50), ForeignKey("USER.user_id"), nullable=True)
     resolution_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
+    # Soft delete (S1). ALERT has no DELETE endpoint: this exists so hiding a
+    # work order can cascade the hide to its now-stale alerts. Filtering is
+    # automatic — see backend/db/soft_delete_filter.py. Do NOT hand-filter on it.
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="1")
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    # Not a FK, matching AUDIT_ENTRY.actor_user_id — see the other ten models.
+    deleted_by: Mapped[Optional[str]] = mapped_column(String(50))
+
 
 class AlertConfig(Base):
     """ALERT_CONFIG table - Alert settings per client or global"""

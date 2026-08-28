@@ -29,6 +29,10 @@ from backend.database import Base
 from backend.db.soft_delete_registry import (
     AD_HOC_FILTERED_TABLES,
     AUTO_FILTERED_TABLES,
+    AUTO_FILTERED_WITHOUT_DELETE_ENDPOINT,
+    CASCADE_KINDS,
+    CHILD_CLASSIFICATION,
+    ChildKind,
     SOFT_DELETE_CRUD_TARGETS,
     SOFT_DELETE_WITHOUT_COLUMN,
     SOFT_DELETE_WITHOUT_COLUMN_CAP,
@@ -294,10 +298,20 @@ AUTO_FILTERED_CRUD_MODULES = sorted(
 )
 
 
-def test_the_auto_filtered_crud_modules_are_the_expected_eleven():
-    """Anti-vacuity: the two guards below iterate this list, so an empty or
-    shrunken list would make both pass while proving nothing."""
-    assert len(AUTO_FILTERED_CRUD_MODULES) == len(AUTO_FILTERED_TABLES) == 11
+def test_every_auto_filtered_table_has_a_crud_module_or_a_declared_reason_not_to():
+    """Anti-vacuity for the two guards below, and the reverse side of the
+    exemption: ALERT is soft-deletable only so a cascade can hide it, and that
+    has to be stated rather than inferred from the absence of a module."""
+    tabled = set(SOFT_DELETE_CRUD_TARGETS.values()) & set(AUTO_FILTERED_TABLES)
+    exempt = set(AUTO_FILTERED_WITHOUT_DELETE_ENDPOINT)
+    assert tabled | exempt == set(AUTO_FILTERED_TABLES)
+    assert tabled & exempt == set()
+    assert len(AUTO_FILTERED_CRUD_MODULES) == 11
+
+
+def test_every_delete_endpoint_exemption_states_a_reason():
+    thin = sorted(t for t, why in AUTO_FILTERED_WITHOUT_DELETE_ENDPOINT.items() if len(why.strip()) < 40)
+    assert thin == [], f"Exemptions need a real reason: {thin}"
 
 
 @pytest.mark.parametrize("module", AUTO_FILTERED_CRUD_MODULES)
@@ -324,3 +338,96 @@ def test_no_auto_filtered_crud_module_still_reaches_the_bare_helper(module):
         f"{module} still imports the bare soft_delete helper; an auto-filtered "
         f"delete must go through soft_delete_record only"
     )
+
+
+# ---------------------------------------------------------------------------
+# The three-way child classification: encoded where it can be, declared with a
+# reason where it cannot, and gated either way.
+# ---------------------------------------------------------------------------
+
+
+def _fks_into_auto_filtered(child_table: str):
+    """(fk column, parent table) for every FK this child has into the set."""
+    table = Base.metadata.tables.get(child_table)
+    if table is None:
+        return []
+    return sorted(
+        (fk.parent.name, fk.column.table.name)
+        for fk in table.foreign_keys
+        if fk.column.table.name in AUTO_FILTERED_TABLES
+    )
+
+
+def test_every_classified_child_really_is_a_child_of_an_auto_filtered_table():
+    """A stale entry would silently exempt nothing, or worse, exempt a rename."""
+    orphans = sorted(t for t in CHILD_CLASSIFICATION if not _fks_into_auto_filtered(t))
+    assert orphans == [], f"CHILD_CLASSIFICATION names tables with no FK into an auto-filtered table: {orphans}"
+
+
+def test_every_classified_child_has_exactly_one_auto_filtered_parent():
+    """The classification is keyed by child table, which is only unambiguous
+    while each classified child has one such parent. A second one is a real
+    decision (owned by which?) and must not be silently inherited."""
+    ambiguous = sorted(t for t in CHILD_CLASSIFICATION if len(_fks_into_auto_filtered(t)) != 1)
+    assert ambiguous == [], (
+        "These have more than one auto-filtered parent, so a table-level kind is "
+        "ambiguous; classify per parent instead: " + ", ".join(ambiguous)
+    )
+
+
+@pytest.mark.parametrize("child", sorted(t for t, (kind, _) in CHILD_CLASSIFICATION.items() if kind is ChildKind.OWNED))
+def test_every_owned_child_cannot_exist_without_its_parent(child):
+    """The encodable half of "owned": a NOT NULL FK. Mislabelling a nullable
+    child as owned would cascade-hide rows that can outlive their parent."""
+    fk_column, parent_table = _fks_into_auto_filtered(child)[0]
+    column = Base.metadata.tables[child].c[fk_column]
+    assert column.nullable is False, (
+        f"{child}.{fk_column} is nullable, so a {child} row CAN exist without its "
+        f"{parent_table}; it is not owned composition and must not be cascaded"
+    )
+
+
+@pytest.mark.parametrize(
+    "child", sorted(t for t, (kind, _) in CHILD_CLASSIFICATION.items() if kind is ChildKind.DERIVED)
+)
+def test_every_derived_child_is_optional_and_regenerable_and_hideable(child):
+    """DERIVED needs all three: the child already exists without a parent (its
+    FK is nullable), it can be regenerated, and it CAN be hidden — a derived
+    child that cannot be hidden would be left dangling, which is the exact
+    thing cascading it is supposed to prevent."""
+    fk_column, _parent_table = _fks_into_auto_filtered(child)[0]
+    assert Base.metadata.tables[child].c[fk_column].nullable is True
+    assert "/api/" in CHILD_CLASSIFICATION[child][1], "a derived child must name how it is regenerated"
+    assert child in AUTO_FILTERED_TABLES, f"{child} is cascaded but has no way to be hidden"
+
+
+def test_every_classification_states_a_reason():
+    thin = sorted(t for t, (_, why) in CHILD_CLASSIFICATION.items() if len(why.strip()) < 40)
+    assert thin == [], f"Classifications need a real reason, not a placeholder: {thin}"
+
+
+def test_independent_is_the_default_for_anything_unclassified():
+    """The safe default: refuse rather than remove. Checked against a table that
+    really is a child and really is unlisted, so it cannot pass vacuously."""
+    from backend.db.soft_delete_cascade import kind_of
+
+    assert "PRODUCTION_ENTRY" not in CHILD_CLASSIFICATION
+    assert _fks_into_auto_filtered("PRODUCTION_ENTRY") != []
+    assert kind_of("PRODUCTION_ENTRY") is ChildKind.INDEPENDENT
+    assert kind_of("A_TABLE_THAT_DOES_NOT_EXIST") is ChildKind.INDEPENDENT
+
+
+def test_cascade_and_blocking_sets_partition_every_dependent():
+    """No child is both cascaded and blocking, and none is neither."""
+    from backend.db.soft_delete_cascade import blocking_dependents, cascade_dependents
+
+    for parent in sorted(AUTO_FILTERED_TABLES):
+        blocking = {d[0] for d in blocking_dependents(parent)}
+        cascading = {d[0] for d in cascade_dependents(parent)}
+        assert blocking & cascading == set(), f"{parent}: {blocking & cascading} classified as both"
+        every = {t.name for t in Base.metadata.sorted_tables for fk in t.foreign_keys if fk.column.table.name == parent}
+        assert blocking | cascading == every, f"{parent}: unclassified dependents {every - blocking - cascading}"
+
+
+def test_the_cascade_kinds_are_exactly_owned_and_derived():
+    assert CASCADE_KINDS == frozenset({ChildKind.OWNED, ChildKind.DERIVED})

@@ -35,7 +35,8 @@ Every entry is enforced from both sides by
 ``backend/tests/test_db/test_soft_delete_registry_guards.py``.
 """
 
-from typing import Dict, FrozenSet
+import enum
+from typing import Dict, FrozenSet, Tuple
 
 #: Hidden automatically by the session-level filter. Kept in lockstep with
 #: alembic/versions/0007_transaction_soft_delete.py::TABLES.
@@ -52,8 +53,22 @@ AUTO_FILTERED_TABLES: FrozenSet[str] = frozenset(
         "QUALITY_ENTRY",
         "WORK_ORDER",
         "shift_coverage",
+        # ALERT has no DELETE endpoint of its own; it is here so the cascade can
+        # hide it. See CHILD_CLASSIFICATION and AUTO_FILTERED_WITHOUT_DELETE_ENDPOINT.
+        "ALERT",
     }
 )
+
+#: Auto-filtered tables that deliberately have no user-facing DELETE, with why.
+#: Everything else in AUTO_FILTERED_TABLES must have a CRUD module going through
+#: soft_delete_record.
+AUTO_FILTERED_WITHOUT_DELETE_ENDPOINT: Dict[str, str] = {
+    "ALERT": (
+        "derived from KPI thresholds and regenerable via /api/alerts/generate/*; "
+        "users acknowledge/resolve alerts, they do not delete them. It is soft-deletable "
+        "only so a work order's delete can cascade the hide to its stale alerts."
+    ),
+}
 
 #: Soft-deletable, but hidden only where an individual query remembers to
 #: filter. Each value says what a resurrected row costs, which is why these are
@@ -114,16 +129,62 @@ SOFT_DELETE_WITHOUT_COLUMN: Dict[str, str] = {}
 SOFT_DELETE_WITHOUT_COLUMN_CAP: int = 0
 
 
-#: Child rows that are part of their parent's own record rather than
-#: independently readable entities. They do NOT block a parent's delete: they
-#: have no API of their own, so they cannot be left visibly referencing a
-#: hidden parent, which is the only thing the blocking rule exists to prevent.
-#: Everything else that carries an FK to an auto-filtered table blocks, derived
-#: from Base.metadata rather than listed — see backend/db/soft_delete_cascade.py.
-OWNED_COMPOSITION_CHILDREN: Dict[str, str] = {
+class ChildKind(str, enum.Enum):
+    """How a child row is treated when its parent is soft-deleted.
+
+    The criterion for each is mechanical where it can be, so the classification
+    is encoded rather than remembered:
+
+    * OWNED — the FK is NOT NULL: the child cannot exist without this parent, so
+      it is part of the parent's record. Cascade the hide. The non-nullability is
+      gated; "is it conceptually owned" is the declared half.
+    * DERIVED — the FK is nullable (the child already exists without a parent)
+      AND the child can be regenerated from its source. It is a stale derivation
+      once the parent is hidden, not a record of what happened. Cascade the hide.
+    * INDEPENDENT — everything else, and the default for anything undeclared. A
+      record of something that happened, which must not be silently removed from
+      a KPI. Blocks the parent's delete with a 409.
+    """
+
+    OWNED = "owned_composition"
+    DERIVED = "derived"
+    INDEPENDENT = "independent"
+
+
+#: child table -> (kind, why). Anything absent is INDEPENDENT and blocks; that
+#: default is the safe one, because it refuses rather than removes.
+CHILD_CLASSIFICATION: Dict[str, Tuple[ChildKind, str]] = {
     "ATTENDANCE_HOUR_ALLOCATION": (
-        "replace-on-write child of ATTENDANCE_ENTRY, ondelete=CASCADE, no endpoint of its own"
+        ChildKind.OWNED,
+        "replace-on-write child of ATTENDANCE_ENTRY, ondelete=CASCADE, no endpoint of its own",
     ),
-    "HOLD_STATUS_TRANSITION": "append-only log of the parent hold's own status history, read only through it",
-    "WORKFLOW_TRANSITION_LOG": "append-only log of the parent work order's own lifecycle, read only through it",
+    "HOLD_STATUS_TRANSITION": (
+        ChildKind.OWNED,
+        "append-only log of the parent hold's own status history, read only through it",
+    ),
+    "WORKFLOW_TRANSITION_LOG": (
+        ChildKind.OWNED,
+        "append-only log of the parent work order's own lifecycle, read only through it",
+    ),
+    "DEFECT_DETAIL": (
+        ChildKind.OWNED,
+        "a defect cannot exist without the inspection that found it; quality_entry_id is NOT NULL. "
+        "It has its own DELETE endpoint, but 'can it exist independently' is the criterion, not "
+        "'does an endpoint happen to exist' — that reading left DELETE /api/quality 409 for 100% "
+        "of real rows (4,084 of 4,084 had defect children)",
+    ),
+    "ALERT": (
+        ChildKind.DERIVED,
+        "work_order_id is nullable, so alerts already exist without one, and they are regenerable "
+        "via /api/alerts/generate/*. An alert about a hidden work order is a stale derivation, not "
+        "a record worth preserving in view. Blocking on it made DELETE /api/work-orders permanently "
+        "impossible, because no DELETE endpoint for ALERT exists anywhere to clear the blocker",
+    ),
+    "ALERT_HISTORY": (
+        ChildKind.OWNED,
+        "append-only log of one alert's own lifecycle, read only through it; alert_id is NOT NULL",
+    ),
 }
+
+#: Kinds whose rows are hidden along with the parent rather than blocking it.
+CASCADE_KINDS: FrozenSet[ChildKind] = frozenset({ChildKind.OWNED, ChildKind.DERIVED})

@@ -11,6 +11,7 @@ from typing import Any, Dict
 from sqlalchemy.orm import Session
 
 from backend.orm import ClientType
+from backend.orm.alert import Alert
 from backend.tests.fixtures.factories import TestDataFactory
 
 #: table name -> primary-key attribute, for the eleven auto-filtered models.
@@ -26,6 +27,7 @@ PK_ATTR: Dict[str, str] = {
     "QUALITY_ENTRY": "quality_entry_id",
     "WORK_ORDER": "work_order_id",
     "shift_coverage": "coverage_id",
+    "ALERT": "alert_id",
 }
 
 
@@ -102,6 +104,36 @@ def build_transaction_rows(session: Session, client_id: str = "SD-CLIENT") -> Di
     part = TestDataFactory.create_part_opportunities(
         session, part_number=f"{client_id}-PART-1", client_id=client.client_id
     )
+    # Hangs off the child-bearing work order, never off the leaf: ALERT is a
+    # DERIVED child, so it must NOT appear among that work order's blockers, and
+    # the leaf must stay genuinely childless.
+    alert = Alert(
+        alert_id=f"{client_id}-ALERT-1",
+        client_id=client.client_id,
+        work_order_id=work_order.work_order_id,
+        category="hold",
+        severity="high",
+        status="active",
+        title="SD alert",
+        message="SD alert message",
+    )
+    session.add(alert)
+
+    # A work order whose ONLY child is a derived alert, so the cascade can be
+    # proved without an independent child blocking first.
+    work_order_alert_only = TestDataFactory.create_work_order(session, client_id=client.client_id)
+    alert_only = Alert(
+        alert_id=f"{client_id}-ALERT-2",
+        client_id=client.client_id,
+        work_order_id=work_order_alert_only.work_order_id,
+        category="otd",
+        severity="warning",
+        status="active",
+        title="SD stale alert",
+        message="regenerable derivation",
+    )
+    session.add(alert_only)
+    session.flush()
 
     # Leaf rows: same tables, nothing referencing them. WORK_ORDER and
     # QUALITY_ENTRY above deliberately DO have children, because the delete is
@@ -138,6 +170,9 @@ def build_transaction_rows(session: Session, client_id: str = "SD-CLIENT") -> Di
         "shift_coverage": coverage,
         "FLOATING_POOL": pool,
         "PART_OPPORTUNITIES": part,
+        "ALERT": alert,
+        "WORK_ORDER_alert_only": work_order_alert_only,
+        "ALERT_only": alert_only,
         "WORK_ORDER_leaf": work_order_leaf,
         "QUALITY_ENTRY_leaf": quality_leaf,
     }

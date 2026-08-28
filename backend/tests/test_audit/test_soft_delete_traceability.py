@@ -30,7 +30,7 @@ from backend.audit.capture import register_audit_listener, unregister_audit_list
 from backend.audit.context import set_actor
 from backend.database import get_db
 from backend.db.soft_delete_filter import include_inactive
-from backend.db.soft_delete_registry import AUTO_FILTERED_TABLES
+from backend.db.soft_delete_registry import AUTO_FILTERED_TABLES, AUTO_FILTERED_WITHOUT_DELETE_ENDPOINT
 from backend.middleware.audit_actor_context import AuditActorContextMiddleware
 from backend.orm.audit_entry import AuditEntry
 from backend.tests.conftest import clone_template_engine
@@ -53,10 +53,12 @@ DELETABLE = {
 TABLES = sorted(DELETABLE)
 
 
-def test_every_auto_filtered_table_is_covered_here():
+def test_every_deletable_auto_filtered_table_is_covered_here():
     """Anti-vacuity: a new auto-filtered table must be added to DELETABLE, or
-    every parametrized test below silently stops covering it."""
-    assert set(DELETABLE) == set(AUTO_FILTERED_TABLES)
+    every parametrized test below silently stops covering it. ALERT is excluded
+    because it has no DELETE endpoint — it is only ever hidden by cascade, and
+    that exemption is itself gated in the registry guards."""
+    assert set(DELETABLE) == set(AUTO_FILTERED_TABLES) - set(AUTO_FILTERED_WITHOUT_DELETE_ENDPOINT)
 
 
 @pytest.fixture(scope="function")

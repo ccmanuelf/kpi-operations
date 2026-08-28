@@ -1,4 +1,4 @@
-"""Soft-delete flag on the eleven soft-deleting transaction tables (S1).
+"""Soft-delete columns on the twelve soft-deletable tables (S1).
 
 Revision ID: 0007_transaction_soft_delete
 Revises: 0006_hold_status_history
@@ -50,6 +50,9 @@ TABLES: tuple[str, ...] = (
     "QUALITY_ENTRY",
     "WORK_ORDER",
     "shift_coverage",
+    # No DELETE endpoint of its own; soft-deletable so a work order's delete can
+    # cascade the hide to its stale, regenerable alerts.
+    "ALERT",
 )
 
 

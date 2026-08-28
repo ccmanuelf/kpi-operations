@@ -156,9 +156,11 @@ BLOCKED_CASES = [
     (
         "work-orders",
         "WORK_ORDER",
+        # ALERT is NOT here: it is a DERIVED child, cascaded rather than blocking.
+        # It used to block, which made this endpoint permanently undeletable —
+        # no DELETE endpoint for ALERT exists anywhere to clear the blocker.
         {"DOWNTIME_ENTRY", "HOLD_ENTRY", "JOB", "PRODUCTION_ENTRY", "QUALITY_ENTRY"},
     ),
-    ("quality", "QUALITY_ENTRY", {"DEFECT_DETAIL"}),
 ]
 BLOCKED_IDS = [c[0] for c in BLOCKED_CASES]
 
@@ -210,14 +212,84 @@ def test_the_row_survives_a_refused_delete(soft_delete_env, case, table, expecte
     assert http.get(f"{resource}/{target}").status_code == 200
 
 
-def test_deleting_the_children_first_unblocks_the_parent(soft_delete_env):
+def test_deleting_the_blocking_children_first_unblocks_the_parent(soft_delete_env):
     """The refusal is reversible by the caller, which is the whole argument for
     it over a silent cascade: delete what blocks, then the parent goes."""
+    http, _session, _ids, built = soft_delete_env
+    work_order_id = built["WORK_ORDER"].work_order_id
+
+    assert http.delete(f"/api/work-orders/{work_order_id}").status_code == 409
+    for path, key, attr in (
+        ("/api/production", "PRODUCTION_ENTRY", "production_entry_id"),
+        ("/api/holds", "HOLD_ENTRY", "hold_entry_id"),
+        ("/api/downtime", "DOWNTIME_ENTRY", "downtime_entry_id"),
+        ("/api/jobs", "JOB", "job_id"),
+        ("/api/quality", "QUALITY_ENTRY", "quality_entry_id"),
+    ):
+        assert http.delete(f"{path}/{getattr(built[key], attr)}").status_code == 204
+    assert http.delete(f"/api/work-orders/{work_order_id}").status_code == 204
+    assert http.get(f"/api/work-orders/{work_order_id}").status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# Cascade: owned and derived children are hidden with the parent, not blocking.
+# ---------------------------------------------------------------------------
+
+
+def test_deleting_a_quality_entry_cascades_to_its_defect_details(soft_delete_env):
+    """DEFECT_DETAIL is OWNED: quality_entry_id is NOT NULL, so a defect cannot
+    exist without the inspection that found it.
+
+    Under the previous classification this endpoint answered 409 for 100% of
+    real rows — 4,084 of 4,084 quality entries have defect children.
+    """
     http, _session, _ids, built = soft_delete_env
     quality_id = built["QUALITY_ENTRY"].quality_entry_id
     defect_id = built["DEFECT_DETAIL"].defect_detail_id
 
-    assert http.delete(f"/api/quality/{quality_id}").status_code == 409
-    assert http.delete(f"/api/defects/{defect_id}").status_code == 204
+    assert http.get(f"/api/defects/{defect_id}").status_code == 200
     assert http.delete(f"/api/quality/{quality_id}").status_code == 204
+
     assert http.get(f"/api/quality/{quality_id}").status_code == 404
+    assert http.get(f"/api/defects/{defect_id}").status_code == 404
+    assert defect_id not in _list_ids(http, "/api/defects", "defect_detail_id")
+
+
+def test_deleting_a_work_order_cascades_to_its_derived_alerts(soft_delete_env):
+    """ALERT is DERIVED: nullable FK, regenerable via /api/alerts/generate/*.
+
+    It must be hidden, not merely stop blocking — a visible alert about an
+    invisible work order is the dangling reference the 409 exists to prevent.
+    """
+    from backend.orm.alert import Alert
+
+    http, session, _ids, built = soft_delete_env
+    work_order_id = built["WORK_ORDER_alert_only"].work_order_id
+    alert_id = built["ALERT_only"].alert_id
+
+    assert session.get(Alert, alert_id) is not None
+    assert http.delete(f"/api/work-orders/{work_order_id}").status_code == 204
+
+    session.expunge_all()
+    assert session.get(Alert, alert_id) is None
+    assert session.query(Alert).filter(Alert.alert_id == alert_id).first() is None
+
+
+def test_a_cascaded_child_is_attributed_to_the_same_actor(soft_delete_env):
+    """Cascaded rows are deletions too: they carry deleted_at/deleted_by."""
+    from backend.db.soft_delete_filter import include_inactive
+    from backend.orm.defect_detail import DefectDetail
+
+    http, session, _ids, built = soft_delete_env
+    quality_id = built["QUALITY_ENTRY"].quality_entry_id
+    defect_id = built["DEFECT_DETAIL"].defect_detail_id
+    supervisor_id = built["supervisor"].user_id
+
+    assert http.delete(f"/api/quality/{quality_id}").status_code == 204
+
+    session.expire_all()
+    with include_inactive(session):
+        defect = session.query(DefectDetail).filter(DefectDetail.defect_detail_id == defect_id).one()
+        assert defect.is_active is False
+        assert defect.deleted_by == supervisor_id
+        assert defect.deleted_at is not None
