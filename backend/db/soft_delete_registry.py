@@ -112,3 +112,18 @@ SOFT_DELETE_WITHOUT_COLUMN: Dict[str, str] = {}
 #: lying. It has reached zero, so any new entry is a regression, not a backlog
 #: item — a DELETE endpoint that answers 404 for every id shipped again.
 SOFT_DELETE_WITHOUT_COLUMN_CAP: int = 0
+
+
+#: Child rows that are part of their parent's own record rather than
+#: independently readable entities. They do NOT block a parent's delete: they
+#: have no API of their own, so they cannot be left visibly referencing a
+#: hidden parent, which is the only thing the blocking rule exists to prevent.
+#: Everything else that carries an FK to an auto-filtered table blocks, derived
+#: from Base.metadata rather than listed — see backend/db/soft_delete_cascade.py.
+OWNED_COMPOSITION_CHILDREN: Dict[str, str] = {
+    "ATTENDANCE_HOUR_ALLOCATION": (
+        "replace-on-write child of ATTENDANCE_ENTRY, ondelete=CASCADE, no endpoint of its own"
+    ),
+    "HOLD_STATUS_TRANSITION": "append-only log of the parent hold's own status history, read only through it",
+    "WORKFLOW_TRANSITION_LOG": "append-only log of the parent work order's own lifecycle, read only through it",
+}

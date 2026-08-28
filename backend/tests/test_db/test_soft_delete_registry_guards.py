@@ -103,10 +103,17 @@ def test_auto_filtered_declaration_matches_the_migration():
 # ---------------------------------------------------------------------------
 
 
+#: The two ways a CRUD module can soft-delete. The service is the one that
+#: blocks, hides AND attributes; the bare helper only hides.
+_SERVICE_IMPORT = "from backend.db.soft_delete_service import"
+_BARE_IMPORT = "from backend.utils.soft_delete import"
+
+
 def _crud_modules_importing_soft_delete() -> set:
     found = set()
     for path in sorted((BACKEND_ROOT / "crud").rglob("*.py")):
-        if "from backend.utils.soft_delete import" in path.read_text():
+        text = path.read_text()
+        if _SERVICE_IMPORT in text or _BARE_IMPORT in text:
             found.add(str(path.relative_to(BACKEND_ROOT)))
     return found
 
@@ -275,3 +282,45 @@ def test_importing_any_single_orm_model_installs_the_filter():
     )
     assert result.returncode == 0, result.stderr
     assert result.stdout.strip().splitlines()[-1] == str(sorted(AUTO_FILTERED_TABLES))
+
+
+# ---------------------------------------------------------------------------
+# Auto-filtered deletes must go through the one entry point that blocks,
+# hides and attributes — not the bare helper, which only hides.
+# ---------------------------------------------------------------------------
+
+AUTO_FILTERED_CRUD_MODULES = sorted(
+    module for module, table in SOFT_DELETE_CRUD_TARGETS.items() if table in AUTO_FILTERED_TABLES
+)
+
+
+def test_the_auto_filtered_crud_modules_are_the_expected_eleven():
+    """Anti-vacuity: the two guards below iterate this list, so an empty or
+    shrunken list would make both pass while proving nothing."""
+    assert len(AUTO_FILTERED_CRUD_MODULES) == len(AUTO_FILTERED_TABLES) == 11
+
+
+@pytest.mark.parametrize("module", AUTO_FILTERED_CRUD_MODULES)
+def test_every_auto_filtered_delete_goes_through_the_service(module):
+    """soft_delete_record blocks on visible children and records who/when.
+
+    Reaching for backend.utils.soft_delete directly skips both, which is a
+    delete that neither refuses nor attributes — read off the filesystem so
+    it cannot be forgotten rather than declared.
+    """
+    text = (BACKEND_ROOT / module).read_text()
+    assert _SERVICE_IMPORT in text, (
+        f"{module} soft-deletes an auto-filtered table but does not import "
+        f"soft_delete_record from backend.db.soft_delete_service"
+    )
+
+
+@pytest.mark.parametrize("module", AUTO_FILTERED_CRUD_MODULES)
+def test_no_auto_filtered_crud_module_still_reaches_the_bare_helper(module):
+    """The reverse: importing both would let a later edit quietly bypass the
+    service while this file's forward guard stayed green."""
+    text = (BACKEND_ROOT / module).read_text()
+    assert _BARE_IMPORT not in text, (
+        f"{module} still imports the bare soft_delete helper; an auto-filtered "
+        f"delete must go through soft_delete_record only"
+    )

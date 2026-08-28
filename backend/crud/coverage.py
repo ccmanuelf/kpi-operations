@@ -14,7 +14,7 @@ from backend.orm.coverage import ShiftCoverage
 from backend.schemas.coverage import ShiftCoverageCreate, ShiftCoverageUpdate, ShiftCoverageResponse
 from backend.middleware.client_auth import verify_client_access, build_client_filter_clause
 from backend.orm.user import User
-from backend.utils.soft_delete import soft_delete
+from backend.db.soft_delete_service import soft_delete_record
 
 
 def create_shift_coverage(db: Session, coverage: ShiftCoverageCreate, current_user: User) -> ShiftCoverageResponse:
@@ -149,4 +149,4 @@ def delete_shift_coverage(db: Session, coverage_id: int, current_user: User) -> 
         verify_client_access(current_user, db_coverage.client_id)
 
     # Soft delete - preserves data integrity
-    return soft_delete(db, db_coverage)
+    return soft_delete_record(db, db_coverage, current_user)

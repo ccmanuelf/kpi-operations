@@ -19,7 +19,7 @@ Usage:
 from datetime import datetime, timezone
 from typing import TypeVar, Optional, Type, Any, Callable
 from sqlalchemy.orm import Session, Query
-from sqlalchemy import Column, Boolean, DateTime, Integer
+from sqlalchemy import Column, Boolean, DateTime, String
 import logging
 
 # Generic type for SQLAlchemy models
@@ -93,7 +93,7 @@ def soft_delete_with_timestamp(
     is_active_field: str = "is_active",
     deleted_at_field: str = "deleted_at",
     deleted_by_field: Optional[str] = "deleted_by",
-    deleted_by_value: Optional[int] = None,
+    deleted_by_value: Optional[str] = None,
 ) -> bool:
     """
     Perform soft delete with timestamp tracking.
@@ -107,7 +107,7 @@ def soft_delete_with_timestamp(
         is_active_field: Name of the is_active field (default: "is_active")
         deleted_at_field: Name of the deleted_at timestamp field (default: "deleted_at")
         deleted_by_field: Name of the deleted_by user field (default: "deleted_by")
-        deleted_by_value: User ID who performed the deletion (optional)
+        deleted_by_value: User ID who performed the deletion (USER.user_id, a str)
 
     Returns:
         True if soft delete was successful, False otherwise
@@ -283,9 +283,12 @@ class SoftDeleteMixin:
 
     is_active = Column(Boolean, default=True, nullable=False, index=True)
     deleted_at = Column(DateTime, nullable=True)
-    deleted_by = Column(Integer, nullable=True)
+    # String, not Integer: USER.user_id is String(50), which is what the eleven
+    # real soft-deleting tables record. The Integer here made this reference
+    # mixin teach a shape no table in this schema uses.
+    deleted_by = Column(String(50), nullable=True)
 
-    def soft_delete(self, db: Session, deleted_by_user: Optional[int] = None) -> bool:
+    def soft_delete(self, db: Session, deleted_by_user: Optional[str] = None) -> bool:
         """Instance method for soft delete."""
         return soft_delete_with_timestamp(db, self, deleted_by_value=deleted_by_user)
 

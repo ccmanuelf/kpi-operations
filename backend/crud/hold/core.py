@@ -18,7 +18,7 @@ from backend.schemas.hold import (
 from backend.crud.hold.transition_log import record_hold_transition
 from backend.middleware.client_auth import verify_client_access
 from backend.orm.user import User
-from backend.utils.soft_delete import soft_delete
+from backend.db.soft_delete_service import soft_delete_record
 
 
 def create_wip_hold(db: Session, hold: WIPHoldCreate, current_user: User) -> WIPHoldResponse:
@@ -161,4 +161,4 @@ def delete_wip_hold(db: Session, hold_id: str, current_user: User) -> bool:
         return False
 
     # Soft delete - preserves data integrity (commit=False: route handler commits)
-    return soft_delete(db, db_hold, commit=False)
+    return soft_delete_record(db, db_hold, current_user, commit=False)

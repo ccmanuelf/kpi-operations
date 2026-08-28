@@ -1,0 +1,81 @@
+"""What blocks a soft delete, and why anything blocks it at all.
+
+Hiding a parent while its children stay readable is incoherent: a hold that
+references a work order nobody can see is a dangling row a user cannot explain
+or clean up. Cascading the hide instead removes rows from KPIs that nobody
+asked to delete, and does it silently.
+
+The decided rule is the third option: **refuse the delete while anything
+visible still references the row**, and say what. That failure is loud and
+reversible — the caller is told exactly which children block, and can delete
+them or leave the parent alone — where the alternatives fail silently.
+
+The blocking set is derived from ``Base.metadata``'s foreign keys, not listed,
+so a new table pointing at an auto-filtered parent starts blocking without
+anyone remembering to declare it. The only exceptions are the rows in
+``OWNED_COMPOSITION_CHILDREN``: parts of the parent's own record with no API of
+their own, which therefore cannot be left visibly dangling.
+
+"Visible" is the operative word in the count: blockers are counted through the
+ORM, so ``soft_delete_filter``'s criteria applies and an already-soft-deleted
+child does not block. Deleting the children then the parent works; a parent
+whose children are all gone is deletable again.
+"""
+
+from typing import Any, Dict, List, Tuple
+
+from backend.database import Base
+from backend.db.soft_delete_registry import AUTO_FILTERED_TABLES, OWNED_COMPOSITION_CHILDREN
+
+
+def _model_for(table_name: str) -> Any:
+    for mapper in Base.registry.mappers:
+        if mapper.class_.__tablename__ == table_name:
+            return mapper.class_
+    return None
+
+
+def blocking_dependents(table_name: str) -> List[Tuple[str, str, str]]:
+    """(child table, child FK column, parent PK column) for everything that blocks.
+
+    Read off the FK graph every call rather than cached, so a metadata change
+    cannot leave a stale answer behind in a long-lived process.
+    """
+    dependents = []
+    for table in Base.metadata.sorted_tables:
+        if table.name in OWNED_COMPOSITION_CHILDREN:
+            continue
+        for fk in table.foreign_keys:
+            if fk.column.table.name == table_name:
+                dependents.append((table.name, fk.parent.name, fk.column.name))
+    return sorted(dependents)
+
+
+def visible_child_blockers(db: Any, entity: Any) -> Dict[str, int]:
+    """Count the still-visible rows that reference ``entity``, per child table.
+
+    Empty dict means the delete is allowed.
+    """
+    from sqlalchemy import func
+
+    table_name = entity.__tablename__
+    if table_name not in AUTO_FILTERED_TABLES:
+        return {}
+
+    blockers: Dict[str, int] = {}
+    for child_table, fk_column, parent_column in blocking_dependents(table_name):
+        child_model = _model_for(child_table)
+        if child_model is None:
+            continue
+        parent_value = getattr(entity, parent_column, None)
+        if parent_value is None:
+            continue
+        child_fk = getattr(child_model, fk_column, None)
+        if child_fk is None:
+            continue
+        # Counted through the ORM on purpose: the auto-filter applies, so a
+        # child that has itself been soft-deleted is not a blocker.
+        count = db.query(func.count()).select_from(child_model).filter(child_fk == parent_value).scalar()
+        if count:
+            blockers[child_table] = int(count)
+    return blockers

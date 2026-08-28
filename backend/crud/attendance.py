@@ -31,7 +31,7 @@ from backend.calculations.labor_hours import (
 )
 from backend.middleware.client_auth import verify_client_access, build_client_filter_clause
 from backend.orm.user import User
-from backend.utils.soft_delete import soft_delete
+from backend.db.soft_delete_service import soft_delete_record
 from backend.utils.logging_utils import get_module_logger
 
 logger = get_module_logger(__name__)
@@ -351,7 +351,7 @@ def delete_attendance_record(db: Session, attendance_id: str, current_user: User
         verify_client_access(current_user, db_attendance.client_id)
 
     # Soft delete - preserves data integrity
-    return soft_delete(db, db_attendance)
+    return soft_delete_record(db, db_attendance, current_user)
 
 
 # ============================================================================

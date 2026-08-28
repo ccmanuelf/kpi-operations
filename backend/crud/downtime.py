@@ -12,7 +12,7 @@ from backend.orm.downtime_entry import DowntimeEntry
 from backend.schemas.downtime import DowntimeEventCreate, DowntimeEventUpdate, DowntimeEventResponse
 from backend.middleware.client_auth import verify_client_access, build_client_filter_clause
 from backend.orm.user import User
-from backend.utils.soft_delete import soft_delete
+from backend.db.soft_delete_service import soft_delete_record
 
 
 def create_downtime_event(db: Session, downtime: DowntimeEventCreate, current_user: User) -> DowntimeEventResponse:
@@ -115,4 +115,4 @@ def delete_downtime_event(db: Session, downtime_id: str, current_user: User) -> 
         return False
 
     # Soft delete - preserves data integrity
-    return soft_delete(db, db_downtime)
+    return soft_delete_record(db, db_downtime, current_user)

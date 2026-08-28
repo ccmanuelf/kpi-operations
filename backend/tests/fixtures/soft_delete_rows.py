@@ -65,6 +65,10 @@ def build_transaction_rows(session: Session, client_id: str = "SD-CLIENT") -> Di
         shift_id=shift.shift_id,
         entered_by=supervisor.user_id,
         production_date=date.today(),
+        # Linked on purpose: a production entry belongs to a work order, and it
+        # is the child whose disappearance from an analytics KPI was the
+        # measured symptom of the incidental cascade.
+        work_order_id=work_order.work_order_id,
     )
     hold = TestDataFactory.create_hold_entry(
         session, work_order_id=work_order.work_order_id, client_id=client.client_id, created_by=supervisor.user_id
@@ -98,6 +102,23 @@ def build_transaction_rows(session: Session, client_id: str = "SD-CLIENT") -> Di
     part = TestDataFactory.create_part_opportunities(
         session, part_number=f"{client_id}-PART-1", client_id=client.client_id
     )
+
+    # Leaf rows: same tables, nothing referencing them. WORK_ORDER and
+    # QUALITY_ENTRY above deliberately DO have children, because the delete is
+    # refused with 409 while anything visible still references the row — so a
+    # round-trip test needs a childless row of the same table to exercise the
+    # success path, and the child-bearing ones exercise the refusal.
+    work_order_leaf = TestDataFactory.create_work_order(session, client_id=client.client_id)
+    # QUALITY_ENTRY.work_order_id is NOT NULL, so the childless quality entry
+    # needs a work order of its own — which is therefore not itself childless,
+    # and is deliberately not offered as a deletable leaf.
+    work_order_host = TestDataFactory.create_work_order(session, client_id=client.client_id)
+    quality_leaf = TestDataFactory.create_quality_entry(
+        session,
+        work_order_id=work_order_host.work_order_id,
+        client_id=client.client_id,
+        inspector_id=supervisor.user_id,
+    )
     session.commit()
 
     return {
@@ -117,4 +138,6 @@ def build_transaction_rows(session: Session, client_id: str = "SD-CLIENT") -> Di
         "shift_coverage": coverage,
         "FLOATING_POOL": pool,
         "PART_OPPORTUNITIES": part,
+        "WORK_ORDER_leaf": work_order_leaf,
+        "QUALITY_ENTRY_leaf": quality_leaf,
     }

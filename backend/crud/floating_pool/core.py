@@ -11,7 +11,7 @@ from fastapi import HTTPException
 from backend.orm.floating_pool import FloatingPool
 from backend.orm.employee import Employee
 from backend.orm.user import User, SUPERVISORY_ROLES
-from backend.utils.soft_delete import soft_delete
+from backend.db.soft_delete_service import soft_delete_record
 
 
 def create_floating_pool_entry(db: Session, pool_data: dict, current_user: User) -> FloatingPool:
@@ -144,4 +144,4 @@ def delete_floating_pool_entry(db: Session, pool_id: int, current_user: User) ->
         raise HTTPException(status_code=404, detail="Floating pool entry not found")
 
     # Soft delete - preserves data integrity
-    return soft_delete(db, db_pool)
+    return soft_delete_record(db, db_pool, current_user)

@@ -186,50 +186,62 @@ def test_identity_map_refresh_is_the_one_documented_exemption(rows, table):
     assert session.get(model, pk_value) is None  # empty identity map -> filtered
 
 
-def test_soft_deleting_a_work_order_does_not_cascade_to_its_children(rows):
-    """Characterization, not endorsement — the open design question in S1.
+# ---------------------------------------------------------------------------
+# Cascade: normalised by refusal, not by hiding children.
+# ---------------------------------------------------------------------------
 
-    Soft-deleting a WORK_ORDER hides the work order itself. Its JOB,
-    HOLD_ENTRY, DOWNTIME_ENTRY and ALERT children keep their own is_active and
-    stay visible in every read that does not join WORK_ORDER, which is most of
-    them (crud/job.py, crud/downtime.py, routes/my_shift.py, routes/holds.py
-    list + WIP-aging, routes/alerts/*).
 
-    Reads that DO join WORK_ORDER get an incidental cascade instead:
-    with_loader_criteria lands in the join, so the six inner-join analytics
-    reads (crud/analytics.py x4, routes/quality/pareto.py) drop the children of
-    a deleted work order. routes/holds.py's outerjoin keeps its hold rows and
-    nulls the work-order columns — a third behaviour again.
+def _visible_children_of(session, entity):
+    """Blockers computed the way the service computes them, for assertions."""
+    from backend.db.soft_delete_cascade import visible_child_blockers
 
-    So "what happens to the children" currently has three answers depending on
-    which query you ask. This test pins today's answer so that changing it is a
-    decision someone makes, not a side effect. The coordinator is taking the
-    question to the human partner.
+    return visible_child_blockers(session, entity)
+
+
+@pytest.mark.parametrize("table", TABLES)
+def test_no_visible_row_ever_references_a_hidden_parent(rows, table):
+    """The invariant the 409 rule exists to hold, checked per table.
+
+    Before S1 the answer to "what happens to the children" depended on the
+    query: children read without a join stayed visible, the six inner-join
+    analytics reads dropped them, and one outer join kept the row and nulled
+    the parent's columns. Three answers. Refusing the delete while anything
+    visible still references the row collapses that to one, by making the
+    incoherent state unreachable rather than by choosing a behaviour for it.
     """
-    from backend.orm.alert import Alert
-    from backend.orm.downtime_entry import DowntimeEntry
-    from backend.orm.hold_entry import HoldEntry
-    from backend.orm.job import Job
+    from backend.db.soft_delete_service import soft_delete_record
+    from fastapi import HTTPException
+
+    session, built = rows
+    entity = built[table]
+    blockers = _visible_children_of(session, entity)
+
+    if blockers:
+        with pytest.raises(HTTPException) as exc_info:
+            soft_delete_record(session, entity)
+        assert exc_info.value.status_code == 409
+        session.rollback()
+        return
+
+    assert soft_delete_record(session, entity) is True
+    session.commit()
+    assert _visible_children_of(session, entity) == {}
+
+
+def test_the_analytics_join_and_the_plain_read_now_agree(rows):
+    """The measured symptom, gone: a still-active production entry used to drop
+    out of the analytics KPI purely because that query inner-joins its parent.
+
+    It cannot happen through the product any more — the work order it hangs off
+    cannot be hidden while the production entry is visible.
+    """
+    from backend.db.soft_delete_service import soft_delete_record
     from backend.orm.production_entry import ProductionEntry
     from backend.orm.work_order import WorkOrder
+    from fastapi import HTTPException
 
     session, built = rows
     work_order = built["WORK_ORDER"]
-    client_id = built["client"].client_id
-    session.add(
-        Alert(
-            alert_id="SD-ALERT-1",
-            client_id=client_id,
-            work_order_id=work_order.work_order_id,
-            category="hold",
-            severity="high",
-            title="t",
-            message="m",
-            status="active",
-        )
-    )
-    built["PRODUCTION_ENTRY"].work_order_id = work_order.work_order_id
-    session.commit()
 
     def joined_production_count():
         return (
@@ -238,31 +250,47 @@ def test_soft_deleting_a_work_order_does_not_cascade_to_its_children(rows):
             .scalar()
         )
 
-    def outer_joined_hold_count():
+    plain = session.query(func.count(ProductionEntry.production_entry_id)).scalar()
+    assert joined_production_count() == plain
+
+    with pytest.raises(HTTPException) as exc_info:
+        soft_delete_record(session, work_order)
+    assert exc_info.value.status_code == 409
+    session.rollback()
+
+    assert joined_production_count() == plain
+
+
+def test_bypassing_the_service_still_produces_the_old_incoherence(rows):
+    """Why the service is the ONLY entry point, and why that is gated.
+
+    Setting is_active by hand skips the blocking check, and the three-answer
+    incoherence comes straight back: the job stays visible, while the same
+    production row disappears from the inner-join analytics read. This is the
+    state test_every_auto_filtered_delete_goes_through_the_service exists to
+    keep unreachable — it is not a bug in the filter, it is the reason the
+    filter alone was never enough.
+    """
+    from backend.orm.job import Job
+    from backend.orm.production_entry import ProductionEntry
+    from backend.orm.work_order import WorkOrder
+
+    session, built = rows
+    work_order = built["WORK_ORDER"]
+
+    def joined_production_count():
         return (
-            session.query(func.count(HoldEntry.hold_entry_id))
-            .outerjoin(WorkOrder, HoldEntry.work_order_id == WorkOrder.work_order_id)
+            session.query(func.count(ProductionEntry.production_entry_id))
+            .join(WorkOrder, ProductionEntry.work_order_id == WorkOrder.work_order_id)
             .scalar()
         )
 
     assert joined_production_count() == 1
-    assert outer_joined_hold_count() == 1
+    assert session.query(func.count(Job.job_id)).scalar() == 1
 
-    work_order.is_active = False
+    work_order.is_active = False  # deliberately NOT soft_delete_record
     session.commit()
     session.expunge_all()
 
-    assert session.query(func.count(WorkOrder.work_order_id)).scalar() == 0
-
-    # children, read without joining the parent: untouched
-    assert session.query(func.count(Job.job_id)).scalar() == 1
-    assert session.query(func.count(HoldEntry.hold_entry_id)).scalar() == 1
-    assert session.query(func.count(DowntimeEntry.downtime_entry_id)).scalar() == 1
-    assert session.query(func.count(Alert.alert_id)).scalar() == 1
-    assert session.query(func.count(ProductionEntry.production_entry_id)).scalar() == 1
-
-    # the same production row, read through an inner join on the parent: gone
-    assert joined_production_count() == 0
-
-    # and through an outer join on the parent: still there
-    assert outer_joined_hold_count() == 1
+    assert session.query(func.count(Job.job_id)).scalar() == 1  # child still visible
+    assert joined_production_count() == 0  # same row, gone from the joined read
