@@ -64,6 +64,7 @@ from backend.simulation_v2.constants import (
     DEFAULT_SEQUENCE,
     DEFAULT_VARIABILITY,
 )
+from backend.schemas.reference_contracts import SimulationInfoResponse
 from backend.utils.logging_utils import get_module_logger
 from typing import Any
 
@@ -136,7 +137,7 @@ def _track_defaults(config: SimulationConfig) -> list:
 # =============================================================================
 
 
-@router.get("/")
+@router.get("/", response_model=SimulationInfoResponse)
 async def simulation_info() -> Any:
     """
     Get simulation tool information and capabilities.

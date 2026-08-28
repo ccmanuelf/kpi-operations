@@ -36,6 +36,7 @@ from backend.services.dual_view.otd_service import (
     OTDCalculationService,
     OTDRawInputs,
 )
+from backend.schemas.kpi_metrics_contracts import RunNightlyResponse
 from backend.utils.logging_utils import get_module_logger
 
 logger = get_module_logger(__name__)
@@ -308,6 +309,7 @@ def calculate_fpy_from_period(
 @router.post(
     "/run-nightly",
     status_code=status.HTTP_202_ACCEPTED,
+    response_model=RunNightlyResponse,
 )
 def trigger_nightly_run(
     current_user: User = Depends(get_current_admin),

@@ -19,6 +19,7 @@ from backend.schemas.client_config import (
     ClientConfigWithDefaults,
     GlobalDefaults,
 )
+from backend.schemas.kpi_metrics_contracts import ClientConfigEffectiveResponse
 from backend.crud import client_config as crud
 from backend.utils.logging_utils import get_module_logger
 
@@ -105,7 +106,7 @@ def get_client_config(
     return ClientConfigWithDefaults(config=ClientConfigResponse.model_validate(config), is_default=False)
 
 
-@router.get("/{client_id}/effective")
+@router.get("/{client_id}/effective", response_model=ClientConfigEffectiveResponse)
 def get_effective_config(
     client_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ) -> Any:

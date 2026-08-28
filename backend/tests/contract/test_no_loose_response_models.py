@@ -12,10 +12,17 @@ def test_no_api_route_has_a_loose_response_model():
     this ratchet entirely (none of the 22 reach Pydantic, so none can leak a
     Decimal) — see `response_scope.py` for the two-sided gate that keeps
     that exemption honest.
+
+    Imported from `schema_document_routes`, not `response_scope` directly,
+    since Batch R5: that module's `routes_needing_a_response_model` wraps
+    `response_scope`'s and further excludes `GET /api/v2/simulation/schema`,
+    a JSON-Schema-document response this refactor deliberately does not
+    model -- see that module's docstring and its own two-sided gate
+    (`test_schema_document_routes.py`).
     """
     from backend.main import app
     from backend.tests.contract.allowlist import ALLOWLIST
-    from backend.tests.contract.response_scope import routes_needing_a_response_model
+    from backend.tests.contract.schema_document_routes import routes_needing_a_response_model
 
     still_loose = {f"{m} {p}" for m, p, _ in routes_needing_a_response_model(app)}
     unexpected = sorted(still_loose - ALLOWLIST)

@@ -38,18 +38,20 @@ gets the same two-assertion treatment.
 """
 
 import asyncio
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from unittest.mock import Mock, patch
 
 from backend.calculations.elapsed_time import (
     calculate_client_average_times,
     calculate_stage_duration_summary,
 )
+from backend.calculations.fpy_rty import calculate_job_rty_summary
 from backend.crud.floating_pool.assignments import is_employee_available_for_assignment
 from backend.routes.alerts.config_history import get_prediction_accuracy
 from backend.routes.cache import cache_health
 from backend.routes.work_orders import approve_qc
 from backend.schemas.floor_contracts import FloatingPoolCheckAvailabilityResponse
+from backend.schemas.kpi_metrics_contracts import JobRTYSummaryResponse
 from backend.schemas.ops_contracts import CacheHealthResponse
 from backend.schemas.workflow_contracts import AverageTimesSummary, StageDurationsResponse
 from backend.schemas.workorder_contracts import AlertsHistoryAccuracyResponse, WorkOrderApproveQCResponse
@@ -314,3 +316,52 @@ def test_check_availability_existing_assignment_populates_conflict_dates():
     # `null` in production while this assertion stayed green.
     assert set(dumped.keys()) == set(raw.keys())
     assert dumped == raw
+
+
+def test_jobs_rty_summary_populated_branch_pins_the_extra_keys():
+    """Forces GET /api/jobs/kpi/rty-summary's non-empty-jobs branch
+    (calculations/fpy_rty.py::calculate_job_rty_summary) and pins the three
+    keys ABSENT from the empty-jobs branch the golden master actually
+    captured (total_good_units, jobs_meeting_target, interpretation) -- the
+    smoke seed has zero Job rows completed in the trailing-30-day window at
+    capture time, so the golden entry is the empty branch's 9-key shape and
+    offers no evidence these three keys exist, or of their types, at all.
+    """
+    mock_job = Mock()
+    mock_job.completed_quantity = 100
+    mock_job.quantity_scrapped = 5
+    mock_job.operation_name = "Assembly"
+
+    mock_query = Mock()
+    mock_query.filter.return_value = mock_query
+    mock_query.all.return_value = [mock_job]
+
+    mock_db = Mock()
+    mock_db.query.return_value = mock_query
+
+    raw = calculate_job_rty_summary(mock_db, date(2026, 8, 1), date(2026, 8, 27))
+
+    # The branch's real shape, before anything normalises it away.
+    assert set(raw.keys()) == {
+        "period",
+        "total_jobs_completed",
+        "total_units_completed",
+        "total_units_scrapped",
+        "total_good_units",
+        "average_job_yield",
+        "overall_yield",
+        "jobs_below_target",
+        "jobs_meeting_target",
+        "top_scrap_operations",
+        "interpretation",
+    }
+    assert raw["total_good_units"] == 95
+    assert raw["jobs_meeting_target"] == 1
+    assert raw["interpretation"] == "Good: Meeting standard targets"
+
+    dumped = JobRTYSummaryResponse(**raw).model_dump(exclude_unset=True)
+    # What the model actually emits over the wire.
+    assert set(dumped.keys()) == set(raw.keys())
+    assert dumped["total_good_units"] == 95
+    assert dumped["jobs_meeting_target"] == 1
+    assert dumped["interpretation"] == "Good: Meeting standard targets"

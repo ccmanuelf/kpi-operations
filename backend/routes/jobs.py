@@ -24,6 +24,7 @@ from backend.services.job_service import (
 from backend.calculations.fpy_rty import calculate_job_yield, calculate_work_order_job_rty, calculate_job_rty_summary
 from backend.auth.jwt import get_current_user, get_current_active_supervisor, ClientScope, resolve_client_scope
 from backend.orm.user import User
+from backend.schemas.kpi_metrics_contracts import JobRTYSummaryResponse
 from backend.utils.logging_utils import get_module_logger
 
 logger = get_module_logger(__name__)
@@ -185,7 +186,7 @@ def get_work_order_job_rty(
     return result
 
 
-@router.get("/kpi/rty-summary")
+@router.get("/kpi/rty-summary", response_model=JobRTYSummaryResponse, response_model_exclude_unset=True)
 def get_job_rty_summary(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,

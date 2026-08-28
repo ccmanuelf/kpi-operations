@@ -1,11 +1,32 @@
 def test_every_loose_route_is_inventoried_and_none_is_silently_dropped():
-    """71 routes still needing a response model, after Batch R2 converts 7
-       of the prior 78 across `/api/quality` (6 of 8) and `/api/capacity`
-       (1 of 2) (`backend/schemas/quality_contracts.py` +
-       `capacity_contracts.py`). 78 - 7 = 71, mirrored by `ALLOWLIST`
-       shrinking by the same 7 entries. `/api/pivot`'s 2 routes and 6 more
-       across the batch's 3 areas need query params or a request body and
-       stay allowlisted for Task 16's write-capture harness.
+    """59 routes still needing a response model, after Batch R5 -- the
+       LAST conversion batch, per task-R5-brief.md -- disposes of 12 of the
+       prior 71: 11 typed across two new modules,
+       `backend/schemas/reference_contracts.py` (`/api/defect-types`
+       constants + template/download, `/api/products`,
+       `/api/downtime-reasons`, `/api/filters/statistics`,
+       `/api/v2/simulation/`, `/api/import-logs`) and
+       `backend/schemas/kpi_metrics_contracts.py`
+       (`/api/jobs/kpi/rty-summary`, `/api/inference/cycle-time/{product_id}`,
+       `/api/client-config/{client_id}/effective`,
+       `/api/metrics/calculate/run-nightly`) -- plus 1 more,
+       `GET /api/v2/simulation/schema`, scoped OUT of the ratchet rather than
+       modeled: it returns `SimulationConfig.model_json_schema()` verbatim
+       (a JSON-Schema document, not a payload), declared in
+       `backend/tests/contract/schema_document_routes.py` the same way Task 10
+       scoped out the `-> Response` routes. 71 - 12 = 59, mirrored by
+       `ALLOWLIST` shrinking by the same 11 entries (the 12th, the schema
+       route, was never in a position to be "converted" -- it leaves the
+       ratchet's scope instead). Every remaining allowlisted route is now
+       blocked on infrastructure (a write-capture harness, seeder rows, a
+       product bug fix), not on modelling effort -- see "The 59 unreachable
+       routes" in docs/superpowers/plans/2026-08-25-response-model-refactor.md.
+
+       71 itself is Batch R2's count: 78 - 7 across `/api/quality` (6 of 8)
+       and `/api/capacity` (1 of 2) (`backend/schemas/quality_contracts.py` +
+       `capacity_contracts.py`). `/api/pivot`'s 2 routes and 6 more across
+       that batch's 3 areas needed query params or a request body and stayed
+       allowlisted for the write-capture harness.
 
        78 itself is Batch R3's count: 90 - 12 across `/api/floating-pool`
        (4), `/api/work-orders` (3 GET + 1 POST), `/api/attendance` (2),
@@ -66,11 +87,11 @@ def test_every_loose_route_is_inventoried_and_none_is_silently_dropped():
        route that stops being enumerated — a decorator change, a router rename —
        fails here instead of quietly leaving the refactor's scope."""
     from backend.main import app
-    from backend.tests.contract.response_scope import routes_needing_a_response_model
+    from backend.tests.contract.schema_document_routes import routes_needing_a_response_model
 
     routes = routes_needing_a_response_model(app)
 
-    assert len(routes) == 71
+    assert len(routes) == 59
     methods = {m for m, _, _ in routes}
     assert methods == {"GET", "POST", "PUT", "DELETE"}
 

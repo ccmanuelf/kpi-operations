@@ -28,6 +28,7 @@ from backend.services.defect_type_catalog_service import (
 from backend.crud.defect_type_catalog import GLOBAL_CLIENT_ID
 from backend.auth.jwt import get_current_user, get_current_active_supervisor
 from backend.orm.user import User
+from backend.schemas.reference_contracts import DefectTypeConstantsResponse, DefectTypeTemplateResponse
 from backend.utils.logging_utils import get_module_logger
 
 logger = get_module_logger(__name__)
@@ -35,7 +36,7 @@ logger = get_module_logger(__name__)
 router = APIRouter(prefix="/api/defect-types", tags=["Defect Type Catalog"])
 
 
-@router.get("/constants")
+@router.get("/constants", response_model=DefectTypeConstantsResponse)
 def get_constants() -> Any:
     """
     Get constants used for defect type management
@@ -181,7 +182,7 @@ async def upload_defect_types_csv(
         raise HTTPException(status_code=500, detail="Failed to process defect type catalog")
 
 
-@router.get("/template/download")
+@router.get("/template/download", response_model=DefectTypeTemplateResponse)
 def download_csv_template() -> Any:
     """
     Get CSV template for defect type upload

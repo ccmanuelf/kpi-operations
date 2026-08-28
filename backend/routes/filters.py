@@ -21,6 +21,7 @@ from backend.schemas.filters import (
     ApplyFilterResponse,
     SetDefaultResponse,
 )
+from backend.schemas.reference_contracts import FilterStatisticsResponse
 from backend.services.filter_service import (
     create_filter as create_saved_filter,
     list_filters as get_saved_filters,
@@ -116,7 +117,7 @@ def get_default_filter_by_type(
     return _to_filter_response(db_filter)
 
 
-@router.get("/statistics")
+@router.get("/statistics", response_model=FilterStatisticsResponse)
 def get_user_filter_statistics(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> Any:
     """
     Get filter usage statistics for the current user

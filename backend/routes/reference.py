@@ -16,6 +16,8 @@ from backend.orm.product import Product
 from backend.orm.shift import Shift
 from backend.middleware.client_auth import build_client_filter_clause, verify_client_access
 from backend.schemas.ops_contracts import ActiveShiftResponse, ShiftListEntry
+from backend.schemas.reference_contracts import DowntimeReasonsResponse, ProductListEntry
+from backend.schemas.kpi_metrics_contracts import InferenceCycleTimeResponse
 from backend.utils.logging_utils import get_module_logger
 
 logger = get_module_logger(__name__)
@@ -23,7 +25,7 @@ logger = get_module_logger(__name__)
 router = APIRouter(prefix="/api", tags=["Reference Data"])
 
 
-@router.get("/products", response_model=List[dict])
+@router.get("/products", response_model=List[ProductListEntry])
 def list_products(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> Any:
     """List active products filtered by client access"""
     query = db.query(Product).filter(Product.is_active.is_(True))
@@ -101,7 +103,7 @@ def get_active_shift(db: Session = Depends(get_db), current_user: User = Depends
     raise HTTPException(status_code=404, detail="No active shift at this time")
 
 
-@router.get("/downtime-reasons", response_model=dict)
+@router.get("/downtime-reasons", response_model=DowntimeReasonsResponse)
 def list_downtime_reasons(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> Any:
     """Canonical downtime taxonomy: categories (level 1) and reasons (level 2) with default mapping."""
     from backend.orm.downtime_taxonomy import (
@@ -127,7 +129,7 @@ def list_downtime_reasons(db: Session = Depends(get_db), current_user: User = De
     }
 
 
-@router.get("/inference/cycle-time/{product_id}")
+@router.get("/inference/cycle-time/{product_id}", response_model=InferenceCycleTimeResponse)
 def infer_cycle_time(
     product_id: int,
     shift_id: Optional[int] = None,
