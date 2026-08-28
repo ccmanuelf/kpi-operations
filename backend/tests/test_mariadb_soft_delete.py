@@ -20,6 +20,7 @@ guard silently stops applying, that job fails rather than reporting green.
 from datetime import datetime, timezone
 
 import pytest
+from fastapi import HTTPException
 from sqlalchemy import inspect, insert, select
 
 from backend.database import Base, SessionLocal, engine
@@ -122,6 +123,83 @@ def test_soft_delete_attribution_round_trips_on_mariadb(seeded_client):
         assert row.is_active is False
         assert row.deleted_by == "SD-ACTOR-1"
         assert row.deleted_at.replace(tzinfo=None) >= before
+
+
+@requires_mariadb
+def test_a_derived_alert_is_cascaded_not_blocked_on_mariadb(seeded_client):
+    """The classification decided in review, against a live server.
+
+    ALERT is DERIVED: it must be hidden with its work order rather than block
+    it. Blocking made DELETE /api/work-orders permanently impossible, since no
+    DELETE endpoint for ALERT exists to clear the blocker.
+    """
+    from backend.db.soft_delete_service import soft_delete_record
+    from backend.orm.alert import Alert
+
+    session = seeded_client
+    session.add(WorkOrder(**_new_work_order("SD-WO-6")))
+    session.flush()
+    session.add(
+        Alert(
+            alert_id="SD-ALERT-1",
+            client_id=CLIENT_ID,
+            work_order_id="SD-WO-6",
+            category="otd",
+            severity="warning",
+            status="active",
+            title="stale",
+            message="regenerable",
+        )
+    )
+    session.commit()
+
+    target = session.query(WorkOrder).filter(WorkOrder.work_order_id == "SD-WO-6").one()
+    assert soft_delete_record(session, target) is True
+    session.expunge_all()
+
+    assert session.query(Alert).filter(Alert.alert_id == "SD-ALERT-1").count() == 0
+    with include_inactive(session):
+        assert session.query(Alert).filter(Alert.alert_id == "SD-ALERT-1").one().is_active is False
+    session.query(Alert).delete()
+    session.commit()
+
+
+@requires_mariadb
+def test_a_write_that_targets_a_hidden_parent_is_rejected_on_mariadb(seeded_client):
+    """The write guard runs an IN() over the parent's PK with include_inactive.
+
+    That is a real query on InnoDB with a String primary key, and the guard
+    already failed open once on a subtlety of how the query was built, so it is
+    exercised against a live server rather than a SQLite stand-in.
+    """
+    from backend.db.soft_delete_service import soft_delete_record
+    from backend.orm.job import Job
+
+    session = seeded_client
+    session.add(WorkOrder(**_new_work_order("SD-WO-7")))
+    session.commit()
+    target = session.query(WorkOrder).filter(WorkOrder.work_order_id == "SD-WO-7").one()
+    assert soft_delete_record(session, target) is True
+    session.expunge_all()
+
+    session.add(
+        Job(
+            job_id="SD-JOB-2",
+            work_order_id="SD-WO-7",
+            client_id_fk=CLIENT_ID,
+            part_number="SD-PART-2",
+            operation_code="ASSY",
+            operation_name="Assembly",
+            sequence_number=1,
+            planned_quantity=10,
+            completed_quantity=0,
+        )
+    )
+    with pytest.raises(HTTPException) as exc_info:
+        session.commit()
+    assert exc_info.value.status_code == 422
+    assert exc_info.value.detail["hidden_parents"] == ["WORK_ORDER 'SD-WO-7'"]
+    session.rollback()
 
 
 @requires_mariadb
