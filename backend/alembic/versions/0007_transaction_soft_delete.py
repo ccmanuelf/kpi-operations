@@ -18,6 +18,12 @@ Existing rows default to active (``server_default="1"``), so the upgrade is a
 no-op for live data. No index: the column is ~100% true on high-volume tables,
 so a single-column index would never be selective enough to be chosen and would
 only cost write throughput.
+
+``deleted_at`` / ``deleted_by`` come with it, because ``is_active`` alone makes
+a soft-deleted row indistinguishable from one that was never active — worse
+than a hard delete, which at least leaves an absence someone might notice. Both
+are nullable with no default: NULL means "not deleted", which is exactly true
+of every existing row.
 """
 
 from typing import Sequence, Union
@@ -47,11 +53,36 @@ TABLES: tuple[str, ...] = (
 )
 
 
+#: Column names in add order; the downgrade drops them in reverse.
+COLUMN_NAMES: tuple[str, ...] = ("is_active", "deleted_at", "deleted_by")
+
+
+def _columns() -> list:
+    """Fresh Column objects per call.
+
+    A module-level tuple of Columns cannot be reused across ``op.add_column``
+    calls (a Column binds to the first table it is added to), and ``.copy()``
+    is deprecated in SQLAlchemy 2.0 — which this suite treats as an error.
+
+    ``deleted_by`` carries no FK to USER on purpose: it is a historical record
+    that must stay readable after that user is renamed or deactivated, matching
+    AUDIT_ENTRY.actor_user_id. It also keeps this a plain ADD COLUMN, where a FK
+    constraint would need a SQLite batch table rebuild on 37k rows.
+    """
+    return [
+        sa.Column("is_active", sa.Boolean(), nullable=False, server_default="1"),
+        sa.Column("deleted_at", sa.DateTime(), nullable=True),
+        sa.Column("deleted_by", sa.String(length=50), nullable=True),
+    ]
+
+
 def upgrade() -> None:
     for table in TABLES:
-        op.add_column(table, sa.Column("is_active", sa.Boolean(), nullable=False, server_default="1"))
+        for column in _columns():
+            op.add_column(table, column)
 
 
 def downgrade() -> None:
     for table in reversed(TABLES):
-        op.drop_column(table, "is_active")
+        for name in reversed(COLUMN_NAMES):
+            op.drop_column(table, name)

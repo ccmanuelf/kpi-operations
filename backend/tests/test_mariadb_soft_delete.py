@@ -86,6 +86,85 @@ def test_migration_added_a_non_nullable_is_active_with_a_true_default(mariadb_sc
 
 
 @requires_mariadb
+@pytest.mark.parametrize("table", sorted(AUTO_FILTERED_TABLES))
+def test_migration_added_nullable_deleted_at_and_deleted_by(mariadb_schema, table):
+    """NULL means "not deleted", which is true of every pre-existing row — so
+    these must be nullable with no default on InnoDB too."""
+    columns = {c["name"]: c for c in inspect(engine).get_columns(table)}
+    assert columns["deleted_at"]["nullable"] is True
+    assert columns["deleted_at"]["default"] is None
+    assert columns["deleted_by"]["nullable"] is True
+    assert columns["deleted_by"]["default"] is None
+
+
+@requires_mariadb
+def test_soft_delete_attribution_round_trips_on_mariadb(seeded_client):
+    """deleted_at is a DATETIME on MariaDB with whole-second precision and no
+    tz offset — a naive UTC value has to survive the round trip intact."""
+    from datetime import timedelta
+
+    from backend.db.soft_delete_service import soft_delete_record
+
+    session = seeded_client
+    session.add(WorkOrder(**_new_work_order("SD-WO-4")))
+    session.commit()
+
+    class _Actor:
+        user_id = "SD-ACTOR-1"
+
+    before = datetime.now(tz=timezone.utc).replace(tzinfo=None) - timedelta(seconds=5)
+    target = session.query(WorkOrder).filter(WorkOrder.work_order_id == "SD-WO-4").one()
+    assert soft_delete_record(session, target, _Actor()) is True
+    session.expunge_all()
+
+    with include_inactive(session):
+        row = session.query(WorkOrder).filter(WorkOrder.work_order_id == "SD-WO-4").one()
+        assert row.is_active is False
+        assert row.deleted_by == "SD-ACTOR-1"
+        assert row.deleted_at.replace(tzinfo=None) >= before
+
+
+@requires_mariadb
+def test_a_blocked_delete_is_refused_on_mariadb(seeded_client):
+    """The blocker count is a COUNT(*) over a child table on InnoDB, and this
+    repo's history says a SUM/COUNT can come back as a type the caller did not
+    expect. Asserted against a live server, not a SQLite stand-in.
+    """
+    from fastapi import HTTPException
+
+    from backend.db.soft_delete_service import soft_delete_record
+    from backend.orm.job import Job
+
+    session = seeded_client
+    session.add(WorkOrder(**_new_work_order("SD-WO-5")))
+    session.flush()
+    session.add(
+        Job(
+            job_id="SD-JOB-1",
+            work_order_id="SD-WO-5",
+            client_id_fk=CLIENT_ID,
+            part_number="SD-PART-1",
+            operation_code="ASSY",
+            operation_name="Assembly",
+            sequence_number=1,
+            planned_quantity=10,
+            completed_quantity=0,
+        )
+    )
+    session.commit()
+
+    target = session.query(WorkOrder).filter(WorkOrder.work_order_id == "SD-WO-5").one()
+    with pytest.raises(HTTPException) as exc_info:
+        soft_delete_record(session, target)
+
+    assert exc_info.value.status_code == 409
+    assert exc_info.value.detail["blocked_by"] == [{"table": "JOB", "count": 1}]
+    session.rollback()
+    session.query(Job).delete()
+    session.commit()
+
+
+@requires_mariadb
 def test_soft_delete_round_trip_on_mariadb(seeded_client):
     """soft_delete() writes 0, and MariaDB's IS true excludes it."""
     session = seeded_client
