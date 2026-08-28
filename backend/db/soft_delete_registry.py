@@ -188,3 +188,26 @@ CHILD_CLASSIFICATION: Dict[str, Tuple[ChildKind, str]] = {
 
 #: Kinds whose rows are hidden along with the parent rather than blocking it.
 CASCADE_KINDS: FrozenSet[ChildKind] = frozenset({ChildKind.OWNED, ChildKind.DERIVED})
+
+#: Cascade children that are only cascaded WITHIN the parent's own tenant.
+#:
+#: ``routes/alerts/crud.py`` deliberately shows alerts with ``client_id IS NULL``
+#: to every tenant, on both the scope branch and the explicit-client_id branch —
+#: "system-wide and carry no tenant data, so they stay visible", with a gate
+#: behind the comment. Cascading those would let one tenant's work-order delete
+#: remove a row the whole organisation could see.
+#:
+#: A system-wide alert is not owned by one tenant's work order, so it is not the
+#: parent's to hide. It is left visible, still referencing the hidden row, which
+#: is the one declared exception to "no visible row references a hidden parent".
+#: The exception is coherent rather than convenient: a client-less alert
+#: pointing at one tenant's work order is ALREADY unresolvable for a viewer in
+#: another tenant, delete or no delete, so hiding the parent creates nothing new
+#: for them — whereas hiding the alert would remove information from tenants who
+#: had no part in the deletion.
+TENANT_SCOPED_CASCADE: Dict[str, str] = {
+    "ALERT": (
+        "client-less alerts are shown to every tenant (routes/alerts/crud.py list_alerts); "
+        "one tenant's delete must not remove an org-wide row"
+    ),
+}

@@ -133,6 +133,20 @@ def build_transaction_rows(session: Session, client_id: str = "SD-CLIENT") -> Di
         message="regenerable derivation",
     )
     session.add(alert_only)
+    # No tenant of its own: routes/alerts/crud.py shows this to EVERY tenant, so
+    # one tenant's delete must not remove it. It hangs off the same work order as
+    # alert_only so a single delete exercises both sides of the rule.
+    alert_system_wide = Alert(
+        alert_id=f"{client_id}-ALERT-SYS",
+        client_id=None,
+        work_order_id=work_order_alert_only.work_order_id,
+        category="otd",
+        severity="info",
+        status="active",
+        title="SD system-wide alert",
+        message="visible to every tenant",
+    )
+    session.add(alert_system_wide)
     session.flush()
 
     # Leaf rows: same tables, nothing referencing them. WORK_ORDER and
@@ -173,6 +187,7 @@ def build_transaction_rows(session: Session, client_id: str = "SD-CLIENT") -> Di
         "ALERT": alert,
         "WORK_ORDER_alert_only": work_order_alert_only,
         "ALERT_only": alert_only,
+        "ALERT_system_wide": alert_system_wide,
         "WORK_ORDER_leaf": work_order_leaf,
         "QUALITY_ENTRY_leaf": quality_leaf,
     }

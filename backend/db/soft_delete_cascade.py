@@ -58,6 +58,7 @@ from backend.db.soft_delete_registry import (
     CASCADE_KINDS,
     CHILD_CLASSIFICATION,
     ChildKind,
+    TENANT_SCOPED_CASCADE,
 )
 
 
@@ -66,6 +67,15 @@ def _model_for(table_name: str) -> Any:
         if mapper.class_.__tablename__ == table_name:
             return mapper.class_
     return None
+
+
+def _tenant_of(entity: Any) -> Any:
+    """The row's own tenant. Most tables name it client_id; JOB and
+    PART_OPPORTUNITIES name it client_id_fk."""
+    value = getattr(entity, "client_id", None)
+    if value is None:
+        value = getattr(entity, "client_id_fk", None)
+    return value
 
 
 def kind_of(child_table: str) -> ChildKind:
@@ -121,7 +131,16 @@ def cascade_children(db: Any, entity: Any) -> List[Any]:
         child_fk = getattr(child_model, fk_column, None)
         if child_fk is None:
             continue
-        children.extend(db.query(child_model).filter(child_fk == parent_value).all())
+        query = db.query(child_model).filter(child_fk == parent_value)
+        if child_table in TENANT_SCOPED_CASCADE:
+            # Only this parent's own tenant. A child with no tenant of its own is
+            # visible org-wide (see TENANT_SCOPED_CASCADE) and is not one
+            # tenant's row to remove.
+            parent_tenant = _tenant_of(entity)
+            if parent_tenant is None:
+                continue
+            query = query.filter(child_model.client_id == parent_tenant)
+        children.extend(query.all())
     return children
 
 

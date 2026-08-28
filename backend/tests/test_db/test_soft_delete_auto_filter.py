@@ -216,21 +216,25 @@ def _hideable_dependents(parent_table: str):
     return sorted(out)
 
 
-def _visible_referencing_count(session, parent_table, parent_entity):
-    """How many still-visible rows point at this parent, counted directly."""
-    total = 0
+def _visible_referencing_rows(session, parent_table, parent_entity):
+    """(child table, row) for every still-visible row pointing at this parent."""
+    found = []
     for child_table, fk_column, parent_column in _hideable_dependents(parent_table):
         child_model = _model_for(child_table)
         parent_value = getattr(parent_entity, parent_column, None)
         if parent_value is None:
             continue
-        total += (
-            session.query(func.count())
-            .select_from(child_model)
-            .filter(getattr(child_model, fk_column) == parent_value)
-            .scalar()
-        )
-    return total
+        rows = session.query(child_model).filter(getattr(child_model, fk_column) == parent_value).all()
+        found.extend((child_table, row) for row in rows)
+    return found
+
+
+def _visible_referencing_count(session, parent_table, parent_entity):
+    return len(_visible_referencing_rows(session, parent_table, parent_entity))
+
+
+def _tenant_of(row):
+    return getattr(row, "client_id", None) or getattr(row, "client_id_fk", None)
 
 
 @pytest.mark.parametrize("table", TABLES)
@@ -274,9 +278,13 @@ def test_no_visible_row_ever_references_a_hidden_parent(rows, table):
     assert entity.count() == 0, f"{table} reports deleted but is still visible"
     with include_inactive(session):
         hidden = session.query(model).filter(getattr(model, pk_attr) == pk_value).one()
-    assert (
-        _visible_referencing_count(session, table, hidden) == 0
-    ), f"{table} {pk_value} is hidden but visible rows still reference it"
+    survivors = _visible_referencing_rows(session, table, hidden)
+    # The one declared exception: a child with NO tenant of its own is visible
+    # org-wide (TENANT_SCOPED_CASCADE) and is not one tenant's row to hide. It is
+    # asserted here as a property of the data — tenant-less — not by naming a
+    # table, so widening the exception to a tenant-scoped row fails.
+    offenders = [f"{t}:{getattr(row, 'alert_id', row)}" for t, row in survivors if _tenant_of(row) is not None]
+    assert offenders == [], f"{table} {pk_value} is hidden but tenant-scoped rows still reference it: {offenders}"
 
 
 def test_a_successful_cascade_leaves_the_join_and_the_plain_read_agreeing(rows):
@@ -377,3 +385,57 @@ def test_the_fixture_gives_the_invariant_something_to_prove(rows):
     }
     assert with_children, "no fixture parent has hideable children; the invariant guard is vacuous"
     assert with_children["WORK_ORDER"] >= 5
+
+
+def test_a_delete_cascades_a_tenant_alert_but_spares_the_system_wide_one(rows):
+    """N6: one tenant's delete must not remove a row the whole org can see.
+
+    routes/alerts/crud.py shows alerts with client_id IS NULL to every tenant,
+    on both its scope branch and its explicit-client_id branch. Cascading those
+    would have let tenant A's work-order delete hide a row tenant B was reading.
+
+    The tenant-scoped alert on the SAME work order is still cascaded, so this is
+    not the cascade being switched off — it is being confined to what the parent
+    actually owns.
+    """
+    from backend.db.soft_delete_service import soft_delete_record
+    from backend.orm.alert import Alert
+
+    session, built = rows
+    target = built["WORK_ORDER_alert_only"]
+    tenant_alert = built["ALERT_only"].alert_id
+    system_alert = built["ALERT_system_wide"].alert_id
+
+    assert soft_delete_record(session, target) is True
+    session.commit()
+    session.expunge_all()
+
+    assert session.query(Alert).filter(Alert.alert_id == tenant_alert).count() == 0
+    assert session.query(Alert).filter(Alert.alert_id == system_alert).count() == 1
+    assert session.query(Alert).filter(Alert.alert_id == system_alert).one().is_active is True
+
+
+def test_the_only_survivors_of_a_cascade_are_tenant_less(rows):
+    """The carve-out stated as the invariant's single exception, and bounded.
+
+    Non-vacuous at both ends: two rows reference the parent before, exactly one
+    survives, and that one has no tenant.
+    """
+    from backend.db.soft_delete_service import soft_delete_record
+    from backend.orm.work_order import WorkOrder
+
+    session, built = rows
+    target = built["WORK_ORDER_alert_only"]
+    pk_value = target.work_order_id
+
+    assert _visible_referencing_count(session, "WORK_ORDER", target) == 2
+
+    assert soft_delete_record(session, target) is True
+    session.commit()
+    session.expunge_all()
+
+    with include_inactive(session):
+        hidden = session.query(WorkOrder).filter(WorkOrder.work_order_id == pk_value).one()
+    survivors = _visible_referencing_rows(session, "WORK_ORDER", hidden)
+    assert len(survivors) == 1
+    assert _tenant_of(survivors[0][1]) is None

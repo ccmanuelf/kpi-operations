@@ -34,6 +34,7 @@ from backend.db.soft_delete_registry import (
     CHILD_CLASSIFICATION,
     ChildKind,
     SOFT_DELETE_CRUD_TARGETS,
+    TENANT_SCOPED_CASCADE,
     SOFT_DELETE_WITHOUT_COLUMN,
     SOFT_DELETE_WITHOUT_COLUMN_CAP,
 )
@@ -431,3 +432,31 @@ def test_cascade_and_blocking_sets_partition_every_dependent():
 
 def test_the_cascade_kinds_are_exactly_owned_and_derived():
     assert CASCADE_KINDS == frozenset({ChildKind.OWNED, ChildKind.DERIVED})
+
+
+# ---------------------------------------------------------------------------
+# The tenant-scoped cascade carve-out (N6).
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("child", sorted(TENANT_SCOPED_CASCADE))
+def test_every_tenant_scoped_cascade_child_can_actually_be_tenant_less(child):
+    """The carve-out only means anything for a child that CAN have no tenant.
+
+    A NOT NULL client_id would make "leave the tenant-less ones alone" a rule
+    with no rows behind it — a declaration that reads as a safeguard and is not
+    one.
+    """
+    assert child in CHILD_CLASSIFICATION, f"{child} is tenant-scoped but unclassified"
+    assert CHILD_CLASSIFICATION[child][0] is ChildKind.DERIVED, (
+        f"{child} is tenant-scoped but not DERIVED; an OWNED child cannot exist without its "
+        f"parent, so sparing it would leave a row that must not survive"
+    )
+    column = Base.metadata.tables[child].c.get("client_id")
+    assert column is not None, f"{child} has no client_id, so it cannot be tenant-scoped"
+    assert column.nullable is True, f"{child}.client_id is NOT NULL; no row could ever be system-wide"
+
+
+def test_every_tenant_scoped_entry_states_a_reason():
+    thin = sorted(t for t, why in TENANT_SCOPED_CASCADE.items() if len(why.strip()) < 40)
+    assert thin == [], f"Tenant-scoped entries need a real reason: {thin}"
