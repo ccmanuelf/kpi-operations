@@ -354,9 +354,15 @@ export function useHoldGridForms({
         const error = (await response.json()) as { detail?: unknown }
         // Raw fetch, so the axios interceptor that flattens the structured
         // 409/422 payloads never sees this response — format it here.
+        //
+        // Only a string is usable as-is. FastAPI's own validation 422 sends
+        // detail as an ARRAY of {loc, msg, type}, which is truthy and would
+        // reach the user as "Error: [object Object]" rather than the fallback.
         const detail = isStructuredDetail(error.detail)
           ? formatStructuredDetail(error.detail)
-          : (error.detail as string | undefined)
+          : typeof error.detail === 'string'
+            ? error.detail
+            : undefined
         throw new Error(detail || `Failed to ${endpoint.replace('-', ' ')}`)
       }
 

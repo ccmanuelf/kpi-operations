@@ -131,6 +131,21 @@ describe('locale', () => {
   })
 })
 
+describe('isStructuredDetail rejects shapes that would blank the message', () => {
+  it('rejects a present-but-empty member rather than formatting it to nothing', () => {
+    // `in` would accept these; formatStructuredDetail then returns '' and the
+    // interceptor overwrites a usable detail with an empty string.
+    expect(isStructuredDetail({ blocked_by: undefined })).toBe(false)
+    expect(isStructuredDetail({ hidden_parents: null })).toBe(false)
+    expect(isStructuredDetail({ blocked_by: 'nope' })).toBe(false)
+  })
+
+  it('still accepts an empty array, which the message fallback handles', () => {
+    expect(isStructuredDetail({ message: 'm', blocked_by: [] })).toBe(true)
+    expect(formatStructuredDetail({ message: 'm', blocked_by: [] })).toBe('m')
+  })
+})
+
 describe('ENTITY_LABEL_KEYS', () => {
   // Exactly the tables the backend can put in front of a user, computed from
   // its own registry rather than guessed:

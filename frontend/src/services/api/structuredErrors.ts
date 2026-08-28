@@ -65,12 +65,17 @@ export const ENTITY_LABEL_KEYS: Record<string, string> = {
  * testing only `typeof detail === 'object'` would replace every validation
  * message in the application with our text, so arrays are rejected and one of
  * the two structured members is required.
+ *
+ * The members are tested with Array.isArray rather than `in`: `{blocked_by:
+ * undefined}` satisfies `in`, and would then format to the empty string and
+ * blank out a message the caller had.
  */
 export const isStructuredDetail = (detail: unknown): detail is StructuredDetail =>
   typeof detail === 'object' &&
   detail !== null &&
   !Array.isArray(detail) &&
-  ('blocked_by' in detail || 'hidden_parents' in detail)
+  (Array.isArray((detail as StructuredDetail).blocked_by) ||
+    Array.isArray((detail as StructuredDetail).hidden_parents))
 
 /** Friendly label, falling back to the raw table name so an entity the
  *  backend gains before this map does still reads as something. `count`
