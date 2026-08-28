@@ -418,18 +418,6 @@ def test_independent_is_the_default_for_anything_unclassified():
     assert kind_of("A_TABLE_THAT_DOES_NOT_EXIST") is ChildKind.INDEPENDENT
 
 
-def test_cascade_and_blocking_sets_partition_every_dependent():
-    """No child is both cascaded and blocking, and none is neither."""
-    from backend.db.soft_delete_cascade import blocking_dependents, cascade_dependents
-
-    for parent in sorted(AUTO_FILTERED_TABLES):
-        blocking = {d[0] for d in blocking_dependents(parent)}
-        cascading = {d[0] for d in cascade_dependents(parent)}
-        assert blocking & cascading == set(), f"{parent}: {blocking & cascading} classified as both"
-        every = {t.name for t in Base.metadata.sorted_tables for fk in t.foreign_keys if fk.column.table.name == parent}
-        assert blocking | cascading == every, f"{parent}: unclassified dependents {every - blocking - cascading}"
-
-
 def test_the_cascade_kinds_are_exactly_owned_and_derived():
     assert CASCADE_KINDS == frozenset({ChildKind.OWNED, ChildKind.DERIVED})
 
@@ -460,3 +448,47 @@ def test_every_tenant_scoped_cascade_child_can_actually_be_tenant_less(child):
 def test_every_tenant_scoped_entry_states_a_reason():
     thin = sorted(t for t, why in TENANT_SCOPED_CASCADE.items() if len(why.strip()) < 40)
     assert thin == [], f"Tenant-scoped entries need a real reason: {thin}"
+
+
+# ---------------------------------------------------------------------------
+# N5: the gate that would have caught the B3 defect class.
+#
+# test_cascade_and_blocking_sets_partition_every_dependent used to sit here and
+# was removed rather than kept: `blocking` is defined as kind_of(...) is
+# INDEPENDENT and `cascading` as kind_of(...) in CASCADE_KINDS, over a 3-value
+# enum whose default IS INDEPENDENT — so the union could never fail and the
+# intersection could never be non-empty. A tautology reads like a safeguard and
+# is worse than no test, because it occupies the slot where a real one would go.
+# ---------------------------------------------------------------------------
+
+
+def _blocking_relationships():
+    """(parent, child) for every relationship that refuses a parent's delete."""
+    from backend.db.soft_delete_cascade import blocking_dependents
+
+    return sorted((parent, child) for parent in AUTO_FILTERED_TABLES for child, _fk, _pk in blocking_dependents(parent))
+
+
+def test_there_are_blocking_relationships_to_check():
+    """Anti-vacuity for the gate below: an empty set would make it pass."""
+    assert len(_blocking_relationships()) == 8
+
+
+@pytest.mark.parametrize("parent,child", _blocking_relationships())
+def test_every_blocker_can_be_cleared_by_the_caller(parent, child):
+    """A 409 the caller cannot act on is a permanent block, not a refusal.
+
+    This is the B3 defect class, gated. ALERT blocked WORK_ORDER while having no
+    DELETE endpoint anywhere, so 'delete or reassign them first' was impossible
+    and the endpoint was undeletable for any work order that had ever raised an
+    alert. Reclassifying ALERT fixed that instance; this stops the next one.
+
+    A child that blocks must therefore be soft-deletable through a CRUD path of
+    its own — which is what makes the refusal reversible, and reversibility is
+    the entire argument for refusing rather than cascading.
+    """
+    clearable = set(SOFT_DELETE_CRUD_TARGETS.values())
+    assert child in clearable, (
+        f"{child} blocks {parent}'s delete but has no soft-delete CRUD path, so the 409 "
+        f"can never be cleared. Give it one, or classify it as OWNED or DERIVED."
+    )
