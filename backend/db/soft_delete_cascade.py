@@ -20,6 +20,27 @@ their own, which therefore cannot be left visibly dangling.
 ORM, so ``soft_delete_filter``'s criteria applies and an already-soft-deleted
 child does not block. Deleting the children then the parent works; a parent
 whose children are all gone is deletable again.
+
+Concurrency — DOCUMENTED, NOT FIXED
+-----------------------------------
+The blocker count and the flag flip run in one transaction, but nothing
+serialises them against a concurrent child INSERT in another transaction. Under
+READ COMMITTED (MariaDB's effective default here) two sessions can interleave:
+A counts zero blockers for a work order while B inserts a job against it, and
+both commit. The result is a hidden parent with one visible child — the state
+this module exists to prevent.
+
+What narrows it in practice: ``backend/db/soft_delete_writes.py`` re-checks
+parent visibility inside the *child's* own transaction at flush time, so any
+child whose insert flushes after the delete commits is rejected. The residual
+window is genuinely simultaneous transactions, not sequential API calls.
+
+What would close it: ``SELECT ... FOR UPDATE`` on the parent row in both paths
+(the delete taking the lock before counting, the child insert taking it before
+flushing), or a database trigger. Neither is done. Row locks on WORK_ORDER
+across every child write is a real throughput decision, not a mechanical fix,
+and it belongs with someone who can weigh it against this deployment's actual
+concurrency.
 """
 
 from typing import Any, Dict, List, Tuple

@@ -132,8 +132,13 @@ from .audit_entry import AuditEntry, AuditOperation
 # reach a model without the filter already being live. Must stay after the
 # model imports above — it resolves the declared tables to mapped classes.
 from backend.db.soft_delete_filter import install_active_row_filter
+from backend.db.soft_delete_writes import install_hidden_parent_write_guard
 
 install_active_row_filter()
+# The write half of the same invariant: the 409 rule stops a parent being
+# hidden while children reference it, this stops a child being attached to a
+# parent that already is. Either one alone leaves the gap open.
+install_hidden_parent_write_guard()
 
 
 def register_all_models() -> None:
