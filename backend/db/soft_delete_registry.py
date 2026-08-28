@@ -44,10 +44,14 @@ AUTO_FILTERED_TABLES: FrozenSet[str] = frozenset(
         "ATTENDANCE_ENTRY",
         "DEFECT_DETAIL",
         "DOWNTIME_ENTRY",
+        "FLOATING_POOL",
         "HOLD_ENTRY",
+        "JOB",
+        "PART_OPPORTUNITIES",
         "PRODUCTION_ENTRY",
         "QUALITY_ENTRY",
         "WORK_ORDER",
+        "shift_coverage",
     }
 )
 
@@ -95,16 +99,16 @@ SOFT_DELETE_CRUD_TARGETS: Dict[str, str] = {
 }
 
 #: Tables a soft-delete CRUD path writes to that have no is_active column, so
-#: the DELETE endpoint answers 404 for every id. Same defect as S1, different
-#: tables; unreached by the contract harness because the seeder emits no rows
-#: for them. Reported for a scope decision, not fixed here.
-SOFT_DELETE_WITHOUT_COLUMN: Dict[str, str] = {
-    "FLOATING_POOL": "DELETE /api/floating-pool/{pool_id} answers 404 for every id",
-    "JOB": "DELETE /api/jobs/{job_id} answers 404 for every id",
-    "PART_OPPORTUNITIES": "DELETE /api/part-opportunities/{part_number} answers 404 for every id",
-    "shift_coverage": "DELETE /api/coverage/{coverage_id} answers 404 for every id",
-}
+#: the DELETE endpoint answers 404 for every id. Empty, and it must stay empty:
+#: this is the S1 defect itself. It held four entries for exactly one review
+#: cycle — ``/api/jobs``, ``/api/coverage``, ``/api/floating-pool``,
+#: ``/api/part-opportunities`` — which the contract harness had filed as a seed
+#: gap rather than a 404 because the seeder writes no rows for them. Same
+#: defect, different bucket, so they were folded in rather than shipped as a
+#: fix for 7 of 11 instances along a boundary that reflected nothing real.
+SOFT_DELETE_WITHOUT_COLUMN: Dict[str, str] = {}
 
 #: Ratchet. May only decrease: each decrement is one endpoint that stopped
-#: lying. A new entry means a new instance of the S1 defect shipped.
-SOFT_DELETE_WITHOUT_COLUMN_CAP: int = 4
+#: lying. It has reached zero, so any new entry is a regression, not a backlog
+#: item — a DELETE endpoint that answers 404 for every id shipped again.
+SOFT_DELETE_WITHOUT_COLUMN_CAP: int = 0

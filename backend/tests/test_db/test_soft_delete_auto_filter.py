@@ -212,12 +212,10 @@ def test_soft_deleting_a_work_order_does_not_cascade_to_its_children(rows):
     from backend.orm.job import Job
     from backend.orm.production_entry import ProductionEntry
     from backend.orm.work_order import WorkOrder
-    from backend.tests.fixtures.factories import TestDataFactory
 
     session, built = rows
     work_order = built["WORK_ORDER"]
     client_id = built["client"].client_id
-    TestDataFactory.create_job(session, work_order_id=work_order.work_order_id, client_id=client_id)
     session.add(
         Alert(
             alert_id="SD-ALERT-1",

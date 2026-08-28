@@ -8,7 +8,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Optional
 
-from sqlalchemy import DateTime, ForeignKey, Integer, Numeric, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
 
@@ -60,6 +60,11 @@ class Job(Base):
 
     # Metadata
     notes: Mapped[Optional[str]] = mapped_column(Text)
+
+    # Soft delete (S1): DELETE endpoints set this False instead of removing the row.
+    # Filtering is automatic — see backend/db/soft_delete_filter.py, declared in
+    # backend/db/soft_delete_registry.py. Do NOT hand-filter on it.
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="1")
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())

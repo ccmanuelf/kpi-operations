@@ -13,23 +13,28 @@ from sqlalchemy.orm import Session
 from backend.orm import ClientType
 from backend.tests.fixtures.factories import TestDataFactory
 
-#: table name -> primary-key attribute, for the seven auto-filtered models.
+#: table name -> primary-key attribute, for the eleven auto-filtered models.
 PK_ATTR: Dict[str, str] = {
     "ATTENDANCE_ENTRY": "attendance_entry_id",
     "DEFECT_DETAIL": "defect_detail_id",
     "DOWNTIME_ENTRY": "downtime_entry_id",
+    "FLOATING_POOL": "pool_id",
     "HOLD_ENTRY": "hold_entry_id",
+    "JOB": "job_id",
+    "PART_OPPORTUNITIES": "part_number",
     "PRODUCTION_ENTRY": "production_entry_id",
     "QUALITY_ENTRY": "quality_entry_id",
     "WORK_ORDER": "work_order_id",
+    "shift_coverage": "coverage_id",
 }
 
 
 def build_transaction_rows(session: Session, client_id: str = "SD-CLIENT") -> Dict[str, Any]:
     """Create the supporting graph plus exactly one row per auto-filtered table.
 
-    Returns a dict with the seven rows keyed by table name, plus the ``client``,
-    ``supervisor``, ``employee``, ``product`` and ``shift`` they hang off.
+    Returns a dict with the eleven rows keyed by table name, plus the
+    ``client``, ``supervisor``, ``employee``, ``product`` and ``shift`` they
+    hang off.
     """
     TestDataFactory.reset_counters()
 
@@ -83,6 +88,16 @@ def build_transaction_rows(session: Session, client_id: str = "SD-CLIENT") -> Di
     defect = TestDataFactory.create_defect_detail(
         session, quality_entry_id=quality.quality_entry_id, client_id_fk=client.client_id
     )
+    job = TestDataFactory.create_job(session, work_order_id=work_order.work_order_id, client_id=client.client_id)
+    coverage = TestDataFactory.create_shift_coverage(
+        session, shift_id=shift.shift_id, client_id=client.client_id, entered_by=supervisor.user_id
+    )
+    pool = TestDataFactory.create_floating_pool_assignment(
+        session, employee_id=employee.employee_id, client_id=client.client_id
+    )
+    part = TestDataFactory.create_part_opportunities(
+        session, part_number=f"{client_id}-PART-1", client_id=client.client_id
+    )
     session.commit()
 
     return {
@@ -98,4 +113,8 @@ def build_transaction_rows(session: Session, client_id: str = "SD-CLIENT") -> Di
         "PRODUCTION_ENTRY": production,
         "QUALITY_ENTRY": quality,
         "WORK_ORDER": work_order,
+        "JOB": job,
+        "shift_coverage": coverage,
+        "FLOATING_POOL": pool,
+        "PART_OPPORTUNITIES": part,
     }

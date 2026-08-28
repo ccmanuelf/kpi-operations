@@ -6,7 +6,7 @@ Source: 01-Core_DataEntities_Inventory.csv lines 71-75
 
 from typing import Optional
 
-from sqlalchemy import ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.database import Base
@@ -31,3 +31,8 @@ class PartOpportunities(Base):
     part_description: Mapped[Optional[str]] = mapped_column(String(255))
     part_category: Mapped[Optional[str]] = mapped_column(String(100))
     notes: Mapped[Optional[str]] = mapped_column(Text)
+
+    # Soft delete (S1): DELETE endpoints set this False instead of removing the row.
+    # Filtering is automatic — see backend/db/soft_delete_filter.py, declared in
+    # backend/db/soft_delete_registry.py. Do NOT hand-filter on it.
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="1")

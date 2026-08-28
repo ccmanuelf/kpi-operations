@@ -144,20 +144,33 @@ def test_every_soft_delete_target_is_either_working_or_recorded_broken(module, t
     )
 
 
-@pytest.mark.parametrize("table", sorted(SOFT_DELETE_WITHOUT_COLUMN))
-def test_every_table_recorded_broken_is_still_broken(table):
+def test_no_table_recorded_broken_has_quietly_started_working():
     """The signal that has been missing: when one gets fixed, say so.
 
     A stale entry here means a DELETE endpoint quietly started working and the
-    registry still claims it is broken — the same silent drift in reverse.
+    registry still claims it is broken — the same silent drift in reverse. This
+    is how the original four left the list: fixing them flipped this guard,
+    which is what forced the registry, the migration and the cap to be updated
+    together instead of one of them being forgotten.
+
+    Not parametrized: the dict is empty now, and an empty parametrize silently
+    reports a skip rather than a pass, which is a vacuous guard.
     """
-    model = _model_for(table)
-    assert model is not None, f"SOFT_DELETE_WITHOUT_COLUMN names {table}, which maps to nothing"
-    assert not hasattr(model, "is_active"), (
-        f"{table} now has an is_active column, so its DELETE endpoint may already "
-        f"work. Remove it from SOFT_DELETE_WITHOUT_COLUMN, lower the cap, and add "
-        f"it to AUTO_FILTERED_TABLES or AD_HOC_FILTERED_TABLES."
+    resurrected = sorted(
+        table
+        for table in SOFT_DELETE_WITHOUT_COLUMN
+        if (model := _model_for(table)) is not None and hasattr(model, "is_active")
     )
+    assert resurrected == [], (
+        "These now have an is_active column, so their DELETE endpoints may already "
+        "work. Remove each from SOFT_DELETE_WITHOUT_COLUMN, lower the cap, and add "
+        "it to AUTO_FILTERED_TABLES or AD_HOC_FILTERED_TABLES: " + ", ".join(resurrected)
+    )
+
+
+def test_every_table_recorded_broken_maps_to_a_real_model():
+    unmapped = sorted(t for t in SOFT_DELETE_WITHOUT_COLUMN if _model_for(t) is None)
+    assert unmapped == [], f"SOFT_DELETE_WITHOUT_COLUMN names tables that map to nothing: {unmapped}"
 
 
 def test_every_broken_target_is_declared():

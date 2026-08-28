@@ -7,7 +7,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Optional
 
-from sqlalchemy import Date, DateTime, ForeignKey, Integer, Numeric, String, Text
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
 
@@ -32,6 +32,11 @@ class ShiftCoverage(Base):
     coverage_percentage: Mapped[Optional[Decimal]] = mapped_column(Numeric(5, 2))  # Calculated field
     notes: Mapped[Optional[str]] = mapped_column(Text)
     entered_by: Mapped[str] = mapped_column(String(50), ForeignKey("USER.user_id"), nullable=False)
+    # Soft delete (S1): DELETE endpoints set this False instead of removing the row.
+    # Filtering is automatic — see backend/db/soft_delete_filter.py, declared in
+    # backend/db/soft_delete_registry.py. Do NOT hand-filter on it.
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="1")
+
     created_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), onupdate=func.now(), server_default=func.now()

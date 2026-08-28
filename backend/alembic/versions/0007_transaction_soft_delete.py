@@ -1,12 +1,18 @@
-"""Soft-delete flag on the seven transaction tables (S1).
+"""Soft-delete flag on the eleven soft-deleting transaction tables (S1).
 
 Revision ID: 0007_transaction_soft_delete
 Revises: 0006_hold_status_history
 Create Date: 2026-08-27
 
-DELETE /api/{attendance,defects,downtime,holds,production,quality,work-orders}
-returned 404 for every id, valid ones included: the CRUD layer soft-deletes by
-setting ``is_active = False`` and none of these seven models had the column.
+Eleven DELETE endpoints returned 404 for every id, valid ones included: the
+CRUD layer soft-deletes by setting ``is_active = False`` and none of these
+models had the column.
+
+Seven were found by the contract harness. The other four — ``/api/jobs``,
+``/api/coverage``, ``/api/floating-pool``, ``/api/part-opportunities`` — have
+the identical defect and were invisible to it only because the seeder writes no
+rows for them, so they were filed as a seed gap rather than a 404. One defect,
+sorted into two buckets by an accident of test data.
 
 Existing rows default to active (``server_default="1"``), so the upgrade is a
 no-op for live data. No index: the column is ~100% true on high-volume tables,
@@ -30,10 +36,14 @@ TABLES: tuple[str, ...] = (
     "ATTENDANCE_ENTRY",
     "DEFECT_DETAIL",
     "DOWNTIME_ENTRY",
+    "FLOATING_POOL",
     "HOLD_ENTRY",
+    "JOB",
+    "PART_OPPORTUNITIES",
     "PRODUCTION_ENTRY",
     "QUALITY_ENTRY",
     "WORK_ORDER",
+    "shift_coverage",
 )
 
 
