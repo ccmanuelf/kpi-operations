@@ -106,6 +106,22 @@ describe('useWorkOrderForms — refused delete', () => {
     expect(notifications.showError).toHaveBeenCalledWith('Internal Server Error')
   })
 
+  it('falls back to the snackbar when the dialog was dismissed mid-request', async () => {
+    // Cancel is not disabled while the delete is in flight and the dialog is not
+    // persistent, so the user can close it before the 409 lands. Suppressing on
+    // blockers alone made that race swallow the failure silently.
+    mockApi.deleteWorkOrder.mockRejectedValue(refusedDelete())
+    const forms = buildHarness()
+
+    forms.confirmDelete(WORK_ORDER)
+    const pending = forms.deleteWorkOrder()
+    forms.deleteDialog.value = false // user dismisses while the request is open
+    await pending
+    await flushPromises()
+
+    expect(notifications.showError).toHaveBeenCalledTimes(1)
+  })
+
   it('clears stale blockers when the dialog is reopened', async () => {
     mockApi.deleteWorkOrder.mockRejectedValue(refusedDelete())
     const forms = buildHarness()

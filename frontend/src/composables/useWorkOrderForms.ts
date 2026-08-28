@@ -201,11 +201,16 @@ export function useWorkOrderForms(
       // eslint-disable-next-line no-console
       console.error('Error deleting work order:', error)
       deleteBlockers.value = blockedByRows(getStructuredDetail(error))
-      // The dialog stays open and lists the blockers itself, so a snackbar
-      // repeating the interceptor's flattened form would put the same four
-      // entities on screen twice. Every other failure has no such surface and
-      // still needs the snackbar.
-      if (!deleteBlockers.value.length) {
+      // The snackbar is suppressed ONLY when the dialog is actually on screen to
+      // carry the same information — otherwise the two would name the same
+      // entities twice, in two shapes.
+      //
+      // The `deleteDialog` half is not redundant: Cancel is not disabled while
+      // the request is in flight, and the dialog is not persistent, so Esc or a
+      // scrim click also closes it. Suppressing on blockers alone let that race
+      // swallow the failure entirely — the delete silently did not happen and
+      // nothing said so.
+      if (!deleteBlockers.value.length || !deleteDialog.value) {
         const ax = error as { response?: { data?: { detail?: string } } }
         notificationStore.showError(
           ax?.response?.data?.detail || t('notifications.workOrders.deleteFailed'),
