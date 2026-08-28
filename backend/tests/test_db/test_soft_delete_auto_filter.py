@@ -191,74 +191,138 @@ def test_identity_map_refresh_is_the_one_documented_exemption(rows, table):
 # ---------------------------------------------------------------------------
 
 
-def _visible_children_of(session, entity):
-    """Blockers computed the way the service computes them, for assertions."""
-    from backend.db.soft_delete_cascade import visible_child_blockers
+def _hideable_dependents(parent_table: str):
+    """(child table, child FK column, parent PK column) for every dependent that
+    HAS an is_active column — i.e. every one that can be, and therefore must be,
+    hidden with its parent.
 
-    return visible_child_blockers(session, entity)
+    Read straight off Base.metadata. It deliberately consults neither
+    CHILD_CLASSIFICATION nor visible_child_blockers: this is the check on those,
+    and a check that asks the implementation what to expect proves nothing. The
+    previous version of this test did exactly that and passed with the entire
+    409 mechanism disabled.
+
+    Dependents WITHOUT an is_active column are excluded because they cannot be
+    hidden and have no endpoint of their own — they are reachable only through
+    the parent, which is now invisible.
+    """
+    out = []
+    for table in Base.metadata.sorted_tables:
+        if "is_active" not in table.c:
+            continue
+        for fk in table.foreign_keys:
+            if fk.column.table.name == parent_table:
+                out.append((table.name, fk.parent.name, fk.column.name))
+    return sorted(out)
+
+
+def _visible_referencing_count(session, parent_table, parent_entity):
+    """How many still-visible rows point at this parent, counted directly."""
+    total = 0
+    for child_table, fk_column, parent_column in _hideable_dependents(parent_table):
+        child_model = _model_for(child_table)
+        parent_value = getattr(parent_entity, parent_column, None)
+        if parent_value is None:
+            continue
+        total += (
+            session.query(func.count())
+            .select_from(child_model)
+            .filter(getattr(child_model, fk_column) == parent_value)
+            .scalar()
+        )
+    return total
 
 
 @pytest.mark.parametrize("table", TABLES)
 def test_no_visible_row_ever_references_a_hidden_parent(rows, table):
-    """The invariant the 409 rule exists to hold, checked per table.
+    """The invariant itself, computed independently of the code under test.
 
-    Before S1 the answer to "what happens to the children" depended on the
-    query: children read without a join stayed visible, the six inner-join
-    analytics reads dropped them, and one outer join kept the row and nulled
-    the parent's columns. Three answers. Refusing the delete while anything
-    visible still references the row collapses that to one, by making the
-    incoherent state unreachable rather than by choosing a behaviour for it.
+    Either mechanism may satisfy it — the delete is refused (409) and the parent
+    stays visible, or the delete succeeds and every hideable child went with it.
+    What must never happen is a hidden parent with a visible child.
+
+    Both branches are non-vacuous: the refusal branch asserts a blocker really
+    was there, the success branch asserts the parent really is gone. A
+    ``visible_child_blockers`` that returned ``{}`` unconditionally would send
+    WORK_ORDER down the success branch with five visible children and fail.
     """
     from backend.db.soft_delete_service import soft_delete_record
     from fastapi import HTTPException
 
     session, built = rows
     entity = built[table]
-    blockers = _visible_children_of(session, entity)
+    pk_attr = PK_ATTR[table]
+    pk_value = getattr(entity, pk_attr)
+    model = _model_for(table)
 
-    if blockers:
-        with pytest.raises(HTTPException) as exc_info:
-            soft_delete_record(session, entity)
-        assert exc_info.value.status_code == 409
+    before = _visible_referencing_count(session, table, entity)
+
+    try:
+        assert soft_delete_record(session, entity) is True
+        session.commit()
+    except HTTPException as exc:
+        assert exc.status_code == 409
         session.rollback()
+        # Refused: the parent must still be there, and something must really
+        # have been blocking it.
+        assert session.query(model).filter(getattr(model, pk_attr) == pk_value).count() == 1
+        assert before > 0
         return
 
-    assert soft_delete_record(session, entity) is True
-    session.commit()
-    assert _visible_children_of(session, entity) == {}
+    session.expunge_all()
+    entity = session.query(model).filter(getattr(model, pk_attr) == pk_value)
+    assert entity.count() == 0, f"{table} reports deleted but is still visible"
+    with include_inactive(session):
+        hidden = session.query(model).filter(getattr(model, pk_attr) == pk_value).one()
+    assert (
+        _visible_referencing_count(session, table, hidden) == 0
+    ), f"{table} {pk_value} is hidden but visible rows still reference it"
 
 
-def test_the_analytics_join_and_the_plain_read_now_agree(rows):
-    """The measured symptom, gone: a still-active production entry used to drop
-    out of the analytics KPI purely because that query inner-joins its parent.
+def test_a_successful_cascade_leaves_the_join_and_the_plain_read_agreeing(rows):
+    """The symptom, asserted as the property its name claims.
 
-    It cannot happen through the product any more — the work order it hangs off
-    cannot be hidden while the production entry is visible.
+    A still-active production entry used to drop out of the analytics KPI
+    purely because that query inner-joins its parent. The earlier version of
+    this test only proved the 409 fires, which is not the same statement — and
+    review showed the title was false, because a child could still be attached
+    to an already-hidden parent afterwards (closed separately in
+    backend/db/soft_delete_writes.py and covered end to end in
+    tests/test_routes/test_hidden_parent_writes.py).
+
+    Here the check is run across a DELETE that actually succeeds, cascading a
+    derived alert, so the agreement is proved after a real hide rather than
+    after a refusal.
     """
     from backend.db.soft_delete_service import soft_delete_record
+    from backend.orm.alert import Alert
     from backend.orm.production_entry import ProductionEntry
     from backend.orm.work_order import WorkOrder
-    from fastapi import HTTPException
 
     session, built = rows
-    work_order = built["WORK_ORDER"]
+    target = built["WORK_ORDER_alert_only"]
+    alert_id = built["ALERT_only"].alert_id
 
-    def joined_production_count():
+    def plain():
+        return session.query(func.count(ProductionEntry.production_entry_id)).scalar()
+
+    def joined():
         return (
             session.query(func.count(ProductionEntry.production_entry_id))
             .join(WorkOrder, ProductionEntry.work_order_id == WorkOrder.work_order_id)
             .scalar()
         )
 
-    plain = session.query(func.count(ProductionEntry.production_entry_id)).scalar()
-    assert joined_production_count() == plain
+    assert plain() == joined()
 
-    with pytest.raises(HTTPException) as exc_info:
-        soft_delete_record(session, work_order)
-    assert exc_info.value.status_code == 409
-    session.rollback()
+    assert soft_delete_record(session, target) is True
+    session.commit()
+    session.expunge_all()
 
-    assert joined_production_count() == plain
+    # the cascade really happened...
+    assert session.query(Alert).filter(Alert.alert_id == alert_id).count() == 0
+    # ...and the two readings of the same rows still agree
+    assert plain() == joined()
 
 
 def test_bypassing_the_service_still_produces_the_old_incoherence(rows):
@@ -294,3 +358,22 @@ def test_bypassing_the_service_still_produces_the_old_incoherence(rows):
 
     assert session.query(func.count(Job.job_id)).scalar() == 1  # child still visible
     assert joined_production_count() == 0  # same row, gone from the joined read
+
+
+def test_the_fixture_gives_the_invariant_something_to_prove(rows):
+    """Anti-vacuity for the parametrized invariant above.
+
+    That guard is only meaningful for parents that actually have hideable
+    children in the fixture; for a childless one both branches are trivially
+    satisfied. If the fixture ever stopped building a parent with children, all
+    twelve parametrisations would pass while proving nothing — so assert here
+    that at least one of them is a real case, and name how many.
+    """
+    session, built = rows
+    with_children = {
+        table: _visible_referencing_count(session, table, built[table])
+        for table in TABLES
+        if _visible_referencing_count(session, table, built[table]) > 0
+    }
+    assert with_children, "no fixture parent has hideable children; the invariant guard is vacuous"
+    assert with_children["WORK_ORDER"] >= 5

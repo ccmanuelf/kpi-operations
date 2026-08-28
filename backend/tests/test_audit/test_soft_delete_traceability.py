@@ -36,6 +36,12 @@ from backend.orm.audit_entry import AuditEntry
 from backend.tests.conftest import clone_template_engine
 from backend.tests.fixtures.soft_delete_rows import PK_ATTR, build_transaction_rows
 
+#: Endpoints whose {id} path parameter is typed `int`, so a non-numeric id is
+#: rejected by FastAPI as 422 before any handler runs. The other nine take `str`.
+#: This is why an absent-id probe must use a WELL-FORMED id per endpoint —
+#: mixing the two is what a permissive `in (404, 422)` was papering over.
+INT_ID_ENDPOINTS = {"shift_coverage", "FLOATING_POOL"}
+
 # table -> (single-resource path prefix, fixture key holding a deletable row)
 DELETABLE = {
     "ATTENDANCE_ENTRY": ("/api/attendance", "ATTENDANCE_ENTRY"),
@@ -187,16 +193,50 @@ def test_the_row_itself_records_who_deleted_it_and_when(audited_env, table):
         assert entity.deleted_at.replace(tzinfo=None) >= before
 
 
+def _absent_id(table: str) -> str:
+    """A well-formed id of the right type that no row has."""
+    return "999999999" if table in INT_ID_ENDPOINTS else "NO-SUCH-ID-12345"
+
+
 @pytest.mark.parametrize("table", TABLES)
-def test_a_refused_or_absent_delete_records_nothing(audited_env, table):
-    """The trail must not fill up with deletions that did not happen."""
+def test_an_absent_delete_records_nothing(audited_env, table):
+    """The trail must not fill up with deletions that did not happen.
+
+    One expected status, not two: the id is well-formed for each endpoint's
+    parameter type, so every one of them answers 404 — "no such row" — rather
+    than some answering 422 for "that isn't even an id".
+    """
     http, session, built = audited_env
     resource, _key = DELETABLE[table]
 
-    assert http.delete(f"{resource}/NO-SUCH-ID-12345").status_code in (404, 422)
+    assert http.delete(f"{resource}/{_absent_id(table)}").status_code == 404
 
-    written = session.query(AuditEntry).filter(AuditEntry.operation == "DELETE").count()
-    assert written == 0
+    assert session.query(AuditEntry).filter(AuditEntry.operation == "DELETE").count() == 0
+
+
+@pytest.mark.parametrize("table", sorted(INT_ID_ENDPOINTS))
+def test_a_malformed_id_is_rejected_before_the_handler_on_int_endpoints(audited_env, table):
+    """The real difference the permissive tuple hid, asserted on purpose.
+
+    These two endpoints declare an `int` path parameter, so a non-numeric id
+    never reaches the CRUD layer. Pinned so that changing the parameter type
+    fails here rather than silently changing what the test above proves.
+    """
+    http, session, _built = audited_env
+    resource, _key = DELETABLE[table]
+
+    assert http.delete(f"{resource}/NOT-A-NUMBER").status_code == 422
+
+    assert session.query(AuditEntry).filter(AuditEntry.operation == "DELETE").count() == 0
+
+
+@pytest.mark.parametrize("table", sorted(set(DELETABLE) - INT_ID_ENDPOINTS))
+def test_a_string_id_endpoint_answers_404_not_422_for_any_id_shape(audited_env, table):
+    """The other side: these nine take `str`, so even a strange id is a 404."""
+    http, _session, _built = audited_env
+    resource, _key = DELETABLE[table]
+
+    assert http.delete(f"{resource}/NOT-A-NUMBER").status_code == 404
 
 
 def test_a_delete_refused_with_409_writes_no_audit_entry(audited_env):
