@@ -122,14 +122,25 @@ describe('locale', () => {
 
   it('returns Spanish with no English leak when the locale is es', () => {
     i18n.global.locale.value = 'es'
+
+    // Composed from the bundle rather than duplicating the copy: this test is
+    // about interpolation, locale selection and label lookup, and a duplicated
+    // sentence would fail on every wording edit while proving nothing extra.
+    // The wording itself is covered by the parity and plural-form assertions.
     expect(formatStructuredDetail(HIDDEN_PARENT_DETAIL)).toBe(
-      'No se puede referenciar un registro eliminado: Orden de Trabajo WO-0002. ' +
-        'Fue eliminado y ya no está disponible.',
+      es.errors.hiddenParent.replace('{parents}', 'Orden de trabajo WO-0002'),
     )
     expect(formatStructuredDetail({ blocked_by: [{ table: 'HOLD_ENTRY', count: 3 }] })).toBe(
-      'No se puede eliminar este registro — otros registros aún lo referencian: Retenciones (3). ' +
-        'Elimínalos o reasígnalos primero.',
+      es.errors.deleteBlocked.replace('{blockers}', 'Retenciones (3)'),
     )
+  })
+
+  it('leaves no English behind in the Spanish rendering', () => {
+    i18n.global.locale.value = 'es'
+    const out = formatStructuredDetail({ blocked_by: [{ table: 'HOLD_ENTRY', count: 3 }] })
+    for (const english of ['Cannot delete', 'still reference', 'Holds', 'reassign']) {
+      expect(out, `leaked: ${english}`).not.toContain(english)
+    }
   })
 })
 

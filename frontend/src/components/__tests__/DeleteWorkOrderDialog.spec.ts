@@ -78,11 +78,11 @@ describe('DeleteWorkOrderDialog', () => {
     })
 
     it('renders the whole refusal in Spanish under the es locale', async () => {
-      render({ blockers: [{ table: 'PRODUCTION_ENTRY', count: 4, label: 'Capturas de Producción' }] }, 'es')
+      render({ blockers: [{ table: 'PRODUCTION_ENTRY', count: 4, label: 'Registros de producción' }] }, 'es')
       await new Promise((r) => setTimeout(r, 0))
       expect(screen()).toContain(es.errors.deleteBlockedTitle)
       expect(screen()).toContain(es.errors.deleteBlockedIntro)
-      expect(screen()).toContain('Capturas de Producción (4)')
+      expect(screen()).toContain('Registros de producción (4)')
       expect(screen()).not.toContain(en.errors.deleteBlockedTitle)
     })
 
