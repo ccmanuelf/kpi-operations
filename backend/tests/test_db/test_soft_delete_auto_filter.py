@@ -136,10 +136,19 @@ def test_the_filter_is_scoped_and_does_not_touch_undeclared_models(rows):
 
     session, built = rows
     employee = built["employee"]
+    employee_id = employee.employee_id
     employee.is_active = 0
     session.commit()
 
-    assert session.get(Employee, employee.employee_id) is not None
+    # A fresh session, i.e. an empty identity map. Reading it back through this
+    # session would hit the documented refresh exemption and pass even if
+    # EMPLOYEE *were* auto-filtered — a false green this test must not have.
+    fresh = sessionmaker(bind=session.get_bind())()
+    try:
+        assert fresh.get(Employee, employee_id) is not None
+        assert employee_id in [r[0] for r in fresh.query(Employee.employee_id).all()]
+    finally:
+        fresh.close()
 
 
 def test_installed_filter_covers_exactly_the_declared_tables():
