@@ -12,7 +12,7 @@ import enum
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
 
@@ -63,6 +63,11 @@ class DefectDetail(Base):
     severity: Mapped[Optional[str]] = mapped_column(String(20))  # CRITICAL, MAJOR, MINOR
     location: Mapped[Optional[str]] = mapped_column(String(255))  # Where on the product
     description: Mapped[Optional[str]] = mapped_column(Text)
+
+    # Soft delete (S1): DELETE endpoints set this False instead of removing the row.
+    # Filtering is automatic — see backend/db/soft_delete_filter.py, declared in
+    # backend/db/soft_delete_registry.py. Do NOT hand-filter on it.
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="1")
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())

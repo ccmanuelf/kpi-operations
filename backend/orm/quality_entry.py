@@ -9,7 +9,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Optional
 
-from sqlalchemy import DateTime, ForeignKey, Index, Integer, Numeric, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
 
@@ -75,6 +75,11 @@ class QualityEntry(Base):
 
     # Audit field - tracks who last modified the record (per audit requirement)
     updated_by: Mapped[Optional[str]] = mapped_column(String(50), ForeignKey("USER.user_id"))
+
+    # Soft delete (S1): DELETE endpoints set this False instead of removing the row.
+    # Filtering is automatic — see backend/db/soft_delete_filter.py, declared in
+    # backend/db/soft_delete_registry.py. Do NOT hand-filter on it.
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="1")
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())

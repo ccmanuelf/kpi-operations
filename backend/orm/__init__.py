@@ -126,6 +126,15 @@ from .simulation_scenario import SimulationScenario
 # Project A — Audit trail
 from .audit_entry import AuditEntry, AuditOperation
 
+# S1 — Soft-deleted rows of the declared transaction tables are hidden from
+# every ORM read. Installed HERE, at the bottom of the ORM package, because
+# importing any backend.orm.<model> runs this module first: a query cannot
+# reach a model without the filter already being live. Must stay after the
+# model imports above — it resolves the declared tables to mapped classes.
+from backend.db.soft_delete_filter import install_active_row_filter
+
+install_active_row_filter()
+
 
 def register_all_models() -> None:
     """Register EVERY ORM model on Base.metadata (idempotent).
