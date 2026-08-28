@@ -44,7 +44,7 @@ Two equivalent opt-ins, both explicit::
 from contextlib import contextmanager
 from typing import Any, Iterator, Tuple
 
-from sqlalchemy import event
+from sqlalchemy import event, inspect
 from sqlalchemy.orm import Session, with_loader_criteria
 
 from backend.db.soft_delete_registry import AUTO_FILTERED_TABLES
@@ -57,21 +57,44 @@ INCLUDE_INACTIVE = "include_inactive"
 _AUTO_FILTERED_MODELS: Tuple[Any, ...] = ()
 
 
-def _resolve_auto_filtered_models() -> Tuple[Any, ...]:
-    from backend.database import Base
+def _validate_auto_filtered(by_table: dict, tables: Any) -> None:
+    """Refuse a schema the filter and the write guard cannot handle correctly.
 
-    by_table = {mapper.class_.__tablename__: mapper.class_ for mapper in Base.registry.mappers}
-
-    missing = sorted(AUTO_FILTERED_TABLES - by_table.keys())
+    Split out from resolution so each rule is exercisable with a fabricated
+    mapping: the composite-key rule has no offending model in this schema, and a
+    test that can only skip is not a gate.
+    """
+    missing = sorted(set(tables) - by_table.keys())
     if missing:
         raise RuntimeError(f"AUTO_FILTERED_TABLES names tables with no mapped class: {missing}")
 
-    without_column = sorted(t for t in AUTO_FILTERED_TABLES if not hasattr(by_table[t], "is_active"))
+    without_column = sorted(t for t in tables if not hasattr(by_table[t], "is_active"))
     if without_column:
         raise RuntimeError(
             f"AUTO_FILTERED_TABLES names models with no is_active column, so nothing would be hidden: {without_column}"
         )
 
+    # backend/db/soft_delete_writes.py::_parents_being_hidden_now identifies a
+    # parent being hidden in the current flush by primary_key_from_instance()[0].
+    # That is the whole key today and the check is exact; against a composite key
+    # it would silently match on the first column alone and let a child attach to
+    # a parent going out in the same flush. Gated here rather than left to be
+    # discovered, because the failure is silent: the guard would still run, still
+    # pass, and still be wrong.
+    composite_pk = sorted(t for t in tables if len(inspect(by_table[t]).primary_key) > 1)
+    if composite_pk:
+        raise RuntimeError(
+            "AUTO_FILTERED_TABLES names models with composite primary keys, which "
+            "soft_delete_writes._parents_being_hidden_now cannot identify correctly "
+            f"(it compares the first key column only): {composite_pk}"
+        )
+
+
+def _resolve_auto_filtered_models() -> Tuple[Any, ...]:
+    from backend.database import Base
+
+    by_table = {mapper.class_.__tablename__: mapper.class_ for mapper in Base.registry.mappers}
+    _validate_auto_filtered(by_table, AUTO_FILTERED_TABLES)
     return tuple(by_table[table] for table in sorted(AUTO_FILTERED_TABLES))
 
 

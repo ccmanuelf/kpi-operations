@@ -26,7 +26,8 @@ are nullable with no default: NULL means "not deleted", which is exactly true
 of every existing row.
 """
 
-from typing import Sequence, Union
+import os
+from typing import Any, Sequence, Union
 
 import sqlalchemy as sa
 from alembic import op
@@ -85,7 +86,79 @@ def upgrade() -> None:
             op.add_column(table, column)
 
 
+#: Downgrading DROPS ``is_active``, which makes every soft-deleted row visible
+#: again and puts it straight back into KPI aggregates. It does so *silently*:
+#: ``deleted_at`` and ``deleted_by`` are dropped in the same breath, so a
+#: resurrected row becomes indistinguishable from one that was never deleted,
+#: and nothing records that it came back. That is a data-integrity event, not a
+#: schema step, so the downgrade refuses while any such row exists. Set this to
+#: "1" to acknowledge the resurrection and proceed anyway.
+ACKNOWLEDGE_RESURRECTION_ENV = "ALLOW_SOFT_DELETE_DOWNGRADE"
+
+
+def _soft_deleted_counts() -> dict:
+    """Rows each table would resurrect, counted through the live connection.
+
+    Built with ``sa.table``/``sa.column`` rather than a ``text()`` string so
+    identifier quoting is the dialect's own: these names are mixed-case
+    (``shift_coverage`` beside ``WORK_ORDER``), and SQLite and MariaDB do not
+    quote them the same way.
+
+    Only ``is_active = 0`` is counted, not NULL. Cross-model review asked for a
+    NULL branch as defence against schema drift; there is nothing for it to
+    defend. The column is created NOT NULL here and both dialects enforce it —
+    SQLite rejects the write outright — so no test can reach that branch, and an
+    unreachable branch is decoration rather than a guard. If a later revision
+    ever makes the column nullable, this predicate is what it must revisit.
+
+    This count is not atomic with the DROP COLUMNs that follow it: a row
+    soft-deleted in between is not counted and comes back with no
+    deleted_at/deleted_by trace. Run migrations with the application stopped,
+    which is the assumption every destructive migration here already makes.
+    """
+    bind = op.get_bind()
+    present = {name for name in TABLES if _has_soft_delete_columns(bind, name)}
+    if present and len(present) != len(TABLES):
+        missing = sorted(set(TABLES) - present)
+        raise RuntimeError(
+            "This database is stamped at 0007 but only some tables carry the soft-delete "
+            f"columns, so it was migrated by an earlier, since-edited version of this "
+            f"revision. Tables still missing them: {missing}. Run "
+            "`alembic stamp 0006_hold_status_history` and then upgrade again."
+        )
+
+    counts = {}
+    for name in TABLES:
+        table = sa.table(name, sa.column("is_active"))
+        statement = sa.select(sa.func.count()).select_from(table).where(table.c.is_active == 0)
+        count = bind.execute(statement).scalar() or 0
+        if count:
+            counts[name] = int(count)
+    return counts
+
+
+def _has_soft_delete_columns(bind: Any, table_name: str) -> bool:
+    """Whether ``table_name`` carries all three columns this revision adds.
+
+    Asked before counting so a half-applied 0007 fails with an instruction
+    instead of a raw driver error about an unknown column.
+    """
+    inspector = sa.inspect(bind)
+    existing = {column["name"] for column in inspector.get_columns(table_name)}
+    return set(COLUMN_NAMES) <= existing
+
+
 def downgrade() -> None:
+    counts = _soft_deleted_counts()
+    if counts and os.environ.get(ACKNOWLEDGE_RESURRECTION_ENV) != "1":
+        listed = ", ".join(f"{table} ({count})" for table, count in sorted(counts.items()))
+        raise RuntimeError(
+            f"Refusing to downgrade: {sum(counts.values())} soft-deleted row(s) would become "
+            f"visible again and re-enter KPI aggregates — {listed}. Their deleted_at/deleted_by "
+            f"are dropped with the columns, so the resurrection would leave no trace. Hard-delete "
+            f"them first, or set {ACKNOWLEDGE_RESURRECTION_ENV}=1 for this one command. Do not "
+            "export it persistently: it would silence this check for every future downgrade."
+        )
     for table in reversed(TABLES):
         for name in reversed(COLUMN_NAMES):
             op.drop_column(table, name)

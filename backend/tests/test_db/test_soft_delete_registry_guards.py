@@ -492,3 +492,91 @@ def test_every_blocker_can_be_cleared_by_the_caller(parent, child):
         f"{child} blocks {parent}'s delete but has no soft-delete CRUD path, so the 409 "
         f"can never be cleared. Give it one, or classify it as OWNED or DERIVED."
     )
+
+
+class TestCompositePrimaryKeyGate:
+    """``_parents_being_hidden_now`` identifies a parent by ``primary_key[0]``.
+
+    That is exact while every auto-filtered table has a single-column key, and
+    silently wrong the moment one does not: the same-flush check would compare
+    the first column only and let a child attach to a parent on its way out.
+    The install-time validator refuses that schema rather than running wrong.
+
+    Exercised against a fabricated mapping rather than a real model, because no
+    composite-key model with ``is_active`` exists here — and a gate whose only
+    test can skip is not a gate.
+
+    Mutation proof: delete the ``composite_pk`` block from
+    ``_validate_auto_filtered`` and ``test_validator_refuses_a_composite_key``
+    fails.
+    """
+
+    @staticmethod
+    def _stub(primary_key_columns, has_is_active=True):
+        class _Col:
+            def __init__(self, name):
+                self.name = name
+
+        class _Inspected:
+            primary_key = tuple(_Col(n) for n in primary_key_columns)
+
+        class _Model:
+            pass
+
+        if has_is_active:
+            _Model.is_active = True
+        _Model._sa_inspected = _Inspected
+        return _Model
+
+    def test_every_auto_filtered_table_has_a_single_column_key_today(self):
+        from sqlalchemy import inspect as sa_inspect
+
+        from backend.database import Base
+        from backend.db.soft_delete_registry import AUTO_FILTERED_TABLES
+
+        by_table = {m.class_.__tablename__: m.class_ for m in Base.registry.mappers}
+        offenders = {
+            table: [c.name for c in sa_inspect(by_table[table]).primary_key]
+            for table in AUTO_FILTERED_TABLES
+            if len(sa_inspect(by_table[table]).primary_key) > 1
+        }
+        assert offenders == {}
+
+    def test_validator_refuses_a_composite_key(self, monkeypatch):
+        import pytest
+
+        from backend.db import soft_delete_filter
+
+        model = self._stub(["client_id", "shift_date"])
+        monkeypatch.setattr(soft_delete_filter, "inspect", lambda m: m._sa_inspected)
+
+        with pytest.raises(RuntimeError, match="composite primary keys"):
+            soft_delete_filter._validate_auto_filtered({"COMPOSITE_TABLE": model}, {"COMPOSITE_TABLE"})
+
+    def test_validator_accepts_a_single_column_key(self, monkeypatch):
+        """The gate must reject composites specifically, not everything."""
+        from backend.db import soft_delete_filter
+
+        model = self._stub(["entry_id"])
+        monkeypatch.setattr(soft_delete_filter, "inspect", lambda m: m._sa_inspected)
+
+        soft_delete_filter._validate_auto_filtered({"FINE_TABLE": model}, {"FINE_TABLE"})
+
+    def test_validator_still_refuses_a_model_without_is_active(self, monkeypatch):
+        import pytest
+
+        from backend.db import soft_delete_filter
+
+        model = self._stub(["entry_id"], has_is_active=False)
+        monkeypatch.setattr(soft_delete_filter, "inspect", lambda m: m._sa_inspected)
+
+        with pytest.raises(RuntimeError, match="no is_active column"):
+            soft_delete_filter._validate_auto_filtered({"NO_FLAG": model}, {"NO_FLAG"})
+
+    def test_validator_still_refuses_an_unmapped_table(self):
+        import pytest
+
+        from backend.db import soft_delete_filter
+
+        with pytest.raises(RuntimeError, match="no mapped class"):
+            soft_delete_filter._validate_auto_filtered({}, {"GHOST_TABLE"})
