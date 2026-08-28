@@ -2172,7 +2172,13 @@
     "positiveInteger": "Must be a positive integer",
     "percentage": "Must be between 0 and 100",
     "requiredShort": "Required",
-    "maxChars": "Max {n} characters"
+    "maxChars": "Max {n} characters",
+    "text": "Must be text",
+    "boolean": "Must be true or false",
+    "format": "Invalid format",
+    "greaterThan": "Must be greater than {n}",
+    "lessThan": "Must be less than {n}",
+    "invalid": "Invalid value"
   },
   "simulation": {
     "title": "Simulation & Capacity Planning",

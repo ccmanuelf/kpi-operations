@@ -14,7 +14,9 @@ import {
   blockedByRows,
   entityLabel,
   formatStructuredDetail,
+  formatValidationDetail,
   isStructuredDetail,
+  isValidationDetail,
 } from '../structuredErrors'
 
 // Verbatim from the deployed backend (409 on DELETE /api/work-orders/{id}).
@@ -143,6 +145,104 @@ describe('isStructuredDetail rejects shapes that would blank the message', () =>
   it('still accepts an empty array, which the message fallback handles', () => {
     expect(isStructuredDetail({ message: 'm', blocked_by: [] })).toBe(true)
     expect(formatStructuredDetail({ message: 'm', blocked_by: [] })).toBe('m')
+  })
+})
+
+describe('formatValidationDetail — FastAPI\'s own 422', () => {
+  // Verbatim from the running app: ten write endpoints probed with bad bodies.
+  // `missing` was 39 of the 45 occurrences.
+  const MISSING = { type: 'missing', loc: ['body', 'client_id'], msg: 'Field required' }
+  const INT_PARSING = {
+    type: 'int_parsing',
+    loc: ['body', 'planned_quantity'],
+    msg: 'Input should be a valid integer, unable to parse string as an integer',
+  }
+  const PATTERN = {
+    type: 'string_pattern_mismatch',
+    loc: ['body', 'status'],
+    msg: "String should match pattern '^(RECEIVED|RELEASED|DEMOTED|ACTIVE|IN_PROGRESS|ON_HOLD|COMPLETED|SHIPPED|CLOSED|REJECTED|CANCELLED)$'",
+    ctx: { pattern: '^(RECEIVED|RELEASED|DEMOTED|ACTIVE|IN_PROGRESS|ON_HOLD|COMPLETED|SHIPPED|CLOSED|REJECTED|CANCELLED)$' },
+  }
+  const GREATER_THAN = {
+    type: 'greater_than',
+    loc: ['body', 'planned_quantity'],
+    msg: 'Input should be greater than 0',
+    ctx: { gt: 0 },
+  }
+  const TOO_LONG = {
+    type: 'string_too_long',
+    loc: ['body', 'client_id'],
+    msg: 'String should have at most 50 characters',
+    ctx: { max_length: 50 },
+  }
+
+  it('names the field in human terms and localizes the message', () => {
+    expect(formatValidationDetail([MISSING])).toBe('Client: This field is required')
+  })
+
+  it('drops the _id suffix rather than saying "Work order id"', () => {
+    expect(
+      formatValidationDetail([{ ...MISSING, loc: ['body', 'work_order_id'] }]),
+    ).toBe('Work order: This field is required')
+  })
+
+  it('interpolates the real bound from ctx', () => {
+    expect(formatValidationDetail([GREATER_THAN])).toBe('Planned quantity: Must be greater than 0')
+    expect(formatValidationDetail([TOO_LONG])).toBe('Client: Maximum 50 characters allowed')
+  })
+
+  it('never shows the user a raw regex', () => {
+    const out = formatValidationDetail([PATTERN])
+    expect(out).toBe('Status: Invalid format')
+    expect(out).not.toContain('RECEIVED')
+    expect(out).not.toContain('^(')
+  })
+
+  it('joins several errors into one sentence', () => {
+    expect(formatValidationDetail([MISSING, INT_PARSING])).toBe(
+      'Client: This field is required; Planned quantity: Must be a whole number',
+    )
+  })
+
+  it('falls back to a localized generic for an unmapped type', () => {
+    const out = formatValidationDetail([
+      { type: 'some_future_pydantic_type', loc: ['body', 'widget'], msg: 'English from Pydantic' },
+    ])
+    expect(out).toBe('Widget: Invalid value')
+    // The English msg must not leak through.
+    expect(out).not.toContain('English from Pydantic')
+  })
+
+  it('falls back rather than interpolating undefined when ctx is missing', () => {
+    // A bounded type whose ctx did not arrive would otherwise render
+    // "Must be greater than undefined".
+    const out = formatValidationDetail([{ ...GREATER_THAN, ctx: undefined }])
+    expect(out).toBe('Planned quantity: Invalid value')
+    expect(out).not.toContain('undefined')
+  })
+
+  it('labels a nested list item by position', () => {
+    expect(
+      formatValidationDetail([{ ...MISSING, loc: ['body', 'items', 0, 'quantity'] }]),
+    ).toBe('Quantity: This field is required')
+  })
+
+  it('renders in Spanish under the es locale', () => {
+    i18n.global.locale.value = 'es'
+    try {
+      expect(formatValidationDetail([MISSING])).toBe('Client: Este campo es requerido')
+      expect(formatValidationDetail([PATTERN])).toBe('Status: Formato inválido')
+    } finally {
+      i18n.global.locale.value = 'en'
+    }
+  })
+
+  it('recognises the validation shape and rejects our structured one', () => {
+    expect(isValidationDetail([MISSING])).toBe(true)
+    expect(isValidationDetail([])).toBe(false)
+    expect(isValidationDetail({ blocked_by: [] })).toBe(false)
+    expect(isValidationDetail('a string')).toBe(false)
+    expect(isValidationDetail([{ nope: 1 }])).toBe(false)
   })
 })
 

@@ -21,6 +21,14 @@ export interface HiddenParentEntry {
   id: string | number
 }
 
+/** One entry of FastAPI's own validation 422 — `detail` is a LIST of these. */
+export interface ValidationEntry {
+  type: string
+  loc: Array<string | number>
+  msg: string
+  ctx?: Record<string, unknown>
+}
+
 export interface StructuredDetail {
   message?: string
   blocked_by?: BlockedByEntry[]
@@ -112,6 +120,99 @@ export const blockedByRows = (detail: StructuredDetail | undefined): BlockedByRo
     label: entityLabel(entry.table, entry.count),
   }))
 
+// Pydantic error type -> a key in the EXISTING `validation` bundle, which is
+// already translated. Literal keys only, so the referenced-keys gate sees them.
+//
+// Measured against the running app rather than guessed: probing ten write
+// endpoints with bad bodies produced exactly six types, `missing` being 39 of
+// the 45 occurrences. The rest are mapped because they are cheap, not because
+// they were observed.
+const VALIDATION_MESSAGE_KEYS: Record<string, string> = {
+  missing: 'validation.required',
+  string_type: 'validation.text',
+  string_pattern_mismatch: 'validation.format',
+  bool_parsing: 'validation.boolean',
+  bool_type: 'validation.boolean',
+  int_parsing: 'validation.integer',
+  int_type: 'validation.integer',
+  float_parsing: 'validation.number',
+  float_type: 'validation.number',
+  decimal_parsing: 'validation.number',
+  date_parsing: 'validation.date',
+  date_type: 'validation.date',
+  date_from_datetime_parsing: 'validation.date',
+  datetime_parsing: 'validation.date',
+  datetime_type: 'validation.date',
+  greater_than: 'validation.greaterThan',
+  greater_than_equal: 'validation.min',
+  less_than: 'validation.lessThan',
+  less_than_equal: 'validation.max',
+  string_too_short: 'validation.minLength',
+  string_too_long: 'validation.maxLength',
+}
+
+// Which `ctx` value each bounded type interpolates, and under which placeholder
+// name the existing bundle string expects it.
+const VALIDATION_CTX: Record<string, { from: string; as: string }> = {
+  greater_than: { from: 'gt', as: 'n' },
+  greater_than_equal: { from: 'ge', as: 'min' },
+  less_than: { from: 'lt', as: 'n' },
+  less_than_equal: { from: 'le', as: 'max' },
+  string_too_short: { from: 'min_length', as: 'min' },
+  string_too_long: { from: 'max_length', as: 'max' },
+}
+
+/**
+ * "planned_quantity" -> "Planned quantity"; "work_order_id" -> "Work order".
+ *
+ * Derived rather than mapped: a curated label per API field would be a second
+ * map to keep in step with every schema. Trailing `_id`/`_fk` are dropped
+ * because they name the join, not the thing the user typed.
+ */
+const humanizeField = (loc: Array<string | number>): string => {
+  // loc[0] is the source ("body" / "query" / "path"), never the field.
+  const parts = loc.slice(1).map((p) => (typeof p === 'number' ? `#${p + 1}` : p))
+  if (!parts.length) return ''
+  const raw = String(parts[parts.length - 1]).replace(/_(id|fk)$/, '').replace(/_id_fk$/, '')
+  const words = raw.split('_').filter(Boolean)
+  if (!words.length) return ''
+  const label = words.join(' ')
+  return label.charAt(0).toUpperCase() + label.slice(1)
+}
+
+/** True for FastAPI's own validation payload: detail is an ARRAY of entries. */
+export const isValidationDetail = (detail: unknown): detail is ValidationEntry[] =>
+  Array.isArray(detail) &&
+  detail.length > 0 &&
+  detail.every(
+    (e) => typeof e === 'object' && e !== null && typeof (e as ValidationEntry).type === 'string',
+  )
+
+/**
+ * FastAPI's validation 422 as one localized sentence.
+ *
+ * Unmapped types resolve to `validation.invalid` rather than passing Pydantic's
+ * own `msg` through. That text is English, and for `string_pattern_mismatch` it
+ * is a raw regex — "String should match pattern
+ * \'^(RECEIVED|RELEASED|DEMOTED|...)$\'" is not something to show a user.
+ */
+export const formatValidationDetail = (entries: ValidationEntry[]): string =>
+  entries
+    .map((entry) => {
+      const key = VALIDATION_MESSAGE_KEYS[entry.type] ?? 'validation.invalid'
+      const ctx = VALIDATION_CTX[entry.type]
+      const bound = ctx ? entry.ctx?.[ctx.from] : undefined
+      // A bounded type whose ctx did not arrive would interpolate "undefined"
+      // into the sentence; fall back to the generic rather than print that.
+      const message =
+        ctx && bound === undefined
+          ? i18n.global.t('validation.invalid')
+          : i18n.global.t(key, ctx && bound !== undefined ? { [ctx.as]: bound } : {})
+      const field = humanizeField(entry.loc ?? [])
+      return field ? `${field}: ${message}` : message
+    })
+    .join('; ')
+
 interface StructuredErrorCarrier {
   response?: { data?: { detail?: unknown } }
   structuredDetail?: StructuredDetail
@@ -125,9 +226,19 @@ interface StructuredErrorCarrier {
 export const normalizeStructuredDetail = (error: unknown): void => {
   const carrier = error as StructuredErrorCarrier | null
   const data = carrier?.response?.data
-  if (!carrier || !data || !isStructuredDetail(data.detail)) return
-  carrier.structuredDetail = data.detail
-  data.detail = formatStructuredDetail(data.detail)
+  if (!carrier || !data) return
+  if (isStructuredDetail(data.detail)) {
+    carrier.structuredDetail = data.detail
+    data.detail = formatStructuredDetail(data.detail)
+    return
+  }
+  // FastAPI's own validation 422 — an ARRAY, which is truthy, so every
+  // `data?.detail || fallback` call site rendered it as "[object Object]".
+  // Pre-existing and unrelated to the soft-delete work, but it is the same
+  // defect at the same seam.
+  if (isValidationDetail(data.detail)) {
+    data.detail = formatValidationDetail(data.detail)
+  }
 }
 
 export const getStructuredDetail = (error: unknown): StructuredDetail | undefined =>

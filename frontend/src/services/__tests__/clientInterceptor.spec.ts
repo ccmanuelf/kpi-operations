@@ -72,10 +72,35 @@ describe('response interceptor — structured detail', () => {
     )
   })
 
-  it('passes a FastAPI validation array through byte-identical', async () => {
+  it('formats a FastAPI validation array instead of leaving [object Object]', async () => {
+    // detail is an ARRAY here and 422 is the same status our hidden-parent guard
+    // uses. It must be recognised as FastAPI's own shape, not ours.
     const error = axiosLikeError(422, [
       { type: 'missing', loc: ['body', 'work_order_id'], msg: 'Field required', input: {} },
     ])
+
+    await runInterceptor(error)
+
+    expect(error.response.data.detail).toBe('Work order: This field is required')
+  })
+
+  it('never mistakes a validation array for a structured delete payload', async () => {
+    // The guarantee the byte-identical version of this test was really
+    // protecting: our blocked_by/hidden_parents handling must not touch it, so
+    // no structuredDetail is attached and no delete wording appears.
+    const error = axiosLikeError(422, [
+      { type: 'missing', loc: ['body', 'work_order_id'], msg: 'Field required', input: {} },
+    ])
+
+    await runInterceptor(error)
+
+    expect((error as { structuredDetail?: unknown }).structuredDetail).toBeUndefined()
+    expect(error.response.data.detail).not.toContain('reference')
+    expect(error.response.data.detail).not.toContain('deleted')
+  })
+
+  it('leaves an array that is not a validation payload alone', async () => {
+    const error = axiosLikeError(422, [{ nope: 1 }])
     const before = structuredClone(error.response.data.detail)
 
     await runInterceptor(error)
