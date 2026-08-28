@@ -169,33 +169,13 @@
       @update="loadWorkOrders"
       @edit="onDrawerEdit"
     />
-    <v-dialog
-      v-model="deleteDialog" max-width="400"
-      role="alertdialog" aria-modal="true"
-      aria-labelledby="delete-dialog-title" aria-describedby="delete-dialog-desc"
-    >
-      <v-card>
-        <v-card-title id="delete-dialog-title" class="text-h6">{{ t('common.confirmDelete') }}</v-card-title>
-        <v-card-text id="delete-dialog-desc">
-          {{ t('grids.deleteConfirm') }}
-          <strong>{{ workOrderToDelete?.work_order_id }}</strong>
-          <!-- A refused delete names what still references the row. The four
-               grid deletes use window.confirm and cannot host markup, so the
-               flattened sentence stays the universal path; this dialog can
-               afford the readable per-entity breakdown. -->
-          <ul v-if="deleteBlockers.length" class="blocked-by-list">
-            <li v-for="row in deleteBlockers" :key="row.table">{{ row.label }} ({{ row.count }})</li>
-          </ul>
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer />
-          <v-btn variant="text" :aria-label="t('workOrders.ariaCancelDeletion')" @click="deleteDialog = false">{{ t('common.cancel') }}</v-btn>
-          <v-btn color="error" :loading="deleting" :aria-label="t('workOrders.ariaConfirmDelete')" @click="deleteWorkOrder">
-            {{ t('common.delete') }}
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+    <DeleteWorkOrderDialog
+      v-model="deleteDialog"
+      :work-order-id="workOrderToDelete?.work_order_id"
+      :blockers="deleteBlockers"
+      :loading="deleting"
+      @confirm="deleteWorkOrder"
+    />
   </v-container>
 </template>
 
@@ -226,6 +206,7 @@ import { onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AGGridBase from '@/components/grids/AGGridBase.vue'
 import WorkOrderDetailDrawer from '@/components/WorkOrderDetailDrawer.vue'
+import DeleteWorkOrderDialog from '@/components/DeleteWorkOrderDialog.vue'
 import { useNotificationStore } from '@/stores/notificationStore'
 import { useWorkOrderData } from '@/composables/useWorkOrderData'
 import { useWorkOrderForms } from '@/composables/useWorkOrderForms'
@@ -271,9 +252,5 @@ onMounted(() => {
 <style scoped>
 .ga-2 {
   gap: 8px;
-}
-
-.blocked-by-list {
-  margin: 8px 0 0 20px;
 }
 </style>

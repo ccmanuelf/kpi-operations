@@ -1132,6 +1132,9 @@
     "failedToSendHelpRequest": "Failed to send help request",
     "saveFailed": "Error saving changes",
     "deleteBlocked": "Cannot delete this record — other records still reference it: {blockers}. Delete or reassign them first.",
+    "deleteBlockedTitle": "Can't delete this record",
+    "deleteBlockedIntro": "Other records still reference it:",
+    "deleteBlockedRemedy": "Delete or reassign them first, then try again.",
     "hiddenParent": "Cannot reference a deleted record: {parents}. It has been deleted and is no longer available.",
     "entities": {
       "alert": "Alert | Alerts",

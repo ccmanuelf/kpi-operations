@@ -36,6 +36,11 @@ export interface BlockedByRow extends BlockedByEntry {
 // `errors.entities.${table}` evades the referenced-keys i18n gate, which can
 // only statically verify literal key strings.
 //
+// The gate genuinely sees these only because review found it did not: its regex
+// excluded a preceding dot, so `i18n.global.t(...)` — the idiom every
+// non-component call site here uses, pivotPresets.ts included — matched nothing.
+// Widening it (referenced-keys.spec.ts) brought 51 keys under verification.
+//
 // Covers every table the backend can name: `blocked_by` is limited to the
 // INDEPENDENT children of WORK_ORDER and JOB, but `hidden_parents` can name
 // any auto-filtered parent.

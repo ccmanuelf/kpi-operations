@@ -1132,6 +1132,9 @@
     "failedToSendHelpRequest": "Error al enviar solicitud de ayuda",
     "saveFailed": "Error al guardar cambios",
     "deleteBlocked": "No se puede eliminar este registro — otros registros aún lo referencian: {blockers}. Elimínalos o reasígnalos primero.",
+    "deleteBlockedTitle": "No se puede eliminar este registro",
+    "deleteBlockedIntro": "Otros registros aún hacen referencia a él:",
+    "deleteBlockedRemedy": "Elimínalos o reasígnalos primero e inténtalo de nuevo.",
     "hiddenParent": "No se puede referenciar un registro eliminado: {parents}. Fue eliminado y ya no está disponible.",
     "entities": {
       "alert": "Alerta | Alertas",

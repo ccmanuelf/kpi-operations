@@ -132,16 +132,53 @@ describe('locale', () => {
 })
 
 describe('ENTITY_LABEL_KEYS', () => {
-  it('resolves in both bundles with both plural forms present', () => {
+  // Exactly the tables the backend can put in front of a user, computed from
+  // its own registry rather than guessed:
+  //   blocked_by      -> INDEPENDENT children of a deleted row: DOWNTIME_ENTRY,
+  //                      HOLD_ENTRY, JOB, PRODUCTION_ENTRY, QUALITY_ENTRY
+  //   hidden_parents  -> any of the 12 AUTO_FILTERED_TABLES
+  // The union is the 12 below; the blockers are all themselves auto-filtered.
+  // The four cascade children (ALERT_HISTORY, ATTENDANCE_HOUR_ALLOCATION,
+  // HOLD_STATUS_TRANSITION, WORKFLOW_TRANSITION_LOG) are deliberately absent:
+  // they are OWNED/DERIVED, so they are hidden WITH their parent instead of
+  // blocking it, and they are not parents anything can attach to. Labelling
+  // them would imply a message no user can receive.
+  // vitest cannot read the backend registry, so this list is the seam: a table
+  // added to AUTO_FILTERED_TABLES must be added here and given a label.
+  const BACKEND_TABLES = [
+    'ALERT', 'ATTENDANCE_ENTRY', 'DEFECT_DETAIL', 'DOWNTIME_ENTRY',
+    'FLOATING_POOL', 'HOLD_ENTRY', 'JOB', 'PART_OPPORTUNITIES',
+    'PRODUCTION_ENTRY', 'QUALITY_ENTRY', 'SHIFT_COVERAGE', 'WORK_ORDER',
+  ]
+
+  it('covers every table the backend can name in a blocked_by or hidden_parents', () => {
+    const missing = BACKEND_TABLES.filter((t) => !(t in ENTITY_LABEL_KEYS))
+    expect(missing).toEqual([])
+  })
+
+  it('resolves in both bundles with BOTH plural halves non-empty', () => {
+    // toContain('|') was not enough: "Alert |" contains a pipe and passes, while
+    // entityLabel('ALERT', 3) then renders the empty string, producing
+    // "... still reference it:  (3)." Both halves have to actually be there.
     for (const key of Object.values(ENTITY_LABEL_KEYS)) {
-      for (const bundle of [en, es]) {
+      for (const [name, bundle] of [['en', en], ['es', es]] as const) {
         const value = resolve(bundle as Record<string, unknown>, key)
-        expect(typeof value, key).toBe('string')
-        // A dropped plural form would silently make every count render the
-        // singular; the pipe is what vue-i18n splits on.
-        expect(String(value), key).toContain('|')
+        expect(typeof value, `${name}:${key}`).toBe('string')
+        const halves = String(value).split('|').map((h) => h.trim())
+        expect(halves, `${name}:${key}`).toHaveLength(2)
+        expect(halves.every((h) => h.length > 0), `${name}:${key} has an empty form`).toBe(true)
       }
     }
+  })
+
+  it('is actually translated — no Spanish label is a copy of its English one', () => {
+    // The parity gate only proves a key EXISTS in both bundles. An untranslated
+    // label passes it and ships English to an es user.
+    const untranslated = Object.values(ENTITY_LABEL_KEYS).filter(
+      (key) =>
+        resolve(es as Record<string, unknown>, key) === resolve(en as Record<string, unknown>, key),
+    )
+    expect(untranslated).toEqual([])
   })
 })
 

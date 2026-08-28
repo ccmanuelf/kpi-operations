@@ -73,8 +73,10 @@ export function useWorkOrderForms(
   const saving = ref(false)
   const deleting = ref(false)
   // A refused delete (409) names each blocking table and its row count. The
-  // interceptor's flattened sentence goes to the snackbar; the dialog stays
-  // open and lists the same rows, which is why the structured form is kept.
+  // dialog stays open and lists them, which is why the structured form is kept
+  // rather than only the interceptor's flattened sentence. Non-empty here means
+  // "this delete was refused", which is also what switches the dialog out of
+  // its confirmation state.
   const deleteBlockers = ref<BlockedByRow[]>([])
 
   const formData = ref<WorkOrderFormData>(DEFAULT_FORM_DATA())
@@ -199,10 +201,16 @@ export function useWorkOrderForms(
       // eslint-disable-next-line no-console
       console.error('Error deleting work order:', error)
       deleteBlockers.value = blockedByRows(getStructuredDetail(error))
-      const ax = error as { response?: { data?: { detail?: string } } }
-      notificationStore.showError(
-        ax?.response?.data?.detail || t('notifications.workOrders.deleteFailed'),
-      )
+      // The dialog stays open and lists the blockers itself, so a snackbar
+      // repeating the interceptor's flattened form would put the same four
+      // entities on screen twice. Every other failure has no such surface and
+      // still needs the snackbar.
+      if (!deleteBlockers.value.length) {
+        const ax = error as { response?: { data?: { detail?: string } } }
+        notificationStore.showError(
+          ax?.response?.data?.detail || t('notifications.workOrders.deleteFailed'),
+        )
+      }
     } finally {
       deleting.value = false
     }

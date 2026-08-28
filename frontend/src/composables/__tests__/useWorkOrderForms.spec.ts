@@ -76,7 +76,7 @@ describe('useWorkOrderForms — refused delete', () => {
     expect(forms.deleteDialog.value).toBe(true)
   })
 
-  it('shows the flattened sentence rather than [object Object]', async () => {
+  it('stays silent in the snackbar, because the dialog lists the blockers itself', async () => {
     mockApi.deleteWorkOrder.mockRejectedValue(refusedDelete())
     const forms = buildHarness()
 
@@ -84,10 +84,26 @@ describe('useWorkOrderForms — refused delete', () => {
     await forms.deleteWorkOrder()
     await flushPromises()
 
-    expect(notifications.showError).toHaveBeenCalledWith(
-      'Cannot delete this record — other records still reference it: ' +
-        'Job (1), Production entries (4). Delete or reassign them first.',
-    )
+    // The interceptor's flattened sentence names the same four entities the
+    // open dialog is already listing; firing both puts the same information on
+    // screen twice, in two different shapes.
+    expect(notifications.showError).not.toHaveBeenCalled()
+  })
+
+  it('still shows a snackbar for a failure the dialog cannot explain', async () => {
+    mockApi.deleteWorkOrder.mockRejectedValue({
+      response: { status: 500, data: { detail: 'Internal Server Error' } },
+    })
+    const forms = buildHarness()
+
+    forms.confirmDelete(WORK_ORDER)
+    await forms.deleteWorkOrder()
+    await flushPromises()
+
+    // No blockers means nothing renders in the dialog, so suppressing the
+    // snackbar here would lose the failure entirely.
+    expect(forms.deleteBlockers.value).toEqual([])
+    expect(notifications.showError).toHaveBeenCalledWith('Internal Server Error')
   })
 
   it('clears stale blockers when the dialog is reopened', async () => {
