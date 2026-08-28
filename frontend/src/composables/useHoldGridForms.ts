@@ -15,6 +15,7 @@ import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/authStore'
 import { useKPIStore } from '@/stores/kpi'
 import { format, differenceInDays } from 'date-fns'
+import { formatStructuredDetail, isStructuredDetail } from '@/services/api/structuredErrors'
 import type { HoldEntry, WorkOrderRef } from './useHoldGridData'
 import { HOLD_REASON_CODES } from './useHoldGridData'
 
@@ -350,8 +351,13 @@ export function useHoldGridForms({
       })
 
       if (!response.ok) {
-        const error = (await response.json()) as { detail?: string }
-        throw new Error(error.detail || `Failed to ${endpoint.replace('-', ' ')}`)
+        const error = (await response.json()) as { detail?: unknown }
+        // Raw fetch, so the axios interceptor that flattens the structured
+        // 409/422 payloads never sees this response — format it here.
+        const detail = isStructuredDetail(error.detail)
+          ? formatStructuredDetail(error.detail)
+          : (error.detail as string | undefined)
+        throw new Error(detail || `Failed to ${endpoint.replace('-', ' ')}`)
       }
 
       showSnackbar(t(successMsg), 'success')

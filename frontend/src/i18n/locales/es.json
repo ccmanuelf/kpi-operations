@@ -1130,7 +1130,23 @@
     "failedToReportDowntime": "Error al reportar tiempo de inactividad",
     "failedToRecordQualityCheck": "Error al registrar revisión de calidad",
     "failedToSendHelpRequest": "Error al enviar solicitud de ayuda",
-    "saveFailed": "Error al guardar cambios"
+    "saveFailed": "Error al guardar cambios",
+    "deleteBlocked": "No se puede eliminar este registro — otros registros aún lo referencian: {blockers}. Elimínalos o reasígnalos primero.",
+    "hiddenParent": "No se puede referenciar un registro eliminado: {parents}. Fue eliminado y ya no está disponible.",
+    "entities": {
+      "alert": "Alerta | Alertas",
+      "attendanceEntry": "Entrada de Asistencia | Entradas de Asistencia",
+      "defectDetail": "Detalle de Defecto | Detalles de Defecto",
+      "downtimeEntry": "Entrada de Tiempo Muerto | Entradas de Tiempo Muerto",
+      "floatingPool": "Entrada de Personal Flotante | Entradas de Personal Flotante",
+      "holdEntry": "Retención | Retenciones",
+      "job": "Trabajo | Trabajos",
+      "partOpportunities": "Oportunidad por Parte | Oportunidades por Parte",
+      "productionEntry": "Entrada de Producción | Entradas de Producción",
+      "qualityEntry": "Entrada de Calidad | Entradas de Calidad",
+      "shiftCoverage": "Cobertura de Turno | Coberturas de Turno",
+      "workOrder": "Orden de Trabajo | Órdenes de Trabajo"
+    }
   },
   "success": {
     "saved": "Guardado exitosamente.",

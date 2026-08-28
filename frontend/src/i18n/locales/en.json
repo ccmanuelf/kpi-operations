@@ -1130,7 +1130,23 @@
     "failedToReportDowntime": "Failed to report downtime",
     "failedToRecordQualityCheck": "Failed to record quality check",
     "failedToSendHelpRequest": "Failed to send help request",
-    "saveFailed": "Error saving changes"
+    "saveFailed": "Error saving changes",
+    "deleteBlocked": "Cannot delete this record — other records still reference it: {blockers}. Delete or reassign them first.",
+    "hiddenParent": "Cannot reference a deleted record: {parents}. It has been deleted and is no longer available.",
+    "entities": {
+      "alert": "Alert | Alerts",
+      "attendanceEntry": "Attendance entry | Attendance entries",
+      "defectDetail": "Defect detail | Defect details",
+      "downtimeEntry": "Downtime entry | Downtime entries",
+      "floatingPool": "Floating pool entry | Floating pool entries",
+      "holdEntry": "Hold | Holds",
+      "job": "Job | Jobs",
+      "partOpportunities": "Part opportunity | Part opportunities",
+      "productionEntry": "Production entry | Production entries",
+      "qualityEntry": "Quality entry | Quality entries",
+      "shiftCoverage": "Shift coverage record | Shift coverage records",
+      "workOrder": "Work order | Work orders"
+    }
   },
   "success": {
     "saved": "Successfully saved.",
