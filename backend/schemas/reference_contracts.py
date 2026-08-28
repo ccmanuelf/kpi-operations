@@ -17,6 +17,17 @@ schema_document_routes.py` instead -- see that module for the two-sided gate
 and the byte-identical proof
 (`shape_of(SimulationConfig.model_json_schema()) ==
 golden["GET /api/v2/simulation/schema"]`, 229/229 keys).
+
+DISCLOSED, NOT A REGRESSION: every `int` field declared across this module
+and `kpi_metrics_contracts.py` is a new validation boundary the old
+`-> Any`/`-> dict`/`List[dict]` routes never had. A fractional value stored
+under one of these columns (SQLite's weak typing lets an `INTEGER` column
+hold a float; a raw-SQL seeder or migration bypass could write one) used to
+pass through untyped and serialize as whatever it was; it now fails Pydantic
+validation and the route 500s. Unreachable via this app's own write paths
+today (every mutating schema for these tables declares the field `int`, and
+the underlying DDL is `sa.Integer`), but it is a new failure mode for a
+direct-DB write or a future seeder change, not present before this batch.
 """
 
 from datetime import datetime
@@ -84,7 +95,15 @@ class ProductListEntry(BaseModel):
     (`float(p.ideal_cycle_time) if p.ideal_cycle_time else None`) before
     building the dict -- so this route carries no live Decimal hazard: the
     cast happens before this model ever sees the value, or the value is
-    `None` (a route-level literal, not a raw column read)."""
+    `None` (a route-level literal, not a raw column read).
+
+    FLAGGED, NOT FIXED (pre-existing, this batch's response model cannot
+    see it either way): that same ternary is a truthiness test, not a
+    None-check, so a real product with `ideal_cycle_time = Decimal("0")`
+    -- a genuinely zero cycle time, not "unset" -- renders `ideal_cycle_time:
+    null` instead of `0.0`. Out of scope for a response-model batch: the
+    value never reaches this model in the first place, it is already `None`
+    by the time the route builds its dict."""
 
     product_id: int
     product_code: str
@@ -125,9 +144,13 @@ class DowntimeReasonsResponse(BaseModel):
 
 class MostUsedFilterEntry(BaseModel):
     """`crud/saved_filter/utilities.py::get_filter_statistics`'s
-    `most_used` branch -- `filter_id`/`usage_count` are bare `SavedFilter`
-    row attributes (`Integer` columns, orm/saved_filter.py), never a
-    computed aggregate."""
+    `most_used` branch. NO CAPTURED EVIDENCE for this interior -- the
+    smoke seed's capturing user owns zero saved filters, so golden's
+    `most_used_filter` entry is a bare `null` leaf (see
+    `FilterStatisticsResponse` below) -- same disclosure class as
+    `ImportLogEntry`. Modeled purely from source: `filter_id`/`usage_count`
+    are bare `SavedFilter` row attributes (`Integer` columns,
+    orm/saved_filter.py), never a computed aggregate."""
 
     filter_id: int
     filter_name: str
@@ -136,26 +159,52 @@ class MostUsedFilterEntry(BaseModel):
 
 class FilterStatisticsResponse(BaseModel):
     """`crud/saved_filter/utilities.py::get_filter_statistics`.
+
+    GOLDEN EVIDENCE IS THIN: the smoke seed's capturing user owns zero
+    saved filters, so golden's entry is `{total_filters, filters_by_type,
+    most_used_filter, total_usage_count}` with `filters_by_type` and
+    `most_used_filter` recorded as BARE LEAVES (`{}` and `null` -- no
+    nested keys captured at all). `MostUsedFilterEntry`'s 3-field interior
+    is therefore source-inspection-only, the same disclosure class as
+    `ImportLogEntry` (see that model). `filters_by_type` and
+    `RunNightlyResponse.summary` (`kpi_metrics_contracts.py`) are the SAME
+    shape class as `by_severity`/`by_category`
+    (`tests/contract/capture.py`'s MAP_FIELDS) -- a genuine value-keyed
+    map, not a fixed field set -- but DELIBERATELY NOT REGISTERED there:
+    `shape_of` only recurses a MAP_FIELDS key as `key.*`, which would
+    change BOTH golden entries' recorded key strings
+    (`filters_by_type` -> `filters_by_type.*`; the four
+    `summary.<client_id>.<metric>` leaf paths -> `summary.*.<metric>`) --
+    exactly the golden-master edit this batch is forbidden to make.
+    `test_map_fields_are_exactly_the_known_five` pins the registry at
+    5 for this reason: the omission here is deliberate, not an oversight.
+    Live consequence worth flagging: golden's `run-nightly` entry bakes in
+    the smoke seed's 4 specific active client ids as literal key
+    fragments, so a future reseed that changes the active client SET (not
+    merely their data) would churn that one golden entry -- the same
+    fragility `MAP_FIELDS`'s own docstring describes for `by_severity`,
+    just not remediable here without touching the golden file.
+
     `total_filters` is `func.count(...)` -- COUNT, unlike SUM, never
     returns a MariaDB DECIMAL on any dialect (it counts rows, not values),
-    so no cast is needed for correctness. `filters_by_type` is a genuine
-    value-keyed map (filter type -> count), the same shape class as
-    `by_severity`/`by_category` (`tests/contract/capture.py`'s MAP_FIELDS)
-    but modeled here as the `Dict[str, int]` it actually is rather than
-    enumerated fields -- COUNT-backed, same no-Decimal reasoning as
-    `total_filters`. `most_used_filter` is `None` when the user owns zero
-    filters (present as JSON `null`, never omitted -- not an exclude_unset
-    case). `total_usage_count` is `func.sum(SavedFilter.usage_count) or 0`
-    -- UNLIKE `total_filters`, this IS a SUM over an `Integer` column
-    (`usage_count`, orm/saved_filter.py), the same MariaDB
-    SUM-returns-DECIMAL shape this codebase has hit before, and the route
-    never casts it. Declaring `int` here closes that live-on-MariaDB leak
-    the same class as HAZARD 2 closes for `inference/cycle-time`
-    (`kpi_metrics_contracts.py`) -- undetectable on SQLite, where `SUM`
-    already returns a Python `int`/`float`, so there is no before/after to
-    measure on this repo's test database; disclosed on the strength of the
-    source (`or 0` catches only a `None` scalar -- zero matching rows --
-    never a populated dialect-specific `Decimal`).
+    so no cast is needed for correctness; `filters_by_type`'s values are
+    the same `func.count(...).label("count")` aggregate, COUNT-backed, so
+    the same reasoning covers `Dict[str, int]`. `total_usage_count` is
+    `func.sum(SavedFilter.usage_count) or 0` -- UNLIKE `total_filters`,
+    this IS a SUM over an `Integer` column (`usage_count`,
+    orm/saved_filter.py), the same MariaDB SUM-returns-DECIMAL shape this
+    codebase has hit before, and the route never casts it; declaring `int`
+    closes that class of leak the same way HAZARD 2 closes it for
+    `inference/cycle-time`. But the capture never exercised the SUM path
+    at all: with zero filters for this user, `func.sum(...)` returns
+    `None` and `or 0` supplies the literal `0` -- so, like
+    `most_used_filter`, this is disclosed on the strength of the source,
+    not a measured before/after. Correcting an earlier draft of this
+    docstring: `or 0` does NOT catch only a `None` scalar -- `Decimal("0")`
+    is falsy in Python, so a genuine zero-sum (rows exist, all
+    `usage_count` values are 0) takes the same `or 0` arm as no rows at
+    all. The conclusion is unaffected (declaring `int` is correct either
+    way), but the reasoning in that earlier version was wrong.
     """
 
     total_filters: int

@@ -32,12 +32,15 @@ session (smoke profile, seed_value=1234, product_id=1, which resolves to the
     AFTER:  {"ideal_cycle_time":0.034260326879026824, ...}     (JSON number)
 
 `calculations/inference.py::InferenceEngine.infer_ideal_cycle_time` is
-declared `-> Tuple[Decimal, float, str, bool]` and builds `Decimal(str(...))`
-in every one of its 6 return branches -- dialect-independent (the Decimal is
-constructed in Python, not read off a `Numeric` column), so this leak is
-live on SQLite today, including the current demo deployment, not only on
-MariaDB. The route itself carries no `response_model` and is annotated
-`-> Any` (`routes/reference.py:136`), so FastAPI's inferred model already
+declared `-> Tuple[Decimal, float, str, bool]` and returns a `Decimal` on
+ALL 6 of its return branches -- 4 of them (`:43,60,91,101`) via
+`Decimal(str(...))`, the other 2 (`:74,104`) as pre-built `Decimal`
+literals (the `industry_defaults` dict's values, and the
+`Decimal("0.20")` system-fallback constant) -- dialect-independent either
+way (never read off a `Numeric` column), so this leak is live on SQLite
+today, including the current demo deployment, not only on MariaDB.
+The route itself carries no `response_model` and is annotated `-> Any`
+(`routes/reference.py:136`), so FastAPI's inferred model already
 renders the bare `Decimal` as a JSON string, per the corrected exponent
 rule (`def f() -> Any:` is the ANNOTATED case, not the immune one).
 Declaring `ideal_cycle_time: float` closes it -- a per-unit cycle time is
@@ -59,7 +62,9 @@ below is a pure decorator/import change, verified with
 
 EXCLUDE_UNSET -- `GET /api/jobs/kpi/rty-summary`: `calculations/fpy_rty.py::
 calculate_job_rty_summary`'s zero-completed-jobs branch (the smoke seed's
-captured shape, 9 keys) omits three keys the populated branch always sends
+captured shape -- 9 golden LEAF PATHS, 8 TOP-LEVEL keys; `period` is one
+key that flattens into two leaf paths, `period.start_date`/`period.
+end_date`) omits three keys the populated branch always sends
 -- `total_good_units`, `jobs_meeting_target`, `interpretation` (forced with
 a real completed job below; measured directly, not assumed). Registered in
 `EXCLUDE_UNSET_ROUTES` (`tests/contract/conditional_branches.py`); forced in
@@ -186,11 +191,24 @@ class RunNightlyResponse(BaseModel):
     keyed by `client_id` -- a genuine data-keyed map (one entry per active
     client, `tasks/dual_view_calculation.py::
     run_nightly_dual_view_calculations`), modeled as `Dict[str, ...]`
-    rather than enumerated fields, the same reasoning as
-    `reference_contracts.FilterStatisticsResponse.filters_by_type`.
-    Admin-only (`get_current_admin`, untouched by this batch); reached by
-    the write-capture harness with no request body, per
-    task-R5-brief.md."""
+    rather than enumerated fields, the same reasoning (and the same
+    forbidden-to-touch MAP_FIELDS tradeoff) as
+    `reference_contracts.FilterStatisticsResponse.filters_by_type` -- see
+    that docstring. Admin-only (`get_current_admin`, untouched by this
+    batch); reached by the write-capture harness with no request body, per
+    task-R5-brief.md.
+
+    CORRECTION: the golden entry's 4 client ids (`DEMO-HOURLY`,
+    `DEMO-HYBRID`, `DEMO-PIECE`, `SAMPLE_REF`) were, until the accompanying
+    fix in `tasks/dual_view_calculation.py`, captured against the AMBIENT
+    database (`run_nightly_dual_view_calculations` opened its own
+    `SessionLocal()` regardless of the harness's injected session), not the
+    harness's disposable seeded one -- so this model's evidence base was
+    ambient-DB-derived, not hermetic, though it happens to match because
+    both databases carry the same client set. Model shape unaffected
+    (`result_id` is an `Integer` PK, `tasks/dual_view_calculation.py:79`,
+    regardless of which database produced it); disclosed because the
+    original claim of hermetic evidence was inaccurate."""
 
     status: str
     summary: Dict[str, NightlyMetricResults]

@@ -324,8 +324,10 @@ def test_jobs_rty_summary_populated_branch_pins_the_extra_keys():
     keys ABSENT from the empty-jobs branch the golden master actually
     captured (total_good_units, jobs_meeting_target, interpretation) -- the
     smoke seed has zero Job rows completed in the trailing-30-day window at
-    capture time, so the golden entry is the empty branch's 9-key shape and
-    offers no evidence these three keys exist, or of their types, at all.
+    capture time, so the golden entry is the empty branch's 8-key shape (9
+    golden leaf paths -- `period` flattens into `period.start_date`/
+    `period.end_date`) and offers no evidence these three keys exist, or of
+    their types, at all.
     """
     mock_job = Mock()
     mock_job.completed_quantity = 100

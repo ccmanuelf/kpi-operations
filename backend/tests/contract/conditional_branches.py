@@ -114,8 +114,8 @@ EXCLUDE_UNSET_ROUTES: Dict[str, ExcludeUnsetEntry] = {
         reason=(
             "total_good_units/jobs_meeting_target/interpretation are absent, not null, on "
             "calculate_job_rty_summary's (calculations/fpy_rty.py) zero-completed-jobs branch -- "
-            "the smoke seed's captured shape (9 keys). The populated branch always sends all "
-            "three. Batch R5."
+            "the smoke seed's captured shape (9 golden leaf paths / 8 top-level keys; period "
+            "flattens into 2 leaf paths). The populated branch always sends all three. Batch R5."
         ),
         forcing_test="test_jobs_rty_summary_populated_branch_pins_the_extra_keys",
     ),
