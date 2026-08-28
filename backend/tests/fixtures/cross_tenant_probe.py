@@ -362,11 +362,14 @@ BY_ID_MATRIX = [
     ("POST", "/api/alerts/{alert_id}/acknowledge", 200, 403),
     ("POST", "/api/alerts/{alert_id}/resolve", 200, 403),
     ("POST", "/api/alerts/{alert_id}/dismiss", 200, 403),
-    # DELETE floating-pool is 404 for its OWN tenant too: soft_delete() on a
-    # model with no is_active column returns False (the seven-broken-DELETEs
-    # bug, out of scope here). The authorization check still runs first, so the
-    # cross-tenant answer is a 403 and not a misleading 404.
-    ("DELETE", "/api/floating-pool/{pool_id}", 404, 403),
+    # This read 404 for its OWN tenant until S1: soft_delete() on a model with
+    # no is_active column returned False, so the route raised 404 for every id.
+    # The entry documented that honestly and scoped it out; S1 fixed it for all
+    # eleven such endpoints, so the own-tenant answer is now the 204 the route
+    # always advertised. The cross-tenant answer is unchanged, and was never
+    # part of the defect: the authorization check runs first, which is why this
+    # was a 403 and not a misleading 404 even while the delete was broken.
+    ("DELETE", "/api/floating-pool/{pool_id}", 204, 403),
 ]
 
 # Routes where client_id arrives as a QUERY parameter and replaced the

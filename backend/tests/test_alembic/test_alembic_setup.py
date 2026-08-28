@@ -128,8 +128,9 @@ class TestModelMetadata:
         has 57 `op.create_table(` calls; 0004_labor_hours_columns.py adds
         ATTENDANCE_HOUR_ALLOCATION, bringing the total to 58;
         0005_audit_trail.py adds AUDIT_ENTRY, bringing the total to 59;
-        0006_hold_status_history.py adds HOLD_STATUS_TRANSITION, bringing
-        the total to 60).
+        0006_hold_status_history.py adds HOLD_STATUS_TRANSITION, bringing the
+        total to 60; 0007_transaction_soft_delete.py adds only columns, so the
+        count is unchanged).
         """
         from backend.database import Base
 
@@ -245,8 +246,8 @@ class TestAlembicCLI:
         result = _run_alembic("heads")
         assert result.returncode == 0, f"alembic heads failed: {result.stderr}"
         assert (
-            "0006_hold_status_history" in result.stdout
-        ), f"0006_hold_status_history not in heads output: {result.stdout}"
+            "0007_transaction_soft_delete" in result.stdout
+        ), f"0007_transaction_soft_delete not in heads output: {result.stdout}"
 
     def test_alembic_history(self):
         """``alembic history`` should contain the baseline entry."""
@@ -283,5 +284,5 @@ class TestAlembicCLI:
         result = _run_alembic("current", db_url=url)
         assert result.returncode == 0, f"alembic current failed: {result.stderr}"
         assert (
-            "0006_hold_status_history" in result.stdout
-        ), f"Expected 0006_hold_status_history in current output: {result.stdout}"
+            "0007_transaction_soft_delete" in result.stdout
+        ), f"Expected 0007_transaction_soft_delete in current output: {result.stdout}"

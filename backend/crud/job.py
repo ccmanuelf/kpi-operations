@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from backend.orm.job import Job
 from backend.orm.user import User
 from backend.middleware.client_auth import verify_client_access, build_client_filter_clause
-from backend.utils.soft_delete import soft_delete
+from backend.db.soft_delete_service import soft_delete_record
 
 
 def create_job(db: Session, job_data: dict, current_user: User) -> Job:
@@ -168,7 +168,7 @@ def delete_job(db: Session, job_id: str, current_user: User) -> bool:
         return False
 
     # Soft delete - preserves data integrity
-    return soft_delete(db, job)
+    return soft_delete_record(db, job, current_user)
 
 
 def complete_job(

@@ -12,7 +12,7 @@ from sqlalchemy import func
 from backend.orm.defect_detail import DefectDetail
 from backend.orm.user import User
 from backend.middleware.client_auth import verify_client_access, build_client_filter_clause
-from backend.utils.soft_delete import soft_delete
+from backend.db.soft_delete_service import soft_delete_record
 
 
 def create_defect_detail(db: Session, defect_data: dict, current_user: User) -> DefectDetail:
@@ -170,7 +170,7 @@ def delete_defect_detail(db: Session, defect_detail_id: str, current_user: User)
         return False
 
     # Soft delete - preserves data integrity
-    return soft_delete(db, defect)
+    return soft_delete_record(db, defect, current_user)
 
 
 def get_defect_summary_by_type(

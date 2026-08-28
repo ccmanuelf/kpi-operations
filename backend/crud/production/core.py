@@ -21,7 +21,7 @@ from backend.schemas.production import (
     ProductionEntryUpdate,
 )
 from backend.middleware.client_auth import verify_client_access
-from backend.utils.soft_delete import soft_delete
+from backend.db.soft_delete_service import soft_delete_record
 
 
 def _calculate_entry_kpis(db: Session, entry: ProductionEntry, product: Optional[Product] = None) -> Any:
@@ -216,4 +216,4 @@ def delete_production_entry(db: Session, entry_id: str, current_user: User) -> b
         verify_client_access(current_user, db_entry.client_id)
 
     # Soft delete - preserves data integrity
-    return soft_delete(db, db_entry)
+    return soft_delete_record(db, db_entry, current_user)
