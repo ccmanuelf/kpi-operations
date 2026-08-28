@@ -41,11 +41,19 @@ A parent being INSERTed in the same flush is therefore covered for free: it is
 not deleted. A parent being soft-deleted in the same flush IS treated as
 hidden, so a child cannot slip in alongside its parent's removal.
 
-KNOWN GAP, not fixed: Core-level ``connection.execute(insert(...))`` bypasses
-the ORM unit of work entirely and therefore this listener. The seeder writes
-that way, which is safe because it only ever creates active parents, but a
-future raw-Core write path would not be covered. Stated here rather than left
-to be discovered.
+KNOWN GAPS, not fixed. Stated here rather than left to be discovered:
+
+* Core-level ``connection.execute(insert(...))`` bypasses the ORM unit of work
+  entirely and therefore this listener. The seeder writes that way, which is
+  safe because it only ever creates active parents.
+* ORM bulk insert — ``session.execute(insert(Job), [{...}, ...])`` — also
+  bypasses it: those rows never become ``session.new`` objects. No call site
+  does this today; it is latent, not live.
+* An FK set through a *relationship* assignment (``job.work_order = wo``) is
+  still ``None`` on the column at ``before_flush`` time, so it is not checked.
+  That shape appears at ``crud/attendance.py:133,325`` but is unreachable for a
+  hidden parent, because the read filter 404s the parent before any assignment
+  happens.
 """
 
 from typing import Any, Dict, List, Set, Tuple
@@ -78,18 +86,24 @@ def _fk_attrs(mapper: Any) -> Tuple[Tuple[str, str], ...]:
 
 
 def _visible_pk_attribute(table_name: str) -> Any:
-    """The MAPPED primary-key attribute of ``table_name``, never a Core Column.
+    """The mapped primary-key attribute of ``table_name``.
 
-    This distinction silently broke the guard once and is the reason it is a
-    named function with a hard failure. ``inspect(model).primary_key[0]`` gives
-    a ``Column``; querying a Column produces a Core SELECT with no ORM entity in
-    it, so ``with_loader_criteria`` never applies and every parent looks
-    visible — the guard passes while enforcing nothing. Only the instrumented
-    class attribute puts the entity in the statement.
+    WHAT ACTUALLY CARRIES THE WEIGHT IN THIS CHECK is not this function — it is
+    ``.execution_options(include_inactive=True)`` on the query below. Measured:
+    replacing this with the Core ``Column`` (``mapper.primary_key[0]``) changes
+    nothing, 168 tests still pass; dropping the ``include_inactive`` option
+    kills 4. This docstring previously claimed the opposite, and the claim was
+    stale rather than merely wrong: the Column form DID break an earlier version
+    of the query, which inferred "deleted" from a row's ABSENCE from a filtered
+    read, so the ORM filter had to apply. That version is gone. The query now
+    reads ``is_active`` explicitly and deliberately turns the filter OFF, in
+    order to tell "deleted" apart from "never existed" — and a Core Column works
+    identically for that.
 
-    Raises rather than returning None: an unresolvable parent would make this
-    check silently succeed, which is the same "error indistinguishable from
-    nothing-to-do" shape the whole change exists to remove.
+    It is kept, and still raises rather than returning None, for a smaller and
+    honest reason: an unresolvable parent would make the check silently succeed.
+    That is the "error indistinguishable from nothing-to-do" shape this change
+    exists to remove, and it costs nothing to close here. It is not the fix.
     """
     from backend.database import Base
     from sqlalchemy.orm.attributes import InstrumentedAttribute
@@ -106,7 +120,8 @@ def _visible_pk_attribute(table_name: str) -> Any:
 
 
 def _is_active_attribute(table_name: str) -> Any:
-    """The mapped ``is_active`` attribute, same hard-failure rule as above."""
+    """The mapped ``is_active`` attribute. Same hard-failure rule, same caveat:
+    defensive, not the mechanism the check relies on."""
     from backend.database import Base
 
     for mapper in Base.registry.mappers:

@@ -14,7 +14,7 @@ from backend.orm import ClientType
 from backend.orm.alert import Alert
 from backend.tests.fixtures.factories import TestDataFactory
 
-#: table name -> primary-key attribute, for the eleven auto-filtered models.
+#: table name -> primary-key attribute, for the twelve auto-filtered models.
 PK_ATTR: Dict[str, str] = {
     "ATTENDANCE_ENTRY": "attendance_entry_id",
     "DEFECT_DETAIL": "defect_detail_id",
@@ -34,9 +34,9 @@ PK_ATTR: Dict[str, str] = {
 def build_transaction_rows(session: Session, client_id: str = "SD-CLIENT") -> Dict[str, Any]:
     """Create the supporting graph plus exactly one row per auto-filtered table.
 
-    Returns a dict with the eleven rows keyed by table name, plus the
+    Returns a dict with the twelve rows keyed by table name, plus the
     ``client``, ``supervisor``, ``employee``, ``product`` and ``shift`` they
-    hang off.
+    hang off, and the leaf/alert-only variants the delete tests need.
     """
     TestDataFactory.reset_counters()
 

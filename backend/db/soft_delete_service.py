@@ -1,6 +1,6 @@
 """The single entry point every auto-filtered DELETE path goes through.
 
-Three things have to happen together on a soft delete, and each was previously
+Four things have to happen together on a soft delete, and each was previously
 either missing or left to whoever wrote the CRUD function:
 
 1. refuse the delete if something visible still references the row (409, with
