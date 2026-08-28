@@ -6,6 +6,7 @@
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import api from '@/services/api'
+import { blockedByRows, getStructuredDetail, type BlockedByRow } from '@/services/api/structuredErrors'
 import { transitionWorkOrder } from '@/services/api/workflow'
 import { useNotificationStore } from '@/stores/notificationStore'
 
@@ -71,6 +72,10 @@ export function useWorkOrderForms(
 
   const saving = ref(false)
   const deleting = ref(false)
+  // A refused delete (409) names each blocking table and its row count. The
+  // interceptor's flattened sentence goes to the snackbar; the dialog stays
+  // open and lists the same rows, which is why the structured form is kept.
+  const deleteBlockers = ref<BlockedByRow[]>([])
 
   const formData = ref<WorkOrderFormData>(DEFAULT_FORM_DATA())
 
@@ -175,6 +180,7 @@ export function useWorkOrderForms(
 
   const confirmDelete = (workOrder: WorkOrder): void => {
     workOrderToDelete.value = workOrder
+    deleteBlockers.value = []
     deleteDialog.value = true
   }
 
@@ -185,12 +191,14 @@ export function useWorkOrderForms(
     try {
       await api.deleteWorkOrder(workOrderToDelete.value.work_order_id)
       notificationStore.showSuccess(t('notifications.workOrders.deleteSuccess'))
+      deleteBlockers.value = []
       deleteDialog.value = false
       workOrderToDelete.value = null
       await loadWorkOrders()
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('Error deleting work order:', error)
+      deleteBlockers.value = blockedByRows(getStructuredDetail(error))
       const ax = error as { response?: { data?: { detail?: string } } }
       notificationStore.showError(
         ax?.response?.data?.detail || t('notifications.workOrders.deleteFailed'),
@@ -209,6 +217,7 @@ export function useWorkOrderForms(
     formValid,
     saving,
     deleting,
+    deleteBlockers,
     formData,
     rules,
     openCreateDialog,

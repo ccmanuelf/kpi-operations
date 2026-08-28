@@ -179,6 +179,13 @@
         <v-card-text id="delete-dialog-desc">
           {{ t('grids.deleteConfirm') }}
           <strong>{{ workOrderToDelete?.work_order_id }}</strong>
+          <!-- A refused delete names what still references the row. The four
+               grid deletes use window.confirm and cannot host markup, so the
+               flattened sentence stays the universal path; this dialog can
+               afford the readable per-entity breakdown. -->
+          <ul v-if="deleteBlockers.length" class="blocked-by-list">
+            <li v-for="row in deleteBlockers" :key="row.table">{{ row.label }} ({{ row.count }})</li>
+          </ul>
         </v-card-text>
         <v-card-actions>
           <v-spacer />
@@ -236,7 +243,7 @@ const {
 } = useWorkOrderData()
 
 const {
-  deleteDialog, workOrderToDelete, deleting,
+  deleteDialog, workOrderToDelete, deleting, deleteBlockers,
   confirmDelete, deleteWorkOrder,
 } = useWorkOrderForms(loadWorkOrders, formatStatus)
 
@@ -264,5 +271,9 @@ onMounted(() => {
 <style scoped>
 .ga-2 {
   gap: 8px;
+}
+
+.blocked-by-list {
+  margin: 8px 0 0 20px;
 }
 </style>
