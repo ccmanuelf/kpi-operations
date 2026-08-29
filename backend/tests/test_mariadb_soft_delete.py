@@ -198,7 +198,7 @@ def test_a_write_that_targets_a_hidden_parent_is_rejected_on_mariadb(seeded_clie
     with pytest.raises(HTTPException) as exc_info:
         session.commit()
     assert exc_info.value.status_code == 422
-    assert exc_info.value.detail["hidden_parents"] == ["WORK_ORDER 'SD-WO-7'"]
+    assert exc_info.value.detail["hidden_parents"] == [{"table": "WORK_ORDER", "id": "SD-WO-7"}]
     session.rollback()
 
 

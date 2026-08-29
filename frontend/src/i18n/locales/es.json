@@ -1130,7 +1130,26 @@
     "failedToReportDowntime": "Error al reportar tiempo de inactividad",
     "failedToRecordQualityCheck": "Error al registrar revisión de calidad",
     "failedToSendHelpRequest": "Error al enviar solicitud de ayuda",
-    "saveFailed": "Error al guardar cambios"
+    "saveFailed": "Error al guardar cambios",
+    "deleteBlocked": "No se puede eliminar este registro — otros registros aún hacen referencia a él: {blockers}. Elimínelos o reasígnelos primero.",
+    "deleteBlockedTitle": "No se puede eliminar este registro",
+    "deleteBlockedIntro": "Otros registros aún hacen referencia a él:",
+    "deleteBlockedRemedy": "Elimínelos o reasígnelos primero e inténtelo de nuevo.",
+    "hiddenParent": "No se puede hacer referencia a un registro eliminado: {parents}. Fue eliminado y ya no está disponible.",
+    "entities": {
+      "alert": "Alerta | Alertas",
+      "attendanceEntry": "Registro de asistencia | Registros de asistencia",
+      "defectDetail": "Detalle de defecto | Detalles de defecto",
+      "downtimeEntry": "Registro de tiempo muerto | Registros de tiempo muerto",
+      "floatingPool": "Registro de personal flotante | Registros de personal flotante",
+      "holdEntry": "Retención | Retenciones",
+      "job": "Trabajo | Trabajos",
+      "partOpportunities": "Oportunidad por pieza | Oportunidades por pieza",
+      "productionEntry": "Registro de producción | Registros de producción",
+      "qualityEntry": "Registro de calidad | Registros de calidad",
+      "shiftCoverage": "Cobertura de turno | Coberturas de turno",
+      "workOrder": "Orden de trabajo | Órdenes de trabajo"
+    }
   },
   "success": {
     "saved": "Guardado exitosamente.",
@@ -1335,7 +1354,7 @@
       "confirmTitle": "Confirmar Inspección de Calidad - Verificación",
       "confirmSubtitle": "Por favor verifique los siguientes datos de inspección antes de guardar:",
       "confirmWarning": "Esto guardará {count} inspecciones de calidad.",
-      "deleteConfirm": "¿Estás seguro de que deseas eliminar esta inspección?",
+      "deleteConfirm": "¿Está seguro de que desea eliminar esta inspección?",
       "errors": {
         "noClient": "No se puede guardar: no hay cliente seleccionado. Elija un cliente antes de guardar.",
         "loadData": "Error al cargar las inspecciones de calidad"
@@ -1384,7 +1403,7 @@
       "confirmTitle": "Confirmar Entrada de Retención - Verificación",
       "confirmSubtitle": "Por favor verifique los siguientes datos de retención/reanudación antes de guardar:",
       "confirmWarning": "Esto guardará {count} registros de retención.",
-      "deleteConfirm": "¿Estás seguro de que deseas eliminar este registro de retención?",
+      "deleteConfirm": "¿Está seguro de que desea eliminar este registro de retención?",
       "errors": {
         "noClient": "No se puede guardar: no hay cliente seleccionado. Elija un cliente antes de guardar."
       }
@@ -1403,7 +1422,7 @@
       "confirmTitle": "Confirmar Entrada de Tiempo Muerto - Verificación",
       "confirmSubtitle": "Por favor verifique los siguientes datos de tiempo muerto antes de guardar:",
       "confirmWarning": "Esto guardará {count} registros de tiempo muerto.",
-      "confirmDelete": "¿Estás seguro de que deseas eliminar este registro de tiempo muerto?",
+      "confirmDelete": "¿Está seguro de que desea eliminar este registro de tiempo muerto?",
       "entryRemoved": "Registro eliminado",
       "deleteSuccess": "Registro eliminado exitosamente",
       "deleteError": "Error al eliminar registro: {error}",
@@ -1417,7 +1436,7 @@
         "noClient": "No se puede guardar: no hay cliente seleccionado. Elija un cliente antes de guardar."
       }
     },
-    "deleteConfirm": "¿Estás seguro de que deseas eliminar este registro?",
+    "deleteConfirm": "¿Está seguro de que desea eliminar este registro?",
     "entryRemoved": "Registro eliminado",
     "entryDeleted": "Registro eliminado exitosamente",
     "noChanges": "No hay cambios para guardar",
@@ -2153,7 +2172,13 @@
     "positiveInteger": "Debe ser un número entero positivo",
     "percentage": "Debe estar entre 0 y 100",
     "requiredShort": "Requerido",
-    "maxChars": "Máximo {n} caracteres"
+    "maxChars": "Máximo {n} caracteres",
+    "text": "Debe ser texto",
+    "boolean": "Debe ser verdadero o falso",
+    "format": "Formato inválido",
+    "greaterThan": "Debe ser mayor que {n}",
+    "lessThan": "Debe ser menor que {n}",
+    "invalid": "Valor inválido"
   },
   "simulation": {
     "title": "Simulación y Planificación de Capacidad",

@@ -9,7 +9,10 @@ import { createPinia, setActivePinia } from 'pinia'
 // ---------- Mocks ----------
 
 // Mock vue-i18n
-vi.mock('vue-i18n', () => ({
+// `@/i18n` — pulled in transitively by the api client's structured-error
+// formatter — needs the real createI18n, so only useI18n is replaced.
+vi.mock('vue-i18n', async (importOriginal) => ({
+  ...(await importOriginal()),
   useI18n: () => ({
     t: (key) => key
   })

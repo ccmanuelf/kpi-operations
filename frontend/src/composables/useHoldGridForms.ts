@@ -15,6 +15,7 @@ import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/authStore'
 import { useKPIStore } from '@/stores/kpi'
 import { format, differenceInDays } from 'date-fns'
+import { formatStructuredDetail, isStructuredDetail } from '@/services/api/structuredErrors'
 import type { HoldEntry, WorkOrderRef } from './useHoldGridData'
 import { HOLD_REASON_CODES } from './useHoldGridData'
 
@@ -350,8 +351,19 @@ export function useHoldGridForms({
       })
 
       if (!response.ok) {
-        const error = (await response.json()) as { detail?: string }
-        throw new Error(error.detail || `Failed to ${endpoint.replace('-', ' ')}`)
+        const error = (await response.json()) as { detail?: unknown }
+        // Raw fetch, so the axios interceptor that flattens the structured
+        // 409/422 payloads never sees this response — format it here.
+        //
+        // Only a string is usable as-is. FastAPI's own validation 422 sends
+        // detail as an ARRAY of {loc, msg, type}, which is truthy and would
+        // reach the user as "Error: [object Object]" rather than the fallback.
+        const detail = isStructuredDetail(error.detail)
+          ? formatStructuredDetail(error.detail)
+          : typeof error.detail === 'string'
+            ? error.detail
+            : undefined
+        throw new Error(detail || `Failed to ${endpoint.replace('-', ' ')}`)
       }
 
       showSnackbar(t(successMsg), 'success')

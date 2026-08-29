@@ -26,7 +26,15 @@ function get(obj: Record<string, unknown>, path: string): unknown {
 }
 // literal keys only: t('a.b') / $t("a.b") / keypath="a.b"; skip `${...}` template-literal (dynamic) keys
 // Also matches backslash-escaped quotes in render-fn template strings, e.g. $t(\'widgets.grid.dataEntryShortcuts\')
-const KEY_RE = /(?:\$t|[^\w.]t)\(\s*\\?['"]([A-Za-z0-9_.]+)\\?['"]|keypath=["']([A-Za-z0-9_.]+)["']/g
+//
+// The leading class is [^\w] rather than [^\w.]: excluding a preceding dot made
+// this gate blind to `i18n.global.t('a.b')`, the idiom every non-component call
+// site uses (utils/workflow/workflowValidator.ts, composables/pivotPresets.ts,
+// services/api/structuredErrors.ts). Those keys were unverified — a typo or a
+// rename in one bundle shipped silently. Widening added 51 keys and zero
+// failures, so nothing was being suppressed on purpose. `.at(` and friends still
+// do not match: the character before `t` must be a non-word one.
+const KEY_RE = /(?:\$t|[^\w]t)\(\s*\\?['"]([A-Za-z0-9_.]+)\\?['"]|keypath=["']([A-Za-z0-9_.]+)["']/g
 
 describe('referenced i18n keys resolve in both locales', () => {
   it('every literal t()/$t()/keypath key exists in en and es', () => {

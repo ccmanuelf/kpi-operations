@@ -41,6 +41,13 @@ A parent being INSERTed in the same flush is therefore covered for free: it is
 not deleted. A parent being soft-deleted in the same flush IS treated as
 hidden, so a child cannot slip in alongside its parent's removal.
 
+The 422 payload names each blocked parent as ``{"table": ..., "id": ...}`` rather
+than a pre-formatted string. The string form ("WORK_ORDER 'WO-0002'") carried a
+raw table name and Python repr quoting into the API, forcing any consumer that
+wants a friendly label to regex-parse it back apart. `id` is stringified so the
+field has one type across int and str primary keys; `message` still carries the
+human sentence for consumers that just want text.
+
 KNOWN GAPS, not fixed. Stated here rather than left to be discovered:
 
 * Core-level ``connection.execute(insert(...))`` bypasses the ORM unit of work
@@ -192,7 +199,7 @@ def reject_links_to_hidden_parents(session: Session, flush_context: Any = None, 
         return
     hiding_now = _parents_being_hidden_now(session)
 
-    violations: List[str] = []
+    violations: List[Dict[str, str]] = []
     with session.no_autoflush:
         for parent_table, values in sorted(wanted.items()):
             pk_attr = _visible_pk_attribute(parent_table)
@@ -209,14 +216,15 @@ def reject_links_to_hidden_parents(session: Session, flush_context: Any = None, 
             deleted = {pk for pk, is_active in rows if not is_active}
             deleted |= values & hiding_now.get(parent_table, set())
             for pk in sorted(deleted, key=str):
-                violations.append(f"{parent_table} {pk!r}")
+                violations.append({"table": parent_table, "id": str(pk)})
 
     if violations:
+        listed = ", ".join(f"{v['table']} {v['id']}" for v in violations)
         raise HTTPException(
             status_code=422,  # literal: starlette deprecated the HTTP_422_UNPROCESSABLE_ENTITY alias
             detail={
                 "message": (
-                    "Cannot reference a deleted record: " + ", ".join(violations) + ". "
+                    "Cannot reference a deleted record: " + listed + ". "
                     "The referenced record has been deleted and is no longer available."
                 ),
                 "hidden_parents": violations,
