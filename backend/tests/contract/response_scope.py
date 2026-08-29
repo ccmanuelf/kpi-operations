@@ -32,14 +32,18 @@ rule is about JSON-body-or-not, never about method, and
 `RESPONSE_SUBCLASS` branch, so it classifies correctly regardless (verified
 directly, and mutation-proven in `test_response_scope.py`).
 
-Deliberately NOT populated with the 9 pre-existing 204 DELETEs: those
-routes' files are outside every task run so far, and
-`routes_needing_a_response_model` only ever shrinks the ratchet for routes
-actually declared here -- see `test_response_scope.py` for the two-sided
-gate that keeps this trustworthy, and Task 10's brief for why the 204
-taxonomy is built as a REUSABLE predicate (`classify_non_json_route`)
-rather than inlined, for Task 17 to extend when it takes on the DELETE
-routes.
+The 204 DELETEs are now populated, which is what Task 10 built the reusable
+`classify_non_json_route` predicate FOR. Measured rather than assumed: 24 of
+the 25 allowlisted DELETE routes annotate `-> None` and send no body, not the
+9 the plan estimated -- that figure predates the routes being annotated. The
+one exception, `DELETE /api/v2/simulation/scenarios/{scenario_id}`, returns a
+JSON body and stays in the ratchet where it belongs.
+
+Reachability is deliberately NOT a factor here. Four of these routes cannot be
+captured at all because the seeder writes no rows for them (S3), and
+work-orders answers 409 when its children exist. None of that changes whether
+the route CAN carry a JSON body, which is a static property of its return
+annotation -- so the seed gap does not block this declaration.
 """
 
 from __future__ import annotations
@@ -60,9 +64,16 @@ NO_CONTENT_204 = "204_no_content"
 
 @dataclass(frozen=True)
 class ScopeEntry:
-    """`reason` names the real return type and where it was verified."""
+    """`reason` names the real return type and where it was verified.
+
+    `category` is the classification this declaration CLAIMS. It exists so the
+    gate can compare a per-entry claim against what the code actually does,
+    rather than checking membership in "one of the two allowed categories" --
+    a weaker test that would let a 204 be declared as a file download and pass.
+    """
 
     reason: str
+    category: str = RESPONSE_SUBCLASS
 
 
 #: route -> why it is out of the ratchet's domain. Every member here MUST be
@@ -95,6 +106,79 @@ OUT_OF_SCOPE_ROUTES: Dict[str, ScopeEntry] = {
     "POST /api/qr/generate/image": ScopeEntry(
         "-> Response wrapping a raw PNG QR image. A POST, deliberately: the scope "
         "rule is about whether a route has a JSON body, never about its method."
+    ),
+    # --- 204 No Content DELETEs ------------------------------------------
+    "DELETE /api/attendance/{attendance_id}": ScopeEntry(
+        "-> None, 204 No Content: deletes a attendance entry and sends no body.", NO_CONTENT_204
+    ),
+    "DELETE /api/break-times/{break_id}": ScopeEntry(
+        "-> None, 204 No Content: deletes a break time and sends no body.", NO_CONTENT_204
+    ),
+    "DELETE /api/client-config/{client_id}": ScopeEntry(
+        "-> None, 204 No Content: deletes a client config and sends no body.", NO_CONTENT_204
+    ),
+    "DELETE /api/clients/{client_id}": ScopeEntry(
+        "-> None, 204 No Content: deletes a client and sends no body.", NO_CONTENT_204
+    ),
+    "DELETE /api/coverage/{coverage_id}": ScopeEntry(
+        "-> None, 204 No Content: deletes a shift coverage row and sends no body.", NO_CONTENT_204
+    ),
+    "DELETE /api/defect-types/{defect_type_id}": ScopeEntry(
+        "-> None, 204 No Content: deletes a defect-type catalog row and sends no body.", NO_CONTENT_204
+    ),
+    "DELETE /api/defects/{defect_detail_id}": ScopeEntry(
+        "-> None, 204 No Content: deletes a defect detail and sends no body.", NO_CONTENT_204
+    ),
+    "DELETE /api/downtime/{downtime_id}": ScopeEntry(
+        "-> None, 204 No Content: deletes a downtime entry and sends no body.", NO_CONTENT_204
+    ),
+    "DELETE /api/employees/{employee_id}": ScopeEntry(
+        "-> None, 204 No Content: deletes a employee and sends no body.", NO_CONTENT_204
+    ),
+    "DELETE /api/equipment/{equipment_id}": ScopeEntry(
+        "-> None, 204 No Content: deletes a equipment and sends no body.", NO_CONTENT_204
+    ),
+    "DELETE /api/filters/history": ScopeEntry(
+        "-> None, 204 No Content: deletes a saved-filter history and sends no body.", NO_CONTENT_204
+    ),
+    "DELETE /api/filters/{filter_id}": ScopeEntry(
+        "-> None, 204 No Content: deletes a saved filter and sends no body.", NO_CONTENT_204
+    ),
+    "DELETE /api/floating-pool/{pool_id}": ScopeEntry(
+        "-> None, 204 No Content: deletes a floating-pool entry and sends no body.", NO_CONTENT_204
+    ),
+    "DELETE /api/hold-catalogs/reasons/{catalog_id}": ScopeEntry(
+        "-> None, 204 No Content: deletes a hold-reason catalog row and sends no body.", NO_CONTENT_204
+    ),
+    "DELETE /api/hold-catalogs/statuses/{catalog_id}": ScopeEntry(
+        "-> None, 204 No Content: deletes a hold-status catalog row and sends no body.", NO_CONTENT_204
+    ),
+    "DELETE /api/holds/{hold_id}": ScopeEntry(
+        "-> None, 204 No Content: deletes a WIP hold and sends no body.", NO_CONTENT_204
+    ),
+    "DELETE /api/jobs/{job_id}": ScopeEntry(
+        "-> None, 204 No Content: deletes a job and sends no body.", NO_CONTENT_204
+    ),
+    "DELETE /api/part-opportunities/{part_number}": ScopeEntry(
+        "-> None, 204 No Content: deletes a part-opportunity row and sends no body.", NO_CONTENT_204
+    ),
+    "DELETE /api/production-lines/{line_id}": ScopeEntry(
+        "-> None, 204 No Content: deletes a production line and sends no body.", NO_CONTENT_204
+    ),
+    "DELETE /api/production/{entry_id}": ScopeEntry(
+        "-> None, 204 No Content: deletes a production entry and sends no body.", NO_CONTENT_204
+    ),
+    "DELETE /api/quality/{inspection_id}": ScopeEntry(
+        "-> None, 204 No Content: deletes a quality inspection and sends no body.", NO_CONTENT_204
+    ),
+    "DELETE /api/shifts/{shift_id}": ScopeEntry(
+        "-> None, 204 No Content: deletes a shift and sends no body.", NO_CONTENT_204
+    ),
+    "DELETE /api/users/{user_id}": ScopeEntry(
+        "-> None, 204 No Content: deletes a user and sends no body.", NO_CONTENT_204
+    ),
+    "DELETE /api/work-orders/{work_order_id}": ScopeEntry(
+        "-> None, 204 No Content: deletes a work order and sends no body.", NO_CONTENT_204
     ),
 }
 

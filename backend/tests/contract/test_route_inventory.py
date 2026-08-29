@@ -1,5 +1,20 @@
 def test_every_loose_route_is_inventoried_and_none_is_silently_dropped():
-    """59 routes still needing a response model, after Batch R5 -- the
+    """35 routes still needing a response model, after S2 scoped the 204
+       DELETEs out of the ratchet.
+
+       S2 removes 24, not the 9 the plan estimated. That figure predates the
+       DELETE routes carrying return annotations; measured against the code,
+       24 of the 25 allowlisted DELETEs annotate `-> None` and send no body.
+       The one exception, `DELETE /api/v2/simulation/scenarios/{scenario_id}`,
+       returns a JSON payload and stays in the ratchet.
+
+       Reachability is deliberately not a factor: four of the 24 cannot be
+       captured at all (the seeder writes no rows -- S3) and work-orders
+       answers 409 while its children exist. Whether a route CAN carry a JSON
+       body is a static property of its annotation, so a seed gap never
+       justified leaving it in a queue labelled "awaiting a response model".
+
+       59 was the count before S2, after Batch R5 -- the
        LAST conversion batch, per task-R5-brief.md -- disposes of 12 of the
        prior 71: 11 typed across two new modules,
        `backend/schemas/reference_contracts.py` (`/api/defect-types`
@@ -91,7 +106,7 @@ def test_every_loose_route_is_inventoried_and_none_is_silently_dropped():
 
     routes = routes_needing_a_response_model(app)
 
-    assert len(routes) == 59
+    assert len(routes) == 35
     methods = {m for m, _, _ in routes}
     assert methods == {"GET", "POST", "PUT", "DELETE"}
 

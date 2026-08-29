@@ -105,14 +105,24 @@ def test_every_non_json_golden_entry_is_explained():
 
 
 def test_declared_reason_matches_the_structural_classification():
-    """`OUT_OF_SCOPE_ROUTES` declares only `RESPONSE_SUBCLASS` entries --
-    Task 10 converts no DELETE route -- so every declared member must
-    classify as exactly that category, not merely as some explained one.
+    """Every declared member must classify as the category IT CLAIMS.
+
+    This used to assert `RESPONSE_SUBCLASS` for all members, which was true
+    while no DELETE was declared. Now that 24 are, the check compares each
+    entry's own `category` against the structural answer — a 204 declared as a
+    file download, or the reverse, fails here. Asserting only "is one of the
+    two explained categories" would pass on exactly that mistake.
     """
     from backend.main import app
 
-    for route_key in sorted(OUT_OF_SCOPE_ROUTES):
-        assert classify_non_json_route(_route(app, route_key)) == RESPONSE_SUBCLASS, route_key
+    for route_key, entry in sorted(OUT_OF_SCOPE_ROUTES.items()):
+        actual = classify_non_json_route(_route(app, route_key))
+        assert actual == entry.category, f"{route_key}: declared {entry.category}, classifies as {actual}"
+
+    # Both categories are genuinely represented, so neither branch of the
+    # comparison above is dead.
+    declared = {entry.category for entry in OUT_OF_SCOPE_ROUTES.values()}
+    assert declared == {RESPONSE_SUBCLASS, NO_CONTENT_204}
 
 
 def test_non_json_entries_decompose_into_exactly_three_categories():
