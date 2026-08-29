@@ -1,4 +1,24 @@
 
+## 2026-08-29 — A `language: system` hook runs whatever is first on PATH, not your toolchain
+
+**Pattern:** `.pre-commit-config.yaml` declared `entry: python -m mypy backend` with
+`language: system`, and a comment claiming it "matches CI and the local dev workflow
+exactly". It did not. `python` resolved to `/opt/anaconda3/bin/python`, whose mypy reported
+"No issues found" for a file the repo's pinned mypy 2.1.0 rejects outright. Every commit on
+the branch showed `mypy (backend, whole-package)... Passed` while CI's `backend-tests`
+failed on that same file — and because the branch had never run CI, nobody saw the
+disagreement for 56 commits. The error itself was trivial (`set[str] | None` needs the None
+case before `in`); the gate silently answering a different question was not.
+
+**Rule:** A hook that names a bare executable (`python`, `mypy`, `flake8`, `node`) is
+resolved against PATH at run time and is therefore a different tool per machine. Pin the
+interpreter — `backend/.venv/bin/python` — and make a missing one FAIL rather than fall
+back, because silent fallback is exactly how the divergence hides. When a gate and CI
+disagree, do not assume the environment differs in some benign way: run CI's literal command
+locally and compare exit codes, not output. And beware measuring a pipeline's exit status:
+`cmd | grep ...; echo $?` reports grep's status, which made the first attempt here look like
+mypy had passed.
+
 ## 2026-08-29 — `git checkout <file>` to undo a mutation destroys uncommitted work in that file
 
 **Pattern:** While mutation-testing the fetch-failure guards I reverted one mutant with
