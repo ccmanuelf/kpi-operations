@@ -244,7 +244,15 @@ export default function useDowntimeGridData() {
     if (rowData.downtime_entry_id === undefined) return
 
     try {
-      await kpiStore.deleteDowntimeEntry(rowData.downtime_entry_id)
+      // The store CATCHES its own errors and returns {success: false}; it does
+      // not throw. Without this check the catch below never runs and execution
+      // simply continues — removing the row from the grid and announcing a
+      // success for a record that is still on the server.
+      const result = await kpiStore.deleteDowntimeEntry(rowData.downtime_entry_id)
+      if (!result?.success) {
+        showSnackbar(t('grids.downtime.deleteError', { error: result?.error ?? '' }), 'error')
+        return
+      }
       api.applyTransaction({ remove: [rowData] })
       unsavedChanges.value.delete(rowData.downtime_entry_id)
       showSnackbar(t('grids.downtime.deleteSuccess'), 'success')
@@ -632,6 +640,7 @@ export default function useDowntimeGridData() {
   })
 
   return {
+    deleteEntry,
     gridRef,
     unsavedChanges,
     saving,
