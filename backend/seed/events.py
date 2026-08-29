@@ -214,6 +214,14 @@ class ProductionRecorded(Event):
     shift_id: str
     product_id: str
     work_order_id: Optional[str]
+    # The routing step this shift's output is attributed to. Nullable on the
+    # column and None here only while no work order has been received yet --
+    # there is no job without an order. Load-bearing rather than decorative:
+    # PRODUCTION_ENTRY.job_id is the ONLY join five of the six
+    # GET /api/jobs/{job_id}/* routes make (they never traverse
+    # work_order_id), so an entry that carries the order but not the job is
+    # invisible to every one of them.
+    job_id: Optional[str]
     shift_date: datetime
     units_produced: int
     run_time_hours: float
@@ -226,6 +234,9 @@ class ProductionRecorded(Event):
 class QualityInspected(Event):
     quality_entry_id: str
     work_order_id: str
+    #: Same routing step the shift's ProductionRecorded names -- /ppm, /dpmo
+    #: and /kpi-summary read QUALITY_ENTRY by job_id alone.
+    job_id: str
     shift_date: datetime
     units_inspected: int
     units_passed: int
@@ -238,6 +249,41 @@ class DefectsFound(Event):
     quality_entry_id: str
     defect_code: str
     defect_count: int
+
+
+@dataclass(frozen=True)
+class JobDefined(Event):
+    """One routing step of one work order, as it stands at as_of.
+
+    Carries every NOT NULL column of JOB (work_order_id, client_id via the
+    base, operation_name, sequence_number) plus the progress columns the
+    /api/jobs/* routes read, for the same reason every other event does: a
+    materializer that had to decide how many units an operation finished
+    would be generating data in the write layer.
+
+    A single event rather than a Defined/Completed pair: JOB stores a
+    snapshot (completed_quantity, is_completed, completed_date), not a
+    history -- there is no per-operation transition log to write a second
+    event into, and emitting one would invent a sequencing nothing else in
+    the dataset supports.
+    """
+
+    job_id: str
+    work_order_id: str
+    operation_code: str
+    operation_name: str
+    sequence_number: int
+    part_number: str
+    part_description: str
+    planned_quantity: int
+    planned_hours: float
+    completed_quantity: int
+    quantity_scrapped: int
+    actual_hours: float
+    is_completed: bool
+    #: The instant this step finished; None while it has not. Never invented
+    #: independently of the order's own chain -- see the emitter.
+    completed_date: Optional[datetime]
 
 
 @dataclass(frozen=True)
@@ -271,5 +317,6 @@ EVENT_TYPES = (
     ProductionRecorded,
     QualityInspected,
     DefectsFound,
+    JobDefined,
     DowntimeLogged,
 )

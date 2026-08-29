@@ -79,6 +79,9 @@ CLIENT_SCOPE_COLUMN = {
     "USER_CLIENT_ASSIGNMENT": "client_id",
     "WORK_ORDER": "client_id",
     "WORKFLOW_TRANSITION_LOG": "client_id",
+    # `client_id_fk`, like DEFECT_DETAIL -- one of the three tenant spellings
+    # this schema uses.
+    "JOB": "client_id_fk",
     "HOLD_ENTRY": "client_id",
     "HOLD_STATUS_TRANSITION": "client_id",
     "ATTENDANCE_ENTRY": "client_id",

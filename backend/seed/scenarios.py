@@ -33,6 +33,49 @@ DOWNTIME_REASONS = (
 ROOT_CAUSES = ("attendance", "machine", "materials", "other", "scheduling")
 DEFECT_CODES = ("COLOR", "FABRIC", "MEASURE", "STAIN", "STITCH")
 
+# --- INVENTED VOCABULARY: the routing --------------------------------------
+# This module's docstring says its vocabulary was read off the live VM
+# (2026-08-17). The three constants between this banner and its closing one are
+# the exception, and are banner-flagged so a reader can tell the two kinds apart
+# at a glance: nothing in the live dataset, in any CSV inventory or in any
+# migration describes a routing, so a JOB row cannot be reconstructed from
+# observed data the way a defect code or a downtime reason can. It is invented.
+
+#: (operation_code, operation_name) in the order a work order walks them. One
+#: generic sequence for every client and every product: the platform models no
+#: per-product routing (JOB is the only table that mentions an operation at
+#: all, and it stores the operation as free text on the row), so a per-client
+#: routing would be inventing MORE than the data supports, not less.
+ROUTING = (
+    ("PREP", "Preparation"),
+    ("BUILD", "Build"),
+    ("FINISH", "Finishing"),
+    ("PACK", "Packing"),
+)
+
+#: Hours per unit used to derive JOB.planned_hours. NOT a free parameter: it is
+#: the cycle time the application itself resolves for every seeded product.
+#: Seeded PRODUCT rows carry no ideal_cycle_time (writers_master.py writes the
+#: five columns the catalog needs and no estimate), so
+#: ProductionKPIService.calculate_efficiency_only falls through to
+#: backend/calculations/efficiency.py's DEFAULT_CYCLE_TIME for every seeded
+#: production entry. Deriving planned_hours from anything else would put a
+#: second, competing labor content next to the ONE efficiency formula the
+#: platform has -- (units * ideal_cycle_time) / (employees * scheduled_hours).
+#:
+#: Duplicated as a literal rather than imported: backend/seed/ may not import
+#: backend.calculations (tests/test_seed/test_purity.py). The two are pinned
+#: equal by tests/test_seed/test_jobs.py.
+IDEAL_CYCLE_TIME_HOURS = 0.25
+
+#: Units scrapped per hundred finished at a routing step. Invented, and it must
+#: be non-zero: JOB.quantity_scrapped is the entire numerator of
+#: GET /api/jobs/{job_id}/yield, so a routing that scraps nothing reports
+#: exactly 100.00% for every job and demonstrates nothing about the metric.
+SCRAP_UNITS_PER_HUNDRED = 1
+
+# --- end invented vocabulary; everything below is live-VM vocabulary again ---
+
 #: (code, display name, category, severity) -- the catalog every client gets.
 DEFECT_CATALOG = (
     ("COLOR", "Color Variation", "VISUAL", "MINOR"),

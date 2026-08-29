@@ -20,6 +20,7 @@ from backend.seed.events import (
     DowntimeLogged,
     HoldOpened,
     HoldStatusChanged,
+    JobDefined,
     ProductionRecorded,
     QualityInspected,
     WorkOrderReceived,
@@ -39,6 +40,9 @@ from backend.seed.profiles import Profile
 from backend.seed.scenarios import (
     ATTRIBUTION_USER_ID,
     DEFECT_CODES,
+    IDEAL_CYCLE_TIME_HOURS,
+    ROUTING,
+    SCRAP_UNITS_PER_HUNDRED,
     WORK_ORDER_ORIGINS,
     ClientScenario,
 )
@@ -56,6 +60,48 @@ PRIORITIES = ("LOW", "NORMAL", "HIGH", "URGENT")
 #: so the baseline no-show rate is 5%. The narrative lowers the threshold via
 #: scale["attendance"], which is why a LOWER scale means MORE absence.
 ATTENDANCE_PRESENT_THRESHOLD = 0.95
+
+
+def job_id_for(work_order_id: str, sequence_number: int) -> str:
+    """The routing step's primary key.
+
+    Built from the order id rather than from client id + a counter for two
+    reasons. JOB.job_id is VARCHAR(50) and MariaDB's strict sql_mode rejects an
+    overflow SQLite silently accepts, so the shortest key that is still unique
+    wins: the order id is already unique per run and already carries the client
+    (`SAMPLE_REF-WO-0100-OP4` is 22 characters at the widest client id and work
+    order index a Profile can express). And the shift emitter has to name the
+    SAME id the work-order emitter minted, without the two sharing state -- one
+    function both call is what keeps them from drifting into two formats.
+
+    Deliberately NOT the `JOB-{client_id}` shape
+    tests/test_seed/_reset_row_builders.py plants: those rows exist to prove
+    the --reset sweep reaches a table the seeder did not write, and a seeded
+    job colliding with one would turn that proof into a PK error.
+    """
+    return f"{work_order_id}-OP{sequence_number}"
+
+
+def operations_completed(depth: int, order_index: int) -> int:
+    """How many routing steps an order at `depth` of WORK_ORDER_FLOW has
+    finished.
+
+    DERIVED, never drawn. Every value here comes from draws the order has
+    already made, so the routing costs the RNG stream nothing: a single new
+    `rng` call in this loop would move every subsequent draw for every client
+    and shift the FULL-profile narrative pins (aged-and-excluded holds == 14,
+    SAMPLE_REF months below 80% OTD == 0) that have nothing to do with jobs.
+
+    An order that never reached IN_PROGRESS has finished nothing; one that
+    reached COMPLETED has finished everything; one in between is mid-routing,
+    and WHICH step it is on rotates with the order index so a client's orders
+    are not all frozen on the same operation.
+    """
+    if depth >= WORK_ORDER_FLOW.index("COMPLETED") + 1:
+        return len(ROUTING)
+    if depth >= WORK_ORDER_FLOW.index("IN_PROGRESS") + 1:
+        return 1 + order_index % (len(ROUTING) - 1)
+    return 0
 
 
 def emit_work_orders(
@@ -118,13 +164,20 @@ def emit_work_orders(
         # RNG, so computing it here (ahead of depth) cannot perturb the stream.
         touches_window = narrative_window_touches(scenario, opened, opened + timedelta(days=lead_days), as_of)
         product_id = products[i % len(products)]
+        # Hoisted out of the emit() call below rather than drawn inline: the
+        # routing block at the end of this iteration sizes every JOB row off
+        # the same quantity, and a second draw for the jobs would both
+        # disagree with the order and move the stream. Its position in the
+        # draw order is unchanged -- this is the sixth and last draw of the
+        # order's own block, exactly where the inline call sat.
+        planned_quantity = rng.choice([250, 500, 750, 1000])
         emit(
             WorkOrderReceived,
             datetime.combine(opened, time(7, 0)),
             cid,
             work_order_id=wo,
             product_id=product_id,
-            planned_quantity=rng.choice([250, 500, 750, 1000]),
+            planned_quantity=planned_quantity,
             style_model=products_by_id[product_id].style,
             origin=origin,
             required_date=required_at,
@@ -180,6 +233,82 @@ def emit_work_orders(
             # Distinct DAY per transition: same-day steps would collapse the
             # interval this whole project exists to make answerable.
             when = when + timedelta(days=rng.randint(1, 4))
+
+        # --- routing: the JOB rows this order is made of.
+        #
+        # Stamped 07:30, half an hour after the 07:00 receipt and half an hour
+        # before the 08:00 first transition, for the same reason every other
+        # band is stamped where it is: JOB.work_order_id is a foreign key, so
+        # a job must never precede the order it belongs to. (Cross-TABLE order
+        # is guaranteed by the metadata topological sort the materializer
+        # flushes in; this keeps the STREAM readable, which is what a human
+        # debugging it reads.)
+        #
+        # Emitted here, after the chain, because how far the order travelled is
+        # what says how much of the routing is finished -- a job claiming
+        # completed units on an order still sitting at RECEIVED is exactly the
+        # kind of internal contradiction this rebuild exists to remove.
+        job_at = datetime.combine(opened, time(7, 30))
+        # Every finished step carries the order's furthest transition day,
+        # clamped to as_of. NOT four invented per-step dates: the platform
+        # records no per-operation completion anywhere (JOB stores a snapshot,
+        # and WORKFLOW_TRANSITION_LOG is per ORDER), so distinct dates would
+        # assert a sequencing no other table could corroborate. The as_of clamp
+        # is the same one the delivery date takes above -- a completion date
+        # past as_of claims something that has not happened yet.
+        completion_at = min(
+            datetime.combine(transition_days[-1], time(8, 0)),
+            datetime.combine(as_of, time(20, 0)),
+        )
+        done = operations_completed(depth, i)
+        product = products_by_id[product_id]
+        for seq_no, (op_code, op_name) in enumerate(ROUTING, start=1):
+            if seq_no <= done:
+                completed = planned_quantity
+            elif seq_no == done + 1 and done > 0:
+                # The step currently running: half its units through. Only
+                # reachable for an order that stopped mid-flow, since `done`
+                # is len(ROUTING) once the order reached COMPLETED.
+                completed = planned_quantity // 2
+            else:
+                completed = 0
+            scrapped = completed * SCRAP_UNITS_PER_HUNDRED // 100
+            # The routing DECOMPOSES the product's labor content, it does not
+            # add to it: the four steps' planned_hours sum back to
+            # planned_quantity * IDEAL_CYCLE_TIME_HOURS, which is exactly the
+            # earned hours the platform's one efficiency formula computes from
+            # the same units. A per-step figure invented independently would
+            # make a work order's own jobs claim more (or less) labor than the
+            # efficiency reading beside them.
+            planned_hours = round(planned_quantity * IDEAL_CYCLE_TIME_HOURS / len(ROUTING), 2)
+            emit(
+                JobDefined,
+                job_at,
+                cid,
+                job_id=job_id_for(wo, seq_no),
+                work_order_id=wo,
+                operation_code=op_code,
+                operation_name=op_name,
+                sequence_number=seq_no,
+                # Real vocabulary, not invented: the part IS the product this
+                # order is for. GET /api/jobs/{job_id}/dpmo looks
+                # PART_OPPORTUNITIES up by this value, so a made-up part number
+                # would be unmatchable by anything a later task seeds there.
+                part_number=product.code,
+                part_description=product.name,
+                planned_quantity=planned_quantity,
+                planned_hours=planned_hours,
+                completed_quantity=completed,
+                quantity_scrapped=scrapped,
+                # Hours claimed at the ideal rate, pro-rated by units finished.
+                # Deliberately NOT planned_hours times an invented variance:
+                # that would publish a second efficiency number next to the one
+                # the platform computes from PRODUCTION_ENTRY, and the two
+                # would disagree on every screen that shows both.
+                actual_hours=round(planned_hours * completed / planned_quantity, 2),
+                is_completed=seq_no <= done,
+                completed_date=completion_at if seq_no <= done else None,
+            )
 
         # A hold can only open once the order has been RELEASED (index 1 of
         # WORK_ORDER_FLOW), and must land before the order's terminal
@@ -361,6 +490,22 @@ def emit_shifts(
                     if orders_received_earlier
                     else None
                 )
+                # The routing step that order was on this shift. Five of the
+                # six GET /api/jobs/{job_id}/* routes read PRODUCTION_ENTRY and
+                # QUALITY_ENTRY by job_id and NEVER by work_order_id, so an
+                # entry carrying only the order reaches none of them: seeding
+                # JOB without stamping this column would unblock the routes and
+                # leave every one of them answering "no entries found".
+                #
+                # Same (li + si + offset) rotation the order pick uses, so it
+                # costs no RNG draw, and production and the inspection below
+                # name the SAME step for the same reason they name the same
+                # order -- /kpi-summary unions the two, and a shift whose
+                # output and inspection sat on different operations would make
+                # that one endpoint contradict itself.
+                shift_job = (
+                    job_id_for(shift_order, 1 + (li + si + offset) % len(ROUTING)) if shift_order is not None else None
+                )
 
                 # --- attendance, one row per employee on this line
                 crew = [employee_id for employee_id, employee_line in employees if employee_line == line_id]
@@ -393,6 +538,7 @@ def emit_shifts(
                     shift_id=shift_id,
                     product_id=products[(li + si) % len(products)],
                     work_order_id=shift_order,
+                    job_id=shift_job,
                     shift_date=shift_date,
                     units_produced=produced,
                     run_time_hours=run_time,
@@ -432,6 +578,7 @@ def emit_shifts(
                         cid,
                         quality_entry_id=qe_id,
                         work_order_id=shift_order,
+                        job_id=shift_job,
                         shift_date=shift_date,
                         units_inspected=produced,
                         units_passed=produced - defective,
