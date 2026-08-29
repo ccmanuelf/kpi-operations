@@ -111,9 +111,19 @@ def emit_work_orders(
     profile: Profile,
     setup: ClientSetup,
     as_of: date,
-) -> List[Tuple[date, str]]:
-    """Returns (received_day, work_order_id) per order, which emit_shifts uses
-    to decide which orders a given day's shifts may name."""
+) -> List[Tuple[date, str, int]]:
+    """Returns (received_day, work_order_id, operations_completed) per order,
+    which emit_shifts uses to decide which orders a given day's shifts may name
+    and WHICH ROUTING STEP of one they may be attributed to.
+
+    The third element is not decoration. Without it emit_shifts had no way to
+    see how far an order had travelled, so it rotated its job_id over all four
+    routing steps and 36% of stamped entries named a step whose order had not
+    started it -- thousands of units booked against a JOB reporting
+    completed_quantity=0. Two independent derivations of "which step is
+    active" cannot be kept honest by comment; the only fix is one derivation,
+    passed across.
+    """
     cid = scenario.client_id
     products = setup.products
     products_by_id = setup.products_by_id
@@ -132,7 +142,7 @@ def emit_work_orders(
     # time -- both loops anchor on activity_start, and generate() sorts the
     # whole stream on order_key and renumbers seq afterwards.
     span = max(1, activity_days - 10)
-    received: List[Tuple[date, str]] = []
+    received: List[Tuple[date, str, int]] = []
     for i in range(profile.work_orders_per_client):
         wo = f"{cid}-WO-{i + 1:04d}"
         opened = activity_start + timedelta(days=rng.randrange(span))
@@ -183,7 +193,6 @@ def emit_work_orders(
             required_date=required_at,
             priority=priority,
         )
-        received.append((opened, wo))
 
         # How far along the flow this order has travelled. Every order emits
         # the opening (from_status=None) row -- the gap that left 60 of 100
@@ -249,18 +258,35 @@ def emit_work_orders(
         # completed units on an order still sitting at RECEIVED is exactly the
         # kind of internal contradiction this rebuild exists to remove.
         job_at = datetime.combine(opened, time(7, 30))
-        # Every finished step carries the order's furthest transition day,
+        # Every finished step carries the day the order reached COMPLETED,
         # clamped to as_of. NOT four invented per-step dates: the platform
         # records no per-operation completion anywhere (JOB stores a snapshot,
         # and WORKFLOW_TRANSITION_LOG is per ORDER), so distinct dates would
         # assert a sequencing no other table could corroborate. The as_of clamp
         # is the same one the delivery date takes above -- a completion date
         # past as_of claims something that has not happened yet.
+        #
+        # COMPLETED, not `transition_days[-1]`. The furthest transition is
+        # SHIPPED or CLOSED for any order that got that far, so the last-day
+        # version dated routing steps AFTER the order was delivered:
+        # DEMO-PIECE-WO-0047-OP1 finished 2025-09-06 on an order shipped
+        # 2025-09-02. Manufacturing is what COMPLETED means; shipping and
+        # closing are what happens to an order the floor has already finished.
+        # An order that stopped short of COMPLETED has no such day, so its
+        # finished steps fall on the furthest transition it DID reach -- the
+        # tightest bound its own chain can support.
+        finished_step = WORK_ORDER_FLOW.index("COMPLETED")
+        milestone = transition_days[finished_step] if depth > finished_step else transition_days[-1]
         completion_at = min(
-            datetime.combine(transition_days[-1], time(8, 0)),
+            datetime.combine(milestone, time(8, 0)),
             datetime.combine(as_of, time(20, 0)),
         )
         done = operations_completed(depth, i)
+        # Recorded here rather than beside the receipt above, because `done` is
+        # not known until the chain has been walked -- and emit_shifts must have
+        # it to attribute an entry to a step (see its shift_job block). Pure
+        # bookkeeping: appending later moves no event and draws no RNG.
+        received.append((opened, wo, done))
         product = products_by_id[product_id]
         for seq_no, (op_code, op_name) in enumerate(ROUTING, start=1):
             if seq_no <= done:
@@ -402,7 +428,7 @@ def emit_shifts(
     scenario: ClientScenario,
     profile: Profile,
     setup: ClientSetup,
-    received: List[Tuple[date, str]],
+    received: List[Tuple[date, str, int]],
     as_of: date,
 ) -> None:
     cid = scenario.client_id
@@ -427,11 +453,13 @@ def emit_shifts(
         # receipt is stamped 07:00, so "received on or before today" would put
         # the shift ahead of the order it names.
         #
-        # NOT "open" orders: no status is consulted here, so the list includes
-        # orders long since CLOSED or SHIPPED. The name says what the filter
-        # actually is -- received earlier -- rather than implying a lifecycle
-        # check the generator does not make.
-        orders_received_earlier = [wo for received_day, wo in received if received_day < day]
+        # NOT "open" orders: no status is consulted by this FILTER, so the list
+        # includes orders long since CLOSED or SHIPPED. The name says what the
+        # filter actually is -- received earlier -- rather than implying a
+        # lifecycle check the generator does not make. (How far each order
+        # travelled travels alongside it, and is consulted below when a step is
+        # attributed; that is a separate question from which orders exist yet.)
+        orders_received_earlier = [(wo, done) for received_day, wo, done in received if received_day < day]
         for li, line_id in enumerate(lines):
             for si, shift_id in enumerate(shifts):
                 # Draws taken unconditionally and in a fixed order, before any
@@ -485,10 +513,10 @@ def emit_shifts(
                 # added and the stream's consumption is unchanged. None only
                 # while no order has been received yet -- the column is
                 # nullable and inventing an id would be worse.
-                shift_order = (
+                shift_order, order_done = (
                     orders_received_earlier[(li + si + offset) % len(orders_received_earlier)]
                     if orders_received_earlier
-                    else None
+                    else (None, 0)
                 )
                 # The routing step that order was on this shift. Five of the
                 # six GET /api/jobs/{job_id}/* routes read PRODUCTION_ENTRY and
@@ -497,14 +525,35 @@ def emit_shifts(
                 # JOB without stamping this column would unblock the routes and
                 # leave every one of them answering "no entries found".
                 #
-                # Same (li + si + offset) rotation the order pick uses, so it
-                # costs no RNG draw, and production and the inspection below
-                # name the SAME step for the same reason they name the same
-                # order -- /kpi-summary unions the two, and a shift whose
-                # output and inspection sat on different operations would make
-                # that one endpoint contradict itself.
+                # Rotated only over the steps the order has REACHED -- the
+                # `order_done` finished ones plus the one in progress. Rotating
+                # over all four consulted no status at all, and produced the
+                # contradiction this seeder exists to remove: 36% of stamped
+                # entries named a step whose JOB reports completed_quantity=0
+                # and is_completed=False, so /kpi-summary answered with an
+                # efficiency computed from thousands of units sitting next to
+                # `yield: 0.0%, completed_quantity: 0` in one response.
+                #
+                # `order_done == 0` means the order never reached IN_PROGRESS,
+                # so there is no step to attribute the shift to and the column
+                # is left None. The entry still belongs to the work order; it is
+                # simply not yet booked against an operation, which is exactly
+                # what `operations_completed` already means and is honest in a
+                # way that naming OP1 is not.
+                #
+                # Still the same (li + si + offset) rotation the order pick
+                # uses, so it costs no RNG draw -- `order_done` is DERIVED from
+                # draws the order already made (see operations_completed), and
+                # one new draw here would shift the FULL-profile narrative pins.
+                # Production and the inspection below name the SAME step for the
+                # same reason they name the same order: /kpi-summary unions the
+                # two, and a shift whose output and inspection sat on different
+                # operations would make that one endpoint contradict itself.
+                reachable = min(order_done + 1, len(ROUTING))
                 shift_job = (
-                    job_id_for(shift_order, 1 + (li + si + offset) % len(ROUTING)) if shift_order is not None else None
+                    job_id_for(shift_order, 1 + (li + si + offset) % reachable)
+                    if shift_order is not None and order_done > 0
+                    else None
                 )
 
                 # --- attendance, one row per employee on this line

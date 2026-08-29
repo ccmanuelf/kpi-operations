@@ -16,7 +16,7 @@ order's jobs and the efficiency reading beside them cannot disagree.
 """
 
 from dataclasses import fields
-from datetime import date
+from datetime import date, datetime, time
 
 import pytest
 from sqlalchemy import func, select
@@ -50,6 +50,25 @@ def _furthest_status(events):
         reached = WORK_ORDER_FLOW.index(e.to_status) + 1
         depth[e.work_order_id] = max(depth.get(e.work_order_id, 0), reached)
     return depth
+
+
+def _completed_at(events):
+    """work_order_id -> the instant its COMPLETED transition was stamped.
+
+    Absent for an order that never reached COMPLETED -- including one that
+    reaches it only AFTER as_of, since generate() drops those events from the
+    stream entirely. Both cases mean the same thing to a reader: as of as_of,
+    this order's manufacturing is not finished.
+    """
+    return {e.work_order_id: e.at for e in _of(events, ev.WorkOrderStatusChanged) if e.to_status == "COMPLETED"}
+
+
+def _furthest_transition_at(events):
+    """work_order_id -> the instant of the LAST transition its chain reached."""
+    furthest = {}
+    for e in _of(events, ev.WorkOrderStatusChanged):
+        furthest[e.work_order_id] = max(furthest.get(e.work_order_id, e.at), e.at)
+    return furthest
 
 
 def test_the_seeded_cycle_time_is_the_one_the_application_resolves():
@@ -149,35 +168,102 @@ def test_a_finished_step_scraps_units_so_yield_is_not_a_constant_hundred(events)
     assert SCRAP_UNITS_PER_HUNDRED < 100
 
 
-def test_a_completion_date_never_claims_a_day_that_has_not_happened(events):
-    """Same clamp the delivery date takes: the furthest transition day can sit
-    past as_of (the chain is generated forward and then the stream is clamped),
-    so an unclamped completed_date would date a finished operation into the
-    future."""
+def test_a_completion_date_never_outlives_the_order_it_belongs_to(events):
+    """Two bounds, and the weaker one alone let a real defect through.
+
+    `completed_date <= AS_OF` is the clamp the delivery date also takes: the
+    furthest transition day can sit past as_of (the chain is generated forward
+    and then the stream is clamped), so an unclamped date would finish an
+    operation in the future.
+
+    The bound that MATTERS, though, is the order's own chain. While this was
+    derived from `transition_days[-1]` -- the FURTHEST transition, i.e. SHIPPED
+    or CLOSED -- routing steps finished after their order shipped:
+    DEMO-PIECE-WO-0047-OP1 carried 2025-08-20 on an order COMPLETED 2025-08-13
+    and SHIPPED 2025-08-17, three days before its first operation claimed to be
+    done. The as_of-only assertion could not see it, because both dates are
+    comfortably in the past. Manufacturing finishing is what COMPLETED means,
+    so that transition is the ceiling.
+    """
     finished = [j for j in _of(events, ev.JobDefined) if j.is_completed]
+    completed_at = _completed_at(events)
+    furthest_at = _furthest_transition_at(events)
+    clamp = datetime.combine(AS_OF, time(20, 0))
+    saw_a_shipped_order = False
 
     assert finished
     for job in finished:
         assert job.completed_date is not None
         assert job.completed_date.date() <= AS_OF, job.job_id
+        # An order with no COMPLETED transition in the stream has not finished
+        # manufacturing by as_of, so the as_of clamp is the whole ceiling it
+        # can be held to. One that has finished is held to that instant.
+        reached = completed_at.get(job.work_order_id)
+        assert job.completed_date <= (min(reached, clamp) if reached else clamp), job.job_id
+        if reached is not None and furthest_at[job.work_order_id] > reached:
+            saw_a_shipped_order = True
+
+    # Anti-vacuity, and the regression pin: the assertion above is free unless
+    # some order actually travelled PAST completion. Those are the orders the
+    # old derivation dated into the future, and if none exist the loop proves
+    # nothing about which transition was chosen.
+    assert saw_a_shipped_order, "no order shipped after completing; the ceiling above was never tested"
 
 
-def test_every_entry_that_names_an_order_names_one_of_that_orders_jobs(events):
+def test_every_stamped_entry_names_one_of_its_own_orders_jobs(events):
     """The column the routes actually join on.
 
     PRODUCTION_ENTRY.job_id and QUALITY_ENTRY.job_id are nullable, so dropping
     the stamp is a silent change: the entries still exist, still carry their
     work order, and five of the six routes answer "no entries found for this
-    job" with a 200.
+    job" with a 200. A ceiling on how many may be left unstamped is what keeps
+    that silence from creeping back -- see the next test for which entries are
+    legitimately unattributed.
     """
     job_ids = {j.job_id for j in _of(events, ev.JobDefined)}
     entries = _of(events, ev.ProductionRecorded) + _of(events, ev.QualityInspected)
-    named = [e for e in entries if e.work_order_id is not None]
+    stamped = [e for e in entries if e.job_id is not None]
 
-    assert named
-    for entry in named:
+    assert stamped
+    for entry in stamped:
+        assert entry.work_order_id is not None, entry.job_id
         assert entry.job_id in job_ids
         assert entry.job_id.startswith(f"{entry.work_order_id}-OP"), entry.job_id
+
+
+def test_no_entry_is_attributed_to_a_step_its_order_has_not_started(events):
+    """The defect this pins was 36% of every stamped entry.
+
+    Two independent derivations of "which step is this order on" disagreed:
+    JOB.completed_quantity came from `operations_completed(depth, i)`, while the
+    shift emitter rotated its job_id over ALL FOUR routing steps consulting no
+    status at all. `DEMO-PIECE-WO-0039-OP3` therefore declared
+    `planned=250, completed=0, is_completed=False` while 26 entries totalling
+    5,644 units named it, and `GET /api/jobs/DEMO-PIECE-WO-0039-OP3/kpi-summary`
+    returned an efficiency computed from those units alongside
+    `yield: 0.0%, completed_quantity: 0` in a single response.
+
+    Both directions are asserted, because either alone is satisfiable by a
+    seeder that stamps nothing (or one that stamps everything): a stamped entry
+    names a step its order has REACHED, and an entry left unstamped belongs to
+    an order that has genuinely not started its routing.
+    """
+    jobs = {j.job_id: j for j in _of(events, ev.JobDefined)}
+    started = {j.work_order_id for j in jobs.values() if j.completed_quantity > 0}
+    entries = _of(events, ev.ProductionRecorded) + _of(events, ev.QualityInspected)
+    named = [e for e in entries if e.work_order_id is not None]
+    unattributed = [e for e in named if e.job_id is None]
+
+    assert named and unattributed, "one side of the branch never occurred; the test proves half of itself"
+    for entry in named:
+        if entry.job_id is None:
+            # Honest, not lossy: the entry still carries its work order, and
+            # that order has no started operation to book it against.
+            assert entry.work_order_id not in started, entry.work_order_id
+            continue
+        job = jobs[entry.job_id]
+        assert job.completed_quantity > 0, f"{entry.job_id} has produced nothing yet"
+        assert job.work_order_id in started
 
 
 def test_one_shifts_production_and_inspection_name_the_same_step(events):

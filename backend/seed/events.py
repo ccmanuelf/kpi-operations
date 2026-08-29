@@ -215,8 +215,11 @@ class ProductionRecorded(Event):
     product_id: str
     work_order_id: Optional[str]
     # The routing step this shift's output is attributed to. Nullable on the
-    # column and None here only while no work order has been received yet --
-    # there is no job without an order. Load-bearing rather than decorative:
+    # column, and None here on two cases: no work order has been received yet
+    # (there is no job without an order), or the order this shift names has not
+    # reached IN_PROGRESS, so no step of its routing has started and naming one
+    # would book units against a JOB reporting completed_quantity=0.
+    # Load-bearing rather than decorative:
     # PRODUCTION_ENTRY.job_id is the ONLY join five of the six
     # GET /api/jobs/{job_id}/* routes make (they never traverse
     # work_order_id), so an entry that carries the order but not the job is
@@ -235,8 +238,11 @@ class QualityInspected(Event):
     quality_entry_id: str
     work_order_id: str
     #: Same routing step the shift's ProductionRecorded names -- /ppm, /dpmo
-    #: and /kpi-summary read QUALITY_ENTRY by job_id alone.
-    job_id: str
+    #: and /kpi-summary read QUALITY_ENTRY by job_id alone. None on the same
+    #: two cases that leave the production entry unattributed: no order
+    #: received yet, or an order that has not reached IN_PROGRESS and so has
+    #: no started step to book the inspection against.
+    job_id: Optional[str]
     shift_date: datetime
     units_inspected: int
     units_passed: int
