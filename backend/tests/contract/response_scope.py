@@ -212,7 +212,10 @@ def classify_non_json_route(route: APIRoute) -> Optional[str]:
     annotation = _real_return_annotation(route)
     if isinstance(annotation, type) and issubclass(annotation, Response):
         return RESPONSE_SUBCLASS
-    if annotation is None and "DELETE" in route.methods and route.status_code == 204:
+    # `route.methods` is `set[str] | None` on APIRoute, so `in` needs the
+    # None case handled; a route with no declared methods cannot be the DELETE
+    # this branch is looking for.
+    if annotation is None and "DELETE" in (route.methods or set()) and route.status_code == 204:
         return NO_CONTENT_204
     return None
 
