@@ -28,7 +28,11 @@ from backend.tests.contract.capture import is_placeholder, is_status_only
 from backend.tests.contract.conftest import GOLDEN
 from backend.tests.contract.frontend_usage import KNOWN_BLIND
 
-MAX_STATUS_ONLY_ROUTES = 41
+# 35, down from 41: the six DELETEs that #239 fixed no longer record a bare
+# `<status:404>`. This is a CEILING and must only fall -- it is the anti-vacuity
+# control, so raising it to make a run pass would re-admit exactly the worthless
+# capture it exists to reject.
+MAX_STATUS_ONLY_ROUTES = 35
 
 
 #: The 15 routes no id can reach, because their backing table has zero seeded

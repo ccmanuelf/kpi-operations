@@ -228,7 +228,14 @@ def test_a_2xx_is_proof_the_id_was_right_except_where_declared(
     id_insensitive = {route for route, shape in succeeded.items() if bogus_id_shapes[route] == shape}
 
     assert id_insensitive == NEVER_404
-    assert len(succeeded) == 30
+    # 36, up from 30: merging main brought #239, which gave the eleven
+    # soft-deleting tables an `is_active` column. Six of those DELETE routes
+    # were allowlisted BECAUSE they answered 404 for every id, and now return
+    # 204. The remaining five stay unreachable for the reasons the plan
+    # predicted -- four are seed gaps (S3) and work-orders now 409s on its
+    # children. This number may only go UP without a stated reason: a drop
+    # means a route stopped being capturable.
+    assert len(succeeded) == 36
     # Third side, and the one that keeps the other two honest: a route whose
     # probe URL equals its real URL was compared against ITSELF, so it lands in
     # `id_insensitive` for free and its NEVER_404 membership proves nothing.

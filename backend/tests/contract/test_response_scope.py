@@ -98,7 +98,7 @@ def test_every_non_json_golden_entry_is_explained():
 
     golden = _golden()
     non_json_routes = sorted(route for route, shape in golden.items() if shape == ["<non-json>"])
-    assert len(non_json_routes) == 29
+    assert len(non_json_routes) == 35
 
     unexplained = [route for route in non_json_routes if classify_non_json_route(_route(app, route)) is None]
     assert unexplained == []
@@ -158,14 +158,24 @@ def test_non_json_entries_decompose_into_exactly_three_categories():
         "GET /api/reports/quality/excel",
         "GET /api/reports/quality/pdf",
     ]
+    # The six transaction DELETEs joined this list when #239 landed. They used
+    # to record `<status:404>` -- not because they had no body, but because they
+    # answered 404 for every id: the CRUD layer set `is_active = False` on models
+    # that had no such column. Fixing that turned them into ordinary 204s.
     assert no_content_204 == [
+        "DELETE /api/attendance/{attendance_id}",
         "DELETE /api/client-config/{client_id}",
         "DELETE /api/clients/{client_id}",
         "DELETE /api/defect-types/{defect_type_id}",
+        "DELETE /api/defects/{defect_detail_id}",
+        "DELETE /api/downtime/{downtime_id}",
         "DELETE /api/employees/{employee_id}",
         "DELETE /api/hold-catalogs/reasons/{catalog_id}",
         "DELETE /api/hold-catalogs/statuses/{catalog_id}",
+        "DELETE /api/holds/{hold_id}",
         "DELETE /api/production-lines/{line_id}",
+        "DELETE /api/production/{entry_id}",
+        "DELETE /api/quality/{inspection_id}",
         "DELETE /api/shifts/{shift_id}",
         "DELETE /api/users/{user_id}",
     ]

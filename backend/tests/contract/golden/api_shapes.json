@@ -1,6 +1,6 @@
 {
   "DELETE /api/attendance/{attendance_id}": [
-    "<status:404>"
+    "<non-json>"
   ],
   "DELETE /api/break-times/{break_id}": [
     "<blocked:break_id>"
@@ -24,10 +24,10 @@
     "<non-json>"
   ],
   "DELETE /api/defects/{defect_detail_id}": [
-    "<status:404>"
+    "<non-json>"
   ],
   "DELETE /api/downtime/{downtime_id}": [
-    "<status:404>"
+    "<non-json>"
   ],
   "DELETE /api/employees/{employee_id}": [
     "<non-json>"
@@ -51,7 +51,7 @@
     "<non-json>"
   ],
   "DELETE /api/holds/{hold_id}": [
-    "<status:404>"
+    "<non-json>"
   ],
   "DELETE /api/jobs/{job_id}": [
     "<blocked:job_id>"
@@ -66,10 +66,10 @@
     "<non-json>"
   ],
   "DELETE /api/production/{entry_id}": [
-    "<status:404>"
+    "<non-json>"
   ],
   "DELETE /api/quality/{inspection_id}": [
-    "<status:404>"
+    "<non-json>"
   ],
   "DELETE /api/shifts/{shift_id}": [
     "<non-json>"
@@ -81,7 +81,7 @@
     "<blocked:scenario_id@simulation>"
   ],
   "DELETE /api/work-orders/{work_order_id}": [
-    "<status:404>"
+    "<status:409>"
   ],
   "GET /api/alerts/history/accuracy": [
     "accuracy_metrics",
