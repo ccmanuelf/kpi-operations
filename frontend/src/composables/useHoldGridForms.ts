@@ -62,7 +62,7 @@ interface KPIStoreLike {
     _id: string | number,
     _data: Partial<HoldEntry>,
   ) => Promise<{ success: boolean; data?: HoldEntry }>
-  fetchHoldEntries: () => Promise<unknown>
+  fetchHoldEntries: () => Promise<{ success: boolean; error?: string }>
 }
 
 export interface UseHoldGridFormsOptions {
@@ -315,8 +315,14 @@ export function useHoldGridForms({
         }
       }
 
-      await kpiStore.fetchHoldEntries()
+      // The save already happened; a failed refresh means the rows on screen are
+      // stale, not that the save failed.
+      const refreshed = await kpiStore.fetchHoldEntries()
       applyFilters()
+      if (!refreshed?.success) {
+        showSnackbar(t('grids.savedButNotRefreshed'), 'warning')
+        return
+      }
 
       if (errorCount === 0) {
         showSnackbar(t('grids.holds.savedEntries', { count: successCount }), 'success')
@@ -378,8 +384,13 @@ export function useHoldGridForms({
       }
 
       showSnackbar(t(successMsg), 'success')
-      await kpiStore.fetchHoldEntries()
+      // The approval already went through; a failed refetch leaves stale rows on
+      // screen, so it replaces the success message rather than being swallowed.
+      const refreshedAfterApproval = await kpiStore.fetchHoldEntries()
       applyFilters()
+      if (!refreshedAfterApproval?.success) {
+        showSnackbar(t('grids.savedButNotRefreshed'), 'warning')
+      }
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error(`Error during ${endpoint}:`, error)

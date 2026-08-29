@@ -1442,7 +1442,10 @@
     "noChanges": "No hay cambios para guardar",
     "entriesSaved": "¡{count} registros guardados exitosamente!",
     "saveCancelled": "Guardado cancelado",
-    "deleteError": "Error al eliminar registro"
+    "deleteError": "Error al eliminar registro",
+    "loadFailed": "No se pudieron cargar estos datos",
+    "loadFailedRetry": "Reintentar",
+    "savedButNotRefreshed": "Se guardó, pero no se pudo actualizar la lista. Recargue para ver los datos actuales."
   },
   "readBack": {
     "field": "Campo",

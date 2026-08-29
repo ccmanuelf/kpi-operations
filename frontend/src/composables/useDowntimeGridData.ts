@@ -10,6 +10,7 @@
  * removed in the 2026-05-01 entry-audit migration.
  */
 import { ref, computed, onMounted, watch } from 'vue'
+import { useGridLoadState } from '@/composables/useGridLoadState'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/authStore'
 import { useKPIStore } from '@/stores/kpi'
@@ -222,6 +223,8 @@ export default function useDowntimeGridData() {
       { key: 'notes', label: t('grids.columns.notes'), type: 'text' },
     ]
   })
+
+  const { loadError, load: runInitialLoad, retry: retryLoad } = useGridLoadState()
 
   const showSnackbar = (message: string, color: string = 'success'): void => {
     snackbar.value = { show: true, message, color }
@@ -556,8 +559,14 @@ export default function useDowntimeGridData() {
         }
       }
 
-      await kpiStore.fetchDowntimeEntries()
+      // The save already happened; a failed refresh means the rows on screen are
+      // stale, not that the save failed. Reported, but not as a load error.
+      const refreshed = await kpiStore.fetchDowntimeEntries()
       applyFilters()
+      if (!refreshed?.success) {
+        showSnackbar(t('grids.savedButNotRefreshed'), 'warning')
+        return
+      }
 
       if (errorCount === 0) {
         showSnackbar(t('grids.downtime.saveSuccess', { count: successCount }), 'success')
@@ -634,13 +643,20 @@ export default function useDowntimeGridData() {
   watch(entries, () => applyFilters(), { immediate: true })
 
   onMounted(async () => {
-    await kpiStore.fetchReferenceData()
-    await kpiStore.fetchDowntimeEntries()
+    // A failed first load used to leave the grid rendering "no rows", which a
+    // user cannot tell apart from an empty dataset. runInitialLoad records the
+    // reason so the view can say so and offer a retry.
+    await runInitialLoad(
+      () => kpiStore.fetchReferenceData(),
+      () => kpiStore.fetchDowntimeEntries(),
+    )
     applyFilters()
   })
 
   return {
     deleteEntry,
+    loadError,
+    retryLoad,
     gridRef,
     unsavedChanges,
     saving,

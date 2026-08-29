@@ -24,6 +24,7 @@
     </v-card-title>
 
     <v-card-text>
+      <GridLoadError :message="loadError" @retry="retryLoad" />
       <!-- Keyboard shortcuts help -->
       <v-alert type="info" variant="tonal" density="compact" class="mb-3">
         <div class="d-flex align-center">
@@ -183,6 +184,7 @@
  * No props or emits -- all state managed via store.
  */
 import AGGridBase from './AGGridBase.vue'
+import GridLoadError from '@/components/grids/GridLoadError.vue'
 import ReadBackConfirmation from '@/components/dialogs/ReadBackConfirmation.vue'
 import PastePreviewDialog from '@/components/dialogs/PastePreviewDialog.vue'
 import LineSelector from '@/components/common/LineSelector.vue'
@@ -223,7 +225,9 @@ const {
   applyFilters,
   onRowsPasted,
   onPasteConfirm,
-  onPasteCancel
+  onPasteCancel,
+  loadError,
+  retryLoad,
 } = useProductionGridData()
 </script>
 
