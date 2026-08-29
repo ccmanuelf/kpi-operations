@@ -32,6 +32,7 @@ from backend.auth.jwt import (
     resolve_client_scope,
 )
 from backend.orm.user import User
+from backend.schemas.kpi_contracts import AvailabilityKPI
 
 logger = get_module_logger(__name__)
 
@@ -145,7 +146,7 @@ def delete_downtime(
 availability_router = APIRouter(prefix="/api/kpi", tags=["Downtime Tracking"])
 
 
-@availability_router.get("/availability")
+@availability_router.get("/availability", response_model=AvailabilityKPI)
 def calculate_availability_kpi(
     work_order_id: Optional[str] = None,
     target_date: Optional[date] = None,

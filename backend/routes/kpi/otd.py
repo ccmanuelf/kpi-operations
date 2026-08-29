@@ -8,7 +8,7 @@ from decimal import Decimal
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import func, case
-from typing import Any, Optional
+from typing import Any, List, Optional
 from datetime import date, datetime, timedelta, timezone
 
 from backend.utils.logging_utils import get_module_logger
@@ -16,13 +16,16 @@ from backend.database import get_db
 from backend.calculations.otd import calculate_true_otd, identify_late_orders
 from backend.auth.jwt import get_current_user, ClientScope, resolve_client_scope
 from backend.orm.user import User
+from backend.schemas.kpi_contracts import LateDelivery, LateOrder, OTDByClient, OTDSummary
 
 logger = get_module_logger(__name__)
 
 otd_router = APIRouter(prefix="/api/kpi", tags=["KPI Calculations"])
 
 
-@otd_router.get("/otd")
+# Conditional keys on the single-client-scope branch -- declared and gated
+# two-sided in backend/tests/contract/conditional_branches.py::EXCLUDE_UNSET_ROUTES.
+@otd_router.get("/otd", response_model=OTDSummary, response_model_exclude_unset=True)
 def calculate_otd_kpi(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
@@ -123,7 +126,7 @@ def _coerce_decimal_leaves(block: dict[str, Any]) -> dict[str, Any]:
     return {key: (float(value) if isinstance(value, Decimal) else value) for key, value in block.items()}
 
 
-@otd_router.get("/late-orders")
+@otd_router.get("/late-orders", response_model=List[LateOrder])
 def get_late_orders(
     as_of_date: Optional[date] = None,
     db: Session = Depends(get_db),
@@ -141,7 +144,7 @@ def get_late_orders(
     return identify_late_orders(db, as_of_date or date.today(), client_ids=scope.client_ids)
 
 
-@otd_router.get("/otd/by-client")
+@otd_router.get("/otd/by-client", response_model=List[OTDByClient])
 def get_otd_by_client(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
@@ -211,7 +214,7 @@ def get_otd_by_client(
     ]
 
 
-@otd_router.get("/otd/late-deliveries")
+@otd_router.get("/otd/late-deliveries", response_model=List[LateDelivery])
 def get_late_deliveries(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,

@@ -25,6 +25,7 @@ from ._models import (
     KPICommitmentResponse,
     WorksheetSaveResponse,
 )
+from backend.schemas.capacity_contracts import CapacityWorkbookResponse
 from backend.utils.logging_utils import get_module_logger
 
 logger = get_module_logger(__name__)
@@ -109,7 +110,9 @@ def get_kpi_variance_report(
 
 
 @kpi_workbook_router.get(
-    "/workbook/{client_id}", response_model=Dict[str, Any], responses={403: {"description": "Client access denied"}}
+    "/workbook/{client_id}",
+    response_model=CapacityWorkbookResponse,
+    responses={403: {"description": "Client access denied"}},
 )
 def load_workbook(client_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> Any:
     """Load all worksheet data for a client (capacity planning workbook).

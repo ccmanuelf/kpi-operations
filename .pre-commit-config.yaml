@@ -39,7 +39,23 @@ repos:
     hooks:
       - id: mypy
         name: mypy (backend, whole-package)
-        entry: python -m mypy backend
+        # backend/.venv explicitly, NEVER bare `python`. On a machine with
+        # Anaconda first on PATH, `python -m mypy` resolved to Anaconda's mypy,
+        # which reported "No issues found" for a file the repo's pinned mypy
+        # 2.1.0 rejects outright — so this hook reported PASSED on every commit
+        # while CI's `backend-tests` failed on the same file. A gate that runs a
+        # different tool than CI is not a gate.
+        #
+        # Missing venv fails loudly here rather than silently falling back to
+        # whatever `python` happens to be, which is the failure mode above.
+        #
+        # The argument list is CI's, verbatim (.github/workflows/ci.yml
+        # "Run type checking"). --ignore-missing-imports is redundant against
+        # pyproject's `ignore_missing_imports = true` today, but copying CI's
+        # command means the two cannot drift apart if that setting is ever
+        # changed -- which is the same coupling that let this hook diverge
+        # unnoticed in the first place.
+        entry: bash -c 'test -x backend/.venv/bin/python || { echo "backend/.venv/bin/python not found - create the venv so this hook runs the same mypy as CI"; exit 1; }; exec backend/.venv/bin/python -m mypy backend --ignore-missing-imports --no-error-summary'
         language: system
         # Trigger on any backend .py change but pass no filenames — the
         # entry runs the whole-package check itself.

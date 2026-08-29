@@ -12,6 +12,11 @@ from datetime import date, datetime, timedelta, timezone
 from backend.database import get_db
 from backend.auth.jwt import get_current_user, ClientScope, resolve_client_scope
 from backend.orm.user import User
+from backend.schemas.ops_contracts import (
+    DataCompletenessCategoriesResponse,
+    DataCompletenessResponse,
+    DataCompletenessSummaryResponse,
+)
 from backend.utils.logging_utils import get_module_logger
 
 logger = get_module_logger(__name__)
@@ -86,7 +91,7 @@ def calculate_expected_entries(
     return 1
 
 
-@router.get("")
+@router.get("", response_model=DataCompletenessResponse)
 def get_data_completeness(
     target_date: Optional[date] = Query(None, alias="date", description="Target date (default: today)"),
     shift_id: Optional[int] = Query(None, description="Shift ID filter"),
@@ -221,7 +226,7 @@ def get_data_completeness(
     }
 
 
-@router.get("/summary")
+@router.get("/summary", response_model=DataCompletenessSummaryResponse)
 def get_completeness_summary(
     start_date: Optional[date] = Query(None, description="Start date (default: 7 days ago)"),
     end_date: Optional[date] = Query(None, description="End date (default: today)"),
@@ -289,7 +294,7 @@ def get_completeness_summary(
     }
 
 
-@router.get("/categories")
+@router.get("/categories", response_model=DataCompletenessCategoriesResponse)
 def get_completeness_by_category(
     target_date: Optional[date] = Query(None, alias="date", description="Target date (default: today)"),
     client_id: Optional[str] = Query(None, description="Client ID filter"),

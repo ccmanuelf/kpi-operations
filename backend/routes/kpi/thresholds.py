@@ -14,13 +14,14 @@ from backend.utils.logging_utils import get_module_logger
 from backend.database import get_db
 from backend.auth.jwt import get_current_planner, get_current_user, ClientScope, resolve_client_scope
 from backend.orm.user import User
+from backend.schemas.ops_contracts import KPIThresholdDeleteResponse, KPIThresholdsResponse
 
 logger = get_module_logger(__name__)
 
 thresholds_router = APIRouter(prefix="/api/kpi-thresholds", tags=["KPI Thresholds"])
 
 
-@thresholds_router.get("")
+@thresholds_router.get("", response_model=KPIThresholdsResponse)
 def get_kpi_thresholds(
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
@@ -141,7 +142,7 @@ def update_kpi_thresholds(
     return {"message": f"Updated {len(updated)} thresholds", "client_id": client_id, "updated_kpis": updated}
 
 
-@thresholds_router.delete("/{client_id}/{kpi_key}")
+@thresholds_router.delete("/{client_id}/{kpi_key}", response_model=KPIThresholdDeleteResponse)
 def delete_client_threshold(
     client_id: str, kpi_key: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_planner)
 ) -> Any:

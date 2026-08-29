@@ -23,6 +23,12 @@ from backend.schemas.floating_pool import (
     FloatingPoolAssignmentRequest,
     FloatingPoolUnassignmentRequest,
 )
+from backend.schemas.floor_contracts import (
+    FloatingPoolAvailableEmployee,
+    FloatingPoolCheckAvailabilityResponse,
+    FloatingPoolSimulationInsightsResponse,
+    FloatingPoolSummaryResponse,
+)
 from backend.services.floating_pool_service import (
     create_pool_entry as create_floating_pool_entry,
     get_pool_entry as get_floating_pool_entry,
@@ -94,7 +100,7 @@ def list_floating_pool_entries(
     return get_floating_pool_entries(db, current_user, skip, limit, employee_id, available_only)
 
 
-@router.get("/available/list")
+@router.get("/available/list", response_model=List[FloatingPoolAvailableEmployee])
 def get_available_floating_pool_list(
     as_of_date: Optional[datetime] = None, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ) -> Any:
@@ -104,7 +110,7 @@ def get_available_floating_pool_list(
     return get_available_floating_pool_employees(db, current_user, as_of_date)
 
 
-@router.get("/check-availability/{employee_id}")
+@router.get("/check-availability/{employee_id}", response_model=FloatingPoolCheckAvailabilityResponse)
 def check_employee_availability(
     employee_id: int,
     proposed_start: Optional[datetime] = None,
@@ -129,7 +135,7 @@ def check_employee_availability(
     return is_employee_available_for_assignment(db, employee_id, proposed_start, proposed_end)
 
 
-@router.get("/summary")
+@router.get("/summary", response_model=FloatingPoolSummaryResponse)
 def get_floating_pool_summary_endpoint(
     db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ) -> Any:
@@ -249,7 +255,7 @@ def get_client_floating_pool_assignments(
 # ============================================================================
 
 
-@router.get("/simulation/insights")
+@router.get("/simulation/insights", response_model=FloatingPoolSimulationInsightsResponse)
 def get_floating_pool_simulation_insights(
     target_date: Optional[date] = None, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ) -> Dict[str, Any]:

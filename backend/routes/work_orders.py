@@ -13,6 +13,12 @@ from backend.utils.logging_utils import get_module_logger
 from backend.database import get_db
 from backend.calculations.otd import is_late as _is_late
 from backend.schemas.work_order import WorkOrderCreate, WorkOrderUpdate, WorkOrderResponse
+from backend.schemas.workorder_contracts import (
+    WorkOrderApproveQCResponse,
+    WorkOrderCapacityOrderResponse,
+    WorkOrderProgressResponse,
+    WorkOrderTimelineResponse,
+)
 from backend.services.work_order_service import (
     create_order as create_work_order,
     get_order as get_work_order,
@@ -149,7 +155,7 @@ def get_work_order_endpoint(
     return _with_is_late(work_order)
 
 
-@router.get("/{work_order_id}/progress")
+@router.get("/{work_order_id}/progress", response_model=WorkOrderProgressResponse)
 def get_work_order_progress(
     work_order_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ) -> Dict[str, Any]:
@@ -299,7 +305,7 @@ def get_work_order_progress(
     }
 
 
-@router.get("/{work_order_id}/timeline")
+@router.get("/{work_order_id}/timeline", response_model=WorkOrderTimelineResponse)
 def get_work_order_timeline(
     work_order_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ) -> Dict[str, Any]:
@@ -487,7 +493,11 @@ def update_work_order_status(
     return updated
 
 
-@router.post("/{work_order_id}/approve-qc")
+@router.post(
+    "/{work_order_id}/approve-qc",
+    response_model=WorkOrderApproveQCResponse,
+    response_model_exclude_unset=True,
+)
 def approve_qc(
     work_order_id: str,
     approval_data: Optional[Dict[str, Any]] = None,
@@ -585,7 +595,7 @@ def approve_qc(
 # ============================================================================
 
 
-@router.get("/{work_order_id}/capacity-order")
+@router.get("/{work_order_id}/capacity-order", response_model=WorkOrderCapacityOrderResponse)
 def get_work_order_capacity_order(
     work_order_id: str,
     db: Session = Depends(get_db),

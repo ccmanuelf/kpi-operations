@@ -17,6 +17,7 @@ from backend.orm.quality_entry import QualityEntry
 from backend.orm.work_order import WorkOrder
 from backend.auth.jwt import get_current_user, ClientScope, resolve_client_scope
 from backend.orm.user import User
+from backend.schemas.ops_contracts import MyShiftActivityResponse, MyShiftStatsResponse
 from backend.utils.logging_utils import get_module_logger
 
 logger = get_module_logger(__name__)
@@ -304,7 +305,7 @@ def get_my_shift_summary(
     )
 
 
-@router.get("/stats")
+@router.get("/stats", response_model=MyShiftStatsResponse)
 def get_my_shift_stats(
     shift_date: Optional[date] = Query(None),
     shift_id: Optional[int] = Query(None, description="SHIFT.shift_id FK"),
@@ -361,7 +362,7 @@ def get_my_shift_stats(
     }
 
 
-@router.get("/activity")
+@router.get("/activity", response_model=MyShiftActivityResponse)
 def get_my_recent_activity(
     shift_date: Optional[date] = Query(None),
     shift_id: Optional[int] = Query(None),

@@ -6,7 +6,7 @@ KPI calculation endpoints with client filtering and inference metadata.
 """
 
 from datetime import date, datetime, timezone
-from typing import Any, Optional
+from typing import Any, List, Optional
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
@@ -19,6 +19,7 @@ from backend.schemas.quality import (
     DPMOCalculationResponse,
     InferenceMetadata,
 )
+from backend.schemas.quality_contracts import DPMOByPartResponse, PPMTrendPoint
 from backend.calculations.dpmo import calculate_dpmo_with_part_lookup
 from backend.utils.logging_utils import get_module_logger
 
@@ -99,7 +100,7 @@ def calculate_ppm_kpi(
     )
 
 
-@ppm_dpmo_router.get("/kpi/ppm/trend")
+@ppm_dpmo_router.get("/kpi/ppm/trend", response_model=List[PPMTrendPoint])
 def get_ppm_trend(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
@@ -226,7 +227,7 @@ def calculate_dpmo_kpi(
     )
 
 
-@ppm_dpmo_router.get("/kpi/dpmo-by-part")
+@ppm_dpmo_router.get("/kpi/dpmo-by-part", response_model=DPMOByPartResponse)
 def calculate_dpmo_by_part(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,

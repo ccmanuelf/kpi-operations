@@ -23,8 +23,19 @@ from backend.schemas.workflow import (
     WorkflowTransitionCreate,
     WorkflowTransitionResponse,
     WorkflowConfigUpdate,
+    WorkflowConfigResponse,
     BulkTransitionRequest,
     WORKFLOW_TEMPLATES,
+)
+from backend.schemas.workflow_contracts import (
+    TemplatesListResponse,
+    AverageTimesSummary,
+    StageDurationsResponse,
+    StatusDistributionResponse,
+    TransitionStatisticsResponse,
+    WorkOrderAllowedTransitions,
+    WorkOrderElapsedTimeResponse,
+    TransitionTimeEntry,
 )
 from backend.services.workflow_crud_service import (
     get_transitions_for_work_order as get_work_order_transitions,
@@ -101,7 +112,7 @@ def validate_work_order_transition(
     return validate_transition(db=db, work_order_id=work_order_id, to_status=to_status, current_user=current_user)
 
 
-@router.get("/work-orders/{work_order_id}/allowed-transitions", response_model=Dict)
+@router.get("/work-orders/{work_order_id}/allowed-transitions", response_model=WorkOrderAllowedTransitions)
 def get_work_order_allowed_transitions(
     work_order_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ) -> Dict[str, Any]:
@@ -166,7 +177,7 @@ def bulk_transition_work_orders_endpoint(
 # ============================================
 
 
-@router.get("/config/{client_id}", response_model=Dict)
+@router.get("/config/{client_id}", response_model=WorkflowConfigResponse)
 def get_client_workflow_config(
     client_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ) -> Dict[str, Any]:
@@ -219,7 +230,7 @@ def apply_workflow_template_endpoint(
     return result
 
 
-@router.get("/templates", response_model=Dict)
+@router.get("/templates", response_model=TemplatesListResponse)
 def list_workflow_templates(current_user: User = Depends(get_current_user)) -> Dict[str, Any]:
     """
     List available workflow templates.
@@ -246,7 +257,7 @@ def list_workflow_templates(current_user: User = Depends(get_current_user)) -> D
 # ============================================
 
 
-@router.get("/work-orders/{work_order_id}/elapsed-time", response_model=Dict)
+@router.get("/work-orders/{work_order_id}/elapsed-time", response_model=WorkOrderElapsedTimeResponse)
 def get_work_order_elapsed_time(
     work_order_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ) -> Dict[str, Any]:
@@ -269,7 +280,7 @@ def get_work_order_elapsed_time(
     return calculate_work_order_elapsed_times(work_order)
 
 
-@router.get("/work-orders/{work_order_id}/transition-times", response_model=List[Dict])
+@router.get("/work-orders/{work_order_id}/transition-times", response_model=List[TransitionTimeEntry])
 def get_work_order_transition_times(
     work_order_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ) -> List[Dict[str, Any]]:
@@ -292,7 +303,11 @@ def get_work_order_transition_times(
     return get_transition_elapsed_times(db=db, work_order_id=work_order_id, client_id=work_order.client_id)
 
 
-@router.get("/analytics/{client_id}/average-times", response_model=Dict)
+# Conditional keys on the empty-orders branch -- declared and gated two-sided in
+# backend/tests/contract/conditional_branches.py::EXCLUDE_UNSET_ROUTES.
+@router.get(
+    "/analytics/{client_id}/average-times", response_model=AverageTimesSummary, response_model_exclude_unset=True
+)
 def get_client_average_elapsed_times(
     client_id: str,
     status_filter: Optional[str] = Query(None, alias="status", description="Filter by status"),
@@ -321,7 +336,7 @@ def get_client_average_elapsed_times(
     )
 
 
-@router.get("/analytics/{client_id}/stage-durations", response_model=Dict)
+@router.get("/analytics/{client_id}/stage-durations", response_model=StageDurationsResponse)
 def get_client_stage_durations(
     client_id: str,
     start_date: Optional[datetime] = Query(None, description="Start date filter"),
@@ -352,7 +367,7 @@ def get_client_stage_durations(
 # ============================================
 
 
-@router.get("/statistics/{client_id}/transitions", response_model=Dict)
+@router.get("/statistics/{client_id}/transitions", response_model=TransitionStatisticsResponse)
 def get_client_transition_statistics(
     client_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ) -> Dict[str, Any]:
@@ -366,7 +381,7 @@ def get_client_transition_statistics(
     return get_transition_statistics(db=db, client_id=client_id, current_user=current_user)
 
 
-@router.get("/statistics/{client_id}/status-distribution", response_model=Dict)
+@router.get("/statistics/{client_id}/status-distribution", response_model=StatusDistributionResponse)
 def get_client_status_distribution(
     client_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ) -> Dict[str, Any]:

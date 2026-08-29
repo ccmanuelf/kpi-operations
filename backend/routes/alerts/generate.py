@@ -16,6 +16,7 @@ from backend.database import get_db
 from backend.orm.alert import Alert
 from backend.orm.kpi_threshold import KPIThreshold
 from backend.schemas.alert import AlertResponse
+from backend.schemas.workorder_contracts import AlertsCheckAllResponse
 from backend.calculations.alerts import (
     generate_alert_id,
     generate_otd_risk_alert,
@@ -35,7 +36,7 @@ generate_router = APIRouter()
 # ==================== Alert Generation Endpoints ====================
 
 
-@generate_router.post("/generate/check-all")
+@generate_router.post("/generate/check-all", response_model=AlertsCheckAllResponse)
 async def generate_all_alerts(
     client_id: Optional[str] = Query(None, description="Check for specific client"),
     db: Session = Depends(get_db),

@@ -23,6 +23,7 @@ from backend.schemas.production import (
     CSVUploadResponse,
 )
 from backend.schemas.import_log import BatchImportRequest, BatchImportResponse
+from backend.schemas.reference_contracts import ImportLogEntry
 from backend.services.production_crud_service import (
     create_entry as create_production_entry,
     list_entries as get_production_entries,
@@ -398,7 +399,7 @@ def batch_import_production(
 import_logs_router = APIRouter(prefix="/api/import-logs", tags=["Production"])
 
 
-@import_logs_router.get("")
+@import_logs_router.get("", response_model=List[ImportLogEntry])
 def get_import_logs(
     limit: int = 50, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ) -> list[dict]:

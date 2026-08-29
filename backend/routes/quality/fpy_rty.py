@@ -17,6 +17,7 @@ from backend.middleware.client_auth import verify_client_access
 from backend.orm.product import Product
 from backend.orm.user import User
 from backend.schemas.quality import FPYRTYCalculationResponse, InferenceMetadata
+from backend.schemas.quality_contracts import FPYRTYBreakdownResponse
 from decimal import Decimal
 
 from backend.calculations.fpy_rty import (
@@ -166,7 +167,7 @@ def calculate_fpy_rty_kpi(
     )
 
 
-@fpy_rty_router.get("/kpi/fpy-rty-breakdown")
+@fpy_rty_router.get("/kpi/fpy-rty-breakdown", response_model=FPYRTYBreakdownResponse)
 def get_fpy_rty_breakdown(
     product_id: Optional[int] = None,
     start_date: Optional[date] = None,

@@ -20,7 +20,7 @@
 - **No endpoint may change what it returns.** Field sets stay identical; only declared types change.
 - The golden master compares **key sets, never value types** — changing a type is the goal.
 - `/api/metrics/results` and `/api/floating-pool/simulation/insights` return numeric-looking strings deliberately. Their models keep `str`.
-- Capture runs against a disposable database, never the VM. 52 of the 160 routes are mutations.
+- Capture runs against a disposable database, never the VM. 52 of the 164 routes are mutations.
 - Backend tests run from `backend/` with `pytest tests/ --no-cov -q`. Full suite is the controller's job, not the implementer's.
 
 ---
@@ -163,7 +163,8 @@ git commit -m "test(contract): shape-capture harness for the response-model refa
 
 ```python
 def test_every_loose_route_is_inventoried_and_none_is_silently_dropped():
-    """160 loose routes were measured on 2026-08-25. The count is pinned so a
+    """164 loose routes, measured 2026-08-25 with the STRUCTURAL predicate. The
+    count is pinned so a
     route that stops being enumerated — a decorator change, a router rename —
     fails here instead of quietly leaving the refactor's scope."""
     from backend.main import app
@@ -171,7 +172,7 @@ def test_every_loose_route_is_inventoried_and_none_is_silently_dropped():
 
     routes = loose_routes(app)
 
-    assert len(routes) == 160
+    assert len(routes) == 164
     methods = {m for m, _, _ in routes}
     assert methods == {"GET", "POST", "PUT", "DELETE"}
 ```
@@ -187,20 +188,26 @@ Expected: FAIL with `ImportError: cannot import name 'loose_routes'`
 import typing
 from fastapi.routing import APIRoute
 
-LOOSE_MARKERS = ("typing.Any", "dict", "list[dict", "typing.Dict", "<class 'dict'>", "<class 'list'>")
-
-
 def is_loose(response_model) -> bool:
     """True when the declared model cannot constrain a Decimal.
 
-    `None`, `Any`, bare `dict`/`list` all let Pydantic serialise a Decimal as a
-    string. This is the predicate the ratchet guard shrinks to zero.
+    STRUCTURAL, not a string match on the repr. An earlier draft of this plan
+    used `str(model).startswith(...)`, which cannot see through a wrapper --
+    `typing.List[dict]` tested as TYPED -- and silently dropped four live routes
+    from the refactor's scope AND from the ratchet allowlist. Corrected before
+    Task 2 shipped; see the spec's section 3 note.
     """
     if response_model is None:
         return True
     if response_model in (typing.Any, dict, list):
         return True
-    return str(response_model).startswith(LOOSE_MARKERS)
+    origin = typing.get_origin(response_model)
+    if origin is None:
+        return False
+    args = [a for a in typing.get_args(response_model) if a is not type(None)]
+    if not args:
+        return True
+    return any(is_loose(a) for a in args)
 
 
 def loose_routes(app) -> list:
@@ -218,17 +225,17 @@ def loose_routes(app) -> list:
 - [ ] **Step 4: Run, confirm pass**
 
 Run: `cd backend && python -m pytest tests/contract/test_route_inventory.py -v --no-cov`
-Expected: PASS, 160 collected
+Expected: PASS, 164 collected
 
 - [ ] **Step 5: Mutation-prove the count pin**
 
-Temporarily give one loose route a real `response_model` in its router, re-run, and paste the failure (`assert 159 == 160`). Restore, confirm `git diff HEAD` empty.
+Temporarily give one loose route a real `response_model` in its router, re-run, and paste the failure (`assert 163 == 164`). Restore, confirm `git diff HEAD` empty.
 
 - [ ] **Step 6: Commit**
 
 ```bash
 git add backend/tests/contract/
-git commit -m "test(contract): pin the 160-route refactor scope"
+git commit -m "test(contract): pin the 164-route refactor scope"
 ```
 
 ---
@@ -421,7 +428,7 @@ Give one route a response model declaring one FEWER field than it returns, re-ru
 
 ```bash
 git add backend/tests/contract/
-git commit -m "test(contract): golden-master shapes for all 160 loose routes"
+git commit -m "test(contract): golden-master shapes for all 164 loose routes"
 ```
 
 ---
@@ -542,9 +549,9 @@ Write the pilot measurement file with: routes converted, distinct models needed,
 
 - [ ] **Step 3: THE REASSESSMENT GATE — do not continue without it**
 
-The spec's D2 says all 160. The pilot exists to test whether that survives contact. With the measured per-route cost, state a recommendation:
+The spec's D2 says all 164. The pilot exists to test whether that survives contact. With the measured per-route cost, state a recommendation:
 
-- continue to all 160 as specified;
+- continue to all 164 as specified;
 - narrow to the ~48 numeric-risk routes and allowlist the rest permanently;
 - stop after `/api/kpi` and keep the AST guards for the remainder.
 
@@ -556,3 +563,649 @@ Present the number and the recommendation to the human partner. **Do not begin `
 git add docs/superpowers/plans/2026-08-25-response-model-refactor-PILOT-MEASUREMENT.md
 git commit -m "docs(plan): pilot measurement and reassessment for the response-model refactor"
 ```
+
+---
+
+## Gate outcome (Task 7 Step 3) — answered 2026-08-25
+
+The human partner chose **all 140 remaining routes** (not the narrowed 107 the pilot
+recommended, and not stop-after-kpi), and **fix `coverage_of()` first**. Spec D2 survives
+contact. Spec §8's open question about `/api/export` + `/api/reports` is thereby answered:
+they are in scope.
+
+Measured surface at the gate — the numbers these tasks are sized from:
+
+| bucket | count | what conversion buys |
+|---|---:|---|
+| explicit GET | 81 | closes a real Decimal leak; capturable with today's harness |
+| explicit mutation (22 POST, 2 PUT, 2 DELETE) | 26 | closes a real leak; needs the D4 write-capture harness first |
+| undeclared | 33 (25 DELETE, 7 GET, 1 POST) | closes **no bug** — already immune; OpenAPI accuracy only |
+
+Spec §6 predicted the DELETEs would be trivial. Measured: 25 of 27 are undeclared and
+already immune, so they need no bug work at all — only contract declarations, last.
+
+**Sequencing rule for everything below:** one area (or named group) per task, per the pilot's
+demonstrated cost variance. Each task ends with the allowlist strictly smaller and the golden
+master green. Do not batch areas into one PR.
+
+**The recurring hazard the pilot found, restated because it will bite again:** a route whose
+fields are *conditionally present* — an auth-scope-gated addition, or a `try/except` fallback
+with a narrower shape — needs `response_model_exclude_unset=True`. Without it, `Optional[X] =
+None` fields serialize as explicit `null` keys the route never used to emit. mypy cannot catch
+this; only the golden master's key-set comparison does. Check every route for it explicitly
+rather than assuming clean.
+
+---
+
+### Task 8: Repair the second safety net (`coverage_of`)
+
+**Files:**
+- Modify: `backend/tests/contract/frontend_usage.py`
+- Test: `backend/tests/contract/test_frontend_usage.py`
+
+The pilot measured `coverage_of()` returning `COVERED` for 9 of 15 routes that had **zero**
+real field overlap — pure bleed from unrelated code in the same file. Combined with the 8
+trend routes already in `KNOWN_BLIND`, the entire 24-route pilot area ran on one net, not the
+two spec D3 requires. It must not be relied on across ~100 more routes in that state.
+
+- [ ] **Step 1: Write the failing test.** Assert that a route whose frontend-read fields do
+      not intersect its own declared/captured field names reports `NO_FIELDS_FOUND`, not
+      `COVERED`. Use a real measured case from the pilot: `GET /api/kpi/efficiency/by-product`
+      reads `avg_efficiency` from bleed, while the route's real fields are `actual_output`,
+      `efficiency`, `product_id`, `product_name` — zero intersection.
+- [ ] **Step 2: Run it, confirm it fails** with the current `COVERED`.
+- [ ] **Step 3: Implement.** Require the fields found to intersect the route's actual field
+      names (available from the golden master entry) before reporting `COVERED`. Report a
+      third state where the endpoint is genuinely unused by the frontend, so "nobody reads
+      this" is distinguishable from "the extractor cannot see it".
+- [ ] **Step 4: Re-measure the pilot's 24 routes** and record the corrected coverage. If the
+      corrected reading is that few or none are genuinely covered, say so — that is a real
+      finding about the frontend audit's value, not a failure of this task.
+- [ ] **Step 5: Mutation-proof + commit.**
+
+**Exit criterion:** no route can report `COVERED` on bleed. `KNOWN_BLIND` shrinks or is
+justified per remaining entry.
+
+---
+
+### Tasks 9–14: Convert the 81 explicit GET routes, by area
+
+Same loop as Tasks 6 and 7, one task per grouping. Measure the exact route list and its
+golden entries at dispatch time (the pilot's method), rather than trusting a list written
+here that may drift.
+
+| Task | area(s) | total | explicit | GET | notes |
+|---|---|---:|---:|---:|---|
+| 9 | `/api/workflow` | 14 | 14 | 9 | densest remaining; 5 mutations deferred to Task 15 |
+| 10 | `/api/reports` + `/api/export` | 20 | 20 | 18 | spec §8's "benefit close to zero" area — **verify first** whether these return `FileResponse`/`StreamingResponse`, for which a `response_model` is meaningless. Any that do get a documented allowlist exception, not an invented model. |
+| 11 | `/api/quality` + `/api/jobs` | 17 | 15 | 15 | |
+| 12 | `/api/floating-pool` + `/api/attendance` | 14 | 12 | 8 | `/api/floating-pool/simulation/insights` returns **deliberate** numeric-looking strings (spec §6) — its model must declare `str`. Nested three levels; cover the interior. |
+| 13 | `/api/work-orders` + `/api/kpi-thresholds` + `/api/capacity` + `/api/data-completeness` | 16 | 14 | 10 | |
+| 14 | the explicit-GET tail | rest | | | `/api/cache`, `/api/predictions`, `/api/my-shift`, `/api/alerts`, `/api/shifts`, `/api/v2`, `/api/defect-types`, `/api/filters`, `/api/client-config`, `/api/pivot`, `/api/products`, `/api/downtime-reasons`, `/api/inference`, `/api/import-logs`, `/api/onboarding` |
+
+Per task: model from the captured key set → apply → golden master → check
+`response_model_exclude_unset` need → shrink allowlist → frontend audit (now trustworthy
+after Task 8) → commit.
+
+---
+
+### Task 15: Build the D4 write-capture harness
+
+**Files:** `backend/tests/contract/capture.py`, `backend/tests/contract/test_golden_master.py`
+
+The 26 explicit mutation routes cannot be converted safely without capturing what they
+actually return. Spec D4: disposable seeded database, `alembic upgrade head`, seed, exercise,
+discard — never against the VM.
+
+- [ ] Extend the harness to issue real writes with valid bodies, resolving required fields
+      from seeded rows.
+- [ ] Capture mutation responses into the golden master.
+- [ ] **Prove the harness detects change**, exactly as Task 5 did for reads: a deliberately
+      dropped field must fail and name the route and key. A harness that records
+      `<status:422>` for every mutation because it cannot build a valid body is the same
+      false green Task 5 caught — check for it explicitly.
+- [ ] Where a mutation's shape genuinely varies with the request, record a documented
+      allowlist exception (spec §6) rather than inventing a model.
+
+---
+
+### Task 16: Convert the 26 explicit mutation routes
+
+Depends on Task 15. `/api/auth` holds 4 of them and is security-sensitive — its responses
+must not gain or lose fields, and no token/credential field may be added to a model.
+`/api/metrics/results` returns **deliberate** str-of-Decimal values (spec §6); its model
+declares `str` and must stay that way.
+
+---
+
+### Task 17: Declare the 33 already-immune routes
+
+These close no bug — they are the OpenAPI-accuracy half of D1. 25 are DELETEs, which spec §6
+predicted would be uniform; confirm that and use one shared model if so. Lowest priority;
+do them last so the risk-bearing work lands first.
+
+**Completion:** the ratchet allowlist is empty, and `test_no_api_route_has_a_loose_response_model`
+passes with no exceptions beyond those documented per spec §6.
+
+---
+
+### Task 8b: Real path-parameter id resolution, and recapture (BLOCKS Task 9)
+
+**Inserted 2026-08-25**, after measuring Task 9's work list. Runs before Task 9.
+
+**Files:**
+- Modify: `backend/tests/contract/capture.py`, `backend/tests/contract/test_golden_master.py`
+- Regenerate: `backend/tests/contract/golden/api_shapes.json`
+
+`capture_all`'s own docstring states the hazard exactly: *"the caller owns id resolution — the
+harness deliberately does not guess ids, because a wrong id yields a 404 whose shape is
+recorded as if it were the real answer."* But `loose_routes()` returns `(method, route.path,
+{})` — the raw template — so the caller resolves nothing, and every path-param route was
+captured by requesting a URL containing **literal braces**.
+
+Measured across the golden master's 63 path-param entries: 32 `<status:404>`, 22
+`<status:422>`, 1 `<status:400>`, and 8 recording a 200 shape captured for an entity whose id
+is the literal string `{client_id}`.
+
+**The 8 are worse than the 54.** A probe against a real seeded client:
+
+```
+GET /api/workflow/statistics/{client_id}/status-distribution
+    literal braces : 200, 3 keys
+    REAL client    : 200, 5 keys
+    missing: by_status[].count, by_status[].percentage, by_status[].status
+```
+
+That golden entry is wrong, not thin — it omits an entire nested object. A model built from it
+would drop those three fields from production responses, or reject real responses under
+`extra="forbid"`. That is the bug class this refactor exists to remove, sitting inside the
+instrument meant to detect it.
+
+62 of the 140 remaining routes (44%) carry a path param, so this blocks most of the work ahead.
+
+- [ ] **Step 1: Resolve ids from seeded rows.** For each path param, select a real id from the
+      seeded database — `client_id` from the seeded clients, `work_order_id` from a seeded work
+      order, and so on. Derive them; do not hardcode a list that will drift from the seed.
+- [ ] **Step 2: Fail loudly on an unresolvable param.** A param the resolver cannot fill must
+      raise, naming the route and the param — NOT fall through to a literal-brace request. The
+      whole defect is that an unresolved param silently produced a recordable answer.
+- [ ] **Step 3: Recapture the golden master.** Expect large, legitimate churn: ~54 entries move
+      from a status placeholder to a real shape, and some of the 8 change. Every changed entry
+      must be explained in the report — a diff this large is exactly where a real regression
+      hides, so do not wave it through as "expected churn". Confirm no entry moves from a real
+      shape to a status placeholder; that direction means resolution got worse.
+- [ ] **Step 4: Prove it.** Assert that no captured route records a status placeholder purely
+      because its id was unresolved, and that no golden key contains a literal `{`. Mutation:
+      break one resolver and confirm the guard fires, naming the route.
+- [ ] **Step 5: Recheck `coverage_of`.** Task 8's `_real_field_names` reads the golden master.
+      Routes that had no field names now have them, so coverage readings change — re-measure and
+      report the new number. Some `KNOWN_BLIND` entries may no longer be needed.
+- [ ] **Step 6: Commit.**
+
+**Exit criterion:** no golden key contains `{`; every path-param route records either a real
+shape or a status explained by something other than an unresolved id (a genuine 422 from a
+missing request body is fine and expected for mutations, which Task 15 handles).
+
+---
+
+### Task 8c: Cross-tenant authorization sweep and fix (own PR, off main)
+
+**Found 2026-08-25** while building Task 8b's resolution map. Not part of the response-model
+refactor; sequenced after Task 8b because that task builds the id resolution the sweep needs.
+**Ships as its own PR branched from `main`, not on the refactor branch** — a security fix
+buried in a 140-route contract diff is neither reviewable nor backportable.
+
+**Confirmed exploitable**, verified behaviourally against a seeded DB:
+
+```
+attacker: role=supervisor, client_id_assigned=DEMO-HOURLY
+GET    /api/shifts/3   -> 200, body client_id=DEMO-HYBRID    cross-tenant READ
+DELETE /api/shifts/3   -> 204                                cross-tenant DELETE
+GET    /api/shifts     -> correctly scoped
+GET    /api/production-lines/1 -> 200, owner DEMO-PIECE      cross-tenant READ
+```
+
+`routes/shifts.py:42` (list) uses `resolve_client_scope`; the `GET/PUT/DELETE /{shift_id}`
+routes in the same file do not. `crud/shift.py:164` filters on `shift_id` alone. Same class as
+PR #144's uniform client-scope work — these were missed.
+
+- [ ] **Step 1: Build a two-tenant fixture, independent of the seeder.** Insert rows directly
+      for every client-scoped ORM model, for two distinct clients. Do NOT depend on demo seed
+      data: `CoverageEntry`, `Alert`, `FloatingPool`, `SimulationScenario` and
+      `CalculationAssumption` have zero rows in both profiles, and a security test that inherits
+      the seeder's gaps is narrowed by every future seeder change.
+- [ ] **Step 2: Probe every by-id route behaviourally.** For each, request tenant B's row as a
+      user scoped to tenant A and assert the response is 403/404, never 200-with-B's-data.
+      **Grep is not a substitute** — an earlier grep for scope markers in endpoint bodies gave
+      139 candidates, of which the behavioural probe showed work-orders, holds, production,
+      quality, downtime, defect-types and client-config all correctly return 403. They enforce
+      scope in the CRUD layer, invisible to the grep. Probe behaviour, not text.
+- [ ] **Step 3: Resolve the integer-PK correlation.** Both confirmed-vulnerable entities use
+      sequential integer PKs; every confirmed-protected one uses a client-prefixed string PK.
+      Determine whether protection is riding on id format rather than an explicit tenant check.
+      If it is, that is a design gap — any future integer-PK entity ships unscoped by default —
+      and needs a structural guard, not two point fixes.
+- [ ] **Step 4: Fix every route the sweep confirms**, following the existing
+      `resolve_client_scope` pattern.
+- [ ] **Step 5: Pin it.** Extend `test_permission_matrix.py` so cross-tenant denial is asserted
+      per route. Mutation-proof: remove one scope check and confirm the matrix fails naming the
+      route.
+
+**Exit criterion:** no by-id route returns another tenant's row to a scoped user, and a test
+fails loudly if one ever does again.
+
+---
+
+### Task 8d: Seed the unseeded tables
+
+Measured during Task 8c prep: `COVERAGE_ENTRY`, `ALERT`, `FLOATING_POOL`,
+`SIMULATION_SCENARIO` and `CALCULATION_ASSUMPTION` have **zero rows in both the smoke and full
+profiles** — the seeder never writes them. The Task 8b resolution map identifies 19 path params
+blocked on the same gap.
+
+Consequences beyond this refactor: those features have no demo data, and their routes cannot be
+contract-captured. Sequenced last because the seeder was cut over in S1c and this is real work
+against it, not a harness tweak. Task 8b's blocked manifest is this task's input.
+
+---
+
+### Task 10 — CORRECTED 2026-08-25, after measuring what these routes actually return
+
+The Tasks 9–14 table sizes Task 10 as "`/api/reports` + `/api/export`, 20 routes, 20 explicit,
+18 GET" and flags spec §8's open question ("benefit close to zero") as something to verify
+first. Verified. The premise was wrong, and the answer is not "convert 18 routes".
+
+Measured against the golden master and the route sources:
+
+| what | count | truth |
+|---|---:|---|
+| `/api/export/*` + `/api/reports/*/pdf|excel` | **17** | annotated `-> Any`, actually return `StreamingResponse`/`FileResponse`. Golden entry `<non-json>`. **A response model is not low-value here, it is wrong** — there is no JSON body to model. |
+| `GET /api/reports/available` | **1** | genuine JSON, 10 keys. The only convertible route in this area. |
+| `POST /api/reports/send-manual`, `POST /api/reports/email-config/test` | 2 | `<status:422>`, no body sent. Task 16. |
+
+**So spec §8's open question is answered by measurement, not judgement: these 20 routes contain
+exactly one response model worth writing.**
+
+The remaining 17 are not an allowlist exception to be tolerated — they are **mis-annotated**.
+`-> Any` is a false statement about a route that returns a CSV stream, and it is what puts them
+in the explicit-risk bucket. Annotating the real return type is truthful, fixes the OpenAPI lie
+(D1's stated secondary goal), and moves them from "explicit, real Decimal risk" to "no response
+model by nature". Verified: `-> StreamingResponse` yields `response_model=None` and leaves the
+response byte-identical.
+
+**The ratchet needs a principled scope rule, not 17 permanent allowlist entries.** A route that
+returns a `Response` subclass has no JSON body and therefore cannot leak a Decimal — it never
+reaches Pydantic's serializer. Excluding it is correcting the guard's domain, not weakening it.
+
+Gate it two-sided against the golden master, whose `<non-json>` marker is the independent
+evidence. All 29 `<non-json>` entries decompose into exactly three categories:
+
+- 3 already annotated as a `Response` subclass
+- 9 `DELETE` returning 204 No Content (`-> None`)
+- 17 the mis-annotated export/report routes
+
+So the gate is: **every route declared out-of-scope must record `<non-json>`, and every
+`<non-json>` entry must be explained by exactly one of {`Response` subclass, 204 No Content}.**
+An unexplained `<non-json>` is a route returning something unparseable that nobody declared —
+which is a finding, not noise. The 204 taxonomy built here is Task 17's input.
+
+Allowlist: 131 → **113** (17 scoped out, 1 converted).
+
+**Do not let a route dodge the ratchet by claiming a return type it does not have.** The
+two-sided gate is what prevents that: a route annotated `-> StreamingResponse` that actually
+returns a dict would record real JSON keys in the golden master and fail.
+
+---
+
+## Tasks 11–14 REPLACED by R1–R5 — 2026-08-26, sized from a measured classification
+
+A 10-agent sweep classified all 111 then-remaining routes. The Tasks 9–14 table grouped by
+route COUNT, before anyone knew what the routes return. Measured:
+
+| class | count | can it take a response model? |
+|---|---:|---|
+| `json_body` | **69** | yes — this is the real remaining work |
+| `no_content_204` | 25 | no — all DELETEs, Task 17 / the scope rule |
+| `needs_request_body` | 11 | not until Task 15's write-capture harness |
+| `file_download` | 6 | no — Task 10's scope rule covers them |
+
+**38% of what remained can never take a response model.** `/api/qr` (5 routes, all PNG) was
+mis-sized exactly as `/api/export` was, and appeared in **no** Task 11–14 grouping — it has
+since been scoped out (`f0092c9`). `/api/workflow` residue is 5 routes, all Task 16's.
+
+### The new batches, weighted by cost rather than count
+
+Weight: 1 base, **+2** conditional shape (needs `exclude_unset` + a registry entry + a forcing
+test — the expensive part), **+1** no usable golden evidence, **+1** Decimal hazard.
+69 routes, 130 total weight, five batches of 26 each. The old four were 26 / 8 / 13 / 33.
+
+| batch | areas | routes | weight |
+|---|---|---:|---:|
+| **R1** | `/jobs` | 7 | 26 |
+| **R2** | `/quality` 8, `/capacity` 2, `/pivot` 1 | 11 | 26 |
+| **R3** | `/floating-pool` 4, `/work-orders` 5, `/attendance` 4, `/alerts` 2 | 15 | 26 |
+| **R4** | `/cache` 4, `/kpi-thresholds` 3, `/predictions` 3, `/data-completeness` 3, `/my-shift` 2, `/shifts` 2, `/plan-vs-actual` 2 | 19 | 26 |
+| **R5** | `/auth` 4, `/v2` 2, `/defect-types` 2, + 9 single-route areas | 17 | 26 |
+
+**Order: R4 → R3 → R2 → R5 → R1.** R4 is evidence-backed with near-zero conditionals — the
+most routes closed for the least risk. R1 is last and has a hard prerequisite.
+
+### R1's prerequisite — seed JOB first
+
+`/jobs` is 10% of the convertible routes and 20% of the weight: 6 of its 7 routes have a
+conditional shape (the highest concentration anywhere) and 6 of 7 have **no golden evidence at
+all**, every one `<blocked:job_id>`. `param_specs.py:285` already records why:
+
+> `job_id` … *"JOB has zero seeded rows; named in `seed/cli.py`'s never-written list. Blocks 8
+> of the 15 blocked routes — the highest route-count payoff of any single seeder gap."*
+
+Seed JOB (a slice of Task 8d) **before** R1, so R1 works from evidence rather than source
+reading. Do not discover this during R1.
+
+### Two standing instructions for every remaining batch
+
+**1. Declare `float`, never `Decimal`.** A model field typed `Decimal` *creates* the
+string bug this refactor exists to remove. And the golden master compares key sets, never value
+types, **by design** — so it is structurally blind to exactly that regression: a `Decimal`-typed
+field would leave the whole suite green. These routes need a narrow value-type assertion of
+their own; do not weaken the golden master to get one.
+
+**2. The remaining Decimal risk is live, not hypothetical.** Of the allowlisted routes, ~80
+carry an explicit loose `response_model` and route through Pydantic's serializer; only ~33 are
+undeclared and therefore already immune. `GET /api/inference/cycle-time/{product_id}` emits
+`"ideal_cycle_time":"0.034260326879026824"` on **SQLite today**. See the CONTROLLER CORRECTION
+at the head of §6 in `remaining-route-classification.md` — that document's §6 originally claimed
+the opposite, and anything quoting it uncorrected inherits the error.
+
+---
+
+## Two plan-wide facts established in Batch R4 — 2026-08-26
+
+### 1. `int` → `float` widening is an ACCEPTED, DISCLOSED consequence
+
+Declaring a field `float` where the producer can emit a Python `int` widens the wire value:
+
+```
+GET /api/cache/health               "hit_rate":0    -> 0.0
+GET /api/cache/stats                "hit_rate":0    -> 0.0
+GET /api/data-completeness/summary   daily[].*:100  -> 100.0
+```
+
+Mechanism: `round(0, 2)` is the int `0`; `min(float, 100)` returns the int `100` when the ratio
+exceeds 100. Pydantic then renders `0.0` / `100.0`.
+
+**This is accepted, not a defect.** `float` is the correct declaration — `int` would truncate
+87.5 — and it is the same intentional normalisation as `"93.50"` → `93.5`, which is the point
+of the refactor. This plan's "no endpoint may change what it returns" means **field sets**,
+which is exactly why the golden master compares key sets and never value types.
+
+Benign for this product: the frontend is TypeScript, and `JSON.parse` yields the same `Number`
+for `100` and `100.0`. A strict Python consumer would see `int` vs `float` — worth knowing, not
+worth reverting.
+
+**Every batch must disclose its own instances.** The golden master is structurally blind to
+this, so it will not surface on its own, and a report claiming "no endpoint changed what it
+returns" without checking is asserting something nobody measured. A/B capture the bodies if in
+doubt.
+
+### 2. The `Decimal` guard does NOT run in the contract suite
+
+`tests/test_models/test_decimal_response_serialization.py::test_no_response_model_carries_a_decimal_field`
+is the only thing enforcing "declare `float`, never `Decimal`" — the instruction that protects
+against *creating* the bug this refactor removes. Measured in R4: with a `Decimal` field
+deliberately in place, `pytest tests/contract/` stayed **53 passed**; only that separate module
+failed.
+
+So an implementer running the contract suite constantly — which every brief tells them to do —
+gets **no signal** on the single most dangerous mistake available to them. Until that changes,
+every batch must run
+`backend/.venv/bin/python -m pytest tests/test_models/test_decimal_response_serialization.py`
+explicitly before committing. The guard does recurse through nested models, so it is
+comprehensive once run.
+
+### 3. Interpreter — non-negotiable
+
+Run everything through **`backend/.venv/bin/python`**. A bare `python`/`pytest` on this machine
+is Anaconda with **fastapi 0.129.0**; the repo pins **0.141.1**. Under 0.129 `app.routes` is
+flat, so the whole contract harness reads green while the route walk sees nothing under the
+pinned version — measured at the pre-fix commit: **9 failed / 41 passed**, with the ratchet
+finding 0 loose routes where the fixed walk finds 112.
+
+`tests/contract/test_capture_harness.py::test_flatten_api_routes_changes_the_observed_route_set`
+fails under 0.129 and passes under 0.141.1, so it detects a wrong interpreter by construction.
+**If the contract suite shows exactly that one failure, the code is fine and the interpreter is
+wrong.**
+
+---
+
+## CORRECTION to "int → float widening" — 2026-08-27, found in Batch R3
+
+The plan-wide fact recorded after R4 describes the widening mechanism as **plain-`int`
+producers** (`round(0, 2)` returning int `0`; `min(float, 100)` returning int `100`). That is
+one of two mechanisms, and the smaller one. The other went unnoticed until a raw `Decimal`
+first reached an unmodelled route in R3.
+
+**FastAPI's `decimal_encoder` switches on the Decimal's exponent:**
+
+```
+jsonable_encoder(Decimal('95'))     exponent  0  ->  95     (int)
+jsonable_encoder(Decimal('0'))      exponent  0  ->  0      (int)
+jsonable_encoder(Decimal('13.60'))  exponent -2  ->  13.6   (float)
+jsonable_encoder(Decimal('0.5'))    exponent -1  ->  0.5    (float)
+```
+
+`int()` when `exponent >= 0`, `float()` only when negative. So a `Decimal` built from an
+integer — `Decimal(a - b)`, `Decimal(int(x))` — is on the wire as a JSON **integer** today.
+Declaring that field `float` changes `95` to `95.0` on **every** response.
+
+R3 hit this on `simulation/insights`: 16 values per response, 4 field paths × 4 scenarios,
+100% of calls. It was mis-diagnosed at first because the obvious probe
+(`jsonable_encoder(Decimal("13.60")) → 13.6`) samples a *negative* exponent and looks
+reassuring.
+
+**The rule for every remaining batch:**
+
+- A `Decimal` field that is **always integral** (built from `int` arithmetic, a count, a
+  difference) should be declared **`int`** — the wire stays byte-identical, and `int` still
+  rejects a non-integral `Decimal` loudly.
+- A `Decimal` field that is **quantized** (`.quantize(Decimal("0.01"))`, a rate, a percentage)
+  should be declared **`float`** — it is already a float on the wire.
+- Never declare `Decimal`. That *creates* the JSON-string bug this refactor removes.
+
+**Check the producer, not a sample value.** `Decimal(x)` where `x` is an int has exponent 0
+no matter how large; `Decimal("13.60")` has exponent −2 no matter that it looks similar. The
+golden master compares key sets and is structurally blind to the whole class.
+
+**Earlier batches were audited against this and are clean:** Tasks 6, 7, 9 and 10 declared
+`float` only on values already float-typed in Python or produced by `round(...)`, and R4's
+disclosed instances are the plain-`int` mechanism, correctly recorded.
+
+---
+
+## CORRECTION TO THE CORRECTION — 2026-08-27, found in Batch R2's review
+
+The section above ("CORRECTION to int → float widening") states the exponent rule as though it
+governs the routes this refactor converts. **It does not, for almost all of them**, and the
+error was mine. Superseding statement:
+
+**FastAPI infers a response model from the RETURN ANNOTATION.** `decimal_encoder` — and
+therefore the exponent rule — is reached only by a handler with **no return annotation at all**.
+Measured on the pinned stack (fastapi 0.141.1, pydantic 2.13.4):
+
+```
+def f():                        -> {"d0":0,   "d95":95,   "d136":13.6}     numbers
+def f() -> Dict[str, Any]:      -> {"d0":"0", "d95":"95", "d136":"13.60"}  STRINGS
+def f() -> Any:                 -> {"d0":"0", "d95":"95", "d136":"13.60"}  STRINGS
+```
+
+This is consistent with the split measured at the very start of this plan: `response_model is
+None` (no annotation) is the *already-immune* bucket; an explicit `Any`/`dict`/`list` annotation
+routes through pydantic and **stringifies a Decimal regardless of its exponent**.
+
+### What this changes
+
+- **For an annotated route** (the ~80 explicit ones — the bulk of the work): a raw `Decimal`
+  is a JSON **string** on the wire today. Declaring `int` or `float` is a **Decimal-string leak
+  fix**, which is the refactor's entire purpose. It is *not* a widening and *not* byte-identical
+  to the previous wire. Choose `int` when the value is always integral (preserves integer
+  semantics, rejects a non-integral Decimal loudly) and `float` when it is quantized.
+- **For an unannotated route** (the ~33 immune ones): the exponent rule genuinely applies, and
+  declaring a type there *can* change `95` to `95.0`. Those are Task 17's, and are the only
+  place the earlier section's reasoning holds.
+
+### Consequences already in the tree
+
+- Commit `29547b9`'s message claims declaring `int` on four `simulation/insights` fields is
+  "byte-identical to current behaviour". **That claim is false** — the route is annotated
+  `-> Dict[str, Any]` (`routes/floating_pool.py:261`), so its pre-conversion wire was `"2"`,
+  a string. The `int` **declarations are still correct** (always-integral values, and `int` is
+  the leak fix that preserves integer-ness); only the stated reason was wrong.
+- R2's `quality_contracts.py` HAZARD 1/2 docstrings and one test name encode the same false
+  premise. Being corrected separately.
+
+### The durable lesson
+
+Both errors came from probing a *value* (`Decimal("13.60")`, `Decimal(95)`) instead of the
+*route*. The wire format is decided by the handler's return annotation, not by the value's
+exponent — so **check the annotation first, then the producer**. A probe that constructs a
+`Decimal` and encodes it in isolation cannot tell you what any real route emits.
+
+---
+
+# The 59 unreachable routes — root causes, plan, and anti-recurrence
+
+Written 2026-08-27 after the human partner asked what the plan is for everything the
+conversion batches cannot reach. The honest answer is that "unreachable" has been used as one
+word for **five different causes**, only two of which are missing infrastructure. Grouping them
+by symptom is what let the gap grow silently.
+
+## Measured breakdown of the 71 still allowlisted
+
+| bucket | count | root cause | is it a harness gap? |
+|---|---:|---|---|
+| convertible now | 12 | nothing | no — the final conversion batch |
+| `<non-json>` DELETE | 9 | 204 No Content: legitimately no JSON body | **no** — a declaration, not a gap |
+| `<status:404>` DELETE | 7 | **LIVE PRODUCT BUG** (below) | **no** — a defect the harness found |
+| `<blocked:…>` | 14 | seeder writes no rows for that entity | yes — seed gap |
+| `<status:422>` | 26 | needs a request body or required query params | yes — write-capture gap |
+| `<status:400>` / `<status:401>` | 2 | individual causes, undiagnosed | unknown |
+
+### The 7 DELETEs are a production bug, not a testing limitation
+
+`DELETE /api/{attendance,defects,downtime,holds,production,quality,work-orders}/{id}` return
+**404 for every id, including valid ones**. Cause: the CRUD layer calls `soft_delete()`, which
+sets `is_active = False`, and **none of those seven models has an `is_active` column** — so it
+returns `False` and the route raises 404. Verified against all seven ORM classes.
+
+Users cannot delete an attendance entry, defect, downtime record, hold, production entry,
+quality inspection, or work order. The contract harness detected this correctly and it was
+recorded as "cannot capture", which reads like a harness limitation and is not one.
+
+**This is the anti-recurrence lesson in miniature: an unreachable route is a finding until
+proven otherwise.** Seven real defects hid inside a bucket labelled "infrastructure gap".
+
+## Sequenced plan
+
+**S1 — Fix the seven broken DELETEs.** Own PR off `main`, like the security fix. Either add
+`is_active` to the seven models (a migration) or switch those CRUD paths to a hard delete —
+a product decision, not a mechanical one. Closes 7 routes *and* a live defect.
+
+**S2 — Declare the nine 204 DELETEs out of scope.** They have no JSON body by nature. The
+mechanism already exists (`OUT_OF_SCOPE_ROUTES` + `classify_non_json_route`, built in Task 10
+and already handling the 204 category). Roughly an hour; allowlist −9.
+
+**S3 — Close the seeder gaps (14 routes).** Two units of work, not fourteen:
+ - `job_id` alone accounts for **7**. One JOB emitter unblocks them. Generic routing sequence,
+   flagged as invented, `planned_hours` derived from each product's existing `ideal_cycle_time`
+   — no SAM, no SQFT (see the `client_type` memory: those concepts do not exist in the code and
+   the SQFT component is deliberately deferred).
+ - The other 7 are one row each: `break_id`, `coverage_id`, `equipment_id`, `filter_id`,
+   `pool_id`, `part_number`, `scenario_id@simulation`.
+ This also unblocks the five client-scoped tables the cross-tenant security tests could not
+ reach, and the `capacity_*` worksheets whose interiors are currently source-inspected only.
+
+**S4 — Build the D4 write-capture harness (26 routes).** The only genuinely missing
+infrastructure. Boot a disposable seeded DB, issue real writes with valid bodies resolved from
+seeded rows, capture the responses. Spec §D4 already describes it. **Its own exit criterion is
+the important part: a deliberately dropped field must fail and name the route.** A harness that
+records `<status:422>` for every mutation because it cannot build a valid body is the same
+false green Task 5 caught for reads.
+
+**S5 — Diagnose the remaining 2** (`onboarding/status` 400, one 401). Individually.
+
+**S6 — Convert what S1–S5 unblock**, in batches, under the existing rules.
+
+## Anti-recurrence — the gate that should have existed
+
+Today a route with `<status:422>` sits in the allowlist indefinitely and **nothing escalates**.
+The ratchet says "not yet converted"; it never asks *why not*, and never notices when the answer
+stops being true. That is exactly how seven product bugs spent months looking like a testing
+limitation.
+
+**Build an `UNREACHABLE_ROUTES` registry, gated two-sided**, in the house pattern already used
+four times (`NEVER_404`, `EXCLUDE_UNSET_ROUTES`, `OUT_OF_SCOPE_ROUTES`, the interpreter gate):
+
+- Every allowlisted route whose golden entry is a placeholder must have an entry naming its
+  **root cause**, from a closed vocabulary: `NEEDS_REQUEST_BODY`, `NEEDS_QUERY_PARAMS`,
+  `SEED_GAP:<entity>`, `NO_JSON_BODY`, `PRODUCT_BUG:<ref>`, `UNDIAGNOSED`.
+- **Forward side:** every placeholder route is declared. A new unreachable route fails the gate
+  until someone writes down why.
+- **Reverse side:** every declared route is *still* unreachable. When a fix or a seeder change
+  makes one reachable, the gate fires and says so — the signal that has been missing.
+- `UNDIAGNOSED` is permitted but **capped** (start at the current 2). The cap is the ratchet:
+  it can only go down, so unexplained routes cannot accumulate.
+
+This costs about the same as one conversion batch and is the only item here that prevents the
+gap re-forming. Without it, the next unreachable route is invisible again — and the evidence
+says that is how seven live defects stayed filed as infrastructure.
+
+---
+
+## S1 decided — 2026-08-27
+
+**Decision 1 (human partner): add `is_active` to the seven transaction models.** Not hard delete.
+*"Let's do what is right rather than what is convenient."* Soft delete is the correct model for
+auditable transaction records; a migration adds the column to `ATTENDANCE_ENTRY`,
+`DEFECT_DETAIL`, `DOWNTIME_ENTRY`, `HOLD_ENTRY`, `PRODUCTION_ENTRY`, `QUALITY_ENTRY`,
+`WORK_ORDER`.
+
+**Decision 2: ships as its own PR off `main`**, like the cross-tenant fix. It is a live
+user-facing bug (six of the seven are wired to frontend delete buttons) and unrelated to the
+refactor.
+
+**Decision 3: enforcement is automatic and scoped to the seven — not ad hoc, not global.**
+
+The reason this needed deciding: **the existing `is_active` pattern is itself broken.** Measured,
+counting chained filters rather than naive greps:
+
+```
+query(Employee) sites: 33   with is_active filtering nearby:  4
+query(Product)  sites: 29   with is_active filtering nearby:  1
+```
+
+A soft-deleted employee already reappears in ~29 of 33 read paths. Extending that pattern to
+seven high-volume transaction tables would inherit the defect at larger scale — and on these
+tables a resurrected row is a **wrong KPI**, not a stale dropdown entry.
+
+So filtering is applied automatically at the ORM/session layer for the seven, with explicit
+opt-in to see inactive rows, plus a two-sided registry gate so a future soft-deletable model
+must be classified rather than silently defaulting to unfiltered.
+
+**Why scoped and not global.** The two options carry different kinds of risk, and only one is
+gateable:
+
+- **Global** (all 26 soft-deletable models) risks **regression**: 288 attendance rows reference
+  employees, so soft-deleting a departed worker under a global `Employee` filter would hide them
+  from every join, including historical attendance and production that legitimately belongs to
+  them. KPIs would move, silently. That risk cannot be gated away, and this suite has already
+  been shown to encode wrong behaviour as expected (four tests asserted the cross-tenant
+  vulnerability).
+- **Scoped** risks **inconsistency**, which the house two-sided-registry pattern already solves
+  five times over.
+
+Decisive asymmetry: **the seven models have no existing read behaviour to regress**, because they
+cannot be soft-deleted today at all. The mechanism is proven where a mistake cannot be inherited.
+
+**S1b — the existing 19 models are a real, live defect and get their own task.** Soft-deleted
+employees and products are visible in most reads today. Sequenced after S1, under real
+verification, not bundled into a bug fix.

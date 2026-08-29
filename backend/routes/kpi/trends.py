@@ -8,20 +8,21 @@ on-time delivery, and absenteeism; plus performance breakdown by shift and produ
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import func, case
-from typing import Any, Optional
+from typing import Any, List, Optional
 from datetime import date, datetime, timedelta
 
 from backend.utils.logging_utils import get_module_logger
 from backend.database import get_db
 from backend.auth.jwt import get_current_user, ClientScope, resolve_client_scope
 from backend.orm.user import User
+from backend.schemas.kpi_contracts import PerformanceByProduct, PerformanceByShift, TrendPoint
 
 logger = get_module_logger(__name__)
 
 trends_router = APIRouter(prefix="/api/kpi", tags=["KPI Calculations"])
 
 
-@trends_router.get("/performance/trend")
+@trends_router.get("/performance/trend", response_model=List[TrendPoint])
 def get_performance_trend(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
@@ -62,7 +63,7 @@ def get_performance_trend(
     return [{"date": str(r.date), "value": round(float(r.value), 2) if r.value else 0} for r in results]
 
 
-@trends_router.get("/performance/by-shift")
+@trends_router.get("/performance/by-shift", response_model=List[PerformanceByShift])
 def get_performance_by_shift(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
@@ -123,7 +124,7 @@ def get_performance_by_shift(
     ]
 
 
-@trends_router.get("/performance/by-product")
+@trends_router.get("/performance/by-product", response_model=List[PerformanceByProduct])
 def get_performance_by_product(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
@@ -186,7 +187,7 @@ def get_performance_by_product(
     ]
 
 
-@trends_router.get("/quality/trend")
+@trends_router.get("/quality/trend", response_model=List[TrendPoint])
 def get_quality_trend(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
@@ -225,7 +226,7 @@ def get_quality_trend(
     ]
 
 
-@trends_router.get("/availability/trend")
+@trends_router.get("/availability/trend", response_model=List[TrendPoint])
 def get_availability_trend(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
@@ -281,7 +282,7 @@ def get_availability_trend(
     return trend_data
 
 
-@trends_router.get("/oee/trend")
+@trends_router.get("/oee/trend", response_model=List[TrendPoint])
 def get_oee_trend(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
@@ -363,7 +364,7 @@ def get_oee_trend(
     return trend_data
 
 
-@trends_router.get("/on-time-delivery/trend")
+@trends_router.get("/on-time-delivery/trend", response_model=List[TrendPoint])
 def get_otd_trend(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
@@ -401,7 +402,7 @@ def get_otd_trend(
     ]
 
 
-@trends_router.get("/absenteeism/trend")
+@trends_router.get("/absenteeism/trend", response_model=List[TrendPoint])
 def get_absenteeism_trend(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
@@ -443,7 +444,7 @@ def get_absenteeism_trend(
     ]
 
 
-@trends_router.get("/throughput-time/trend")
+@trends_router.get("/throughput-time/trend", response_model=List[TrendPoint])
 def get_throughput_time_trend(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,

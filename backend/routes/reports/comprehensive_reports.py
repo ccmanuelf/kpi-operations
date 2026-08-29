@@ -6,7 +6,7 @@ plus the /available endpoint listing all report types.
 """
 
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
@@ -18,6 +18,7 @@ from backend.orm.user import User
 from backend.reports.pdf_generator import PDFReportGenerator
 from backend.reports.excel_generator import ExcelReportGenerator
 from backend.middleware.client_auth import verify_client_access
+from backend.schemas.report_contracts import AvailableReportsResponse
 from backend.utils.logging_utils import get_module_logger
 from .production_reports import parse_date
 
@@ -33,7 +34,7 @@ async def generate_comprehensive_pdf_report(
     end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> Any:
+) -> StreamingResponse:
     """
     Generate comprehensive PDF report with all KPIs
 
@@ -90,7 +91,7 @@ async def generate_comprehensive_excel_report(
     end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> Any:
+) -> StreamingResponse:
     """
     Generate comprehensive Excel report with all KPIs and detailed worksheets
 
@@ -137,8 +138,8 @@ async def generate_comprehensive_excel_report(
         raise HTTPException(status_code=500, detail="Failed to generate report")
 
 
-@comprehensive_reports_router.get("/available")
-async def get_available_reports(current_user: User = Depends(get_current_user)) -> Any:
+@comprehensive_reports_router.get("/available", response_model=AvailableReportsResponse)
+async def get_available_reports(current_user: User = Depends(get_current_user)) -> Dict[str, Any]:
     """
     Get list of available report types and their descriptions
     """

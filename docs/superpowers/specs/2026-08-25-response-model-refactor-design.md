@@ -46,18 +46,30 @@ enumerate.
 
 ## 3. Measured scope
 
-460 `/api` routes. **160 are loosely typed** (`None` / `Any` / `dict` / `list` / `list[dict]`).
+460 `/api` routes. **164 are loosely typed** (`None` / `Any` / `dict` / `list`, and any
+wrapper around one of those — `List[dict]`, `Optional[dict]`, `Dict[str, Any]`).
+
+> **CORRECTED 2026-08-25.** This first read **160**, measured with a predicate that tested
+> `str(model).startswith(...)`. That cannot see through a wrapper — wrapping moves the marker
+> off position 0, so `typing.List[dict]` tested as TYPED — and it silently dropped four live
+> routes: `GET /api/products`, `GET /api/shifts`, `GET /api/shifts/active`, and the workflow
+> transition-times route. `typing.List[...]` is the dominant annotation style in this
+> codebase, so the blind spot pointed straight at the common case. Found by the Task 2
+> review; the predicate is now structural (`get_origin`/`get_args`). Had it shipped, those
+> four routes would have been absent from both the work list and the ratchet allowlist, where
+> nothing would ever have flagged them again.
 The leaking endpoints were not un-modelled — they had models of `Any` and `dict`, which is
 why "add response models" understates the work.
 
-By method: GET 108, DELETE 27, POST 23, PUT 2.
+By method: GET 112, DELETE 27, POST 23, PUT 2. (The four routes the original
+predicate missed are all GETs.)
 
 By capture feasibility — this is the constraint that shapes Phase 0:
 
 | | count | golden-master capture |
 |---|---:|---|
-| paramless GET | 78 | direct |
-| GET with path params | 30 | needs an id resolved from seeded rows |
+| paramless GET | 81 | direct |
+| GET with path params | 31 | needs an id resolved from seeded rows |
 | POST / PUT / PATCH / DELETE | 52 | **requires performing writes** |
 
 Across 43 areas, heavily skewed: `/api/kpi` 24, `/api/workflow` 13, `/api/reports` 11,
@@ -73,7 +85,7 @@ declared type that makes Pydantic coerce on the way out.
 A permissive model (`extra="allow"`) would close the Decimal class just as well while leaving
 the contract vague and OpenAPI imprecise, which forfeits the main reason to do this at all.
 
-**D2 — all 160, not just the ~48 numeric-risk routes.** The numeric routes are the only ones
+**D2 — all 164, not just the ~48 numeric-risk routes.** The numeric routes are the only ones
 that leak today, but the vague contract is the underlying defect and it is worth paying off
 once. Sequenced by area so it can be stopped at any boundary with the work so far intact.
 
@@ -81,7 +93,29 @@ once. Sequenced by area so it can be stopped at any boundary with the work so fa
 differently. A golden master catches a field that disappears; a frontend audit catches a
 field that was already never sent but is read anyway. Neither alone is sufficient.
 
-**D4 — capture against a disposable seeded database, never against the VM.** 52 of the 160
+> **NARROWED 2026-08-25, for eight routes only.** The frontend extractor is structurally
+> blind to the eight `/api/kpi/*/trend` endpoints: `kpiChartConfig.ts::unwrapTrend`
+> destructures points as `r`, reads the axios envelope through a TypeScript cast, and states
+> `date`/`value` partly as type annotations rather than runtime accesses. It reports
+> non-empty field sets for all eight containing neither `date` nor `value` — bleed from
+> unrelated code — so its coverage metric read 10/10 while real protection was 0/10.
+> `coverage_of()` now returns `NO_COVERAGE` for them so silence cannot be mistaken for
+> assurance.
+>
+> The e2e suite is **not** a substitute, and was checked rather than assumed: no spec
+> mentions `trend` or `chart`, and the specs touching KPI screens assert navigation and
+> visibility (`expect(locator('text=/kpi/i')).toBeVisible()`). A chart missing its data
+> renders empty and every one of those assertions still passes.
+>
+> So those eight run on the golden master alone. That is the direct check — it compares the
+> real response key set before and after and fails naming the route and the key — and it is
+> the stronger of the two for the failure this refactor actually risks. The other 156 routes
+> keep both nets.
+>
+> **Separate finding, not this refactor's to fix:** the e2e estate has no chart-content
+> coverage at all. Any chart in the product could render empty with the suite staying green.
+
+**D4 — capture against a disposable seeded database, never against the VM.** 52 of the 164
 are mutations. Capturing them means issuing real writes, which must not happen against
 production. The hermetic pattern already used for the local e2e run applies: temp file →
 `alembic upgrade head` → seed → exercise → discard. This also makes the capture repeatable
@@ -94,7 +128,7 @@ capture time. The setting is removed before the model ships, because a strict mo
 production converts a benign extra key into a 500.
 
 **D6 — a ratchet guard with a shrinking allowlist.** A test asserting no `/api` route has a
-loose response model, seeded with the 160 as an explicit allowlist that shrinks to empty.
+loose response model, seeded with the 164 as an explicit allowlist that shrinks to empty.
 This prevents backsliding while the work is in flight and makes progress a number rather
 than a feeling.
 
@@ -128,7 +162,7 @@ differences. A net that cannot detect "no change" cannot be trusted to detect a 
 `/api/kpi` (24 routes) as the pilot, because it is the highest-traffic area and holds the
 routes that actually leaked.
 
-**The pilot's real purpose is measurement.** If a route costs 20 minutes, the remaining 136
+**The pilot's real purpose is measurement.** If a route costs 20 minutes, the remaining 140
 are a week; if it costs 5, they are two days. That number decides whether D2 survives
 contact — and it is far better learned at route 24 than at route 100. The plan must include
 an explicit reassessment point at the end of the pilot, with continuing as one option and
@@ -159,7 +193,7 @@ model that is wrong.
 will not appear in a static grep. The golden master is the backstop for exactly this case:
 it does not care why a field is read, only that it is still sent.
 
-**DELETE routes are probably trivial and should be checked early.** 27 of the 160 are
+**DELETE routes are probably trivial and should be checked early.** 27 of the 164 are
 DELETEs, which usually return a status message or 204. If they are as uniform as expected,
 they are one shared model and the effective route count drops by roughly a sixth. Worth
 confirming in Phase 0 rather than assuming.

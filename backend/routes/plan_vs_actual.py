@@ -12,6 +12,7 @@ from backend.utils.logging_utils import get_module_logger
 from backend.database import get_db
 from backend.auth.jwt import get_current_user
 from backend.orm.user import User
+from backend.schemas.ops_contracts import PlanVsActualEntry, PlanVsActualSummaryResponse
 from backend.services.plan_vs_actual_service import (
     get_plan_vs_actual,
     get_plan_vs_actual_summary,
@@ -22,7 +23,7 @@ logger = get_module_logger(__name__)
 router = APIRouter(prefix="/api/plan-vs-actual", tags=["Plan vs Actual"])
 
 
-@router.get("", response_model=None)
+@router.get("", response_model=List[PlanVsActualEntry])
 def plan_vs_actual(
     client_id: Optional[str] = Query(None, description="Filter by client"),
     start_date: Optional[date] = Query(None, description="Filter by required_date start"),
@@ -46,7 +47,7 @@ def plan_vs_actual(
     return get_plan_vs_actual(db, current_user, client_id, start_date, end_date, line_id, status)
 
 
-@router.get("/summary", response_model=None)
+@router.get("/summary", response_model=PlanVsActualSummaryResponse)
 def plan_vs_actual_summary(
     client_id: Optional[str] = Query(None, description="Filter by client"),
     db: Session = Depends(get_db),

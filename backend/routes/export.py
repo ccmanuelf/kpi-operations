@@ -161,7 +161,7 @@ async def export_production_entries(
     line_id: Optional[int] = Query(None, description="Filter by production line ID"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> Any:
+) -> StreamingResponse:
     """Export production entries as CSV."""
     from backend.utils.date_range import validate_date_range
 
@@ -214,7 +214,7 @@ async def export_work_orders(
     end_date: Optional[date] = Query(None, description="End date (YYYY-MM-DD)"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> Any:
+) -> StreamingResponse:
     """Export work orders as CSV."""
     from backend.utils.date_range import validate_date_range
 
@@ -267,7 +267,7 @@ async def export_quality_inspections(
     end_date: Optional[date] = Query(None, description="End date (YYYY-MM-DD)"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> Any:
+) -> StreamingResponse:
     """Export quality inspection entries as CSV."""
     from backend.utils.date_range import validate_date_range
 
@@ -314,7 +314,7 @@ async def export_downtime_events(
     line_id: Optional[int] = Query(None, description="Filter by production line ID"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> Any:
+) -> StreamingResponse:
     """Export downtime events as CSV."""
     from backend.utils.date_range import validate_date_range
 
@@ -367,7 +367,7 @@ async def export_attendance(
     line_id: Optional[int] = Query(None, description="Filter by production line ID"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> Any:
+) -> StreamingResponse:
     """Export attendance entries as CSV."""
     from backend.utils.date_range import validate_date_range
 
@@ -411,7 +411,7 @@ async def export_employees(
     client_id: Optional[str] = Query(None, description="Filter by client ID (matches client_id_assigned)"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> Any:
+) -> StreamingResponse:
     """
     Export employees as CSV.
 
@@ -488,7 +488,7 @@ async def export_products(
     client_id: Optional[str] = Query(None, description="Filter by client ID"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> Any:
+) -> StreamingResponse:
     """Export products as CSV."""
     return _build_csv_response(
         db=db,
@@ -520,7 +520,7 @@ async def export_shifts(
     client_id: Optional[str] = Query(None, description="Filter by client ID"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> Any:
+) -> StreamingResponse:
     """Export shifts as CSV."""
     return _build_csv_response(
         db=db,
@@ -561,7 +561,7 @@ async def export_holds(
     end_date: Optional[date] = Query(None, description="End date (YYYY-MM-DD)"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> Any:
+) -> StreamingResponse:
     """Export hold entries as CSV."""
     from backend.utils.date_range import validate_date_range
 

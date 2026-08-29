@@ -1,0 +1,1296 @@
+{
+  "DELETE /api/attendance/{attendance_id}": [
+    "<non-json>"
+  ],
+  "DELETE /api/break-times/{break_id}": [
+    "<blocked:break_id>"
+  ],
+  "DELETE /api/cache/invalidate/{pattern}": [
+    "entries_invalidated",
+    "pattern",
+    "status",
+    "timestamp"
+  ],
+  "DELETE /api/client-config/{client_id}": [
+    "<non-json>"
+  ],
+  "DELETE /api/clients/{client_id}": [
+    "<non-json>"
+  ],
+  "DELETE /api/coverage/{coverage_id}": [
+    "<blocked:coverage_id>"
+  ],
+  "DELETE /api/defect-types/{defect_type_id}": [
+    "<non-json>"
+  ],
+  "DELETE /api/defects/{defect_detail_id}": [
+    "<non-json>"
+  ],
+  "DELETE /api/downtime/{downtime_id}": [
+    "<non-json>"
+  ],
+  "DELETE /api/employees/{employee_id}": [
+    "<non-json>"
+  ],
+  "DELETE /api/equipment/{equipment_id}": [
+    "<blocked:equipment_id>"
+  ],
+  "DELETE /api/filters/history": [
+    "<status:422>"
+  ],
+  "DELETE /api/filters/{filter_id}": [
+    "<blocked:filter_id>"
+  ],
+  "DELETE /api/floating-pool/{pool_id}": [
+    "<blocked:pool_id>"
+  ],
+  "DELETE /api/hold-catalogs/reasons/{catalog_id}": [
+    "<non-json>"
+  ],
+  "DELETE /api/hold-catalogs/statuses/{catalog_id}": [
+    "<non-json>"
+  ],
+  "DELETE /api/holds/{hold_id}": [
+    "<non-json>"
+  ],
+  "DELETE /api/jobs/{job_id}": [
+    "<blocked:job_id>"
+  ],
+  "DELETE /api/kpi-thresholds/{client_id}/{kpi_key}": [
+    "message"
+  ],
+  "DELETE /api/part-opportunities/{part_number}": [
+    "<blocked:part_number>"
+  ],
+  "DELETE /api/production-lines/{line_id}": [
+    "<non-json>"
+  ],
+  "DELETE /api/production/{entry_id}": [
+    "<non-json>"
+  ],
+  "DELETE /api/quality/{inspection_id}": [
+    "<non-json>"
+  ],
+  "DELETE /api/shifts/{shift_id}": [
+    "<non-json>"
+  ],
+  "DELETE /api/users/{user_id}": [
+    "<non-json>"
+  ],
+  "DELETE /api/v2/simulation/scenarios/{scenario_id}": [
+    "<blocked:scenario_id@simulation>"
+  ],
+  "DELETE /api/work-orders/{work_order_id}": [
+    "<status:409>"
+  ],
+  "GET /api/alerts/history/accuracy": [
+    "accuracy_metrics",
+    "message",
+    "period_days",
+    "total_predictions"
+  ],
+  "GET /api/attendance/kpi/absenteeism": [
+    "absenteeism_rate",
+    "by_department[].absences",
+    "by_department[].department",
+    "by_department[].rate",
+    "by_department[].workforce",
+    "by_reason[].count",
+    "by_reason[].percentage",
+    "by_reason[].reason",
+    "calculation_timestamp",
+    "end_date",
+    "high_absence_employees[].absence_count",
+    "high_absence_employees[].department",
+    "high_absence_employees[].employee_id",
+    "high_absence_employees[].last_absence",
+    "rate",
+    "shift_id",
+    "start_date",
+    "total_absences",
+    "total_employees",
+    "total_hours_absent",
+    "total_hours_worked",
+    "total_scheduled_hours"
+  ],
+  "GET /api/attendance/kpi/absenteeism/trend": [
+    "[].date",
+    "[].value"
+  ],
+  "GET /api/attendance/kpi/bradford-factor/{employee_id}": [
+    "<status:422>"
+  ],
+  "GET /api/attendance/statistics/summary": [
+    "<status:422>"
+  ],
+  "GET /api/cache/health": [
+    "entries",
+    "hit_rate",
+    "status",
+    "timestamp"
+  ],
+  "GET /api/cache/stats": [
+    "statistics.entries",
+    "statistics.evictions",
+    "statistics.hit_rate",
+    "statistics.hits",
+    "statistics.misses",
+    "statistics.sets",
+    "status",
+    "timestamp"
+  ],
+  "GET /api/capacity/kpi/variance": [
+    "<status:422>"
+  ],
+  "GET /api/capacity/workbook/{client_id}": [
+    "bom",
+    "capacity_analysis",
+    "component_check",
+    "dashboard_inputs.auto_schedule_enabled",
+    "dashboard_inputs.bottleneck_threshold",
+    "dashboard_inputs.default_efficiency",
+    "dashboard_inputs.max_shifts_per_day",
+    "dashboard_inputs.min_lot_size",
+    "dashboard_inputs.overtime_limit_percent",
+    "dashboard_inputs.planning_horizon_days",
+    "dashboard_inputs.safety_stock_days",
+    "dashboard_inputs.schedule_freeze_days",
+    "dashboard_inputs.schedule_granularity",
+    "dashboard_inputs.shortage_alert_days",
+    "dashboard_inputs.target_utilization",
+    "instructions",
+    "kpi_tracking",
+    "master_calendar",
+    "orders",
+    "production_lines",
+    "production_schedule",
+    "production_standards",
+    "stock_snapshot",
+    "what_if_scenarios"
+  ],
+  "GET /api/client-config/{client_id}/effective": [
+    "absenteeism_target_percent",
+    "availability_target_percent",
+    "default_cycle_time_hours",
+    "dpmo_opportunities_default",
+    "efficiency_target_percent",
+    "fpy_target_percent",
+    "is_default",
+    "oee_target_percent",
+    "otd_mode",
+    "performance_target_percent",
+    "quality_target_ppm",
+    "wip_aging_threshold_days",
+    "wip_critical_threshold_days"
+  ],
+  "GET /api/data-completeness": [
+    "attendance.entered",
+    "attendance.expected",
+    "attendance.percentage",
+    "attendance.status",
+    "calculation_timestamp",
+    "client_id",
+    "date",
+    "downtime.entered",
+    "downtime.expected",
+    "downtime.percentage",
+    "downtime.status",
+    "hold.entered",
+    "hold.expected",
+    "hold.percentage",
+    "hold.status",
+    "overall.percentage",
+    "overall.status",
+    "production.entered",
+    "production.expected",
+    "production.percentage",
+    "production.status",
+    "quality.entered",
+    "quality.expected",
+    "quality.percentage",
+    "quality.status",
+    "shift_id"
+  ],
+  "GET /api/data-completeness/categories": [
+    "calculation_timestamp",
+    "categories[].color",
+    "categories[].entered",
+    "categories[].expected",
+    "categories[].icon",
+    "categories[].id",
+    "categories[].name",
+    "categories[].percentage",
+    "categories[].route",
+    "categories[].status",
+    "date",
+    "overall.percentage",
+    "overall.status"
+  ],
+  "GET /api/data-completeness/summary": [
+    "average_completeness",
+    "calculation_timestamp",
+    "daily[].attendance",
+    "daily[].date",
+    "daily[].downtime",
+    "daily[].overall_percentage",
+    "daily[].production",
+    "daily[].quality",
+    "daily[].status",
+    "end_date",
+    "start_date"
+  ],
+  "GET /api/defect-types/constants": [
+    "GLOBAL_CLIENT_ID"
+  ],
+  "GET /api/defect-types/template/download": [
+    "notes[]",
+    "template.columns[]",
+    "template.example_rows[].category",
+    "template.example_rows[].defect_code",
+    "template.example_rows[].defect_name",
+    "template.example_rows[].description",
+    "template.example_rows[].industry_standard_code",
+    "template.example_rows[].severity_default",
+    "template.example_rows[].sort_order"
+  ],
+  "GET /api/downtime-reasons": [
+    "categories[].id",
+    "categories[].label_key",
+    "reasons[].default_category",
+    "reasons[].id",
+    "reasons[].label_key"
+  ],
+  "GET /api/export/attendance": [
+    "<non-json>"
+  ],
+  "GET /api/export/downtime-events": [
+    "<non-json>"
+  ],
+  "GET /api/export/employees": [
+    "<non-json>"
+  ],
+  "GET /api/export/holds": [
+    "<non-json>"
+  ],
+  "GET /api/export/production-entries": [
+    "<non-json>"
+  ],
+  "GET /api/export/products": [
+    "<non-json>"
+  ],
+  "GET /api/export/quality-inspections": [
+    "<non-json>"
+  ],
+  "GET /api/export/shifts": [
+    "<non-json>"
+  ],
+  "GET /api/export/work-orders": [
+    "<non-json>"
+  ],
+  "GET /api/filters/statistics": [
+    "filters_by_type",
+    "most_used_filter",
+    "total_filters",
+    "total_usage_count"
+  ],
+  "GET /api/floating-pool/available/list": [],
+  "GET /api/floating-pool/check-availability/{employee_id}": [
+    "conflict_dates",
+    "current_assignment",
+    "is_available",
+    "message"
+  ],
+  "GET /api/floating-pool/simulation/insights": [
+    "current_status.currently_assigned",
+    "current_status.currently_available",
+    "current_status.target_date",
+    "current_status.total_pool_size",
+    "current_status.utilization_percent",
+    "recommendations",
+    "simulation_parameters.base_efficiency",
+    "simulation_parameters.base_employees",
+    "simulation_parameters.cycle_time_hours",
+    "simulation_parameters.shift_hours",
+    "staffing_scenarios[].result.comparison_to_baseline.baseline_units",
+    "staffing_scenarios[].result.comparison_to_baseline.difference",
+    "staffing_scenarios[].result.comparison_to_baseline.scenario_units",
+    "staffing_scenarios[].result.confidence_score",
+    "staffing_scenarios[].result.input_parameters.cycle_time_hours",
+    "staffing_scenarios[].result.input_parameters.efficiency_percent",
+    "staffing_scenarios[].result.input_parameters.employees",
+    "staffing_scenarios[].result.input_parameters.shift_hours",
+    "staffing_scenarios[].result.kpi_impact.efficiency",
+    "staffing_scenarios[].result.kpi_impact.employee_change",
+    "staffing_scenarios[].result.kpi_impact.employee_change_percent",
+    "staffing_scenarios[].result.kpi_impact.production_change_percent",
+    "staffing_scenarios[].result.projected_output.effective_hours",
+    "staffing_scenarios[].result.projected_output.hourly_rate",
+    "staffing_scenarios[].result.projected_output.units_capacity",
+    "staffing_scenarios[].result.recommendations",
+    "staffing_scenarios[].result.scenario_name",
+    "staffing_scenarios[].result.scenario_type",
+    "staffing_scenarios[].scenario"
+  ],
+  "GET /api/floating-pool/summary": [
+    "available_employees",
+    "currently_assigned",
+    "currently_available",
+    "total_floating_pool_employees"
+  ],
+  "GET /api/import-logs": [],
+  "GET /api/inference/cycle-time/{product_id}": [
+    "confidence",
+    "confidence_score",
+    "ideal_cycle_time",
+    "is_estimated",
+    "needs_review",
+    "product_id",
+    "recommendation",
+    "shift_id",
+    "source_level",
+    "warning"
+  ],
+  "GET /api/jobs/kpi/rty-summary": [
+    "average_job_yield",
+    "jobs_below_target",
+    "overall_yield",
+    "period.end_date",
+    "period.start_date",
+    "top_scrap_operations",
+    "total_jobs_completed",
+    "total_units_completed",
+    "total_units_scrapped"
+  ],
+  "GET /api/jobs/{job_id}/dpmo": [
+    "<blocked:job_id>"
+  ],
+  "GET /api/jobs/{job_id}/efficiency": [
+    "<blocked:job_id>"
+  ],
+  "GET /api/jobs/{job_id}/kpi-summary": [
+    "<blocked:job_id>"
+  ],
+  "GET /api/jobs/{job_id}/performance": [
+    "<blocked:job_id>"
+  ],
+  "GET /api/jobs/{job_id}/ppm": [
+    "<blocked:job_id>"
+  ],
+  "GET /api/jobs/{job_id}/yield": [
+    "<blocked:job_id>"
+  ],
+  "GET /api/kpi-thresholds": [
+    "client_id",
+    "client_name",
+    "thresholds"
+  ],
+  "GET /api/kpi/absenteeism/trend": [
+    "[].date",
+    "[].value"
+  ],
+  "GET /api/kpi/availability": [
+    "availability_percentage",
+    "available_hours",
+    "average_availability",
+    "calculation_timestamp",
+    "downtime_events",
+    "end_date",
+    "shift_id",
+    "start_date",
+    "target_date",
+    "total_downtime_hours",
+    "total_scheduled_hours",
+    "work_order_id"
+  ],
+  "GET /api/kpi/availability/trend": [
+    "[].date",
+    "[].value"
+  ],
+  "GET /api/kpi/chronic-holds": [],
+  "GET /api/kpi/dashboard": [
+    "[].avg_efficiency",
+    "[].avg_performance",
+    "[].date",
+    "[].entry_count",
+    "[].total_units"
+  ],
+  "GET /api/kpi/dashboard/aggregated": [
+    "absenteeism.employee_count",
+    "absenteeism.rate",
+    "absenteeism.target",
+    "absenteeism.total_absent_hours",
+    "absenteeism.total_scheduled_hours",
+    "availability.current",
+    "availability.downtime_hours",
+    "availability.scheduled_hours",
+    "availability.target",
+    "client_id",
+    "date_range.end_date",
+    "date_range.start_date",
+    "efficiency.current",
+    "efficiency.target",
+    "efficiency.total_hours",
+    "efficiency.total_units",
+    "otd.late_orders",
+    "otd.on_time_orders",
+    "otd.rate",
+    "otd.target",
+    "otd.total_orders",
+    "performance.current",
+    "performance.target",
+    "quality.dpmo",
+    "quality.fpy",
+    "quality.fpy_target",
+    "quality.opportunities_per_unit",
+    "quality.ppm",
+    "quality.total_defective",
+    "quality.total_defects",
+    "quality.total_inspected",
+    "quality.total_passed",
+    "trends.efficiency[].date",
+    "trends.efficiency[].value",
+    "trends.performance[].date",
+    "trends.performance[].value",
+    "wip_aging.avg_aging_days",
+    "wip_aging.overdue",
+    "wip_aging.total_active",
+    "wip_aging.within_target"
+  ],
+  "GET /api/kpi/efficiency/by-product": [
+    "[].actual_output",
+    "[].efficiency",
+    "[].product_id",
+    "[].product_name"
+  ],
+  "GET /api/kpi/efficiency/by-shift": [
+    "[].actual_output",
+    "[].efficiency",
+    "[].expected_output",
+    "[].shift_id",
+    "[].shift_name"
+  ],
+  "GET /api/kpi/efficiency/trend": [
+    "[].date",
+    "[].value"
+  ],
+  "GET /api/kpi/labor-hours": [
+    "<status:422>"
+  ],
+  "GET /api/kpi/late-orders": [
+    "[].days_pending",
+    "[].product_id",
+    "[].start_date",
+    "[].total_units",
+    "[].work_order"
+  ],
+  "GET /api/kpi/oee/trend": [
+    "[].date",
+    "[].value"
+  ],
+  "GET /api/kpi/on-time-delivery/trend": [],
+  "GET /api/kpi/otd": [
+    "calculation_timestamp",
+    "client_id",
+    "end_date",
+    "on_time_count",
+    "otd_percentage",
+    "start_date",
+    "total_orders"
+  ],
+  "GET /api/kpi/otd/by-client": [],
+  "GET /api/kpi/otd/late-deliveries": [],
+  "GET /api/kpi/performance/by-product": [
+    "[].performance",
+    "[].product_id",
+    "[].product_name",
+    "[].rate",
+    "[].units"
+  ],
+  "GET /api/kpi/performance/by-shift": [
+    "[].performance",
+    "[].rate",
+    "[].shift_id",
+    "[].shift_name",
+    "[].units"
+  ],
+  "GET /api/kpi/performance/trend": [
+    "[].date",
+    "[].value"
+  ],
+  "GET /api/kpi/quality/trend": [
+    "[].date",
+    "[].value"
+  ],
+  "GET /api/kpi/throughput-time/trend": [
+    "[].date",
+    "[].value"
+  ],
+  "GET /api/kpi/wip-aging/top": [
+    "[].age",
+    "[].product",
+    "[].quantity",
+    "[].work_order"
+  ],
+  "GET /api/kpi/wip-aging/trend": [
+    "[].date",
+    "[].value"
+  ],
+  "GET /api/kpi/{metric}/cause": [
+    "<status:422>"
+  ],
+  "GET /api/my-shift/activity": [
+    "activity",
+    "date",
+    "shift_id"
+  ],
+  "GET /api/my-shift/stats": [
+    "date",
+    "defect_count",
+    "downtime_incidents",
+    "downtime_minutes",
+    "efficiency",
+    "quality_checks",
+    "shift_id",
+    "units_produced"
+  ],
+  "GET /api/onboarding/status": [
+    "<status:400>"
+  ],
+  "GET /api/pivot/{dataset}": [
+    "<status:422>"
+  ],
+  "GET /api/pivot/{dataset}/csv": [
+    "<status:422>"
+  ],
+  "GET /api/plan-vs-actual": [],
+  "GET /api/plan-vs-actual/summary": [
+    "orders",
+    "overall_completion_pct",
+    "overall_variance",
+    "risk_distribution.COMPLETED",
+    "risk_distribution.HIGH",
+    "risk_distribution.LOW",
+    "risk_distribution.MEDIUM",
+    "risk_distribution.OVERDUE",
+    "risk_distribution.UNKNOWN",
+    "total_actual_completed",
+    "total_orders",
+    "total_planned_quantity"
+  ],
+  "GET /api/predictions/benchmarks": [
+    "absenteeism.description",
+    "absenteeism.excellent",
+    "absenteeism.fair",
+    "absenteeism.good",
+    "absenteeism.target",
+    "absenteeism.unit",
+    "availability.description",
+    "availability.excellent",
+    "availability.fair",
+    "availability.good",
+    "availability.target",
+    "availability.unit",
+    "dpmo.description",
+    "dpmo.excellent",
+    "dpmo.fair",
+    "dpmo.good",
+    "dpmo.target",
+    "dpmo.unit",
+    "efficiency.description",
+    "efficiency.excellent",
+    "efficiency.fair",
+    "efficiency.good",
+    "efficiency.target",
+    "efficiency.unit",
+    "fpy.description",
+    "fpy.excellent",
+    "fpy.fair",
+    "fpy.good",
+    "fpy.target",
+    "fpy.unit",
+    "oee.description",
+    "oee.excellent",
+    "oee.fair",
+    "oee.good",
+    "oee.target",
+    "oee.unit",
+    "otd.description",
+    "otd.excellent",
+    "otd.fair",
+    "otd.good",
+    "otd.target",
+    "otd.unit",
+    "performance.description",
+    "performance.excellent",
+    "performance.fair",
+    "performance.good",
+    "performance.target",
+    "performance.unit",
+    "ppm.description",
+    "ppm.excellent",
+    "ppm.fair",
+    "ppm.good",
+    "ppm.target",
+    "ppm.unit",
+    "rty.description",
+    "rty.excellent",
+    "rty.fair",
+    "rty.good",
+    "rty.target",
+    "rty.unit"
+  ],
+  "GET /api/predictions/health/{kpi_type}": [
+    "<status:400>"
+  ],
+  "GET /api/products": [
+    "[].ideal_cycle_time",
+    "[].product_code",
+    "[].product_id",
+    "[].product_name"
+  ],
+  "GET /api/qr/employee/{employee_id}/image": [
+    "<non-json>"
+  ],
+  "GET /api/qr/job/{job_id}/image": [
+    "<blocked:job_id>"
+  ],
+  "GET /api/qr/product/{product_id}/image": [
+    "<non-json>"
+  ],
+  "GET /api/qr/work-order/{work_order_id}/image": [
+    "<non-json>"
+  ],
+  "GET /api/quality/kpi/by-product": [
+    "[].defects",
+    "[].fpy",
+    "[].inspected",
+    "[].product_name"
+  ],
+  "GET /api/quality/kpi/defects-by-type": [
+    "[].count",
+    "[].defect_type",
+    "[].percentage"
+  ],
+  "GET /api/quality/kpi/dpmo-by-part": [
+    "by_part[].defects_found",
+    "by_part[].dpmo",
+    "by_part[].opportunities_per_unit",
+    "by_part[].part_number",
+    "by_part[].sigma_level",
+    "by_part[].total_opportunities",
+    "by_part[].units_inspected",
+    "calculation_timestamp",
+    "client_id",
+    "overall_dpmo",
+    "overall_sigma_level",
+    "period.end_date",
+    "period.start_date",
+    "total_defects",
+    "total_opportunities",
+    "total_units",
+    "using_part_specific_opportunities"
+  ],
+  "GET /api/quality/kpi/fpy-rty-breakdown": [
+    "calculation_timestamp",
+    "client_id",
+    "fpy_breakdown.first_pass_good",
+    "fpy_breakdown.fpy_percentage",
+    "fpy_breakdown.recovered_units",
+    "fpy_breakdown.recovery_rate",
+    "fpy_breakdown.repair_rate",
+    "fpy_breakdown.rework_rate",
+    "fpy_breakdown.scrap_rate",
+    "fpy_breakdown.total_inspected",
+    "fpy_breakdown.units_requiring_repair",
+    "fpy_breakdown.units_reworked",
+    "fpy_breakdown.units_scrapped",
+    "inspection_stage_filter",
+    "period.end_date",
+    "period.start_date",
+    "product_id",
+    "rty_breakdown.interpretation",
+    "rty_breakdown.repair_impact_percentage",
+    "rty_breakdown.rework_impact_percentage",
+    "rty_breakdown.rty_percentage",
+    "rty_breakdown.step_details[].first_pass_good",
+    "rty_breakdown.step_details[].fpy_percentage",
+    "rty_breakdown.step_details[].repair_rate",
+    "rty_breakdown.step_details[].rework_rate",
+    "rty_breakdown.step_details[].step",
+    "rty_breakdown.step_details[].total_inspected",
+    "rty_breakdown.step_details[].units_requiring_repair",
+    "rty_breakdown.step_details[].units_reworked",
+    "rty_breakdown.step_details[].units_scrapped",
+    "rty_breakdown.throughput_loss_percentage",
+    "rty_breakdown.total_repair",
+    "rty_breakdown.total_rework",
+    "rty_breakdown.total_scrap"
+  ],
+  "GET /api/quality/kpi/ppm/trend": [
+    "[].date",
+    "[].value"
+  ],
+  "GET /api/quality/kpi/quality-score": [
+    "<status:422>"
+  ],
+  "GET /api/quality/kpi/top-defects": [],
+  "GET /api/quality/statistics/summary": [
+    "<status:422>"
+  ],
+  "GET /api/reports/attendance/excel": [
+    "<non-json>"
+  ],
+  "GET /api/reports/attendance/pdf": [
+    "<non-json>"
+  ],
+  "GET /api/reports/available": [
+    "features[]",
+    "query_parameters.client_id",
+    "query_parameters.end_date",
+    "query_parameters.start_date",
+    "reports[].description",
+    "reports[].endpoints.excel",
+    "reports[].endpoints.pdf",
+    "reports[].formats[]",
+    "reports[].name",
+    "reports[].type"
+  ],
+  "GET /api/reports/comprehensive/excel": [
+    "<non-json>"
+  ],
+  "GET /api/reports/comprehensive/pdf": [
+    "<non-json>"
+  ],
+  "GET /api/reports/production/excel": [
+    "<non-json>"
+  ],
+  "GET /api/reports/production/pdf": [
+    "<non-json>"
+  ],
+  "GET /api/reports/quality/excel": [
+    "<non-json>"
+  ],
+  "GET /api/reports/quality/pdf": [
+    "<non-json>"
+  ],
+  "GET /api/shifts": [
+    "[].end_time",
+    "[].shift_id",
+    "[].shift_name",
+    "[].start_time"
+  ],
+  "GET /api/shifts/active": [
+    "<status:404>"
+  ],
+  "GET /api/v2/simulation/": [
+    "capabilities[]",
+    "constraints.max_horizon_days",
+    "constraints.max_operations_per_product",
+    "constraints.max_products",
+    "constraints.max_total_operations",
+    "default_values.fpd_pct",
+    "default_values.grade_pct",
+    "default_values.operators",
+    "default_values.rework_pct",
+    "default_values.variability",
+    "description",
+    "limitations[]",
+    "name",
+    "version"
+  ],
+  "GET /api/v2/simulation/schema": [
+    "$defs.BreakdownInput.description",
+    "$defs.BreakdownInput.example.breakdown_pct",
+    "$defs.BreakdownInput.example.machine_tool",
+    "$defs.BreakdownInput.properties.breakdown_pct.default",
+    "$defs.BreakdownInput.properties.breakdown_pct.description",
+    "$defs.BreakdownInput.properties.breakdown_pct.maximum",
+    "$defs.BreakdownInput.properties.breakdown_pct.minimum",
+    "$defs.BreakdownInput.properties.breakdown_pct.title",
+    "$defs.BreakdownInput.properties.breakdown_pct.type",
+    "$defs.BreakdownInput.properties.machine_tool.description",
+    "$defs.BreakdownInput.properties.machine_tool.maxLength",
+    "$defs.BreakdownInput.properties.machine_tool.minLength",
+    "$defs.BreakdownInput.properties.machine_tool.title",
+    "$defs.BreakdownInput.properties.machine_tool.type",
+    "$defs.BreakdownInput.required[]",
+    "$defs.BreakdownInput.title",
+    "$defs.BreakdownInput.type",
+    "$defs.DemandInput.description",
+    "$defs.DemandInput.example.bundle_size",
+    "$defs.DemandInput.example.daily_demand",
+    "$defs.DemandInput.example.product",
+    "$defs.DemandInput.example.weekly_demand.*",
+    "$defs.DemandInput.properties.bundle_size.default",
+    "$defs.DemandInput.properties.bundle_size.description",
+    "$defs.DemandInput.properties.bundle_size.maximum",
+    "$defs.DemandInput.properties.bundle_size.minimum",
+    "$defs.DemandInput.properties.bundle_size.title",
+    "$defs.DemandInput.properties.bundle_size.type",
+    "$defs.DemandInput.properties.daily_demand.anyOf[].minimum",
+    "$defs.DemandInput.properties.daily_demand.anyOf[].type",
+    "$defs.DemandInput.properties.daily_demand.default",
+    "$defs.DemandInput.properties.daily_demand.description",
+    "$defs.DemandInput.properties.daily_demand.title",
+    "$defs.DemandInput.properties.mix_share_pct.anyOf[].maximum",
+    "$defs.DemandInput.properties.mix_share_pct.anyOf[].minimum",
+    "$defs.DemandInput.properties.mix_share_pct.anyOf[].type",
+    "$defs.DemandInput.properties.mix_share_pct.default",
+    "$defs.DemandInput.properties.mix_share_pct.description",
+    "$defs.DemandInput.properties.mix_share_pct.title",
+    "$defs.DemandInput.properties.product.description",
+    "$defs.DemandInput.properties.product.maxLength",
+    "$defs.DemandInput.properties.product.minLength",
+    "$defs.DemandInput.properties.product.title",
+    "$defs.DemandInput.properties.product.type",
+    "$defs.DemandInput.properties.weekly_demand.*[].minimum",
+    "$defs.DemandInput.properties.weekly_demand.*[].type",
+    "$defs.DemandInput.required[]",
+    "$defs.DemandInput.title",
+    "$defs.DemandInput.type",
+    "$defs.DemandMode.description",
+    "$defs.DemandMode.enum[]",
+    "$defs.DemandMode.title",
+    "$defs.DemandMode.type",
+    "$defs.OperationInput.description",
+    "$defs.OperationInput.example.fpd_pct",
+    "$defs.OperationInput.example.grade_pct",
+    "$defs.OperationInput.example.grouping",
+    "$defs.OperationInput.example.machine_tool",
+    "$defs.OperationInput.example.operation",
+    "$defs.OperationInput.example.operators",
+    "$defs.OperationInput.example.product",
+    "$defs.OperationInput.example.rework_pct",
+    "$defs.OperationInput.example.sam_min",
+    "$defs.OperationInput.example.sequence",
+    "$defs.OperationInput.example.step",
+    "$defs.OperationInput.example.variability",
+    "$defs.OperationInput.properties.fpd_pct.default",
+    "$defs.OperationInput.properties.fpd_pct.description",
+    "$defs.OperationInput.properties.fpd_pct.maximum",
+    "$defs.OperationInput.properties.fpd_pct.minimum",
+    "$defs.OperationInput.properties.fpd_pct.title",
+    "$defs.OperationInput.properties.fpd_pct.type",
+    "$defs.OperationInput.properties.grade_pct.default",
+    "$defs.OperationInput.properties.grade_pct.description",
+    "$defs.OperationInput.properties.grade_pct.maximum",
+    "$defs.OperationInput.properties.grade_pct.minimum",
+    "$defs.OperationInput.properties.grade_pct.title",
+    "$defs.OperationInput.properties.grade_pct.type",
+    "$defs.OperationInput.properties.grouping.default",
+    "$defs.OperationInput.properties.grouping.description",
+    "$defs.OperationInput.properties.grouping.maxLength",
+    "$defs.OperationInput.properties.grouping.title",
+    "$defs.OperationInput.properties.grouping.type",
+    "$defs.OperationInput.properties.machine_tool.description",
+    "$defs.OperationInput.properties.machine_tool.maxLength",
+    "$defs.OperationInput.properties.machine_tool.minLength",
+    "$defs.OperationInput.properties.machine_tool.title",
+    "$defs.OperationInput.properties.machine_tool.type",
+    "$defs.OperationInput.properties.operation.description",
+    "$defs.OperationInput.properties.operation.maxLength",
+    "$defs.OperationInput.properties.operation.minLength",
+    "$defs.OperationInput.properties.operation.title",
+    "$defs.OperationInput.properties.operation.type",
+    "$defs.OperationInput.properties.operators.default",
+    "$defs.OperationInput.properties.operators.description",
+    "$defs.OperationInput.properties.operators.maximum",
+    "$defs.OperationInput.properties.operators.minimum",
+    "$defs.OperationInput.properties.operators.title",
+    "$defs.OperationInput.properties.operators.type",
+    "$defs.OperationInput.properties.product.description",
+    "$defs.OperationInput.properties.product.maxLength",
+    "$defs.OperationInput.properties.product.minLength",
+    "$defs.OperationInput.properties.product.title",
+    "$defs.OperationInput.properties.product.type",
+    "$defs.OperationInput.properties.rework_pct.default",
+    "$defs.OperationInput.properties.rework_pct.description",
+    "$defs.OperationInput.properties.rework_pct.maximum",
+    "$defs.OperationInput.properties.rework_pct.minimum",
+    "$defs.OperationInput.properties.rework_pct.title",
+    "$defs.OperationInput.properties.rework_pct.type",
+    "$defs.OperationInput.properties.sam_min.description",
+    "$defs.OperationInput.properties.sam_min.exclusiveMinimum",
+    "$defs.OperationInput.properties.sam_min.maximum",
+    "$defs.OperationInput.properties.sam_min.title",
+    "$defs.OperationInput.properties.sam_min.type",
+    "$defs.OperationInput.properties.sequence.default",
+    "$defs.OperationInput.properties.sequence.description",
+    "$defs.OperationInput.properties.sequence.maxLength",
+    "$defs.OperationInput.properties.sequence.title",
+    "$defs.OperationInput.properties.sequence.type",
+    "$defs.OperationInput.properties.step.description",
+    "$defs.OperationInput.properties.step.exclusiveMinimum",
+    "$defs.OperationInput.properties.step.maximum",
+    "$defs.OperationInput.properties.step.title",
+    "$defs.OperationInput.properties.step.type",
+    "$defs.OperationInput.properties.variability.$ref",
+    "$defs.OperationInput.properties.variability.default",
+    "$defs.OperationInput.properties.variability.description",
+    "$defs.OperationInput.required[]",
+    "$defs.OperationInput.title",
+    "$defs.OperationInput.type",
+    "$defs.ScheduleConfig.description",
+    "$defs.ScheduleConfig.example.ot_enabled",
+    "$defs.ScheduleConfig.example.shift1_hours",
+    "$defs.ScheduleConfig.example.shift2_hours",
+    "$defs.ScheduleConfig.example.shift3_hours",
+    "$defs.ScheduleConfig.example.shifts_enabled",
+    "$defs.ScheduleConfig.example.work_days",
+    "$defs.ScheduleConfig.properties.ot_enabled.default",
+    "$defs.ScheduleConfig.properties.ot_enabled.description",
+    "$defs.ScheduleConfig.properties.ot_enabled.title",
+    "$defs.ScheduleConfig.properties.ot_enabled.type",
+    "$defs.ScheduleConfig.properties.shift1_hours.description",
+    "$defs.ScheduleConfig.properties.shift1_hours.exclusiveMinimum",
+    "$defs.ScheduleConfig.properties.shift1_hours.maximum",
+    "$defs.ScheduleConfig.properties.shift1_hours.title",
+    "$defs.ScheduleConfig.properties.shift1_hours.type",
+    "$defs.ScheduleConfig.properties.shift2_hours.default",
+    "$defs.ScheduleConfig.properties.shift2_hours.description",
+    "$defs.ScheduleConfig.properties.shift2_hours.maximum",
+    "$defs.ScheduleConfig.properties.shift2_hours.minimum",
+    "$defs.ScheduleConfig.properties.shift2_hours.title",
+    "$defs.ScheduleConfig.properties.shift2_hours.type",
+    "$defs.ScheduleConfig.properties.shift3_hours.default",
+    "$defs.ScheduleConfig.properties.shift3_hours.description",
+    "$defs.ScheduleConfig.properties.shift3_hours.maximum",
+    "$defs.ScheduleConfig.properties.shift3_hours.minimum",
+    "$defs.ScheduleConfig.properties.shift3_hours.title",
+    "$defs.ScheduleConfig.properties.shift3_hours.type",
+    "$defs.ScheduleConfig.properties.shifts_enabled.description",
+    "$defs.ScheduleConfig.properties.shifts_enabled.maximum",
+    "$defs.ScheduleConfig.properties.shifts_enabled.minimum",
+    "$defs.ScheduleConfig.properties.shifts_enabled.title",
+    "$defs.ScheduleConfig.properties.shifts_enabled.type",
+    "$defs.ScheduleConfig.properties.weekday_ot_hours.default",
+    "$defs.ScheduleConfig.properties.weekday_ot_hours.description",
+    "$defs.ScheduleConfig.properties.weekday_ot_hours.maximum",
+    "$defs.ScheduleConfig.properties.weekday_ot_hours.minimum",
+    "$defs.ScheduleConfig.properties.weekday_ot_hours.title",
+    "$defs.ScheduleConfig.properties.weekday_ot_hours.type",
+    "$defs.ScheduleConfig.properties.weekend_ot_days.default",
+    "$defs.ScheduleConfig.properties.weekend_ot_days.description",
+    "$defs.ScheduleConfig.properties.weekend_ot_days.maximum",
+    "$defs.ScheduleConfig.properties.weekend_ot_days.minimum",
+    "$defs.ScheduleConfig.properties.weekend_ot_days.title",
+    "$defs.ScheduleConfig.properties.weekend_ot_days.type",
+    "$defs.ScheduleConfig.properties.weekend_ot_hours.default",
+    "$defs.ScheduleConfig.properties.weekend_ot_hours.description",
+    "$defs.ScheduleConfig.properties.weekend_ot_hours.maximum",
+    "$defs.ScheduleConfig.properties.weekend_ot_hours.minimum",
+    "$defs.ScheduleConfig.properties.weekend_ot_hours.title",
+    "$defs.ScheduleConfig.properties.weekend_ot_hours.type",
+    "$defs.ScheduleConfig.properties.work_days.description",
+    "$defs.ScheduleConfig.properties.work_days.maximum",
+    "$defs.ScheduleConfig.properties.work_days.minimum",
+    "$defs.ScheduleConfig.properties.work_days.title",
+    "$defs.ScheduleConfig.properties.work_days.type",
+    "$defs.ScheduleConfig.required[]",
+    "$defs.ScheduleConfig.title",
+    "$defs.ScheduleConfig.type",
+    "$defs.VariabilityType.description",
+    "$defs.VariabilityType.enum[]",
+    "$defs.VariabilityType.title",
+    "$defs.VariabilityType.type",
+    "description",
+    "properties.breakdowns.anyOf[].items.$ref",
+    "properties.breakdowns.anyOf[].type",
+    "properties.breakdowns.default",
+    "properties.breakdowns.description",
+    "properties.breakdowns.title",
+    "properties.demands.description",
+    "properties.demands.items.$ref",
+    "properties.demands.minItems",
+    "properties.demands.title",
+    "properties.demands.type",
+    "properties.horizon_days.default",
+    "properties.horizon_days.description",
+    "properties.horizon_days.maximum",
+    "properties.horizon_days.minimum",
+    "properties.horizon_days.title",
+    "properties.horizon_days.type",
+    "properties.mode.$ref",
+    "properties.mode.default",
+    "properties.mode.description",
+    "properties.operations.description",
+    "properties.operations.items.$ref",
+    "properties.operations.minItems",
+    "properties.operations.title",
+    "properties.operations.type",
+    "properties.schedule.$ref",
+    "properties.schedule.description",
+    "properties.total_demand.anyOf[].minimum",
+    "properties.total_demand.anyOf[].type",
+    "properties.total_demand.default",
+    "properties.total_demand.description",
+    "properties.total_demand.title",
+    "required[]",
+    "title",
+    "type"
+  ],
+  "GET /api/work-orders/{work_order_id}/capacity-order": [
+    "capacity_order",
+    "linked"
+  ],
+  "GET /api/work-orders/{work_order_id}/progress": [
+    "actual_quantity",
+    "hold_history",
+    "is_on_track",
+    "planned_quantity",
+    "production_entries[].defect_count",
+    "production_entries[].employees_assigned",
+    "production_entries[].product_name",
+    "production_entries[].production_date",
+    "production_entries[].production_entry_id",
+    "production_entries[].run_time_hours",
+    "production_entries[].scrap_count",
+    "production_entries[].shift_name",
+    "production_entries[].units_produced",
+    "progress_percentage",
+    "quality_inspections[].defects_found",
+    "quality_inspections[].inspection_date",
+    "quality_inspections[].inspection_id",
+    "quality_inspections[].inspection_type",
+    "quality_inspections[].notes",
+    "quality_inspections[].result",
+    "remaining_quantity",
+    "status",
+    "style_model",
+    "total_defects",
+    "total_production_entries",
+    "total_scrap",
+    "work_order_id"
+  ],
+  "GET /api/work-orders/{work_order_id}/rty": [
+    "<status:404>"
+  ],
+  "GET /api/work-orders/{work_order_id}/timeline": [
+    "events[].color",
+    "events[].description",
+    "events[].event_type",
+    "events[].icon",
+    "events[].timestamp",
+    "events[].title",
+    "total_events",
+    "work_order_id"
+  ],
+  "GET /api/workflow/analytics/{client_id}/average-times": [
+    "averages.lead_time_days",
+    "averages.lead_time_hours",
+    "averages.lifecycle_days",
+    "averages.lifecycle_hours",
+    "averages.processing_time_days",
+    "averages.processing_time_hours",
+    "client_id",
+    "count",
+    "overdue_count",
+    "overdue_percentage"
+  ],
+  "GET /api/workflow/analytics/{client_id}/stage-durations": [
+    "client_id",
+    "filter.end_date",
+    "filter.start_date",
+    "stage_durations"
+  ],
+  "GET /api/workflow/config/{client_id}": [
+    "client_id",
+    "workflow_closure_trigger",
+    "workflow_optional_statuses[]",
+    "workflow_statuses[]",
+    "workflow_transitions.CANCELLED[]",
+    "workflow_transitions.CLOSED[]",
+    "workflow_transitions.COMPLETED[]",
+    "workflow_transitions.DEMOTED[]",
+    "workflow_transitions.IN_PROGRESS[]",
+    "workflow_transitions.ON_HOLD[]",
+    "workflow_transitions.REJECTED[]",
+    "workflow_transitions.RELEASED[]",
+    "workflow_transitions.SHIPPED[]",
+    "workflow_version"
+  ],
+  "GET /api/workflow/statistics/{client_id}/status-distribution": [
+    "by_status[].count",
+    "by_status[].percentage",
+    "by_status[].status",
+    "client_id",
+    "total_work_orders"
+  ],
+  "GET /api/workflow/statistics/{client_id}/transitions": [
+    "by_source[].count",
+    "by_source[].trigger_source",
+    "by_transition[].avg_elapsed_hours",
+    "by_transition[].count",
+    "by_transition[].from_status",
+    "by_transition[].to_status",
+    "client_id",
+    "total_transitions"
+  ],
+  "GET /api/workflow/templates": [
+    "count",
+    "templates[].description",
+    "templates[].name",
+    "templates[].template_id",
+    "templates[].workflow_closure_trigger",
+    "templates[].workflow_statuses[]"
+  ],
+  "GET /api/workflow/work-orders/{work_order_id}/allowed-transitions": [
+    "allowed_next_statuses[]",
+    "client_id",
+    "current_status",
+    "work_order_id"
+  ],
+  "GET /api/workflow/work-orders/{work_order_id}/elapsed-time": [
+    "dates.closure_date",
+    "dates.dispatch_date",
+    "dates.received_date",
+    "dates.shipped_date",
+    "forecast.expected_date",
+    "forecast.time_to_expected_hours",
+    "lifecycle.days_early_or_late",
+    "lifecycle.is_overdue",
+    "lifecycle.total_days",
+    "lifecycle.total_hours",
+    "stages.lead_time_days",
+    "stages.lead_time_hours",
+    "stages.processing_time_days",
+    "stages.processing_time_hours",
+    "stages.shipping_time_hours",
+    "status",
+    "work_order_id"
+  ],
+  "GET /api/workflow/work-orders/{work_order_id}/transition-times": [
+    "[].elapsed_from_previous_hours",
+    "[].elapsed_from_received_hours",
+    "[].from_status",
+    "[].notes",
+    "[].to_status",
+    "[].transition_id",
+    "[].transitioned_at",
+    "[].trigger_source"
+  ],
+  "POST /api/alerts/generate/check-all": [
+    "alerts[].acknowledged_at",
+    "alerts[].acknowledged_by",
+    "alerts[].alert_id",
+    "alerts[].alert_metadata.oldest_hours",
+    "alerts[].alert_metadata.pending_count",
+    "alerts[].alert_metadata.units_on_hold",
+    "alerts[].category",
+    "alerts[].client_id",
+    "alerts[].client_name",
+    "alerts[].confidence",
+    "alerts[].created_at",
+    "alerts[].current_value",
+    "alerts[].kpi_key",
+    "alerts[].message",
+    "alerts[].predicted_value",
+    "alerts[].recommendation",
+    "alerts[].resolved_at",
+    "alerts[].resolved_by",
+    "alerts[].severity",
+    "alerts[].status",
+    "alerts[].threshold_value",
+    "alerts[].title",
+    "alerts[].work_order_id",
+    "alerts_generated",
+    "errors",
+    "status"
+  ],
+  "POST /api/attendance/bulk": [
+    "<status:422>"
+  ],
+  "POST /api/attendance/mark-all-present": [
+    "<status:422>"
+  ],
+  "POST /api/auth/change-password": [
+    "<status:422>"
+  ],
+  "POST /api/auth/forgot-password": [
+    "<status:422>"
+  ],
+  "POST /api/auth/logout": [
+    "<status:401>"
+  ],
+  "POST /api/auth/reset-password": [
+    "<status:422>"
+  ],
+  "POST /api/cache/clear": [
+    "entries_cleared",
+    "message",
+    "status",
+    "timestamp"
+  ],
+  "POST /api/capacity/scenarios/compare": [
+    "<status:422>"
+  ],
+  "POST /api/defect-types/upload/{client_id}": [
+    "<status:422>"
+  ],
+  "POST /api/floating-pool/simulation/optimize-allocation": [
+    "<status:422>"
+  ],
+  "POST /api/floating-pool/simulation/shift-coverage": [
+    "<status:422>"
+  ],
+  "POST /api/hold-catalogs/seed-defaults": [
+    "<status:422>"
+  ],
+  "POST /api/metrics/calculate/run-nightly": [
+    "status",
+    "summary.DEMO-HOURLY.fpy",
+    "summary.DEMO-HOURLY.oee",
+    "summary.DEMO-HOURLY.otd",
+    "summary.DEMO-HYBRID.fpy",
+    "summary.DEMO-HYBRID.oee",
+    "summary.DEMO-HYBRID.otd",
+    "summary.DEMO-PIECE.fpy",
+    "summary.DEMO-PIECE.oee",
+    "summary.DEMO-PIECE.otd",
+    "summary.SAMPLE_REF.fpy",
+    "summary.SAMPLE_REF.oee",
+    "summary.SAMPLE_REF.otd"
+  ],
+  "POST /api/predictions/demo/seed": [
+    "clients",
+    "days_per_kpi",
+    "kpis",
+    "message",
+    "total_records"
+  ],
+  "POST /api/qr/generate/image": [
+    "<status:422>"
+  ],
+  "POST /api/reports/email-config/test": [
+    "<status:422>"
+  ],
+  "POST /api/reports/send-manual": [
+    "<status:422>"
+  ],
+  "POST /api/work-orders/{work_order_id}/approve-qc": [
+    "message",
+    "qc_approved",
+    "qc_approved_by",
+    "qc_approved_date",
+    "status",
+    "work_order_id"
+  ],
+  "POST /api/workflow/bulk-transition": [
+    "<status:422>"
+  ],
+  "POST /api/workflow/config/{client_id}/apply-template": [
+    "<status:422>"
+  ],
+  "POST /api/workflow/work-orders/{work_order_id}/transition": [
+    "<status:422>"
+  ],
+  "POST /api/workflow/work-orders/{work_order_id}/validate": [
+    "<status:422>"
+  ],
+  "PUT /api/kpi-thresholds": [
+    "<status:422>"
+  ],
+  "PUT /api/workflow/config/{client_id}": [
+    "<status:422>"
+  ]
+}

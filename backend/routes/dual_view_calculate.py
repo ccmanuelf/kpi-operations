@@ -36,6 +36,7 @@ from backend.services.dual_view.otd_service import (
     OTDCalculationService,
     OTDRawInputs,
 )
+from backend.schemas.kpi_metrics_contracts import RunNightlyResponse
 from backend.utils.logging_utils import get_module_logger
 
 logger = get_module_logger(__name__)
@@ -308,8 +309,10 @@ def calculate_fpy_from_period(
 @router.post(
     "/run-nightly",
     status_code=status.HTTP_202_ACCEPTED,
+    response_model=RunNightlyResponse,
 )
 def trigger_nightly_run(
+    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_admin),
 ) -> dict:
     """
@@ -326,7 +329,11 @@ def trigger_nightly_run(
         )
     from backend.tasks.dual_view_calculation import run_nightly_dual_view_calculations
 
-    summary = run_nightly_dual_view_calculations()
+    # Pass this request's injected session explicitly -- without it, the
+    # task opens its own SessionLocal() bound to the ambient
+    # settings.DATABASE_URL, escaping whatever session (e.g. a test
+    # harness's disposable seeded DB) FastAPI's get_db override set up.
+    summary = run_nightly_dual_view_calculations(db=db)
     return {"status": "completed", "summary": summary}
 
 
