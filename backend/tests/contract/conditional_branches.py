@@ -117,7 +117,10 @@ EXCLUDE_UNSET_ROUTES: Dict[str, ExcludeUnsetEntry] = {
             "Batch R5 captured THAT branch, because JOB had no seeded rows at all; since S3 "
             "seeds a routing with completed steps, the capture is the POPULATED branch (13 "
             "golden leaf paths) and the omitting branch is the one no capture reaches. The "
-            "forcing test pins both key sets for that reason."
+            "forcing test pins both key sets for that reason. WHICH branch is captured is no "
+            "longer a function of the calendar: the route defaults its window to the last 30 "
+            "days off date.today(), so the harness pins that to the seed's own as_of "
+            "(capture.SeededToday) -- see test_time_determinism.py."
         ),
         forcing_test="test_jobs_rty_summary_pins_the_key_set_of_both_branches",
     ),

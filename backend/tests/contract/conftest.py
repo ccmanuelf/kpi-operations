@@ -50,11 +50,17 @@ from backend.db.migrate import upgrade_to_head
 from backend.main import app
 from backend.seed.cli import ALLOWLIST as ALLOWLIST_CLIENTS
 from backend.seed.cli import seed
-from backend.tests.contract.capture import ShiftActivePin, capture_all, capture_isolated
+from backend.tests.contract.capture import SeededToday, ShiftActivePin, capture_all, capture_isolated
 from backend.tests.contract.param_resolution import CapturePlan, Resolver, blocked_shape, bogus_url_for, plan_capture
 from backend.tests.test_routes.test_smoke_paramless_get import _mock_admin
 
 GOLDEN = Path(__file__).parent / "golden" / "api_shapes.json"
+
+#: The day the harness's seeded universe ends. Named rather than inlined
+#: because two things must agree on it: the seed itself, and the `today()` a
+#: date-defaulting route reads while being captured (see `SeededToday`). A
+#: literal in both places is a drift waiting to happen.
+SEED_AS_OF = date(2026, 8, 25)
 
 
 @dataclass
@@ -114,7 +120,7 @@ def harness(tmp_path_factory: pytest.TempPathFactory) -> Iterator[_Harness]:
         client_ids=tuple(sorted(ALLOWLIST_CLIENTS)),
         profile_name="smoke",
         seed_value=1234,
-        as_of=date(2026, 8, 25),
+        as_of=SEED_AS_OF,
         reset=False,
     )
     engine.dispose()
@@ -147,8 +153,20 @@ def harness(tmp_path_factory: pytest.TempPathFactory) -> Iterator[_Harness]:
     # -- reproduced live against this exact fixture. Pinning only this one
     # route's `datetime.now` (see ShiftActivePin) makes the capture
     # deterministic without touching how any other route reads the clock.
+    #
+    # GET /api/jobs/kpi/rty-summary defaults its window to the last 30 days off
+    # `date.today()` (routes/jobs.py) and returns a different KEY SET depending
+    # on whether a completed job falls inside it. Seeded completions end at
+    # SEED_AS_OF, so an unpinned capture records the populated branch only
+    # while the real clock is still within 30 days of that date, and then flips
+    # to the empty branch with nothing in the repo having changed. Pinning
+    # `today()` to SEED_AS_OF -- the seed's own now -- is what makes the
+    # recorded shape a property of the data rather than of the calendar. See
+    # `SeededToday`, and `test_time_determinism.py` for the proof it works.
     time_pin = pytest.MonkeyPatch()
     time_pin.setattr("backend.routes.reference.datetime", ShiftActivePin)
+    time_pin.setattr(SeededToday, "AS_OF", SEED_AS_OF)
+    time_pin.setattr("backend.routes.jobs.date", SeededToday)
     try:
         client = TestClient(app, raise_server_exceptions=False)
         # Plan against the routes the GOLDEN MASTER names, not the
