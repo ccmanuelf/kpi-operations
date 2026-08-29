@@ -24,6 +24,7 @@
     </v-card-title>
 
     <v-card-text>
+      <GridLoadError :message="loadError" @retry="retryLoad" />
       <!-- Keyboard shortcuts help -->
       <v-alert type="info" variant="tonal" density="compact" class="mb-3">
         <div class="d-flex align-center">
@@ -209,8 +210,10 @@
 
 <script setup>
 import { computed, onMounted } from 'vue'
+import { useGridLoadState } from '@/composables/useGridLoadState'
 import { useI18n } from 'vue-i18n'
 import AGGridBase from './AGGridBase.vue'
+import GridLoadError from '@/components/grids/GridLoadError.vue'
 import ReadBackConfirmation from '@/components/dialogs/ReadBackConfirmation.vue'
 import PastePreviewDialog from '@/components/dialogs/PastePreviewDialog.vue'
 import { useHoldGridData } from '@/composables/useHoldGridData'
@@ -355,9 +358,15 @@ const filterPendingApprovals = () => {
   )
 }
 
+// A failed first load used to leave the grid rendering "no rows", which a user
+// cannot tell apart from an empty dataset.
+const { loadError, load: runInitialLoad, retry: retryLoad } = useGridLoadState()
+
 onMounted(async () => {
-  await kpiStore.fetchReferenceData()
-  await kpiStore.fetchHoldEntries()
+  await runInitialLoad(
+    () => kpiStore.fetchReferenceData(),
+    () => kpiStore.fetchHoldEntries(),
+  )
   applyFilters()
 })
 </script>

@@ -1442,7 +1442,10 @@
     "noChanges": "No changes to save",
     "entriesSaved": "{count} entries saved successfully!",
     "saveCancelled": "Save cancelled",
-    "deleteError": "Error deleting entry"
+    "deleteError": "Error deleting entry",
+    "loadFailed": "Could not load this data",
+    "loadFailedRetry": "Retry",
+    "savedButNotRefreshed": "Saved, but the list could not be refreshed. Reload to see the current data."
   },
   "readBack": {
     "field": "Field",

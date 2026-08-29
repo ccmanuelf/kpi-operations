@@ -37,15 +37,22 @@ function walk(dir: string): string[] {
   return out
 }
 
-/** Delete actions declared on the store, read from the source rather than listed. */
-const deleteActions = [
-  ...readFileSync(STORE, 'utf8').matchAll(/async (delete\w+)\([^)]*\):\s*Promise<ActionResult/g),
+/** Actions declared on the store, read from the source rather than listed.
+ *
+ * Covers fetch as well as delete: both resolve {success:false} instead of
+ * throwing, and both had every call site ignoring it. A failed delete announced
+ * a success; a failed fetch left the grid rendering "no rows", which a user
+ * cannot tell apart from an empty dataset. */
+const guardedActions = [
+  ...readFileSync(STORE, 'utf8').matchAll(
+    /async ((?:delete|fetch)\w+)\([^)]*\):\s*Promise<ActionResult/g,
+  ),
 ].map((m) => m[1])
 
-describe('delete actions that resolve {success:false} are always inspected', () => {
-  it('finds the store\'s delete actions', () => {
+describe('actions that resolve {success:false} are always inspected', () => {
+  it('finds the store\'s guarded actions', () => {
     // If this drops to zero the gate below passes vacuously.
-    expect(deleteActions.length).toBeGreaterThanOrEqual(3)
+    expect(guardedActions.length).toBeGreaterThanOrEqual(8)
   })
 
   it('every call site captures the result', () => {
@@ -53,7 +60,7 @@ describe('delete actions that resolve {success:false} are always inspected', () 
     for (const file of walk(SRC)) {
       if (file === STORE) continue // its own api.* calls throw and are wrapped
       const src = readFileSync(file, 'utf8')
-      for (const action of deleteActions) {
+      for (const action of guardedActions) {
         for (const m of src.matchAll(new RegExp(String.raw`await\s+\w+\.${action}\(`, 'g'))) {
           const before = src.slice(Math.max(0, m.index! - 60), m.index!)
           if (!/(?:const|let)\s+\w+\s*=\s*$/.test(before)) {
