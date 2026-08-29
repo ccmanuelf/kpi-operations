@@ -11,12 +11,14 @@ golden master -- see `response_scope.py` for the mechanism under test.
    recording real keys -- this fails, naming the route.
 
    Not narrowed to literal `<non-json>` -- two of the five `/api/qr`
-   routes never reach a live 2xx at all during capture (`GET /api/qr/job/
-   {job_id}/image` is `<blocked:job_id>`, JOB has zero seeded rows; `POST
-   /api/qr/generate/image` is `<status:422>`, the capture harness sends no
-   body). The golden master offers no confirming *or* contradicting
-   evidence for those two, so requiring literal `<non-json>` would reject
-   a legitimate declaration for lack of proof it cannot obtain.
+   routes never reach a live 2xx at all during capture -- `POST
+   /api/qr/generate/image` is `<status:422>` (the capture harness sends no
+   body), and `GET /api/qr/job/{job_id}/image` was `<blocked:job_id>` until
+   S3 seeded JOB, which is exactly why this rule is stated in terms of
+   evidence rather than of a route list. The golden master offers no
+   confirming *or* contradicting evidence for such a route, so requiring
+   literal `<non-json>` would reject a legitimate declaration for lack of
+   proof it cannot obtain.
    `is_placeholder` accepts "no evidence either way" without accepting
    "evidence against" -- a real captured JSON shape is never a
    placeholder, so the dodge this check exists to catch is still caught
@@ -34,11 +36,10 @@ golden master -- see `response_scope.py` for the mechanism under test.
    returning something unparseable that nobody accounted for; this fails
    naming it, rather than letting it pass as unnoticed debt. NOTE this
    check's domain is golden entries that already read `<non-json>` -- it
-   says nothing about `GET /api/qr/job/{job_id}/image` or `POST /api/qr/
-   generate/image`, whose golden entries are a different placeholder
-   flavour and never enter this check's `non_json_routes` set at all,
-   declared or not. Their protection is (1) and structural
-   classification, not this check.
+   says nothing about a route like `POST /api/qr/generate/image`, whose
+   golden entry is a different placeholder flavour and never enters this
+   check's `non_json_routes` set at all, declared or not. Its protection is
+   (1) and structural classification, not this check.
 
 Neither (1) nor (2) alone is enough, and together they still don't cover
 every declared route with golden evidence -- see the two notes above. (1)
@@ -99,7 +100,11 @@ def test_every_non_json_golden_entry_is_explained():
 
     golden = _golden()
     non_json_routes = sorted(route for route, shape in golden.items() if shape == ["<non-json>"])
-    assert len(non_json_routes) == 35
+    # 36, up from 35: S3 seeded JOB, so GET /api/qr/job/{job_id}/image is
+    # reachable at last and records the PNG it always returned. This count
+    # rises when a route becomes reachable and falls when one starts sending
+    # JSON -- neither is churn, and both must be stated.
+    assert len(non_json_routes) == 36
 
     unexplained = [route for route in non_json_routes if classify_non_json_route(_route(app, route)) is None]
     assert unexplained == []
@@ -195,6 +200,10 @@ def test_non_json_entries_decompose_into_exactly_three_categories():
         "GET /api/export/shifts",
         "GET /api/export/work-orders",
         "GET /api/qr/employee/{employee_id}/image",
+        # Reachable since S3 seeded JOB; it was declared RESPONSE_SUBCLASS all
+        # along on the strength of its return annotation alone, and the capture
+        # now confirms it.
+        "GET /api/qr/job/{job_id}/image",
         "GET /api/qr/product/{product_id}/image",
         "GET /api/qr/work-order/{work_order_id}/image",
         "GET /api/reports/attendance/excel",

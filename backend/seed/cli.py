@@ -66,10 +66,12 @@ def _derive_client_scoped_tables(metadata: Optional[MetaData] = None) -> dict[st
 
     Deliberately NOT `SEEDED`. What the seeder WRITES and what --reset must
     CLEAR are different sets: 45 tables hold a FK into CLIENT while the
-    seeder writes 23, and restricting the sweep to the seeded ones left every
-    other one (ALERT_CONFIG, JOB, EQUIPMENT, the 13 capacity_* tables, ...)
+    seeder writes 24, and restricting the sweep to the seeded ones left every
+    other one (ALERT_CONFIG, EQUIPMENT, the 13 capacity_* tables, ...)
     holding rows that RESTRICT the DELETE FROM "CLIENT" at the end of the
-    sweep. That is not an edge case: an ALERT_CONFIG row is what the
+    sweep. (JOB was on that list until S3 seeded it -- which changes nothing
+    here: the sweep is derived, so a table moving into SEEDED neither adds nor
+    removes anything from it.) That is not an edge case: an ALERT_CONFIG row is what the
     alert-configuration API writes the first time anyone edits a threshold on
     the demo.
     """

@@ -35,8 +35,10 @@ from backend.tests.contract.frontend_usage import KNOWN_BLIND
 MAX_STATUS_ONLY_ROUTES = 35
 
 
-#: The 15 routes no id can reach, because their backing table has zero seeded
-#: rows. Pinned EXACTLY, not as a ceiling: a route dropping out of this set
+#: The 7 routes no id can reach, because their backing table has zero seeded
+#: rows -- 15 until S3 seeded JOB and freed the eight `job_id` reached.
+#: Pinned EXACTLY (in `test_capture_integrity.BLOCKED_ROUTES`), not as a
+#: ceiling: a route dropping out of this set
 #: means the seeder started writing its table and the route is now capturable
 #: (promote its spec out of Kind.BLOCKED), while a route joining it means the
 #: opposite -- something that used to be reachable no longer is. Both are

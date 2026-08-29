@@ -282,11 +282,17 @@ REGISTRY: Dict[str, ParamSpec] = {
         "FLOATING_POOL has zero seeded rows; test_cli_derived_sets.py asserts it is not in "
         "SEEDED. Not to be confused with EMPLOYEE.is_floating_pool, a bool the seeder writes.",
     ),
-    "job_id": _blocked(
+    "job_id": _seeded(
         "job_id",
-        "JOB",
-        "JOB has zero seeded rows; named in seed/cli.py's never-written list. Blocks 8 of the "
-        "15 blocked routes -- the highest route-count payoff of any single seeder gap.",
+        "PRODUCTION_ENTRY",
+        "SELECT job_id FROM PRODUCTION_ENTRY WHERE job_id IS NOT NULL ORDER BY job_id LIMIT 1",
+        note="Read from PRODUCTION_ENTRY, not from JOB, and that is the whole point of the "
+        "entry. S3 seeds a full routing, so most jobs are steps no shift ran; five of the six "
+        "GET /api/jobs/{job_id}/* routes join PRODUCTION_ENTRY / QUALITY_ENTRY on job_id and "
+        "NEVER on work_order_id, so a job taken from JOB itself captures their empty-set "
+        "branch -- a 200 with fewer keys, recorded as if it were the route's answer. A job "
+        "production actually ran carries quality entries for the same shift too (the emitter "
+        "names one step for both), so this one id reaches every one of the six.",
     ),
     "part_number": _blocked(
         "part_number",

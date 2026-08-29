@@ -221,9 +221,10 @@ def _real_field_names(endpoint: str, method: str = "GET") -> frozenset:
     of them. There are two kinds:
       - A PLACEHOLDER entry, written `<...>`: `<status:422>` (the capture
         harness never reached a real response body), `<non-json>` (it did, and
-        the body was a PNG or a 204 with no body at all), or `<blocked:job_id>`
-        (Task 8b: no id could reach this route, because its backing table has
-        zero seeded rows). Every one of these is skipped by the leading `<`,
+        the body was a PNG or a 204 with no body at all), or
+        `<blocked:part_number>` (Task 8b: no id could reach this route, because
+        its backing table has zero seeded rows -- `<blocked:job_id>` was the
+        original example, until S3 seeded JOB). Every one of these is skipped by the leading `<`,
         NOT by matching `<status:` alone: `<non-json>` predates Task 8b on 17
         entries and was already being counted as a field named `<non-json>`,
         which no frontend read could ever match but which is nonsense in the

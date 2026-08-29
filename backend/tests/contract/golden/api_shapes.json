@@ -54,7 +54,7 @@
     "<non-json>"
   ],
   "DELETE /api/jobs/{job_id}": [
-    "<blocked:job_id>"
+    "<status:409>"
   ],
   "DELETE /api/kpi-thresholds/{client_id}/{kpi_key}": [
     "message"
@@ -352,32 +352,86 @@
   ],
   "GET /api/jobs/kpi/rty-summary": [
     "average_job_yield",
+    "interpretation",
     "jobs_below_target",
+    "jobs_meeting_target",
     "overall_yield",
     "period.end_date",
     "period.start_date",
-    "top_scrap_operations",
+    "top_scrap_operations[].operation",
+    "top_scrap_operations[].units_scrapped",
+    "total_good_units",
     "total_jobs_completed",
     "total_units_completed",
     "total_units_scrapped"
   ],
   "GET /api/jobs/{job_id}/dpmo": [
-    "<blocked:job_id>"
+    "dpmo",
+    "entry_count",
+    "job_id",
+    "opportunities_per_unit",
+    "sigma_level",
+    "total_defects",
+    "total_inspected",
+    "total_opportunities",
+    "using_part_specific_opportunities"
   ],
   "GET /api/jobs/{job_id}/efficiency": [
-    "<blocked:job_id>"
+    "efficiency_percentage",
+    "entries[].efficiency_percentage",
+    "entries[].production_entry_id",
+    "entries[].units_produced",
+    "entry_count",
+    "job_id",
+    "part_number",
+    "total_labor_hours",
+    "total_units_produced"
   ],
   "GET /api/jobs/{job_id}/kpi-summary": [
-    "<blocked:job_id>"
+    "job_id",
+    "part_number",
+    "production_kpis.defect_count",
+    "production_kpis.efficiency_percentage",
+    "production_kpis.entry_count",
+    "production_kpis.performance_percentage",
+    "production_kpis.quality_rate",
+    "production_kpis.scrap_count",
+    "production_kpis.total_units_produced",
+    "quality_kpis.dpmo",
+    "quality_kpis.entry_count",
+    "quality_kpis.opportunities_per_unit",
+    "quality_kpis.ppm",
+    "quality_kpis.sigma_level",
+    "quality_kpis.total_defects",
+    "quality_kpis.total_inspected",
+    "status",
+    "yield.completed_quantity",
+    "yield.quantity_scrapped",
+    "yield.yield_percentage"
   ],
   "GET /api/jobs/{job_id}/performance": [
-    "<blocked:job_id>"
+    "entry_count",
+    "job_id",
+    "performance_percentage",
+    "total_run_time_hours",
+    "total_units_produced"
   ],
   "GET /api/jobs/{job_id}/ppm": [
-    "<blocked:job_id>"
+    "entry_count",
+    "job_id",
+    "ppm",
+    "total_defects",
+    "total_inspected"
   ],
   "GET /api/jobs/{job_id}/yield": [
-    "<blocked:job_id>"
+    "completed_quantity",
+    "good_quantity",
+    "job_id",
+    "operation_name",
+    "part_number",
+    "quantity_scrapped",
+    "sequence_number",
+    "yield_percentage"
   ],
   "GET /api/kpi-thresholds": [
     "client_id",
@@ -652,7 +706,7 @@
     "<non-json>"
   ],
   "GET /api/qr/job/{job_id}/image": [
-    "<blocked:job_id>"
+    "<non-json>"
   ],
   "GET /api/qr/product/{product_id}/image": [
     "<non-json>"
@@ -1063,7 +1117,24 @@
     "work_order_id"
   ],
   "GET /api/work-orders/{work_order_id}/rty": [
-    "<status:404>"
+    "bottleneck_job.job_id",
+    "bottleneck_job.operation_name",
+    "bottleneck_job.yield_percentage",
+    "interpretation",
+    "job_count",
+    "jobs[].completed_quantity",
+    "jobs[].good_quantity",
+    "jobs[].is_completed",
+    "jobs[].job_id",
+    "jobs[].operation_name",
+    "jobs[].part_number",
+    "jobs[].planned_quantity",
+    "jobs[].quantity_scrapped",
+    "jobs[].sequence_number",
+    "jobs[].yield_percentage",
+    "rty_percentage",
+    "total_scrapped",
+    "work_order_id"
   ],
   "GET /api/work-orders/{work_order_id}/timeline": [
     "events[].color",

@@ -113,11 +113,13 @@ EXCLUDE_UNSET_ROUTES: Dict[str, ExcludeUnsetEntry] = {
     "GET /api/jobs/kpi/rty-summary": ExcludeUnsetEntry(
         reason=(
             "total_good_units/jobs_meeting_target/interpretation are absent, not null, on "
-            "calculate_job_rty_summary's (calculations/fpy_rty.py) zero-completed-jobs branch -- "
-            "the smoke seed's captured shape (9 golden leaf paths / 8 top-level keys; period "
-            "flattens into 2 leaf paths). The populated branch always sends all three. Batch R5."
+            "calculate_job_rty_summary's (calculations/fpy_rty.py) zero-completed-jobs branch. "
+            "Batch R5 captured THAT branch, because JOB had no seeded rows at all; since S3 "
+            "seeds a routing with completed steps, the capture is the POPULATED branch (13 "
+            "golden leaf paths) and the omitting branch is the one no capture reaches. The "
+            "forcing test pins both key sets for that reason."
         ),
-        forcing_test="test_jobs_rty_summary_populated_branch_pins_the_extra_keys",
+        forcing_test="test_jobs_rty_summary_pins_the_key_set_of_both_branches",
     ),
 }
 

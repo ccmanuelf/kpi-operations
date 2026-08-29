@@ -98,7 +98,10 @@ def test_a_seeded_spec_reads_the_table_it_names():
     mismatched = {key: tables for key, tables in reads.items() if tables != [REGISTRY[key].table]}
 
     assert mismatched == {}
-    assert len(reads) == 16
+    # 17, up from 16: S3 promoted `job_id` out of Kind.BLOCKED into a
+    # SEEDED_ROW. Rises with each promotion; a drop means a spec stopped
+    # reading a table, which this test can no longer check.
+    assert len(reads) == 17
 
 
 def test_only_literal_specs_declare_a_bogus_probe_value():
