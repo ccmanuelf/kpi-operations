@@ -76,9 +76,10 @@ class ScopeEntry:
     category: str = RESPONSE_SUBCLASS
 
 
-#: route -> why it is out of the ratchet's domain. Every member here MUST be
-#: RESPONSE_SUBCLASS today -- Task 10 converts no DELETE route -- pinned by
-#: `test_declared_reason_matches_the_structural_classification`.
+#: route -> why it is out of the ratchet's domain, and which category that
+#: reason claims. Each entry's `category` is compared against the structural
+#: answer by `test_declared_reason_matches_the_structural_classification`, so a
+#: 204 declared as a file download fails there rather than passing quietly.
 OUT_OF_SCOPE_ROUTES: Dict[str, ScopeEntry] = {
     "GET /api/export/production-entries": ScopeEntry("-> StreamingResponse via _build_csv_response (CSV)."),
     "GET /api/export/work-orders": ScopeEntry("-> StreamingResponse via _build_csv_response (CSV)."),
@@ -109,7 +110,7 @@ OUT_OF_SCOPE_ROUTES: Dict[str, ScopeEntry] = {
     ),
     # --- 204 No Content DELETEs ------------------------------------------
     "DELETE /api/attendance/{attendance_id}": ScopeEntry(
-        "-> None, 204 No Content: deletes a attendance entry and sends no body.", NO_CONTENT_204
+        "-> None, 204 No Content: deletes an attendance entry and sends no body.", NO_CONTENT_204
     ),
     "DELETE /api/break-times/{break_id}": ScopeEntry(
         "-> None, 204 No Content: deletes a break time and sends no body.", NO_CONTENT_204
@@ -133,10 +134,10 @@ OUT_OF_SCOPE_ROUTES: Dict[str, ScopeEntry] = {
         "-> None, 204 No Content: deletes a downtime entry and sends no body.", NO_CONTENT_204
     ),
     "DELETE /api/employees/{employee_id}": ScopeEntry(
-        "-> None, 204 No Content: deletes a employee and sends no body.", NO_CONTENT_204
+        "-> None, 204 No Content: deletes an employee and sends no body.", NO_CONTENT_204
     ),
     "DELETE /api/equipment/{equipment_id}": ScopeEntry(
-        "-> None, 204 No Content: deletes a equipment and sends no body.", NO_CONTENT_204
+        "-> None, 204 No Content: deletes an equipment record and sends no body.", NO_CONTENT_204
     ),
     "DELETE /api/filters/history": ScopeEntry(
         "-> None, 204 No Content: deletes a saved-filter history and sends no body.", NO_CONTENT_204
