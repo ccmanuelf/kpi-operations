@@ -1,4 +1,23 @@
 
+## 2026-08-29 — `git checkout <file>` to undo a mutation destroys uncommitted work in that file
+
+**Pattern:** While mutation-testing the fetch-failure guards I reverted one mutant with
+`git checkout -- frontend/src/composables/useHoldGridForms.ts`. That file also held three
+*uncommitted* edits from the same work session — a tightened return type and two refresh
+guards — and the checkout took all of them back to HEAD along with the mutant. The damage
+arrived disguised as a test result: the post-restore run still showed one assertion failure,
+which read like a flaky test rather than a file I had just emptied. This exact trap is already
+recorded twice in this project's memory and I still walked into it, because the other three
+mutations in the same loop were reverted correctly from `cp` backups and the habit lapsed on
+the fourth.
+
+**Rule:** Never revert a mutation with git. Copy the file aside first (`cp f "$SCRATCH/f.orig"`)
+and restore from that copy — the backup is scoped to exactly the file and moment you intend,
+where `git checkout` is scoped to the last commit. Commit finished work *before* starting a
+mutation loop so the blast radius is empty even if you slip. And when a "restored" run does not
+return to the baseline number, suspect the restore before suspecting the test: a mutation loop
+whose baseline and restored figures disagree has corrupted its own subject.
+
 ## 2026-08-10 — A guard whose fixtures avoid the failing case is not a guard
 **Pattern:** PR #171 added a structural test asserting `/wip-aging/trend` agrees with the `/wip-aging` snapshot for the same date, and it passed. It passed because every fixture `hold_date` was at midnight. `date_diff_days` returns FRACTIONAL days, so a hold opened at 09:00 aged 44.625 on the trend line and 45 in the snapshot — the two surfaces disagreed on every hold with a time component, which in production is all of them. Midnight fixtures made the truncation being tested a no-op. A cross-model reviewer found it; the test could not.
 **Rule:** After writing a guard, revert the fix and confirm the guard FAILS — an unverified guard is an assertion about a test, not about the code. Then check the fixture data actually exercises the failing case: for time-of-day bugs use non-zero times, for boundary bugs include the equality case (a test with no `resume_date == cutoff` row passes under both `>` and `>=`), for empty-table "it executes" tests remember `AVG` over zero rows is NULL however wrong the arithmetic is.
