@@ -65,6 +65,7 @@ from __future__ import annotations
 import json
 
 from backend.tests.contract.capture import flatten_api_routes, is_placeholder
+from backend.tests.contract.capture import was_never_reached
 from backend.tests.contract.conftest import GOLDEN
 from backend.tests.contract.response_scope import (
     NO_CONTENT_204,
@@ -123,6 +124,43 @@ def test_declared_reason_matches_the_structural_classification():
     # comparison above is dead.
     declared = {entry.category for entry in OUT_OF_SCOPE_ROUTES.values()}
     assert declared == {RESPONSE_SUBCLASS, NO_CONTENT_204}
+
+
+def test_a_declared_route_that_was_captured_really_sent_no_body():
+    """Check the declaration against OBSERVED behaviour, not against a re-read
+    of the same annotation.
+
+    Cross-model review pointed out that every other gate here asks
+    `classify_non_json_route` again — annotation vs annotation — so a route
+    whose real response is JSON could be exempted with nothing failing. This
+    compares each declaration against what the capture actually recorded.
+
+    Only the routes the harness can reach are checked, and the count is pinned
+    so this cannot quietly become vacuous: several declared DELETEs are
+    unreachable because the seeder writes no rows for them (S3), and
+    work-orders answers 409 while its children exist. Those have no observation
+    to compare against — which is a seed gap, not a licence to skip the ones
+    that DO.
+    """
+    golden = json.loads(GOLDEN.read_text())
+
+    observed = {route: golden[route] for route in OUT_OF_SCOPE_ROUTES if route in golden}
+    sent_a_body = {
+        route: shape
+        for route, shape in observed.items()
+        # `was_never_reached` covers BOTH placeholder flavours a declared
+        # route can legitimately land on: `<status:...>` (it answered an error,
+        # e.g. work-orders' 409) and `<blocked:...>` (the seeder writes no rows
+        # for it — S3). Filtering only `<status:` left eight seed-gapped routes
+        # looking like they had sent a body.
+        if shape != ["<non-json>"] and not was_never_reached(shape)
+    }
+    assert sent_a_body == {}, f"declared out of scope, but the capture recorded a body: {sent_a_body}"
+
+    # Anti-vacuity: if this ever drops to zero the assertion above proves
+    # nothing. 28 of the 46 declarations have a real observation today.
+    really_non_json = [r for r, shape in observed.items() if shape == ["<non-json>"]]
+    assert len(really_non_json) >= 28
 
 
 def test_non_json_entries_decompose_into_exactly_three_categories():
