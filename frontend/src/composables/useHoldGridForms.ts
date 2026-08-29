@@ -15,6 +15,7 @@ import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/authStore'
 import { useKPIStore } from '@/stores/kpi'
 import { format, differenceInDays } from 'date-fns'
+import { formatStructuredDetail, isStructuredDetail } from '@/services/api/structuredErrors'
 import type { HoldEntry, WorkOrderRef } from './useHoldGridData'
 import { HOLD_REASON_CODES } from './useHoldGridData'
 
@@ -52,13 +53,16 @@ export interface ConfirmationField {
 }
 
 interface KPIStoreLike {
-  deleteHoldEntry: (_id: string | number) => Promise<unknown>
+  // Promise<unknown> here is what hid a live bug: the store resolves with
+  // {success:false} on failure, and an erased return type let every caller
+  // treat a rejection-free promise as a success.
+  deleteHoldEntry: (_id: string | number) => Promise<{ success: boolean; error?: string }>
   createHoldEntry: (_data: Partial<HoldEntry>) => Promise<{ success: boolean; data?: HoldEntry }>
   updateHoldEntry: (
     _id: string | number,
     _data: Partial<HoldEntry>,
   ) => Promise<{ success: boolean; data?: HoldEntry }>
-  fetchHoldEntries: () => Promise<unknown>
+  fetchHoldEntries: () => Promise<{ success: boolean; error?: string }>
 }
 
 export interface UseHoldGridFormsOptions {
@@ -198,13 +202,21 @@ export function useHoldGridForms({
     if (rowData.id === undefined) return
 
     try {
-      await kpiStore.deleteHoldEntry(rowData.id)
+      // The store CATCHES its own errors and returns {success: false}; it does
+      // not throw. Without this check the catch below never runs and execution
+      // simply continues — removing the row from the grid and announcing a
+      // success for a record that is still on the server.
+      const result = await kpiStore.deleteHoldEntry(rowData.id)
+      if (!result?.success) {
+        showSnackbar(t('grids.deleteError') + ': ' + (result?.error ?? ''), 'error')
+        return
+      }
       api.applyTransaction({ remove: [rowData] })
       unsavedChanges.value.delete(rowData.id)
       showSnackbar(t('grids.entryDeleted'), 'success')
     } catch (error) {
       const ax = error as { message?: string }
-      showSnackbar('Error deleting entry: ' + (ax?.message || ''), 'error')
+      showSnackbar(t('grids.deleteError') + ': ' + (ax?.message || ''), 'error')
     }
   }
 
@@ -303,8 +315,14 @@ export function useHoldGridForms({
         }
       }
 
-      await kpiStore.fetchHoldEntries()
+      // The save already happened; a failed refresh means the rows on screen are
+      // stale, not that the save failed.
+      const refreshed = await kpiStore.fetchHoldEntries()
       applyFilters()
+      if (!refreshed?.success) {
+        showSnackbar(t('grids.savedButNotRefreshed'), 'warning')
+        return
+      }
 
       if (errorCount === 0) {
         showSnackbar(t('grids.holds.savedEntries', { count: successCount }), 'success')
@@ -350,13 +368,29 @@ export function useHoldGridForms({
       })
 
       if (!response.ok) {
-        const error = (await response.json()) as { detail?: string }
-        throw new Error(error.detail || `Failed to ${endpoint.replace('-', ' ')}`)
+        const error = (await response.json()) as { detail?: unknown }
+        // Raw fetch, so the axios interceptor that flattens the structured
+        // 409/422 payloads never sees this response — format it here.
+        //
+        // Only a string is usable as-is. FastAPI's own validation 422 sends
+        // detail as an ARRAY of {loc, msg, type}, which is truthy and would
+        // reach the user as "Error: [object Object]" rather than the fallback.
+        const detail = isStructuredDetail(error.detail)
+          ? formatStructuredDetail(error.detail)
+          : typeof error.detail === 'string'
+            ? error.detail
+            : undefined
+        throw new Error(detail || `Failed to ${endpoint.replace('-', ' ')}`)
       }
 
       showSnackbar(t(successMsg), 'success')
-      await kpiStore.fetchHoldEntries()
+      // The approval already went through; a failed refetch leaves stale rows on
+      // screen, so it replaces the success message rather than being swallowed.
+      const refreshedAfterApproval = await kpiStore.fetchHoldEntries()
       applyFilters()
+      if (!refreshedAfterApproval?.success) {
+        showSnackbar(t('grids.savedButNotRefreshed'), 'warning')
+      }
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error(`Error during ${endpoint}:`, error)

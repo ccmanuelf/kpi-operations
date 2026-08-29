@@ -320,14 +320,21 @@ class TestDeleteProductionEntry:
     """Tests for DELETE /api/production/{entry_id} endpoint."""
 
     def test_delete_entry_success(self, authenticated_client):
-        """Test deleting a production entry — fixture entries use string IDs but route expects int."""
+        """Deleting a production entry succeeds and hides it from subsequent reads.
+
+        This asserted 404 until S1, with a comment blaming an int-vs-string
+        route param. The route param is `entry_id: str`; the real cause was
+        that soft_delete() set is_active on a model that had no such column,
+        so every DELETE answered 404. The test was green while the endpoint
+        was broken.
+        """
         client, setup = authenticated_client
         entry = setup["entries"][0]
 
         response = client.delete(f"/api/production/{entry.production_entry_id}")
 
-        # Fixture seeds string IDs (e.g. "PE-0001") which the int-typed route param rejects → 404
-        assert response.status_code == 404
+        assert response.status_code == 204
+        assert client.get(f"/api/production/{entry.production_entry_id}").status_code == 404
 
     def test_delete_entry_not_found(self, authenticated_client):
         """Test error when entry doesn't exist."""

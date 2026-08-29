@@ -186,7 +186,12 @@ def test_the_ci_workflow_parser_finds_every_pytest_step():
 
     assert steps == [
         ("backend-tests", "Run tests with coverage", ("tests/",), False),
-        ("mariadb-portability", "Run MariaDB portability tests", ("tests/test_mariadb_portability.py",), True),
+        (
+            "mariadb-portability",
+            "Run MariaDB portability tests",
+            ("tests/test_mariadb_portability.py", "tests/test_mariadb_soft_delete.py"),
+            True,
+        ),
         ("mariadb-portability", "Seed suite on MariaDB", ("tests/test_seed/",), True),
     ]
 

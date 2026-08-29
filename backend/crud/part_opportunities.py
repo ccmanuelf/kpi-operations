@@ -12,7 +12,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from backend.orm.part_opportunities import PartOpportunities
 from backend.orm.user import User
 from backend.middleware.client_auth import verify_client_access, build_client_filter_clause
-from backend.utils.soft_delete import soft_delete
+from backend.db.soft_delete_service import soft_delete_record
 
 logger = logging.getLogger(__name__)
 
@@ -167,7 +167,7 @@ def delete_part_opportunity(db: Session, part_number: str, current_user: User) -
         return False
 
     # Soft delete - preserves data integrity
-    return soft_delete(db, part)
+    return soft_delete_record(db, part, current_user)
 
 
 def bulk_import_opportunities(db: Session, opportunities_list: List[dict], current_user: User) -> Dict[str, Any]:

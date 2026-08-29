@@ -16,7 +16,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from backend.orm.work_order import WorkOrder
 from backend.orm.user import User
 from backend.middleware.client_auth import verify_client_access, build_client_filter_clause
-from backend.utils.soft_delete import soft_delete
+from backend.db.soft_delete_service import soft_delete_record
 from backend.calculations.workflow_engine import WorkflowStateMachine, execute_transition
 
 logger = logging.getLogger(__name__)
@@ -302,7 +302,7 @@ def delete_work_order(db: Session, work_order_id: str, current_user: User) -> bo
         verify_client_access(current_user, db_work_order.client_id)
 
     # Soft delete - preserves data integrity (commit=False: route handler commits)
-    return soft_delete(db, db_work_order, commit=False)
+    return soft_delete_record(db, db_work_order, current_user, commit=False)
 
 
 def get_work_orders_by_client(

@@ -4,6 +4,7 @@
  * summary statistics, read-back confirmation.
  */
 import { ref, computed, onMounted, watch } from 'vue'
+import { useGridLoadState } from '@/composables/useGridLoadState'
 import { useI18n } from 'vue-i18n'
 import { useProductionDataStore } from '@/stores/productionDataStore'
 import { format } from 'date-fns'
@@ -152,6 +153,8 @@ export default function useProductionGridData() {
     ]
   })
 
+  const { loadError, load: runInitialLoad, retry: retryLoad } = useGridLoadState()
+
   const showSnackbar = (message: string, color: string = 'success'): void => {
     snackbar.value = { show: true, message, color }
   }
@@ -172,7 +175,15 @@ export default function useProductionGridData() {
     if (rowData.entry_id === undefined) return
 
     try {
-      await kpiStore.deleteProductionEntry(rowData.entry_id)
+      // The store CATCHES its own errors and returns {success: false}; it does
+      // not throw. Without this check the catch below never runs and execution
+      // simply continues — removing the row from the grid and announcing a
+      // success for a record that is still on the server.
+      const result = await kpiStore.deleteProductionEntry(rowData.entry_id)
+      if (!result?.success) {
+        showSnackbar(t('grids.deleteError') + ': ' + (result?.error ?? ''), 'error')
+        return
+      }
       api.applyTransaction({ remove: [rowData] })
       unsavedChanges.value.delete(rowData.entry_id)
       showSnackbar(t('grids.entryDeleted'), 'success')
@@ -443,8 +454,14 @@ export default function useProductionGridData() {
         }
       }
 
-      await kpiStore.fetchProductionEntries()
+      // The save already happened; a failed refresh means the rows on screen are
+      // stale, not that the save failed. Reported, but not as a load error.
+      const refreshed = await kpiStore.fetchProductionEntries()
       applyFilters()
+      if (!refreshed?.success) {
+        showSnackbar(t('grids.savedButNotRefreshed'), 'warning')
+        return
+      }
 
       if (errorCount === 0) {
         showSnackbar(t('grids.entriesSaved', { count: successCount }), 'success')
@@ -521,12 +538,20 @@ export default function useProductionGridData() {
   watch(entries, () => applyFilters(), { immediate: true })
 
   onMounted(async () => {
-    await kpiStore.fetchReferenceData()
-    await kpiStore.fetchProductionEntries()
+    // A failed first load used to leave the grid rendering "no rows", which a
+    // user cannot tell apart from an empty dataset. runInitialLoad records the
+    // reason so the view can say so and offer a retry.
+    await runInitialLoad(
+      () => kpiStore.fetchReferenceData(),
+      () => kpiStore.fetchProductionEntries(),
+    )
     applyFilters()
   })
 
   return {
+    deleteEntry,
+    loadError,
+    retryLoad,
     gridRef,
     unsavedChanges,
     saving,

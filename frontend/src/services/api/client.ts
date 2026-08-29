@@ -1,4 +1,5 @@
 import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios'
+import { normalizeStructuredDetail } from './structuredErrors'
 
 const api: AxiosInstance = axios.create({
   baseURL: import.meta.env.VITE_API_URL || '/api/v1',
@@ -26,6 +27,10 @@ api.interceptors.response.use(
       localStorage.removeItem('user')
       window.location.href = '/login'
     }
+    // Callers read `data.detail` as a string; the structured 409/422 payloads
+    // are objects, so they get flattened into a sentence here rather than at
+    // each of the ~40 extraction sites.
+    normalizeStructuredDetail(error)
     return Promise.reject(error)
   },
 )

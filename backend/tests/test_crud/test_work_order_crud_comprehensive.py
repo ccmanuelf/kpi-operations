@@ -467,19 +467,26 @@ class TestUpdateWorkOrder:
 class TestDeleteWorkOrder:
     """Tests for delete_work_order function."""
 
-    def test_delete_work_order_called(self, work_order_setup):
-        """Test delete_work_order is called without errors."""
+    def test_delete_work_order_soft_deletes_and_hides_the_row(self, work_order_setup):
+        """delete_work_order marks the row inactive and it stops being readable.
+
+        Until S1 this asserted `result is False or result is True` — a
+        two-valued acceptance that passed whichever way the code behaved. It
+        was False: WorkOrder had no is_active column, so soft_delete() bailed
+        and DELETE /api/work-orders/{id} answered 404 for every id.
+        """
         db = work_order_setup["db"]
         admin = work_order_setup["admin"]
         wo = work_order_setup["work_orders"][0]
+        work_order_id = wo.work_order_id
 
-        # Note: WorkOrder model doesn't have is_active field
-        # so soft_delete returns False, but the function executes without errors
-        result = work_order_crud.delete_work_order(db, wo.work_order_id, admin)
+        result = work_order_crud.delete_work_order(db, work_order_id, admin)
+        db.commit()
 
-        # Result is False because WorkOrder doesn't support soft delete
-        # (no is_active field) - this is expected behavior
-        assert result is False or result is True  # Depends on model implementation
+        assert result is True
+        with pytest.raises(HTTPException) as exc_info:
+            work_order_crud.get_work_order(db, work_order_id, admin)
+        assert exc_info.value.status_code == 404
 
     def test_delete_work_order_not_found(self, work_order_setup):
         """Test deleting non-existent work order."""

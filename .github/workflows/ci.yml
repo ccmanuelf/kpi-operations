@@ -348,7 +348,11 @@ jobs:
           pip install --require-hashes --only-binary=:all: -r requirements-dev.lock
 
       - name: Run MariaDB portability tests
-        run: pytest tests/test_mariadb_portability.py -v --no-cov --junitxml=mariadb-report.xml
+        # test_mariadb_soft_delete.py rides in the same invocation (one
+        # junit report feeds the zero-skips check below). S1's migration and
+        # its `IS true` WHERE clause are dialect-specific, so SQLite green
+        # proves nothing about them.
+        run: pytest tests/test_mariadb_portability.py tests/test_mariadb_soft_delete.py -v --no-cov --junitxml=mariadb-report.xml
 
       - name: Verify no integration tests were skipped
         run: |

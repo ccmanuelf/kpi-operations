@@ -54,6 +54,7 @@ from sqlalchemy.orm import configure_mappers
 from backend.audit.context import get_actor, get_actor_username, get_request_shape, is_suppressed
 from backend.audit.registry import REDACTED_FIELDS, is_audited
 from backend.database import Base
+from backend.db.soft_delete_registry import AUTO_FILTERED_TABLES
 from backend.orm.audit_entry import AuditEntry, AuditOperation
 
 _REDACTED = "[redacted]"
@@ -130,6 +131,12 @@ def _client_id(obj: Any) -> Optional[str]:
     recording nothing.
     """
     value = getattr(obj, "client_id", None)
+    if value is None:
+        # JOB and PART_OPPORTUNITIES name their tenant column client_id_fk.
+        # They became audit-visible with S1 (soft deletes are recorded on all
+        # eleven soft-deleting tables), and without this their entries would
+        # record a NULL tenant that cannot be reconstructed afterwards.
+        value = getattr(obj, "client_id_fk", None)
     if value is None:
         assigned = getattr(obj, "client_id_assigned", None)
         if assigned:
@@ -246,10 +253,63 @@ def _capture_insert(mapper: Any, connection: Any, target: Any) -> None:
     _write_entry(connection, target, AuditOperation.INSERT, _insert_changes(target))
 
 
+def _is_soft_delete(target: Any) -> bool:
+    """True when this UPDATE is flipping is_active from true to false.
+
+    Only asked of AUTO_FILTERED_TABLES, whose `is_active` attribute is forced
+    to active_history so the pre-change value is genuinely reloaded rather than
+    reported as None after an earlier commit expired it.
+    """
+    state = inspect(target)
+    if "is_active" not in state.attrs:
+        return False
+    history = state.attrs["is_active"].history
+    if not history.has_changes():
+        return False
+    was_active = bool(history.deleted[0]) if history.deleted else False
+    is_now_active = bool(history.added[0]) if history.added else False
+    return was_active and not is_now_active
+
+
+def _soft_delete_changes(obj: Any) -> Dict[str, Any]:
+    """The row as it looked immediately BEFORE the soft delete.
+
+    Same shape as a hard delete's snapshot ({"old": value, "new": None}) so a
+    consumer filtering on operation=DELETE gets one uniform answer either way.
+    For the columns this delete is changing, the pre-change value comes from
+    attribute history; everything else is unchanged and read straight off the
+    instance. Who and when are NOT in here — they are the entry's own
+    actor_user_id and occurred_at, which is where a reader looks for them.
+    """
+    state = inspect(obj)
+    changes: Dict[str, Any] = {}
+    for column in state.mapper.columns:
+        history = state.attrs[column.key].history
+        if history.has_changes() and history.deleted:
+            value = history.deleted[0]
+        else:
+            value = getattr(obj, column.key, None)
+        changes[column.key] = {"old": _mask(column.key, value), "new": None}
+    return changes
+
+
 def _capture_update(mapper: Any, connection: Any, target: Any) -> None:
     if is_suppressed():
         return
-    if not is_audited(getattr(target, "__tablename__", "")):
+    table_name = getattr(target, "__tablename__", "")
+
+    # A soft delete IS a delete, and is recorded as one on ALL eleven
+    # soft-deleting tables — including the nine that AUDITED_TABLES
+    # deliberately excludes as high-volume routine data entry. Entering a
+    # production row every shift is routine; deleting one is a discretionary
+    # act, and "soft delete for auditability" is an empty claim if nothing
+    # records who did it. This is a narrower promise than auditing the table:
+    # every soft delete is attributable, not every change is.
+    if table_name in AUTO_FILTERED_TABLES and _is_soft_delete(target):
+        _write_entry(connection, target, AuditOperation.DELETE, _soft_delete_changes(target))
+        return
+
+    if not is_audited(table_name):
         return
     changes = _update_changes(target)
     if not changes:
@@ -296,11 +356,23 @@ def _force_active_history_for_audited_tables() -> None:
     configure_mappers()
     for mapper in Base.registry.mappers:
         table = mapper.local_table
-        if table is None or not is_audited(table.name):
+        if table is None:
             continue
         class_manager = mapper.class_manager
-        for prop in mapper.column_attrs:
-            class_manager[prop.key].impl.active_history = True
+        if is_audited(table.name):
+            for prop in mapper.column_attrs:
+                class_manager[prop.key].impl.active_history = True
+        elif table.name in AUTO_FILTERED_TABLES:
+            # Soft-delete detection needs a trustworthy pre-change value for
+            # is_active, and the snapshot needs one for the other two columns a
+            # soft delete writes. Scoped to those THREE columns rather than the
+            # whole mapper: active_history is permanent and process-wide, and
+            # widening it over nine more high-volume mappers would grow the
+            # DetachedInstanceError surface described above for no gain, since
+            # soft_delete_record changes nothing else.
+            for key in ("is_active", "deleted_at", "deleted_by"):
+                if key in class_manager:
+                    class_manager[key].impl.active_history = True
 
 
 def register_audit_listener() -> None:

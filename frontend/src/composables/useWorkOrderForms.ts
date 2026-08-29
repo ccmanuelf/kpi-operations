@@ -6,6 +6,7 @@
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import api from '@/services/api'
+import { blockedByRows, getStructuredDetail, type BlockedByRow } from '@/services/api/structuredErrors'
 import { transitionWorkOrder } from '@/services/api/workflow'
 import { useNotificationStore } from '@/stores/notificationStore'
 
@@ -71,6 +72,12 @@ export function useWorkOrderForms(
 
   const saving = ref(false)
   const deleting = ref(false)
+  // A refused delete (409) names each blocking table and its row count. The
+  // dialog stays open and lists them, which is why the structured form is kept
+  // rather than only the interceptor's flattened sentence. Non-empty here means
+  // "this delete was refused", which is also what switches the dialog out of
+  // its confirmation state.
+  const deleteBlockers = ref<BlockedByRow[]>([])
 
   const formData = ref<WorkOrderFormData>(DEFAULT_FORM_DATA())
 
@@ -175,6 +182,7 @@ export function useWorkOrderForms(
 
   const confirmDelete = (workOrder: WorkOrder): void => {
     workOrderToDelete.value = workOrder
+    deleteBlockers.value = []
     deleteDialog.value = true
   }
 
@@ -185,16 +193,29 @@ export function useWorkOrderForms(
     try {
       await api.deleteWorkOrder(workOrderToDelete.value.work_order_id)
       notificationStore.showSuccess(t('notifications.workOrders.deleteSuccess'))
+      deleteBlockers.value = []
       deleteDialog.value = false
       workOrderToDelete.value = null
       await loadWorkOrders()
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('Error deleting work order:', error)
-      const ax = error as { response?: { data?: { detail?: string } } }
-      notificationStore.showError(
-        ax?.response?.data?.detail || t('notifications.workOrders.deleteFailed'),
-      )
+      deleteBlockers.value = blockedByRows(getStructuredDetail(error))
+      // The snackbar is suppressed ONLY when the dialog is actually on screen to
+      // carry the same information — otherwise the two would name the same
+      // entities twice, in two shapes.
+      //
+      // The `deleteDialog` half is not redundant: Cancel is not disabled while
+      // the request is in flight, and the dialog is not persistent, so Esc or a
+      // scrim click also closes it. Suppressing on blockers alone let that race
+      // swallow the failure entirely — the delete silently did not happen and
+      // nothing said so.
+      if (!deleteBlockers.value.length || !deleteDialog.value) {
+        const ax = error as { response?: { data?: { detail?: string } } }
+        notificationStore.showError(
+          ax?.response?.data?.detail || t('notifications.workOrders.deleteFailed'),
+        )
+      }
     } finally {
       deleting.value = false
     }
@@ -209,6 +230,7 @@ export function useWorkOrderForms(
     formValid,
     saving,
     deleting,
+    deleteBlockers,
     formData,
     rules,
     openCreateDialog,
