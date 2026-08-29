@@ -53,7 +53,10 @@ export interface ConfirmationField {
 }
 
 interface KPIStoreLike {
-  deleteHoldEntry: (_id: string | number) => Promise<unknown>
+  // Promise<unknown> here is what hid a live bug: the store resolves with
+  // {success:false} on failure, and an erased return type let every caller
+  // treat a rejection-free promise as a success.
+  deleteHoldEntry: (_id: string | number) => Promise<{ success: boolean; error?: string }>
   createHoldEntry: (_data: Partial<HoldEntry>) => Promise<{ success: boolean; data?: HoldEntry }>
   updateHoldEntry: (
     _id: string | number,
@@ -199,13 +202,21 @@ export function useHoldGridForms({
     if (rowData.id === undefined) return
 
     try {
-      await kpiStore.deleteHoldEntry(rowData.id)
+      // The store CATCHES its own errors and returns {success: false}; it does
+      // not throw. Without this check the catch below never runs and execution
+      // simply continues — removing the row from the grid and announcing a
+      // success for a record that is still on the server.
+      const result = await kpiStore.deleteHoldEntry(rowData.id)
+      if (!result?.success) {
+        showSnackbar(t('grids.deleteError') + ': ' + (result?.error ?? ''), 'error')
+        return
+      }
       api.applyTransaction({ remove: [rowData] })
       unsavedChanges.value.delete(rowData.id)
       showSnackbar(t('grids.entryDeleted'), 'success')
     } catch (error) {
       const ax = error as { message?: string }
-      showSnackbar('Error deleting entry: ' + (ax?.message || ''), 'error')
+      showSnackbar(t('grids.deleteError') + ': ' + (ax?.message || ''), 'error')
     }
   }
 

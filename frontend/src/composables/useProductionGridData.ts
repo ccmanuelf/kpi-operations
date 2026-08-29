@@ -172,7 +172,15 @@ export default function useProductionGridData() {
     if (rowData.entry_id === undefined) return
 
     try {
-      await kpiStore.deleteProductionEntry(rowData.entry_id)
+      // The store CATCHES its own errors and returns {success: false}; it does
+      // not throw. Without this check the catch below never runs and execution
+      // simply continues — removing the row from the grid and announcing a
+      // success for a record that is still on the server.
+      const result = await kpiStore.deleteProductionEntry(rowData.entry_id)
+      if (!result?.success) {
+        showSnackbar(t('grids.deleteError') + ': ' + (result?.error ?? ''), 'error')
+        return
+      }
       api.applyTransaction({ remove: [rowData] })
       unsavedChanges.value.delete(rowData.entry_id)
       showSnackbar(t('grids.entryDeleted'), 'success')
@@ -527,6 +535,7 @@ export default function useProductionGridData() {
   })
 
   return {
+    deleteEntry,
     gridRef,
     unsavedChanges,
     saving,
