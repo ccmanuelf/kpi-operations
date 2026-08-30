@@ -117,7 +117,13 @@ def test_only_literal_specs_declare_a_bogus_probe_value():
     literals = {key for key, spec in REGISTRY.items() if spec.kind is Kind.LITERAL}
 
     assert declared <= literals
-    assert declared == {"pattern"}
+    # `dataset` and `metric` joined `pattern` when the capture learned to
+    # supply required query params: until then `/api/pivot/{dataset}` and
+    # `/api/kpi/{metric}/cause` recorded `<status:422>`, so they never reached
+    # the id-sensitivity gate at all. Reaching it without a `bogus` value would
+    # have compared each route against ITSELF and read as "id-insensitive" for
+    # free -- the vacuous pass `unprobed` exists to refuse.
+    assert declared == {"dataset", "metric", "pattern"}
 
 
 def test_registry_keys_parse_as_param_or_param_at_family():

@@ -100,11 +100,13 @@ def test_every_non_json_golden_entry_is_explained():
 
     golden = _golden()
     non_json_routes = sorted(route for route, shape in golden.items() if shape == ["<non-json>"])
-    # 36, up from 35: S3 seeded JOB, so GET /api/qr/job/{job_id}/image is
-    # reachable at last and records the PNG it always returned. This count
-    # rises when a route becomes reachable and falls when one starts sending
-    # JSON -- neither is churn, and both must be stated.
-    assert len(non_json_routes) == 36
+    # 37, up from 36: GET /api/pivot/{dataset}/csv became reachable once the
+    # capture supplied its required query params, and records the CSV stream it
+    # always returned. 36 was S3 seeding JOB, which did the same for
+    # GET /api/qr/job/{job_id}/image. This count rises when a route becomes
+    # reachable and falls when one starts sending JSON -- neither is churn, and
+    # both must be stated.
+    assert len(non_json_routes) == 37
 
     unexplained = [route for route in non_json_routes if classify_non_json_route(_route(app, route)) is None]
     assert unexplained == []
@@ -199,6 +201,7 @@ def test_non_json_entries_decompose_into_exactly_three_categories():
         "GET /api/export/quality-inspections",
         "GET /api/export/shifts",
         "GET /api/export/work-orders",
+        "GET /api/pivot/{dataset}/csv",
         "GET /api/qr/employee/{employee_id}/image",
         # Reachable since S3 seeded JOB; it was declared RESPONSE_SUBCLASS all
         # along on the strength of its return annotation alone, and the capture

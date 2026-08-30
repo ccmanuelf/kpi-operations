@@ -33,13 +33,26 @@ from sqlalchemy import func, select, table
 from backend.tests.contract.capture import capture_isolated, was_never_reached
 from backend.tests.contract.conftest import _Harness
 from backend.tests.contract.param_specs import NEVER_404, REGISTRY, Kind
+from backend.tests.contract.query_specs import QUERY_REGISTRY
 
-#: The routes no id can reach, because their backing table has zero seeded
-#: rows. 7, down from 15: seeding JOB (S3) promoted `job_id` out of
+#: The routes whose answer no resolvable value can make meaningful, because a
+#: table they read has zero seeded rows. 8, from 7.
+#:
+#: This set may only shrink BY PROMOTION -- a route leaving it means the
+#: seeder started writing its table -- and a route joining it is a finding
+#: that must say which of two things happened. Losing reachability is the bad
+#: one. `GET /api/capacity/kpi/variance` is the other: it was never reachable,
+#: it recorded `<status:422>`, and that status was the HARNESS's omission (no
+#: `client_id` was supplied), not the route's answer. Supplying one shows
+#: `calculate_variance_detailed` returning `[]` for every client, because
+#: CAPACITY_KPI_COMMITMENT is empty -- so the honest record is a declared gap
+#: with a staleness gate, not an empty shape that would look like a captured
+#: contract. See `query_specs.QUERY_REGISTRY["client_id@capacity-variance"]`.
+#:
+#: 7 was itself down from 15: seeding JOB (S3) promoted `job_id` out of
 #: `Kind.BLOCKED` and with it all eight routes it reached -- the six
 #: `GET /api/jobs/{job_id}/*` KPI routes, `DELETE /api/jobs/{job_id}` and
-#: `GET /api/qr/job/{job_id}/image`. This set may only SHRINK: a route joining
-#: it means something that used to be reachable no longer is.
+#: `GET /api/qr/job/{job_id}/image`.
 BLOCKED_ROUTES = frozenset(
     {
         "DELETE /api/break-times/{break_id}",
@@ -49,8 +62,23 @@ BLOCKED_ROUTES = frozenset(
         "DELETE /api/floating-pool/{pool_id}",
         "DELETE /api/part-opportunities/{part_number}",
         "DELETE /api/v2/simulation/scenarios/{scenario_id}",
+        "GET /api/capacity/kpi/variance",
     }
 )
+
+
+def _spec_for(key: str):
+    """The spec behind a blocked route's key, from EITHER registry.
+
+    A path param and a required query param can both block a route, and they
+    are declared in different modules for the same reason `param_specs.py`
+    and `param_resolution.py` are split. Looking in only one of them is how a
+    gate goes quietly vacuous: `test_every_blocked_spec_still_has_zero_rows`
+    filtered on `key in REGISTRY`, so the first query-side BLOCKED spec would
+    have been skipped -- silently dropping the very staleness promise the
+    declaration makes.
+    """
+    return REGISTRY.get(key) or QUERY_REGISTRY.get(key)
 
 
 def test_no_captured_url_contains_an_unresolved_path_param(harness: _Harness) -> None:
@@ -102,7 +130,7 @@ def test_no_route_was_blocked_by_anything_but_a_declared_gap(harness: _Harness) 
     undeclared = {
         route: exc.reason
         for route, exc in harness.plan.blocked.items()
-        if REGISTRY.get(exc.key) is None or REGISTRY[exc.key].kind is not Kind.BLOCKED
+        if _spec_for(exc.key) is None or _spec_for(exc.key).kind is not Kind.BLOCKED
     }
 
     assert undeclared == {}
@@ -118,7 +146,7 @@ def test_every_blocked_spec_still_has_zero_rows(harness: _Harness) -> None:
     # HAS a table is gated separately by
     # test_param_resolution.test_row_backed_specs_name_the_table_they_read,
     # so a None here cannot silently shrink this set unnoticed.
-    specs = [REGISTRY[exc.key] for exc in harness.plan.blocked.values() if exc.key in REGISTRY]
+    specs = [spec for spec in (_spec_for(exc.key) for exc in harness.plan.blocked.values()) if spec is not None]
     blocked_tables = sorted({spec.table for spec in specs if spec.table})
     # `select(func.count()).select_from(table(name))` rather than an f-string
     # SQL literal: the name comes from our own REGISTRY, but interpolating it
@@ -133,6 +161,11 @@ def test_every_blocked_spec_still_has_zero_rows(harness: _Harness) -> None:
     # to make here is now made in the opposite direction by
     # tests/test_seed/test_coverage.py, which fails if JOB has NO rows.
     assert counts == {
+        # Not a param gap: `client_id` resolves fine on GET /api/capacity/kpi/
+        # variance. This table being empty is what makes its answer `[]`, and
+        # counting it here is what turns "seed some commitments and the route
+        # becomes capturable" from a note into a failing test.
+        "CAPACITY_KPI_COMMITMENT": 0,
         "BREAK_TIME": 0,
         "EQUIPMENT": 0,
         "FLOATING_POOL": 0,
@@ -238,7 +271,17 @@ def test_a_2xx_is_proof_the_id_was_right_except_where_declared(
     # all along and answered 404 only because the order had no jobs to compute
     # a rolled-throughput yield from. This number may only go UP without a
     # stated reason: a drop means a route stopped being capturable.
-    assert len(succeeded) == 44
+    #
+    # 48, up from 44: supplying required QUERY params (`query_specs.py`) made
+    # four more path-param routes answer at last --
+    # GET /api/attendance/kpi/bradford-factor/{employee_id},
+    # GET /api/kpi/{metric}/cause, GET /api/pivot/{dataset} and
+    # GET /api/pivot/{dataset}/csv (whose CSV stream records `<non-json>`,
+    # itself a success). All four DISCRIMINATE, and the probe is only entitled
+    # to say so because it re-requests them WITH the same query params: without
+    # them every probe answers 422 for the missing params and the difference
+    # would prove nothing about the id. See `CapturePlan.kwargs`.
+    assert len(succeeded) == 48
     # Third side, and the one that keeps the other two honest: a route whose
     # probe URL equals its real URL was compared against ITSELF, so it lands in
     # `id_insensitive` for free and its NEVER_404 membership proves nothing.

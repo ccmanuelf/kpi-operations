@@ -149,15 +149,23 @@ def test_real_field_names_uses_top_level_segments_only():
 
 
 def test_real_field_names_empty_for_status_placeholder_entry():
-    """`GET /api/kpi/labor-hours`'s golden master entry is `["<status:422>"]`
+    """`GET /api/onboarding/status`'s golden master entry is `["<status:400>"]`
     -- the capture harness never reached a real response body. That carries
     no field information at all, so the real field set must be empty, never
-    `{"<status:422>"}` or any other artifact of the placeholder string
+    `{"<status:400>"}` or any other artifact of the placeholder string
     itself leaking through as if it were a field name.
+
+    It used to point at `GET /api/kpi/labor-hours`, whose entry was
+    `["<status:422>"]` for a reason that turned out not to be about the route
+    at all: the harness supplied no `start_date`/`end_date`, so the route
+    rejected the request. Now that the capture resolves required query params
+    (`query_specs.py`) that entry is 24 real field paths, and the example had
+    to move to a route whose status is the ROUTE's own answer rather than the
+    harness's omission -- which is what `/api/onboarding/status` is.
     """
     from backend.tests.contract.frontend_usage import _real_field_names
 
-    assert _real_field_names("/api/kpi/labor-hours") == frozenset()
+    assert _real_field_names("/api/onboarding/status") == frozenset()
 
 
 def test_real_field_names_empty_for_a_non_json_entry():

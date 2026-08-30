@@ -16,11 +16,23 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Dict, Optional, Tuple
 
+# The APPLICATION's own accepted values for the two enum-ish params below,
+# imported rather than retyped -- see `ParamSpec.choices`. `_ALL_METRICS` is
+# private to its module and is imported anyway, deliberately: it is the exact
+# set `get_kpi_cause` validates against, and a public copy maintained here
+# would be the pasted duplicate this rule exists to forbid.
+from backend.pivot.registry import DATASETS
+from backend.routes.kpi.cause import _ALL_METRICS as CAUSE_METRICS
+
 
 class Kind(Enum):
     SEEDED_ROW = "seeded_row"
     LITERAL = "literal"
     BLOCKED = "blocked"
+    #: A date derived from the day the seeded universe ends, never from the
+    #: real clock. Only QUERY params use it today (`query_specs.py`); no path
+    #: param in this codebase is a date. See `ParamSpec.offset_days`.
+    SEED_WINDOW = "seed_window"
 
 
 @dataclass(frozen=True)
@@ -58,6 +70,19 @@ class ParamSpec:
     #: against itself -- a vacuous pass, which
     #: `test_a_2xx_is_proof_the_id_was_right_except_where_declared` refuses.
     bogus: Optional[str] = None
+    #: The APPLICATION's own set of accepted values for an enum-ish param,
+    #: imported from where the route validates against it -- never retyped.
+    #:
+    #: `literal` still names WHICH member is requested (picking one by sort
+    #: order would churn the golden master the day someone adds a dataset),
+    #: but `Resolver.resolve` checks membership before returning it, so a
+    #: member the app drops or renames fails loudly at capture time instead of
+    #: quietly becoming a 422 recorded as the route's answer. That is the
+    #: difference between referencing the real list and pasting a copy of it.
+    choices: Optional[Tuple[str, ...]] = None
+    #: SEED_WINDOW only: how many days BEFORE the seed's own "today" this
+    #: param resolves to. 0 is that day itself. See `query_specs.py`.
+    offset_days: Optional[int] = None
 
 
 #: param name -> ordered (path fragment, spec key). First match wins; a param
@@ -124,8 +149,14 @@ def _seeded(key: str, table: str, sql: str, note: Optional[str] = None) -> Param
     return ParamSpec(key=key, kind=Kind.SEEDED_ROW, table=table, sql=sql, note=note)
 
 
-def _literal(key: str, literal: str, note: Optional[str] = None, bogus: Optional[str] = None) -> ParamSpec:
-    return ParamSpec(key=key, kind=Kind.LITERAL, literal=literal, note=note, bogus=bogus)
+def _literal(
+    key: str,
+    literal: str,
+    note: Optional[str] = None,
+    bogus: Optional[str] = None,
+    choices: Optional[Tuple[str, ...]] = None,
+) -> ParamSpec:
+    return ParamSpec(key=key, kind=Kind.LITERAL, literal=literal, note=note, bogus=bogus, choices=choices)
 
 
 def _blocked(key: str, table: str, reason: str) -> ParamSpec:
@@ -241,8 +272,30 @@ REGISTRY: Dict[str, ParamSpec] = {
         "smoke profile whatever value is passed (14 seeded days < its hardcoded 30-point "
         "floor), which is a profile-density problem, not an id problem.",
     ),
-    "dataset": _literal("dataset", "production", note="A pivot dataset name; anything else is 422."),
-    "metric": _literal("metric", "efficiency", note="A KPI metric name on /api/kpi/{metric}/cause."),
+    "dataset": _literal(
+        "dataset",
+        "production",
+        bogus="no-such-dataset",
+        choices=tuple(sorted(DATASETS)),
+        note="A pivot dataset name; anything else is 422. `choices` is the ENGINE's own "
+        "registry, so renaming a dataset fails at capture instead of turning both pivot "
+        "entries into a 422 nobody reads. The `bogus` value is what makes the probe ask a "
+        "question at all: before /api/pivot/{dataset} could be requested (it needed query "
+        "params and recorded <status:422>) it never reached the id-sensitivity gate, and "
+        "without a bogus value it would have been compared against itself.",
+    ),
+    "metric": _literal(
+        "metric",
+        "efficiency",
+        bogus="no-such-metric",
+        choices=tuple(sorted(CAUSE_METRICS)),
+        note="A KPI metric name on /api/kpi/{metric}/cause. `efficiency` is one of the three "
+        "FALLBACK metrics, which answer the empty envelope rather than running a driver -- "
+        "measured, that changes no KEY: KPICauseResponse fixes all seven fields, and "
+        "`?metric=absenteeism&date=2026-08-24` (a real driver, non-null factor) records the "
+        "identical shape. So the recorded shape is the route's full contract either way, and "
+        "this spec is NOT relying on the fallback branch to be representative.",
+    ),
     "pattern": _literal(
         "pattern",
         "client_config:",

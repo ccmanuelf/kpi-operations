@@ -69,6 +69,11 @@ def capture_all(client, routes, urls: "dict | None" = None) -> dict:
     `routes` is a list of (method, path, kwargs) prepared by the caller, which
     owns id resolution — the harness deliberately does not guess ids, because a
     wrong id yields a 404 whose shape is recorded as if it were the real answer.
+    The same applies to `kwargs`, which carries whatever else the request needs
+    (today `params` for required query params, see
+    `param_resolution.CapturePlan.kwargs`): a route asked without a parameter
+    it requires answers 422, and a 422 recorded here is indistinguishable from
+    the route genuinely rejecting the request.
 
     `path` is the route TEMPLATE and stays the record key: it is the route's
     stable identity, and it is what `test_no_route_lost_a_field` compares

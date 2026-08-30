@@ -28,11 +28,16 @@ from backend.tests.contract.capture import is_placeholder, is_status_only
 from backend.tests.contract.conftest import GOLDEN
 from backend.tests.contract.frontend_usage import KNOWN_BLIND
 
-# 35, down from 41: the six DELETEs that #239 fixed no longer record a bare
-# `<status:404>`. This is a CEILING and must only fall -- it is the anti-vacuity
-# control, so raising it to make a run pass would re-admit exactly the worthless
-# capture it exists to reject.
-MAX_STATUS_ONLY_ROUTES = 35
+# 26, down from 35: nine entries recorded `<status:422>` because the capture
+# supplied no required QUERY params, and now supply them (`query_specs.py`).
+# Eight became real shapes; the ninth, GET /api/capacity/kpi/variance, became a
+# declared `<blocked:...>` -- also not a status. 35 was down from 41, the six
+# DELETEs that #239 fixed. This is a CEILING and must only fall -- it is the
+# anti-vacuity control, so raising it to make a run pass would re-admit exactly
+# the worthless capture it exists to reject, and leaving it at 35 after a drop
+# of nine would leave nine routes' worth of slack in the one number that
+# notices the harness quietly stopping reaching things.
+MAX_STATUS_ONLY_ROUTES = 26
 
 
 #: The 7 routes no id can reach, because their backing table has zero seeded
