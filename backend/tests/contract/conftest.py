@@ -44,7 +44,7 @@ from sqlalchemy import Engine, create_engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import NullPool
 
-from backend.auth.jwt import get_current_user
+from backend.auth.jwt import create_access_token, get_current_user, oauth2_scheme
 from backend.database import get_db
 from backend.db.migrate import upgrade_to_head
 from backend.main import app
@@ -196,6 +196,21 @@ def harness(tmp_path_factory: pytest.TempPathFactory) -> Iterator[_Harness]:
 
     app.dependency_overrides[get_db] = _override_get_db
     app.dependency_overrides[get_current_user] = _mock_admin
+    # `POST /api/auth/logout` is the only route in the codebase that depends on
+    # `oauth2_scheme` directly, for the raw bearer string it revokes. Overriding
+    # `get_current_user` authenticates every other route, so logout alone was
+    # answering 401 -- and the golden master recorded that 401 as the route's
+    # contract. It is the harness's omission, not the route's answer, the same
+    # shape of mistake `EFFECTIVELY_REQUIRED_QUERY_PARAMS` exists to stop.
+    #
+    # A real token, minted by the app's own `create_access_token` for the same
+    # mock admin, rather than a placeholder string: `blacklist_token` decodes it
+    # to read `exp` and falls back to a default expiry on `PyJWTError`, so a
+    # dummy would silently exercise the error path instead of the real one.
+    # The revocation row it writes is undone by the isolated phase's restore.
+    app.dependency_overrides[oauth2_scheme] = lambda: create_access_token(
+        {"sub": _mock_admin().username, "user_id": _mock_admin().user_id}
+    )
     # `pytest.MonkeyPatch()` used directly, not the `monkeypatch` fixture --
     # this fixture is module-scoped and `monkeypatch` is function-scoped, so
     # pytest refuses to inject it here (ScopeMismatch). Undone in `finally`.
@@ -243,6 +258,7 @@ def harness(tmp_path_factory: pytest.TempPathFactory) -> Iterator[_Harness]:
     finally:
         app.dependency_overrides.pop(get_db, None)
         app.dependency_overrides.pop(get_current_user, None)
+        app.dependency_overrides.pop(oauth2_scheme, None)
         time_pin.undo()
         engine.dispose()
 

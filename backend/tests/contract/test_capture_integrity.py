@@ -32,7 +32,7 @@ from sqlalchemy import func, select, table
 
 from backend.tests.contract.capture import capture_isolated, was_never_reached
 from backend.tests.contract.conftest import _Harness
-from backend.tests.contract.param_specs import NEVER_404, REGISTRY, Kind
+from backend.tests.contract.param_specs import MUTATING_METHODS, NEVER_404, REGISTRY, Kind
 from backend.tests.contract.query_specs import QUERY_REGISTRY
 
 #: The routes whose answer no resolvable value can make meaningful, because a
@@ -310,3 +310,37 @@ def test_never_404_entries_all_answered_2xx(captured_shapes: Dict[str, List[str]
     }
 
     assert unreached == {}
+
+
+def test_no_mutating_route_is_captured_outside_the_isolated_phase(harness: _Harness) -> None:
+    """`restore()` runs per request in the isolated phase and never in the read
+    phase, so a mutating route planned into the read phase writes into the
+    database every route captured after it will read.
+
+    The predicate used to be `method in MUTATING_METHODS and "{" in path`.
+    Carrying a path param is not what makes a route mutate, and twenty
+    mutating routes have none -- four of which execute today, two of which
+    write (`POST /api/metrics/calculate/run-nightly`,
+    `POST /api/predictions/demo/seed`). No golden shape depended on their
+    leftovers when this was corrected, so nothing was being answered wrongly;
+    the ordering was simply free to start mattering at any time, and write
+    capture is exactly the change that would make it.
+
+    Asserted against the plan rather than the predicate so a future rewrite of
+    the planning logic has to keep the property, not the expression.
+    """
+    misplaced = sorted(f"{method} {path}" for method, path, _ in harness.plan.requests if method in MUTATING_METHODS)
+
+    assert not misplaced, (
+        "mutating routes planned into the un-restored read phase, where their writes "
+        f"leak into every later capture: {misplaced}"
+    )
+
+
+def test_the_isolated_phase_is_not_trivially_empty(harness: _Harness) -> None:
+    """Guards the guard above. Planning every route into `requests` would
+    satisfy nothing-mutating-in-requests only by making `isolated` empty, and
+    the restore-between-mutations test would then drive an empty list and pass
+    on no work at all."""
+    assert len(harness.plan.isolated) >= 40, len(harness.plan.isolated)
+    assert all(method in MUTATING_METHODS for method, _, _ in harness.plan.isolated)

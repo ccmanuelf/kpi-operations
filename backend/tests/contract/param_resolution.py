@@ -451,7 +451,20 @@ def plan_capture(route_keys: Iterable[str], resolver: Resolver, app: Any) -> Cap
             plan.urls.pop(route_key, None)
             plan.blocked[route_key] = exc
             continue
-        target = plan.isolated if (method in MUTATING_METHODS and "{" in path) else plan.requests
+            # Every mutating route is isolated, not only the ones carrying a path
+        # param. `"{" in path` was standing in for "this route mutates", and the
+        # two are not the same question: twenty mutating routes have no path
+        # param, so they were planned into the READ pass where `restore()` is
+        # never called and anything they write persists into every route captured
+        # after them. Four of them actually execute today
+        # (alerts/generate/check-all, cache/clear, metrics/calculate/run-nightly,
+        # predictions/demo/seed) -- the last two write.
+        #
+        # No golden entry changes when they move (measured: zero shapes differ),
+        # so this corrects a latent order-dependence rather than a live wrong
+        # answer. It is a prerequisite for write capture all the same: once these
+        # routes are handed request bodies they stop being harmless.
+        target = plan.isolated if method in MUTATING_METHODS else plan.requests
         target.append((method, path, plan.kwargs[route_key]))
     return plan
 

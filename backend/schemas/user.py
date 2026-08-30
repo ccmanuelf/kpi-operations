@@ -175,3 +175,19 @@ class PasswordChange(BaseModel):
         if not is_valid:
             raise ValueError(message)
         return v
+
+
+class LogoutResponse(BaseModel):
+    """`routes/auth.py::logout`.
+
+    Two fixed strings; the route builds the dict literally and neither field
+    varies with the request. Modelled now because the route only started
+    capturing a real shape once the contract harness overrode `oauth2_scheme`
+    -- it is the one route depending on that scheme directly, so it alone
+    answered 401 while every other route was authenticated by the
+    `get_current_user` override, and the golden master recorded that 401 as
+    its contract.
+    """
+
+    message: str
+    detail: str
