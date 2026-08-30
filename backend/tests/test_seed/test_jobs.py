@@ -384,3 +384,80 @@ def test_reset_clears_a_planted_job_and_rewrites_the_seeders_own(seed_engine):
 
     assert planted == 0
     assert seeded > 0
+
+
+def test_no_job_outruns_its_orders_surviving_chain_on_any_seed():
+    """The gap between the two branches above, closed.
+
+    `test_a_job_never_claims_work_its_order_has_not_reached` asserts the two
+    ENDS -- an order below IN_PROGRESS finished nothing, one at or past
+    COMPLETED finished everything -- and says nothing about an order between
+    them. That is exactly where the clamp bites: `depth` is what the draw
+    intended, while `generate()` drops every event dated after as_of, so an
+    order whose COMPLETED transition falls past the horizon keeps a SHORTER
+    chain than the number its routing was derived from.
+
+    At seed 8, DEMO-HYBRID-WO-0086 stopped at IN_PROGRESS and reported all four
+    steps finished. Neither branch of the older test fires for it: `reached` is
+    neither below IN_PROGRESS nor at COMPLETED. It ran on one seed, and this
+    occurs in roughly one order per twenty-five, which is why several seeds are
+    swept here -- the CLI takes --seed, so every one of them is reachable.
+
+    Mutation proof: derive `done` from the drawn `depth` instead of the
+    surviving one in emitters_operations.py and seed 8 fails.
+    """
+    completed_index = WORK_ORDER_FLOW.index("COMPLETED") + 1
+
+    for seed_value in (8, 42, 99, 1234, 2026):
+        stream = generate(SCENARIOS, SMOKE, seed=seed_value, as_of=AS_OF)
+        depth = _furthest_status(stream)
+
+        by_order = {}
+        for job in _of(stream, ev.JobDefined):
+            by_order.setdefault(job.work_order_id, []).append(job)
+
+        for work_order_id, jobs in by_order.items():
+            reached = depth.get(work_order_id, 0)
+            # A single finished STEP is fine on an in-progress order -- that is
+            # what mid-routing means. The contradiction is an order whose WHOLE
+            # routing reports finished while its surviving chain never reached
+            # COMPLETED, which is the state the clamp used to produce.
+            if all(job.is_completed for job in jobs):
+                assert reached >= completed_index, (
+                    f"seed {seed_value}: every step of {work_order_id} reports finished, but its "
+                    f"surviving chain only reached depth {reached}"
+                )
+            for job in jobs:
+                if job.completed_date is not None:
+                    assert job.completed_date.date() <= AS_OF, f"seed {seed_value}: {job.job_id}"
+
+
+def test_the_routing_steps_sum_back_to_the_orders_whole_labor_content(events):
+    """The comment above `planned_hours` claims the four steps sum back to
+    `planned_quantity * IDEAL_CYCLE_TIME_HOURS`. It did not.
+
+    Rounding each step independently loses the remainder: 250 units at 0.25h
+    over four steps is 15.625 each, which rounds to 15.62 and totals 62.48
+    against a whole of 62.50. That drifted on 198 of 400 FULL-profile orders
+    while the prose asserted the opposite -- the routing was quietly claiming
+    LESS labor than the efficiency reading computed from the same units.
+
+    The last step absorbs the remainder, the same way the defect split gives
+    its remainder to the last row so DHU and the Pareto cannot disagree.
+
+    Mutation proof: replace the last-step branch with the plain
+    `round(whole / len(ROUTING), 2)` every step used to get, and this fails.
+    """
+    from decimal import Decimal
+
+    from backend.seed.scenarios import IDEAL_CYCLE_TIME_HOURS
+
+    by_order = {}
+    for job in _of(events, ev.JobDefined):
+        by_order.setdefault(job.work_order_id, []).append(job)
+    assert by_order, "no jobs emitted; this test would prove nothing"
+
+    for work_order_id, jobs in by_order.items():
+        steps = sum(Decimal(str(job.planned_hours)) for job in jobs)
+        whole = Decimal(str(round(jobs[0].planned_quantity * IDEAL_CYCLE_TIME_HOURS, 2)))
+        assert steps == whole, f"{work_order_id}: steps sum to {steps} but the order's labor content is {whole}"

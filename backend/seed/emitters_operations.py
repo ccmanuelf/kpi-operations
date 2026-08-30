@@ -275,13 +275,25 @@ def emit_work_orders(
         # An order that stopped short of COMPLETED has no such day, so its
         # finished steps fall on the furthest transition it DID reach -- the
         # tightest bound its own chain can support.
+        #
+        # SURVIVING depth, not the drawn one. `generate()` drops every event
+        # dated after as_of, so an order whose COMPLETED transition falls past
+        # the horizon keeps only the transitions before it -- while `depth` is
+        # what the draw INTENDED. Deriving the routing from the drawn depth let
+        # a job claim work its surviving chain never reached: at seed 8,
+        # DEMO-HYBRID-WO-0086 stops at IN_PROGRESS yet reported all four steps
+        # finished. Same class as the entries-naming-unstarted-steps defect,
+        # one layer up, and rare enough (about 1 order in 25 seeds) to survive
+        # a suite that only ever runs a couple of seeds.
+        surviving = sum(1 for transition_day in transition_days if transition_day <= as_of)
         finished_step = WORK_ORDER_FLOW.index("COMPLETED")
-        milestone = transition_days[finished_step] if depth > finished_step else transition_days[-1]
+        reached_completed = surviving > finished_step
+        milestone = transition_days[finished_step] if reached_completed else transition_days[surviving - 1]
         completion_at = min(
             datetime.combine(milestone, time(8, 0)),
             datetime.combine(as_of, time(20, 0)),
         )
-        done = operations_completed(depth, i)
+        done = operations_completed(surviving, i)
         # Recorded here rather than beside the receipt above, because `done` is
         # not known until the chain has been walked -- and emit_shifts must have
         # it to attribute an entry to a step (see its shift_job block). Pure
@@ -306,7 +318,18 @@ def emit_work_orders(
             # the same units. A per-step figure invented independently would
             # make a work order's own jobs claim more (or less) labor than the
             # efficiency reading beside them.
-            planned_hours = round(planned_quantity * IDEAL_CYCLE_TIME_HOURS / len(ROUTING), 2)
+            #
+            # The LAST step absorbs the rounding remainder, the same way the
+            # defect split below gives its remainder to the last row. Rounding
+            # each step independently does NOT sum back: 250 units at 0.25h
+            # over four steps is 15.625 each, which rounds to 15.62 and totals
+            # 62.48 against a whole of 62.50. That drifted on 198 of 400 orders
+            # while the comment above claimed otherwise.
+            whole_hours = round(planned_quantity * IDEAL_CYCLE_TIME_HOURS, 2)
+            if seq_no < len(ROUTING):
+                planned_hours = round(whole_hours / len(ROUTING), 2)
+            else:
+                planned_hours = round(whole_hours - round(whole_hours / len(ROUTING), 2) * (len(ROUTING) - 1), 2)
             emit(
                 JobDefined,
                 job_at,
