@@ -103,6 +103,20 @@ CLOCK_READING_ROUTE_MODULES = (
     "backend.routes.work_orders",
 )
 
+#: Clock reads BELOW the route layer that still move a captured shape.
+#:
+#: Measured rather than assumed: patching `date.today()` across all 18
+#: non-route modules that call it moves exactly ONE golden entry,
+#: `GET /api/kpi/chronic-holds`, and it moves the opposite way from the rest --
+#: `[]` today, populated a year out, because holds age INTO chronic rather than
+#: out of a window. `wip_aging` computes that age from `date.today()`, so the
+#: empty entry on disk is as much an expiry as a populated one.
+#:
+#: The other 17 move nothing: they shift VALUES, and a golden master recording
+#: field names cannot see a value change. That is why this list is one entry and
+#: not eighteen -- the criterion is "moves a shape", not "reads the clock".
+CLOCK_READING_SUPPORT_MODULES = ("backend.calculations.wip_aging",)
+
 
 @dataclass
 class _Harness:
@@ -207,7 +221,7 @@ def harness(tmp_path_factory: pytest.TempPathFactory) -> Iterator[_Harness]:
     time_pin = pytest.MonkeyPatch()
     time_pin.setattr("backend.routes.reference.datetime", ShiftActivePin)
     time_pin.setattr(SeededToday, "AS_OF", SEED_AS_OF)
-    for module in CLOCK_READING_ROUTE_MODULES:
+    for module in (*CLOCK_READING_ROUTE_MODULES, *CLOCK_READING_SUPPORT_MODULES):
         time_pin.setattr(f"{module}.date", SeededToday)
     try:
         client = TestClient(app, raise_server_exceptions=False)
