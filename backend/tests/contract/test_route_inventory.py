@@ -1,6 +1,34 @@
 def test_every_loose_route_is_inventoried_and_none_is_silently_dropped():
-    """35 routes still needing a response model, after S2 scoped the 204
-       DELETEs out of the ratchet.
+    """29 routes still needing a response model, after Batch R1 typed the six
+       `GET /api/jobs/{job_id}/*` KPI routes.
+
+       DIRECTION: this number may only FALL. The ratchet
+       (`test_no_loose_response_models.py`) already refuses a NEW loose route,
+       so a conversion is the only thing that can lower it -- and a RISE here
+       does not mean someone added work, it means a route stopped being
+       enumerated, which is the failure this count is pinned to catch.
+
+       R1 removes exactly 6, the whole remaining `/api/jobs` group -- yield,
+       efficiency, performance, ppm, dpmo, kpi-summary -- typed across one new
+       module, `backend/schemas/job_kpi_contracts.py` (the seventh route the
+       plan sized into R1, `GET /api/jobs/kpi/rty-summary`, was converted
+       early, in R5). `ALLOWLIST` shrinks by the same 6: none of them leaves
+       the ratchet's scope, all six are converted. 35 - 6 = 29.
+
+       R1 was scheduled LAST for a reason the plan states plainly: 6 of its 7
+       routes had `<blocked:job_id>` for a golden entry, because JOB had zero
+       seeded rows. #244 seeded a routing and #243's `job_id` spec resolves the
+       id from PRODUCTION_ENTRY rather than JOB (`param_specs.py`), which is
+       what put every one of the six on its POPULATED branch and made this the
+       first increment able to model them from measured evidence. It paid
+       immediately: `GET /api/jobs/{job_id}/yield` was serving
+       `"yield_percentage":"99.00"` -- a JSON STRING -- while `kpi-summary`
+       served `99.0` for the same job and the same metric in the same capture.
+       Four of the six carry a no-entries branch and are registered in
+       `EXCLUDE_UNSET_ROUTES`; see `schemas/job_kpi_contracts.py`.
+
+       35 was the count before R1, after S2 scoped the 204 DELETEs out of the
+       ratchet.
 
        S2 removes 24, not the 9 the plan estimated. That figure predates the
        DELETE routes carrying return annotations; measured against the code,
@@ -106,7 +134,7 @@ def test_every_loose_route_is_inventoried_and_none_is_silently_dropped():
 
     routes = routes_needing_a_response_model(app)
 
-    assert len(routes) == 35
+    assert len(routes) == 29
     methods = {m for m, _, _ in routes}
     assert methods == {"GET", "POST", "PUT", "DELETE"}
 

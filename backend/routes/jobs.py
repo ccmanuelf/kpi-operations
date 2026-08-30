@@ -7,7 +7,7 @@ Phase 6.6: Includes job-level RTY calculation endpoints
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from typing import Any, Dict, List, Optional
+from typing import Any, List, Optional
 from datetime import date
 
 from backend.database import get_db
@@ -24,6 +24,14 @@ from backend.services.job_service import (
 from backend.calculations.fpy_rty import calculate_job_yield, calculate_work_order_job_rty, calculate_job_rty_summary
 from backend.auth.jwt import get_current_user, get_current_active_supervisor, ClientScope, resolve_client_scope
 from backend.orm.user import User
+from backend.schemas.job_kpi_contracts import (
+    JobDPMOResponse,
+    JobEfficiencyResponse,
+    JobKPISummaryResponse,
+    JobPPMResponse,
+    JobPerformanceResponse,
+    JobYieldResponse,
+)
 from backend.schemas.kpi_metrics_contracts import JobRTYSummaryResponse
 from backend.utils.logging_utils import get_module_logger
 
@@ -143,7 +151,7 @@ def get_work_order_jobs(
 # ============================================================================
 
 
-@router.get("/{job_id}/yield")
+@router.get("/{job_id}/yield", response_model=JobYieldResponse)
 def get_job_yield(job_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> Any:
     """
     Calculate yield metrics for a specific job (line item).
@@ -227,10 +235,10 @@ def get_job_rty_summary(
 # ============================================================================
 
 
-@router.get("/{job_id}/efficiency")
+@router.get("/{job_id}/efficiency", response_model=JobEfficiencyResponse, response_model_exclude_unset=True)
 def get_job_efficiency(
     job_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
-) -> Dict[str, Any]:
+) -> Any:
     """
     Calculate efficiency metrics for a specific job.
 
@@ -299,10 +307,10 @@ def get_job_efficiency(
     }
 
 
-@router.get("/{job_id}/performance")
+@router.get("/{job_id}/performance", response_model=JobPerformanceResponse, response_model_exclude_unset=True)
 def get_job_performance(
     job_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
-) -> Dict[str, Any]:
+) -> Any:
     """
     Calculate performance metrics for a specific job.
 
@@ -355,10 +363,8 @@ def get_job_performance(
     }
 
 
-@router.get("/{job_id}/ppm")
-def get_job_ppm(
-    job_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
-) -> Dict[str, Any]:
+@router.get("/{job_id}/ppm", response_model=JobPPMResponse, response_model_exclude_unset=True)
+def get_job_ppm(job_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> Any:
     """
     Calculate PPM (Parts Per Million) for a specific job.
 
@@ -402,10 +408,8 @@ def get_job_ppm(
     }
 
 
-@router.get("/{job_id}/dpmo")
-def get_job_dpmo(
-    job_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
-) -> Dict[str, Any]:
+@router.get("/{job_id}/dpmo", response_model=JobDPMOResponse, response_model_exclude_unset=True)
+def get_job_dpmo(job_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> Any:
     """
     Calculate DPMO (Defects Per Million Opportunities) for a specific job.
 
@@ -470,10 +474,10 @@ def get_job_dpmo(
     }
 
 
-@router.get("/{job_id}/kpi-summary")
+@router.get("/{job_id}/kpi-summary", response_model=JobKPISummaryResponse)
 def get_job_kpi_summary(
     job_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
-) -> Dict[str, Any]:
+) -> Any:
     """
     Get comprehensive KPI summary for a specific job.
 

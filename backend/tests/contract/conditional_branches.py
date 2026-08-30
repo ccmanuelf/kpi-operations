@@ -110,6 +110,43 @@ EXCLUDE_UNSET_ROUTES: Dict[str, ExcludeUnsetEntry] = {
         ),
         forcing_test="test_approve_qc_already_approved_branch_omits_message",
     ),
+    "GET /api/jobs/{job_id}/efficiency": ExcludeUnsetEntry(
+        reason=(
+            "part_number/entries are absent, not null, and message is present-only, on "
+            "get_job_efficiency's (routes/jobs.py) no-PRODUCTION_ENTRY branch. Batch R1. The "
+            "branch is ordinary, not exotic: S3 seeds a full routing, so most JOB rows are "
+            "steps no shift ever ran. No capture reaches it because param_specs.py's job_id "
+            "spec deliberately resolves the id from PRODUCTION_ENTRY -- read that note."
+        ),
+        forcing_test="test_job_kpi_empty_entries_branches_keep_their_own_shape",
+    ),
+    "GET /api/jobs/{job_id}/performance": ExcludeUnsetEntry(
+        reason=(
+            "total_run_time_hours is absent, not null, and message is present-only, on "
+            "get_job_performance's (routes/jobs.py) no-PRODUCTION_ENTRY branch. Batch R1; "
+            "same branch and same capture reason as the efficiency entry above."
+        ),
+        forcing_test="test_job_kpi_empty_entries_branches_keep_their_own_shape",
+    ),
+    "GET /api/jobs/{job_id}/ppm": ExcludeUnsetEntry(
+        reason=(
+            "message is present-only on get_job_ppm's (routes/jobs.py) no-QUALITY_ENTRY "
+            "branch, and is the ONLY difference between this route's two shapes -- every "
+            "other key is sent on both. Batch R1. Registered for that one key: without the "
+            "flag the populated branch would emit message as an explicit null it has never "
+            "sent, which moves the golden entry."
+        ),
+        forcing_test="test_job_kpi_empty_entries_branches_keep_their_own_shape",
+    ),
+    "GET /api/jobs/{job_id}/dpmo": ExcludeUnsetEntry(
+        reason=(
+            "total_inspected/total_defects/opportunities_per_unit/"
+            "using_part_specific_opportunities are absent, not null, and message is "
+            "present-only, on get_job_dpmo's (routes/jobs.py) no-QUALITY_ENTRY branch. "
+            "Batch R1; same branch and same capture reason as the efficiency entry above."
+        ),
+        forcing_test="test_job_kpi_empty_entries_branches_keep_their_own_shape",
+    ),
     "GET /api/jobs/kpi/rty-summary": ExcludeUnsetEntry(
         reason=(
             "total_good_units/jobs_meeting_target/interpretation are absent, not null, on "
