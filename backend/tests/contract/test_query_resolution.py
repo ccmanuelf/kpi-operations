@@ -210,14 +210,25 @@ def test_every_mutating_route_is_either_asked_or_owed_a_body():
     }
     assert not (DEFERRED_TO_WRITE_CAPTURE & set(UNBLOCKED))
 
-    unjustified = {
-        route
-        for route in DEFERRED_TO_WRITE_CAPTURE
-        if not any(_is_required(param) for param in index[route].dependant.body_params)
-    }
+    def _wants_a_body(route: str) -> bool:
+        return any(_is_required(param) for param in index[route].dependant.body_params)
+
+    unjustified = {route for route in DEFERRED_TO_WRITE_CAPTURE if not _wants_a_body(route)}
     assert not unjustified, (
         "deferred to write capture but needs no request body -- the isolation reason is gone, "
         f"so these are just unasked: {sorted(unjustified)}"
+    )
+
+    # The other direction, and the one that makes this an invariant rather
+    # than a one-way filter: a route that DOES want a body must not be in
+    # UNBLOCKED. Nothing here can build a body yet, so such a route would be
+    # asked without one, answer 422, and record that as its contract -- the
+    # precise failure this module exists to prevent, arriving through the
+    # manifest that is supposed to prevent it.
+    asked_but_wants_a_body = {route for route in set(UNBLOCKED) & mutating if _wants_a_body(route)}
+    assert not asked_but_wants_a_body, (
+        "asked as though query params were enough, but the route requires a request body -- it "
+        f"will 422 and the 422 will be recorded: {sorted(asked_but_wants_a_body)}"
     )
 
 
@@ -410,6 +421,31 @@ def test_only_the_routes_that_need_query_params_are_given_any(harness: _Harness)
     assert {route: tuple(params) for route, params in with_params.items()} == UNBLOCKED
     # Deferred routes are planned, and planned with nothing.
     assert all(harness.plan.kwargs[route] == {} for route in DEFERRED_TO_WRITE_CAPTURE)
+
+
+def test_mark_all_present_actually_created_rows(harness: _Harness):
+    """Its shape depends on the seed NOT already covering that shift and date.
+
+    `POST /api/attendance/mark-all-present` returns `created_ids`, a LIST. Run
+    against a shift/date the seeder has already filled, every employee comes
+    back under `already_exists`, `created_ids` is empty, and an empty list
+    contributes NO keys -- so the golden entry would quietly lose
+    `created_ids[]` while still looking like a successful capture.
+
+    `test_no_route_lost_a_field` would catch the loss, but as a bare diff on a
+    route nobody was thinking about. This states the dependency where the
+    reason lives, so the failure names the seeder rather than the route.
+    """
+    route = "POST /api/attendance/mark-all-present"
+    harness.restore()
+    body = harness.client.post(harness.plan.urls[route], **harness.plan.kwargs[route]).json()
+
+    assert body["records_created"] > 0, body
+    assert body["created_ids"], body
+    assert body["already_exists"] == 0, (
+        "the seeder now covers this shift and date, so `created_ids` is empty and the captured "
+        f"shape is thinner than the route can produce: {body}"
+    )
 
 
 def test_every_unblocked_route_answered_with_real_fields(captured_shapes: Dict[str, List[str]]):
