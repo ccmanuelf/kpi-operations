@@ -286,6 +286,15 @@ def emit_work_orders(
         # one layer up, and rare enough (about 1 order in 25 seeds) to survive
         # a suite that only ever runs a couple of seeds.
         surviving = sum(1 for transition_day in transition_days if transition_day <= as_of)
+        # An order with NO surviving transition has not visibly started, so it
+        # has no routing to report. Guarded rather than assumed: not one occurs
+        # across seven seeds on either profile, but `transition_days[surviving - 1]`
+        # below would index [-1] and silently pick the order's LAST transition --
+        # reinstating exactly the defect this block fixes, with no test failing.
+        # An empty routing is the honest answer; a wrong milestone is not.
+        if surviving == 0:
+            received.append((opened, wo, 0))
+            continue
         finished_step = WORK_ORDER_FLOW.index("COMPLETED")
         reached_completed = surviving > finished_step
         milestone = transition_days[finished_step] if reached_completed else transition_days[surviving - 1]
