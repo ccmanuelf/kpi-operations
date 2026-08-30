@@ -72,6 +72,18 @@ UNBLOCKED: Dict[str, tuple] = {
     # it refuses to answer without a client, and the step names it returns
     # are structural rather than per-tenant.
     "GET /api/onboarding/status": ("client_id",),
+    # Mutating, and safe to ask now that every mutator is isolated (#249).
+    "POST /api/hold-catalogs/seed-defaults": ("client_id",),
+    "POST /api/attendance/mark-all-present": ("client_id", "shift_id", "shift_date"),
+    "POST /api/floating-pool/simulation/shift-coverage": (
+        "shift_id",
+        "shift_name",
+        "regular_employees",
+        "floating_pool_available",
+        "required_employees",
+    ),
+    "POST /api/workflow/config/{client_id}/apply-template": ("template_id",),
+    "POST /api/workflow/work-orders/{work_order_id}/validate": ("to_status",),
 }
 
 VARIANCE = "GET /api/capacity/kpi/variance"
@@ -166,22 +178,58 @@ def test_the_declared_requirements_are_the_measured_ones():
     assert {route: measured[route] for route in UNBLOCKED} == UNBLOCKED
 
 
-def test_deferred_routes_are_exactly_the_mutating_ones():
-    """The boundary, stated as a rule and checked as a set.
+def test_every_mutating_route_is_either_asked_or_owed_a_body():
+    """The boundary, restated after the isolation fix.
 
-    A mutating route without a path param is NOT isolated by
-    `capture_isolated` -- only path-param mutations are replayed against a
-    restored snapshot. Handing one the query params it has been 422ing for
-    moves it from "never ran" into the middle of the read pass, writes and
-    all. So the rule is method-based, and this asserts the manifest matches
-    it in both directions: a GET listed as deferred (someone quietly giving
-    up on a route) and a mutation missing from it (someone quietly supplying
-    one) both fail.
+    The rule used to be method-based: EVERY mutating route with required query
+    params was deferred, because `capture_isolated` replayed only path-param
+    mutations against a restored snapshot, so supplying params to a paramless
+    POST would have run it inside the read pass, writes and all.
+
+    That is no longer true. Every mutating route is now planned into the
+    isolated phase (`test_no_mutating_route_is_captured_outside_the_isolated_
+    phase`), so "it mutates" has stopped being a reason to leave it 422ing.
+    What remains is the narrower reason the deferral was always really for:
+    the route additionally wants a request BODY, which nothing here can build
+    yet.
+
+    So each mutating route with required query params must be exactly one of
+    asked (`UNBLOCKED`) or owed a body (`DEFERRED_TO_WRITE_CAPTURE`), and the
+    deferral has to be STRUCTURALLY justified -- a deferred route with no
+    required body param is a route nobody got round to, declared as though it
+    were blocked.
     """
+    from backend.main import app
+
+    index = route_index(app)
     mutating = {route for route in _requirements() if route.split(" ", 1)[0] in MUTATING_METHODS}
 
-    assert DEFERRED_TO_WRITE_CAPTURE == mutating
+    assert DEFERRED_TO_WRITE_CAPTURE <= mutating, sorted(DEFERRED_TO_WRITE_CAPTURE - mutating)
+    assert mutating == DEFERRED_TO_WRITE_CAPTURE | (mutating & set(UNBLOCKED)), {
+        "neither asked nor deferred": sorted(mutating - DEFERRED_TO_WRITE_CAPTURE - set(UNBLOCKED)),
+    }
     assert not (DEFERRED_TO_WRITE_CAPTURE & set(UNBLOCKED))
+
+    def _wants_a_body(route: str) -> bool:
+        return any(_is_required(param) for param in index[route].dependant.body_params)
+
+    unjustified = {route for route in DEFERRED_TO_WRITE_CAPTURE if not _wants_a_body(route)}
+    assert not unjustified, (
+        "deferred to write capture but needs no request body -- the isolation reason is gone, "
+        f"so these are just unasked: {sorted(unjustified)}"
+    )
+
+    # The other direction, and the one that makes this an invariant rather
+    # than a one-way filter: a route that DOES want a body must not be in
+    # UNBLOCKED. Nothing here can build a body yet, so such a route would be
+    # asked without one, answer 422, and record that as its contract -- the
+    # precise failure this module exists to prevent, arriving through the
+    # manifest that is supposed to prevent it.
+    asked_but_wants_a_body = {route for route in set(UNBLOCKED) & mutating if _wants_a_body(route)}
+    assert not asked_but_wants_a_body, (
+        "asked as though query params were enough, but the route requires a request body -- it "
+        f"will 422 and the 422 will be recorded: {sorted(asked_but_wants_a_body)}"
+    )
 
 
 # ------------------------------------------------------------- declarations
@@ -373,6 +421,31 @@ def test_only_the_routes_that_need_query_params_are_given_any(harness: _Harness)
     assert {route: tuple(params) for route, params in with_params.items()} == UNBLOCKED
     # Deferred routes are planned, and planned with nothing.
     assert all(harness.plan.kwargs[route] == {} for route in DEFERRED_TO_WRITE_CAPTURE)
+
+
+def test_mark_all_present_actually_created_rows(harness: _Harness):
+    """Its shape depends on the seed NOT already covering that shift and date.
+
+    `POST /api/attendance/mark-all-present` returns `created_ids`, a LIST. Run
+    against a shift/date the seeder has already filled, every employee comes
+    back under `already_exists`, `created_ids` is empty, and an empty list
+    contributes NO keys -- so the golden entry would quietly lose
+    `created_ids[]` while still looking like a successful capture.
+
+    `test_no_route_lost_a_field` would catch the loss, but as a bare diff on a
+    route nobody was thinking about. This states the dependency where the
+    reason lives, so the failure names the seeder rather than the route.
+    """
+    route = "POST /api/attendance/mark-all-present"
+    harness.restore()
+    body = harness.client.post(harness.plan.urls[route], **harness.plan.kwargs[route]).json()
+
+    assert body["records_created"] > 0, body
+    assert body["created_ids"], body
+    assert body["already_exists"] == 0, (
+        "the seeder now covers this shift and date, so `created_ids` is empty and the captured "
+        f"shape is thinner than the route can produce: {body}"
+    )
 
 
 def test_every_unblocked_route_answered_with_real_fields(captured_shapes: Dict[str, List[str]]):

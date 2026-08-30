@@ -3,7 +3,6 @@
 ALLOWLIST = {
     "DELETE /api/v2/simulation/scenarios/{scenario_id}",
     "GET /api/capacity/kpi/variance",
-    "GET /api/onboarding/status",
     "POST /api/attendance/bulk",
     "POST /api/attendance/mark-all-present",
     "POST /api/auth/change-password",

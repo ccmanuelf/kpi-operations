@@ -8,10 +8,33 @@ from sqlalchemy.orm import Session
 from fastapi import HTTPException
 import json
 
+from backend.orm.client import Client
 from backend.orm.client_config import ClientConfig
 from backend.orm.user import User
 from backend.middleware.client_auth import verify_client_access
 from backend.calculations.workflow_engine import get_workflow_config, apply_workflow_template as service_apply_template
+
+
+def _require_client(db: Session, client_id: str) -> None:
+    """404 unless `client_id` names a client that exists.
+
+    Both write paths below do `ClientConfig(client_id=client_id)` when no
+    config row is found, so without this an arbitrary string creates a
+    CLIENT_CONFIG row keyed to a client that does not exist -- orphan
+    configuration nothing will ever read or clean up. `verify_client_access`
+    does not cover it: an admin is authorised for every client, including the
+    ones that are not there.
+
+    Found by the contract harness's id-sensitivity gate, which noticed
+    `POST /api/workflow/config/{client_id}/apply-template` returning the same
+    200 for a real client and for NO-SUCH-CLIENT-XYZ.
+
+    Read paths are deliberately NOT given this check: `get_workflow_config`
+    returns defaults for an unknown client and writes nothing, and that
+    behaviour is already declared in the harness's NEVER_404 manifest.
+    """
+    if db.query(Client.client_id).filter(Client.client_id == client_id).first() is None:
+        raise HTTPException(status_code=404, detail=f"Client '{client_id}' not found")
 
 
 def get_workflow_configuration(db: Session, client_id: str, current_user: User) -> Dict:
@@ -49,6 +72,7 @@ def update_workflow_configuration(db: Session, client_id: str, config_update: Di
         HTTPException 403: If user is not admin
     """
     verify_client_access(current_user, client_id)
+    _require_client(db, client_id)
 
     # Only admins can modify workflow configuration
     if current_user.role != "admin":
@@ -102,6 +126,7 @@ def apply_workflow_template(db: Session, client_id: str, template_id: str, curre
         HTTPException 404: If template not found
     """
     verify_client_access(current_user, client_id)
+    _require_client(db, client_id)
 
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Only admins can apply workflow templates")
