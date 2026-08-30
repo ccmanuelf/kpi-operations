@@ -271,3 +271,25 @@ def test_every_r1_model_renders_a_decimal_as_a_json_number(model, raw, text_path
             f"{model.__name__}.{path} serialized as {value!r} -- expected a JSON number. "
             "A Decimal-typed field, or a dropped coercion, regressed back in."
         )
+
+
+def test_yield_answers_404_before_its_response_model_can_see_the_miss(harness) -> None:
+    """`JobYieldResponse` deliberately does not model a "Job not found" shape.
+
+    That is safe only because `get_job()` runs first and raises an
+    HTTPException, which bypasses the response model entirely — the handler's
+    own not-found dict is unreachable. Cross-model review pointed out that
+    nothing pinned the ORDERING, so a refactor moving the lookup after the
+    happy path would force that branch through the model and either 500 or
+    silently drop `detail`, and no test would notice.
+
+    This is that test. It asserts the status AND that the body still carries
+    `detail`: a 404 whose payload had been reshaped by the response model would
+    still be a 404.
+    """
+    response = harness.client.get("/api/jobs/NO-SUCH-JOB-ID/yield")
+
+    assert response.status_code == 404
+    body = response.json()
+    assert "detail" in body, f"404 body lost its detail key: {body}"
+    assert "yield_percentage" not in body, "the response model shaped an error payload"
