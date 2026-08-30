@@ -26,12 +26,14 @@ as a shape diff.
 
 from __future__ import annotations
 
+import json
+
 from typing import Dict, List
 
 from sqlalchemy import func, select, table
 
 from backend.tests.contract.capture import capture_isolated, was_never_reached
-from backend.tests.contract.conftest import _Harness
+from backend.tests.contract.conftest import GOLDEN, _Harness
 from backend.tests.contract.param_specs import MUTATING_METHODS, NEVER_404, REGISTRY, Kind
 from backend.tests.contract.query_specs import QUERY_REGISTRY
 
@@ -328,6 +330,16 @@ def test_no_mutating_route_is_captured_outside_the_isolated_phase(harness: _Harn
 
     Asserted against the plan rather than the predicate so a future rewrite of
     the planning logic has to keep the property, not the expression.
+
+    `POST /api/cache/clear` is worth naming, because `restore()` explicitly
+    does not cover it: the boundary is the database file, and the cache it
+    empties is in-process. Moving it still helps, for a reason that is about
+    ORDER rather than restoration -- `captured_shapes` runs the read phase to
+    completion first and the isolated phase after it, so a route in the
+    isolated phase cannot affect anything captured in the read phase at all.
+    What remains is that in-process state is not restored BETWEEN isolated
+    requests either; no golden entry depends on cache contents today, and
+    `capture_isolated`'s own docstring is where that limit is recorded.
     """
     misplaced = sorted(f"{method} {path}" for method, path, _ in harness.plan.requests if method in MUTATING_METHODS)
 
@@ -337,10 +349,28 @@ def test_no_mutating_route_is_captured_outside_the_isolated_phase(harness: _Harn
     )
 
 
-def test_the_isolated_phase_is_not_trivially_empty(harness: _Harness) -> None:
-    """Guards the guard above. Planning every route into `requests` would
-    satisfy nothing-mutating-in-requests only by making `isolated` empty, and
-    the restore-between-mutations test would then drive an empty list and pass
-    on no work at all."""
-    assert len(harness.plan.isolated) >= 40, len(harness.plan.isolated)
-    assert all(method in MUTATING_METHODS for method, _, _ in harness.plan.isolated)
+def test_the_isolated_phase_holds_exactly_the_mutating_golden_routes(harness: _Harness) -> None:
+    """Guards the guard above, from the golden master rather than a count.
+
+    Planning every route into `requests` would satisfy
+    nothing-mutating-in-requests only by leaving `isolated` empty, and the
+    restore-between-mutations test would then drive an empty list and pass on
+    no work. A threshold like `>= 40` closes that but rots: once there are 41
+    mutating routes, dropping one still clears the bar.
+
+    So the expected set is DERIVED -- every mutating route in the golden
+    master, minus the ones planning could not resolve (`plan.blocked`, which
+    is itself gated by `test_blocked_routes_are_exactly_the_declared_manifest`).
+    An omitted route now fails by name.
+    """
+    golden = json.loads(GOLDEN.read_text())
+    expected = {
+        route for route in golden if route.split(" ", 1)[0] in MUTATING_METHODS and route not in harness.plan.blocked
+    }
+    planned = {f"{method} {path}" for method, path, _ in harness.plan.isolated}
+
+    assert planned == expected, {
+        "planned but not expected": sorted(planned - expected),
+        "expected but not planned": sorted(expected - planned),
+    }
+    assert planned, "no mutating routes planned at all -- the isolated phase would do no work"

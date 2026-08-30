@@ -194,6 +194,14 @@ def harness(tmp_path_factory: pytest.TempPathFactory) -> Iterator[_Harness]:
         finally:
             db.close()
 
+    # Saved, not assumed absent: `pop` in teardown would delete an override a
+    # surrounding fixture had installed, leaving the app less configured than
+    # this harness found it. Restoring the previous value is the only teardown
+    # that is correct whether or not one was there.
+    _prior_overrides = {
+        dependency: app.dependency_overrides.get(dependency) for dependency in (get_db, get_current_user, oauth2_scheme)
+    }
+
     app.dependency_overrides[get_db] = _override_get_db
     app.dependency_overrides[get_current_user] = _mock_admin
     # `POST /api/auth/logout` is the only route in the codebase that depends on
@@ -208,9 +216,15 @@ def harness(tmp_path_factory: pytest.TempPathFactory) -> Iterator[_Harness]:
     # to read `exp` and falls back to a default expiry on `PyJWTError`, so a
     # dummy would silently exercise the error path instead of the real one.
     # The revocation row it writes is undone by the isolated phase's restore.
-    app.dependency_overrides[oauth2_scheme] = lambda: create_access_token(
-        {"sub": _mock_admin().username, "user_id": _mock_admin().user_id}
-    )
+    # Minted ONCE, not per request. A lambda calling `create_access_token` on
+    # every request reads the wall clock for `exp` each time, which puts a
+    # nondeterministic value on the dependency path -- invisible in the shape
+    # (`LogoutResponse` never exposes the token) but the kind of thing this
+    # harness exists to keep out. One token for the fixture's lifetime is
+    # deterministic per capture and still a real, decodable JWT.
+    _admin = _mock_admin()
+    _harness_token = create_access_token({"sub": _admin.username, "user_id": _admin.user_id})
+    app.dependency_overrides[oauth2_scheme] = lambda: _harness_token
     # `pytest.MonkeyPatch()` used directly, not the `monkeypatch` fixture --
     # this fixture is module-scoped and `monkeypatch` is function-scoped, so
     # pytest refuses to inject it here (ScopeMismatch). Undone in `finally`.
@@ -256,9 +270,11 @@ def harness(tmp_path_factory: pytest.TempPathFactory) -> Iterator[_Harness]:
         plan = plan_capture(sorted(json.loads(GOLDEN.read_text())), Resolver(engine), app)
         yield _Harness(client=client, plan=plan, engine=engine, restore=_restore)
     finally:
-        app.dependency_overrides.pop(get_db, None)
-        app.dependency_overrides.pop(get_current_user, None)
-        app.dependency_overrides.pop(oauth2_scheme, None)
+        for dependency, previous in _prior_overrides.items():
+            if previous is None:
+                app.dependency_overrides.pop(dependency, None)
+            else:
+                app.dependency_overrides[dependency] = previous
         time_pin.undo()
         engine.dispose()
 
