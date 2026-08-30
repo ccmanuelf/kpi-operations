@@ -508,12 +508,38 @@ def test_the_pivot_envelope_holds_for_every_dataset_not_just_the_captured_one(ha
         measures = set(spec.measures)
         missing = measures - set(body["totals"])
         assert not missing, f"{name}: response model dropped {sorted(missing)}"
+
+        # `totals` is typed `Dict[str, Any]`, and Pydantic renders a Decimal
+        # under `Any` as a JSON STRING -- the same leak this branch's
+        # quality-score fix closed. The engine casts to float today, for all
+        # six datasets; this keeps a dataset that starts returning Decimal
+        # from re-opening it quietly, since an envelope model cannot coerce
+        # what it does not name.
+        stringly = {k: v for k, v in body["totals"].items() if isinstance(v, str)}
+        assert not stringly, f"{name}: numeric totals arrived as strings: {stringly}"
         checked[name] = sorted(measures)
 
     assert len(checked) == len(DATASETS) >= 6
     # The captured dataset must not be the only one with a distinctive set --
     # otherwise this test would pass even if the route ignored `dataset`.
     assert len({tuple(v) for v in checked.values()}) > 1, checked
+
+
+def _is_required(param: object) -> bool:
+    """Whether a FastAPI `ModelField` is required, across pydantic shapes.
+
+    `ModelField.required` exists on some versions and not others; where it is
+    absent the truth lives on `field_info.is_required()`. Defaulting to True
+    is the safe direction here -- an unknown shape counts as required, which
+    at worst asks for a declaration that was not needed, rather than silently
+    exempting a route from the gate.
+    """
+    value = getattr(param, "required", None)
+    if value is not None:
+        return bool(value)
+    field_info = getattr(param, "field_info", None)
+    is_required = getattr(field_info, "is_required", None)
+    return bool(is_required()) if callable(is_required) else True
 
 
 def test_an_optional_param_route_that_4xxs_is_declared_one_way_or_the_other():
@@ -551,19 +577,22 @@ def test_an_optional_param_route_that_4xxs_is_declared_one_way_or_the_other():
         dependant = getattr(route, "dependant", None)
         if dependant is None:
             continue
-        optional = [
-            q.alias
-            for q in dependant.query_params
-            if not getattr(q, "required", getattr(getattr(q, "field_info", None), "is_required", lambda: True)())
-        ]
+        optional = [q.alias for q in dependant.query_params if not _is_required(q)]
         if not optional:
             continue
-        # A route that wants a body 422s for the body. Its optional query
+        # A route that REQUIRES a body 422s for the body. Its optional query
         # params are incidental and this gate has no claim on it -- the
         # write-capture harness owes it a request, not a query param.
         # Read structurally off `dependant` rather than by naming routes, so
         # a body route added later is exempt without an edit here.
-        if dependant.body_params:
+        #
+        # Required-ness matters: `body_params` being non-empty is not enough.
+        # `POST /api/defect-types/upload/{client_id}` carries an optional
+        # `replace_existing` beside its required `file`, so a mere non-empty
+        # test would exempt a route whose body is entirely optional -- whose
+        # 4xx could then be a handler-raised complaint about a query param,
+        # exempted without ever being declared.
+        if any(_is_required(param) for param in dependant.body_params):
             continue
 
         # Deliberately not sent: the route mutates, so the read pass plans it
