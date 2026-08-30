@@ -8,7 +8,6 @@ ALLOWLIST = {
     "POST /api/attendance/mark-all-present",
     "POST /api/auth/change-password",
     "POST /api/auth/forgot-password",
-    "POST /api/auth/logout",
     "POST /api/auth/reset-password",
     "POST /api/capacity/scenarios/compare",
     "POST /api/defect-types/upload/{client_id}",

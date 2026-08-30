@@ -49,3 +49,17 @@ whose baseline and restored figures disagree has corrupted its own subject.
 ## 2026-08-06 — Derived-metric honesty: rescaling an average-of-averages is not "the same formula"
 **Pattern:** Cycle 3 PR-B tried to ship an "available-basis efficiency" on the dashboard by algebraically rescaling `avg_efficiency × (scheduled/available)`. The identity only holds when the base is a ratio of sums; the dashboard's figure is an unweighted average of per-entry percentages, so the rescaled number drifted 16 points in a routine two-entry scenario (Simpson-style), and the two "scheduled" sources (production crew-hours vs attendance rows) didn't even match.
 **Rule:** A derived management metric must be computed as a ratio of sums from its own primary data, in one home, or not shipped at all. Never rescale an average-of-averages and label it as the underlying formula; never blend estimated/inferred components into a metric whose value is being "hard and auditable" (exclude + surface an `excluded_entries` count instead — inference chains that reverse-derive from prior efficiency numbers are circular). When a spec's literal wording is impossible at an endpoint, escalate the semantics decision instead of approximating silently.
+
+## Run `black` before `git commit`, not via the hook
+
+**Pattern:** Committed twice with a message written from a green test run; the
+pre-commit `black` hook reformatted a file each time, which ABORTS the commit.
+Both times the output began with `ok N files changed`, so it read as success —
+but HEAD had not moved, and the next command (a `cross-review-mark`, a push)
+then ran against the OLD commit. The second time it marked the review for the
+previous SHA.
+
+**Rule:** run `backend/.venv/bin/python -m black backend` (or stage after the
+hook rewrites) BEFORE `git commit`. After any commit whose hook output contains
+`files were modified by this hook`, verify with `git rev-parse --short HEAD`
+before doing anything that depends on the commit existing.

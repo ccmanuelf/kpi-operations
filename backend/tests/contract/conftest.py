@@ -44,7 +44,7 @@ from sqlalchemy import Engine, create_engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import NullPool
 
-from backend.auth.jwt import get_current_user
+from backend.auth.jwt import create_access_token, get_current_user, oauth2_scheme
 from backend.database import get_db
 from backend.db.migrate import upgrade_to_head
 from backend.main import app
@@ -194,8 +194,37 @@ def harness(tmp_path_factory: pytest.TempPathFactory) -> Iterator[_Harness]:
         finally:
             db.close()
 
+    # Saved, not assumed absent: `pop` in teardown would delete an override a
+    # surrounding fixture had installed, leaving the app less configured than
+    # this harness found it. Restoring the previous value is the only teardown
+    # that is correct whether or not one was there.
+    _prior_overrides = {
+        dependency: app.dependency_overrides.get(dependency) for dependency in (get_db, get_current_user, oauth2_scheme)
+    }
+
     app.dependency_overrides[get_db] = _override_get_db
     app.dependency_overrides[get_current_user] = _mock_admin
+    # `POST /api/auth/logout` is the only route in the codebase that depends on
+    # `oauth2_scheme` directly, for the raw bearer string it revokes. Overriding
+    # `get_current_user` authenticates every other route, so logout alone was
+    # answering 401 -- and the golden master recorded that 401 as the route's
+    # contract. It is the harness's omission, not the route's answer, the same
+    # shape of mistake `EFFECTIVELY_REQUIRED_QUERY_PARAMS` exists to stop.
+    #
+    # A real token, minted by the app's own `create_access_token` for the same
+    # mock admin, rather than a placeholder string: `blacklist_token` decodes it
+    # to read `exp` and falls back to a default expiry on `PyJWTError`, so a
+    # dummy would silently exercise the error path instead of the real one.
+    # The revocation row it writes is undone by the isolated phase's restore.
+    # Minted ONCE, not per request. A lambda calling `create_access_token` on
+    # every request reads the wall clock for `exp` each time, which puts a
+    # nondeterministic value on the dependency path -- invisible in the shape
+    # (`LogoutResponse` never exposes the token) but the kind of thing this
+    # harness exists to keep out. One token for the fixture's lifetime is
+    # deterministic per capture and still a real, decodable JWT.
+    _admin = _mock_admin()
+    _harness_token = create_access_token({"sub": _admin.username, "user_id": _admin.user_id})
+    app.dependency_overrides[oauth2_scheme] = lambda: _harness_token
     # `pytest.MonkeyPatch()` used directly, not the `monkeypatch` fixture --
     # this fixture is module-scoped and `monkeypatch` is function-scoped, so
     # pytest refuses to inject it here (ScopeMismatch). Undone in `finally`.
@@ -241,8 +270,11 @@ def harness(tmp_path_factory: pytest.TempPathFactory) -> Iterator[_Harness]:
         plan = plan_capture(sorted(json.loads(GOLDEN.read_text())), Resolver(engine), app)
         yield _Harness(client=client, plan=plan, engine=engine, restore=_restore)
     finally:
-        app.dependency_overrides.pop(get_db, None)
-        app.dependency_overrides.pop(get_current_user, None)
+        for dependency, previous in _prior_overrides.items():
+            if previous is None:
+                app.dependency_overrides.pop(dependency, None)
+            else:
+                app.dependency_overrides[dependency] = previous
         time_pin.undo()
         engine.dispose()
 

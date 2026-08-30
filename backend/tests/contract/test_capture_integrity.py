@@ -26,13 +26,15 @@ as a shape diff.
 
 from __future__ import annotations
 
+import json
+
 from typing import Dict, List
 
 from sqlalchemy import func, select, table
 
 from backend.tests.contract.capture import capture_isolated, was_never_reached
-from backend.tests.contract.conftest import _Harness
-from backend.tests.contract.param_specs import NEVER_404, REGISTRY, Kind
+from backend.tests.contract.conftest import GOLDEN, _Harness
+from backend.tests.contract.param_specs import MUTATING_METHODS, NEVER_404, REGISTRY, Kind
 from backend.tests.contract.query_specs import QUERY_REGISTRY
 
 #: The routes whose answer no resolvable value can make meaningful, because a
@@ -310,3 +312,65 @@ def test_never_404_entries_all_answered_2xx(captured_shapes: Dict[str, List[str]
     }
 
     assert unreached == {}
+
+
+def test_no_mutating_route_is_captured_outside_the_isolated_phase(harness: _Harness) -> None:
+    """`restore()` runs per request in the isolated phase and never in the read
+    phase, so a mutating route planned into the read phase writes into the
+    database every route captured after it will read.
+
+    The predicate used to be `method in MUTATING_METHODS and "{" in path`.
+    Carrying a path param is not what makes a route mutate, and twenty
+    mutating routes have none -- four of which execute today, two of which
+    write (`POST /api/metrics/calculate/run-nightly`,
+    `POST /api/predictions/demo/seed`). No golden shape depended on their
+    leftovers when this was corrected, so nothing was being answered wrongly;
+    the ordering was simply free to start mattering at any time, and write
+    capture is exactly the change that would make it.
+
+    Asserted against the plan rather than the predicate so a future rewrite of
+    the planning logic has to keep the property, not the expression.
+
+    `POST /api/cache/clear` is worth naming, because `restore()` explicitly
+    does not cover it: the boundary is the database file, and the cache it
+    empties is in-process. Moving it still helps, for a reason that is about
+    ORDER rather than restoration -- `captured_shapes` runs the read phase to
+    completion first and the isolated phase after it, so a route in the
+    isolated phase cannot affect anything captured in the read phase at all.
+    What remains is that in-process state is not restored BETWEEN isolated
+    requests either; no golden entry depends on cache contents today, and
+    `capture_isolated`'s own docstring is where that limit is recorded.
+    """
+    misplaced = sorted(f"{method} {path}" for method, path, _ in harness.plan.requests if method in MUTATING_METHODS)
+
+    assert not misplaced, (
+        "mutating routes planned into the un-restored read phase, where their writes "
+        f"leak into every later capture: {misplaced}"
+    )
+
+
+def test_the_isolated_phase_holds_exactly_the_mutating_golden_routes(harness: _Harness) -> None:
+    """Guards the guard above, from the golden master rather than a count.
+
+    Planning every route into `requests` would satisfy
+    nothing-mutating-in-requests only by leaving `isolated` empty, and the
+    restore-between-mutations test would then drive an empty list and pass on
+    no work. A threshold like `>= 40` closes that but rots: once there are 41
+    mutating routes, dropping one still clears the bar.
+
+    So the expected set is DERIVED -- every mutating route in the golden
+    master, minus the ones planning could not resolve (`plan.blocked`, which
+    is itself gated by `test_blocked_routes_are_exactly_the_declared_manifest`).
+    An omitted route now fails by name.
+    """
+    golden = json.loads(GOLDEN.read_text())
+    expected = {
+        route for route in golden if route.split(" ", 1)[0] in MUTATING_METHODS and route not in harness.plan.blocked
+    }
+    planned = {f"{method} {path}" for method, path, _ in harness.plan.isolated}
+
+    assert planned == expected, {
+        "planned but not expected": sorted(planned - expected),
+        "expected but not planned": sorted(expected - planned),
+    }
+    assert planned, "no mutating routes planned at all -- the isolated phase would do no work"

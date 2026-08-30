@@ -18,6 +18,7 @@ from backend.schemas.user import (
     UserLogin,
     UserResponse,
     Token,
+    LogoutResponse,
     PasswordResetRequest,
     PasswordResetConfirm,
     PasswordChange,
@@ -199,7 +200,7 @@ def get_current_user_info(current_user: User = Depends(get_current_user)) -> Use
     return current_user
 
 
-@router.post("/logout")
+@router.post("/logout", response_model=LogoutResponse)
 def logout(
     request: Request,
     current_user: User = Depends(get_current_user),

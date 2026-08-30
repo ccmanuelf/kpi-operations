@@ -1362,7 +1362,8 @@
     "<status:422>"
   ],
   "POST /api/auth/logout": [
-    "<status:401>"
+    "detail",
+    "message"
   ],
   "POST /api/auth/reset-password": [
     "<status:422>"
