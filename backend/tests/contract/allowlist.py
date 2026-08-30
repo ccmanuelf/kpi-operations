@@ -7,7 +7,6 @@ ALLOWLIST = {
     "GET /api/capacity/kpi/variance",
     "GET /api/onboarding/status",
     "GET /api/pivot/{dataset}",
-    "GET /api/pivot/{dataset}/csv",
     "GET /api/quality/kpi/quality-score",
     "GET /api/quality/statistics/summary",
     "GET /api/work-orders/{work_order_id}/rty",

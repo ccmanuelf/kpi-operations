@@ -1,12 +1,41 @@
 def test_every_loose_route_is_inventoried_and_none_is_silently_dropped():
-    """29 routes still needing a response model, after Batch R1 typed the six
-       `GET /api/jobs/{job_id}/*` KPI routes.
+    """28 routes still needing a response model, after the query-param capture
+       scoped `GET /api/pivot/{dataset}/csv` out of the ratchet.
 
        DIRECTION: this number may only FALL. The ratchet
        (`test_no_loose_response_models.py`) already refuses a NEW loose route,
        so a conversion is the only thing that can lower it -- and a RISE here
        does not mean someone added work, it means a route stopped being
        enumerated, which is the failure this count is pinned to catch.
+
+       S4a removes exactly 1, and the distinction matters more than the
+       number. It taught the capture to supply REQUIRED QUERY PARAMS
+       (`tests/contract/query_specs.py`), which turned nine golden entries
+       from `<status:422>` -- a status the HARNESS provoked by omitting a
+       parameter, not an answer the route gave -- into real evidence. SIX of
+       those nine were allowlisted; five of the six still are, and
+       deliberately so: capturing a real shape says what a route sends, not
+       that anyone has typed it. Conflating the two is what #244 did once
+       already. (The sixth is the one removal below. The three that were
+       never allowlisted -- GET /api/kpi/labor-hours, GET /api/kpi/{metric}/
+       cause and GET /api/capacity/kpi/variance -- are worth noting for the
+       opposite reason: two already HAD response models written while their
+       golden entry was a 422, i.e. modelled without the capture ever having
+       seen a response.)
+
+       The 1 that leaves is not a conversion either. `GET /api/pivot/{dataset}
+       /csv` answers with a CSV `StreamingResponse` and, asked properly,
+       records `<non-json>`: it can never carry a JSON body, so it cannot
+       carry a response model, so a queue named "awaiting a response model" is
+       the wrong place for it. That is Task 10's existing scope rule
+       (`response_scope.py`) applied to a route that only now has the evidence
+       to be classified -- the same fold-in the /api/qr review made, and made
+       for the stated reason that leaving such a route allowlisted creates a
+       permanent unclaimed exception. Its JSON twin `GET /api/pivot/{dataset}`
+       stays in the ratchet, because that one does return a body. 29 - 1 = 28.
+
+       29 was the count before S4a, after Batch R1 typed the six
+       `GET /api/jobs/{job_id}/*` KPI routes.
 
        R1 removes exactly 6, the whole remaining `/api/jobs` group -- yield,
        efficiency, performance, ppm, dpmo, kpi-summary -- typed across one new
@@ -134,7 +163,7 @@ def test_every_loose_route_is_inventoried_and_none_is_silently_dropped():
 
     routes = routes_needing_a_response_model(app)
 
-    assert len(routes) == 29
+    assert len(routes) == 28
     methods = {m for m, _, _ in routes}
     assert methods == {"GET", "POST", "PUT", "DELETE"}
 

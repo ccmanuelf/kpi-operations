@@ -165,9 +165,11 @@ def test_a_declared_route_that_was_captured_really_sent_no_body():
     assert sent_a_body == {}, f"declared out of scope, but the capture recorded a body: {sent_a_body}"
 
     # Anti-vacuity: if this ever drops to zero the assertion above proves
-    # nothing. 28 of the 46 declarations have a real observation today.
+    # nothing. 29 of the 47 declarations have a real observation today -- both
+    # 47th and 29th are GET /api/pivot/{dataset}/csv, whose `<non-json>` is
+    # what earned it the declaration in the first place.
     really_non_json = [r for r, shape in observed.items() if shape == ["<non-json>"]]
-    assert len(really_non_json) >= 28
+    assert len(really_non_json) >= 29
 
 
 def test_non_json_entries_decompose_into_exactly_three_categories():
