@@ -238,7 +238,7 @@ def harness(tmp_path_factory: pytest.TempPathFactory) -> Iterator[_Harness]:
         #
         # Driving from golden's keys means a converted route stays captured and
         # stays compared, which is the entire point of taking the shape first.
-        plan = plan_capture(sorted(json.loads(GOLDEN.read_text())), Resolver(engine))
+        plan = plan_capture(sorted(json.loads(GOLDEN.read_text())), Resolver(engine), app)
         yield _Harness(client=client, plan=plan, engine=engine, restore=_restore)
     finally:
         app.dependency_overrides.pop(get_db, None)
@@ -273,7 +273,13 @@ def bogus_id_shapes(
     for route, url in sorted(bogus_urls.items()):
         method, path = route.split(" ", 1)
         harness.restore()
-        shapes.update(capture_all(harness.client, [(method, path, {})], urls={route: url}))
+        # The SAME kwargs the capture used, not `{}`. A route with required
+        # query params probed without them answers 422 whatever its id, which
+        # differs from its real shape and so reads as "it discriminates on the
+        # id" -- the gate passing on a question it never asked. See
+        # `CapturePlan.kwargs`.
+        kwargs = harness.plan.kwargs.get(route, {})
+        shapes.update(capture_all(harness.client, [(method, path, kwargs)], urls={route: url}))
     harness.restore()
     return shapes
 

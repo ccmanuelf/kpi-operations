@@ -104,6 +104,15 @@ OUT_OF_SCOPE_ROUTES: Dict[str, ScopeEntry] = {
     "GET /api/qr/job/{job_id}/image": ScopeEntry("-> Response wrapping a raw PNG QR image."),
     "GET /api/qr/product/{product_id}/image": ScopeEntry("-> Response wrapping a raw PNG QR image."),
     "GET /api/qr/work-order/{work_order_id}/image": ScopeEntry("-> Response wrapping a raw PNG QR image."),
+    "GET /api/pivot/{dataset}/csv": ScopeEntry(
+        "-> StreamingResponse wrapping a CSV of the pivot result. Folded in when the "
+        "capture learned to supply required query params: until then the route recorded "
+        "`<status:422>` (it needs bucket/start_date/end_date), so there was no evidence "
+        "either way and it sat in ALLOWLIST as a route 'awaiting a response model' it can "
+        "never have. Asked properly it records `<non-json>`, the same standing as its JSON "
+        "twin GET /api/pivot/{dataset} -- which stays in the ratchet, because that one DOES "
+        "return a body."
+    ),
     "POST /api/qr/generate/image": ScopeEntry(
         "-> Response wrapping a raw PNG QR image. A POST, deliberately: the scope "
         "rule is about whether a route has a JSON body, never about its method."

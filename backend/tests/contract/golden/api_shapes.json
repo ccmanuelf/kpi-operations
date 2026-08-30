@@ -118,10 +118,21 @@
     "[].value"
   ],
   "GET /api/attendance/kpi/bradford-factor/{employee_id}": [
-    "<status:422>"
+    "bradford_score",
+    "calculation_timestamp",
+    "employee_id",
+    "end_date",
+    "interpretation",
+    "start_date"
   ],
   "GET /api/attendance/statistics/summary": [
-    "<status:422>"
+    "calculation_timestamp",
+    "end_date",
+    "shift_id",
+    "start_date",
+    "statistics[].count",
+    "statistics[].status",
+    "statistics[].total_hours"
   ],
   "GET /api/cache/health": [
     "entries",
@@ -140,7 +151,7 @@
     "timestamp"
   ],
   "GET /api/capacity/kpi/variance": [
-    "<status:422>"
+    "<blocked:client_id@capacity-variance>"
   ],
   "GET /api/capacity/workbook/{client_id}": [
     "bom",
@@ -528,7 +539,30 @@
     "[].value"
   ],
   "GET /api/kpi/labor-hours": [
-    "<status:422>"
+    "by_category.*",
+    "by_labor_class.direct.actual",
+    "by_labor_class.direct.available_for_efficiency",
+    "by_labor_class.direct.billed",
+    "by_labor_class.indirect.actual",
+    "by_labor_class.indirect.available_for_efficiency",
+    "by_labor_class.indirect.billed",
+    "by_labor_class.unclassified.actual",
+    "by_labor_class.unclassified.available_for_efficiency",
+    "by_labor_class.unclassified.billed",
+    "earned_hours",
+    "efficiency_available_basis",
+    "entry_counts.total",
+    "entry_counts.with_allocations",
+    "entry_counts.with_split",
+    "excluded_entries",
+    "totals.actual",
+    "totals.available_for_efficiency",
+    "totals.billed",
+    "totals.double",
+    "totals.normal",
+    "totals.scheduled",
+    "totals.triple",
+    "totals.unsplit_actual"
   ],
   "GET /api/kpi/late-orders": [
     "[].days_pending",
@@ -590,7 +624,13 @@
     "[].value"
   ],
   "GET /api/kpi/{metric}/cause": [
-    "<status:422>"
+    "date",
+    "factor",
+    "kind",
+    "metric",
+    "share",
+    "unit",
+    "value"
   ],
   "GET /api/my-shift/activity": [
     "activity",
@@ -611,10 +651,28 @@
     "<status:400>"
   ],
   "GET /api/pivot/{dataset}": [
-    "<status:422>"
+    "bucket",
+    "dataset",
+    "group_by",
+    "rows[].bucket_start",
+    "rows[].downtime_hours",
+    "rows[].earned_hours",
+    "rows[].efficiency_pct",
+    "rows[].excluded_entries",
+    "rows[].group_key",
+    "rows[].operators",
+    "rows[].run_hours",
+    "rows[].units",
+    "totals.downtime_hours",
+    "totals.earned_hours",
+    "totals.efficiency_pct",
+    "totals.excluded_entries",
+    "totals.operators",
+    "totals.run_hours",
+    "totals.units"
   ],
   "GET /api/pivot/{dataset}/csv": [
-    "<status:422>"
+    "<non-json>"
   ],
   "GET /api/plan-vs-actual": [],
   "GET /api/plan-vs-actual/summary": [
@@ -785,11 +843,27 @@
     "[].value"
   ],
   "GET /api/quality/kpi/quality-score": [
-    "<status:422>"
+    "components.escape_rate",
+    "components.fpy",
+    "components.rty",
+    "components.scrap_rate",
+    "grade",
+    "interpretation",
+    "quality_score"
   ],
   "GET /api/quality/kpi/top-defects": [],
   "GET /api/quality/statistics/summary": [
-    "<status:422>"
+    "average_dpmo",
+    "average_ppm",
+    "calculation_timestamp",
+    "end_date",
+    "product_id",
+    "shift_id",
+    "start_date",
+    "total_defects_found",
+    "total_rework_units",
+    "total_scrap_units",
+    "total_units_inspected"
   ],
   "GET /api/reports/attendance/excel": [
     "<non-json>"

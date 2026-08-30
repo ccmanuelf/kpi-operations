@@ -1,0 +1,175 @@
+"""WHAT each REQUIRED QUERY param resolves to. The HOW lives in
+`param_resolution.py`, next to the path-param resolver it extends.
+
+`param_specs.py` closed one half of "the caller owns id resolution": a route
+template's `{...}` params. This closes the other half that a GET can have.
+Nine golden entries recorded `<status:422>` -- a status meaning "the route
+rejected the request" -- when what actually happened is that the harness never
+supplied a parameter the route requires. That is the same class of defect as
+the literal-brace URLs: an answer recorded as the route's, produced by a
+question nobody meant to ask.
+
+DETECTION IS THE APP'S, NOT OURS. Required-ness is read off FastAPI's own
+`route.dependant` (see `param_resolution.required_query_params`), never
+re-derived from `inspect.signature`. The two declaration forms in this
+codebase look nothing alike --
+
+    start_date: date                                    # bare, required
+    client_id: str = Query(..., description="Client ID")  # required-ness is
+                                                          # inside the default
+
+-- and a signature scan that reads "has a default" as "optional" sees the
+second as optional and silently leaves `GET /api/capacity/kpi/variance`
+unresolved. FastAPI already answers this question correctly for both forms
+(it is how the app itself decides to 422), so asking IT is both less code and
+the only version that cannot disagree with the running route.
+
+THREE KINDS OF VALUE, and the rule for each is the same one `param_specs.py`
+states: derive, do not hardcode.
+
+  ids       reuse the path registry's spec OBJECTS (`REGISTRY[...]` below --
+            the same object, not a copy), so `client_id` and `product_id`
+            have exactly one SQL, one cache entry and one place to fix when
+            the seeder moves.
+  dates     `Kind.SEED_WINDOW`, anchored on `SeededToday.today()` -- the
+            SAME pin the captured routes read (`conftest.CLOCK_READING_
+            ROUTE_MODULES`). Anchoring on the real clock instead would give
+            every one of these entries a quiet expiry date, which is exactly
+            what #245 spent a pass removing; anchoring on a second copy of
+            `SEED_AS_OF` would let the two drift. `SeededToday` raises when
+            unpinned, so an unpinned capture cannot silently fall back to the
+            calendar.
+  enums     `Kind.LITERAL` plus `choices` imported from the module the route
+            validates against (`pivot.buckets.VALID_BUCKETS`). The literal
+            names which member is asked for; `choices` is what makes a stale
+            copy impossible.
+
+WHAT IS DELIBERATELY NOT RESOLVED HERE is as load-bearing as what is, and
+both exclusions are declared below rather than left to be inferred from an
+empty result: `DEFERRED_TO_WRITE_CAPTURE` (mutating routes) and the one
+`Kind.BLOCKED` entry (a route whose params all resolve but whose answer is
+empty under this seed).
+"""
+
+from __future__ import annotations
+
+from typing import Dict, FrozenSet, Tuple
+
+from backend.pivot.buckets import VALID_BUCKETS
+from backend.tests.contract.param_specs import REGISTRY, Kind, ParamSpec
+
+#: How far back the captured date window reaches from the seed's own "today".
+#:
+#: The smoke profile's transactional rows span 13 days ending the day before
+#: `SEED_AS_OF`, so 90 is wide margin rather than a fitted number -- and
+#: `test_query_resolution.test_the_window_actually_covers_the_seeded_rows`
+#: asserts that against the DATABASE, so "wide enough" is measured every run
+#: instead of believed. It must stay a fixed span off a fixed anchor: any
+#: value works, a value read from the calendar does not.
+WINDOW_DAYS = 90
+
+
+def _seed_window(key: str, offset_days: int, note: str) -> ParamSpec:
+    return ParamSpec(key=key, kind=Kind.SEED_WINDOW, offset_days=offset_days, note=note)
+
+
+#: param name -> ordered (path fragment, spec key), exactly as
+#: `param_specs.FAMILY_ROUTER` works and for the same reason: one name, more
+#: than one meaning. A param listed here whose route matches no fragment
+#: RAISES rather than falling back, so a new route family has to be a
+#: deliberate entry.
+#:
+#: `client_id` is the only such name today. As a query param it means the same
+#: entity everywhere -- what differs is that on `/api/capacity/kpi/variance`
+#: there is nothing for it to find (see the BLOCKED spec below), which is a
+#: property of the route, not of the id. Routing it is how that route-level
+#: fact gets a declaration and a staleness gate instead of a comment.
+QUERY_FAMILY_ROUTER: Dict[str, Tuple[Tuple[str, str], ...]] = {
+    "client_id": (("/api/capacity/kpi/variance", "client_id@capacity-variance"),),
+}
+
+
+#: Every required query param on a golden route the harness resolves, and
+#: nothing else. Gated both directions by `test_query_resolution.py`.
+QUERY_REGISTRY: Dict[str, ParamSpec] = {
+    # --- ids: the path registry's own objects, not copies --------------
+    "product_id": REGISTRY["product_id"],
+    # --- dates ---------------------------------------------------------
+    "start_date": _seed_window(
+        "start_date",
+        WINDOW_DAYS,
+        note="Window opens WINDOW_DAYS before the seed's today. Every route taking this pairs "
+        "it with end_date and calls validate_date_range, which 422s a reversed range.",
+    ),
+    "end_date": _seed_window(
+        "end_date",
+        0,
+        note="The seed's own today -- the last day its universe covers, one day after the last "
+        "day it has transactional rows for.",
+    ),
+    "date": _seed_window(
+        "date",
+        0,
+        note="A SINGLE day, not a window: GET /api/kpi/{metric}/cause asks 'what drove this "
+        "metric on this date'. Anchored at the same end as the ranges above.",
+    ),
+    # --- enums ---------------------------------------------------------
+    "bucket": ParamSpec(
+        key="bucket",
+        kind=Kind.LITERAL,
+        literal="week",
+        choices=VALID_BUCKETS,
+        note="The engine emits only buckets that have rows, and `week` over the captured window "
+        "produces THREE of them (the seeded days span two and a bit ISO weeks) -- so `rows[]` "
+        "comes back non-empty and contributes its per-row keys, while still being evidence that "
+        "bucketing ran at all, which a bucket coarse enough to collapse the seed into a single "
+        "row would not be. `choices` is pivot.buckets.VALID_BUCKETS, the tuple routes/pivot.py "
+        "itself validates against.",
+    ),
+    # --- resolvable, but the answer is empty under this seed ------------
+    "client_id@capacity-variance": ParamSpec(
+        key="client_id@capacity-variance",
+        kind=Kind.BLOCKED,
+        table="CAPACITY_KPI_COMMITMENT",
+        reason=(
+            "CAPACITY_KPI_COMMITMENT has zero seeded rows, so KPIIntegrationService."
+            "calculate_variance_detailed returns `[]` for EVERY client -- verified by asking "
+            "with a real seeded client_id, not inferred. The id resolves fine; there is "
+            "nothing for it to find. Recording that `[]` would put an entry with no fields in "
+            "the golden master, where `test_no_route_lost_a_field` would compare it against "
+            "itself forever and `ALLOWLIST` would look ready to be closed from it -- the "
+            "'unblocked into no-entries-found' trap #244 hit. Declared instead, with the "
+            "staleness gate in test_capture_integrity counting this table's rows every run, so "
+            "seeding commitments promotes the route rather than being ignored."
+        ),
+    ),
+}
+
+
+#: Golden routes that DO have required query params and are deliberately left
+#: unrequested, so their entries stay `<status:422>` until the write-capture
+#: harness (S4) can ask them properly.
+#:
+#: Every one is a mutation, and the reason is not "mutations are hard": the
+#: capture isolates a mutating route against a restored snapshot only when it
+#: carries a PATH param (`param_specs.MUTATING_METHODS`, `capture_isolated`).
+#: A paramless POST supplied with query params would run inside the READ pass
+#: and leave its writes behind for every route captured after it -- so
+#: supplying them is not a smaller step towards S4, it is a regression in
+#: capture isolation. Most also need a request body, which is S4's actual
+#: subject.
+#:
+#: Gated two-sided by
+#: `test_query_resolution.test_deferred_routes_are_exactly_the_mutating_ones`:
+#: a GET that lands here, or a mutation that escapes it, fails by name.
+DEFERRED_TO_WRITE_CAPTURE: FrozenSet[str] = frozenset(
+    {
+        "POST /api/attendance/mark-all-present",
+        "POST /api/capacity/scenarios/compare",
+        "POST /api/floating-pool/simulation/shift-coverage",
+        "POST /api/hold-catalogs/seed-defaults",
+        "POST /api/workflow/bulk-transition",
+        "POST /api/workflow/config/{client_id}/apply-template",
+        "POST /api/workflow/work-orders/{work_order_id}/validate",
+    }
+)
