@@ -30,3 +30,48 @@ def test_no_api_route_has_a_loose_response_model():
 
     stale = sorted(ALLOWLIST - still_loose)
     assert stale == [], "these are converted — remove them from ALLOWLIST"
+
+
+def test_the_rty_error_shape_cannot_escape_its_404():
+    """`WorkOrderRTYResponse` declares no `error` field. That is only safe
+    while every error-shaped return in `calculate_work_order_job_rty` sets
+    `job_count` to 0, because the route raises 404 on exactly
+
+        "error" in result and result.get("job_count", 0) == 0
+
+    An error return that left `job_count` non-zero would sail past the 404,
+    hit the response model, and have its `error` key silently dropped --
+    Pydantic ignores undeclared fields -- so the caller would receive a
+    normal-looking body with rty_percentage 0 and no indication anything
+    went wrong. Nothing else pins that coupling, so this reads the function's
+    own AST: every `return {...}` literal carrying an "error" key must also
+    carry `job_count` set to a literal 0.
+    """
+    import ast
+    import inspect
+    import textwrap
+
+    from backend.calculations import fpy_rty
+
+    source = textwrap.dedent(inspect.getsource(fpy_rty.calculate_work_order_job_rty))
+    tree = ast.parse(source)
+
+    error_returns = 0
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Return) or not isinstance(node.value, ast.Dict):
+            continue
+        keys = {k.value for k in node.value.keys if isinstance(k, ast.Constant)}
+        if "error" not in keys:
+            continue
+        error_returns += 1
+        pairs = {k.value: v for k, v in zip(node.value.keys, node.value.values) if isinstance(k, ast.Constant)}
+        job_count = pairs.get("job_count")
+        assert isinstance(job_count, ast.Constant) and job_count.value == 0, (
+            "an error-shaped return in calculate_work_order_job_rty does not pin job_count to 0; "
+            "it would bypass the route's 404 and lose its `error` key to WorkOrderRTYResponse"
+        )
+
+    # Guard the guard: if the error branch is ever removed this test is
+    # vacuous, and the reasoning above should be revisited rather than left
+    # passing on nothing.
+    assert error_returns == 1, f"expected exactly one error-shaped return, found {error_returns}"

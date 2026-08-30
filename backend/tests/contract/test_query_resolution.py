@@ -45,7 +45,9 @@ from backend.tests.contract.param_resolution import (
 from backend.tests.contract.param_specs import REGISTRY, Kind, MUTATING_METHODS
 from backend.tests.contract.query_specs import (
     DEFERRED_TO_WRITE_CAPTURE,
+    EFFECTIVELY_REQUIRED_QUERY_PARAMS,
     QUERY_REGISTRY,
+    STATUS_IS_THE_ROUTES_OWN_ANSWER,
     WINDOW_DAYS,
 )
 
@@ -65,6 +67,11 @@ UNBLOCKED: Dict[str, tuple] = {
     "GET /api/kpi/{metric}/cause": ("date",),
     "GET /api/pivot/{dataset}": ("bucket", "start_date", "end_date"),
     "GET /api/pivot/{dataset}/csv": ("bucket", "start_date", "end_date"),
+    # Not FastAPI-required -- declared in EFFECTIVELY_REQUIRED_QUERY_PARAMS.
+    # The tenant-narrowing this test warns about is what the route demands:
+    # it refuses to answer without a client, and the step names it returns
+    # are structural rather than per-tenant.
+    "GET /api/onboarding/status": ("client_id",),
 }
 
 VARIANCE = "GET /api/capacity/kpi/variance"
@@ -76,15 +83,28 @@ def _golden() -> Dict[str, List[str]]:
 
 
 def _requirements() -> Dict[str, tuple]:
-    """Every golden route that has required query params, and which."""
+    """Every golden route that will not answer without query params, and which.
+
+    Both sources, matching `Resolver.query_for` exactly. Reading only
+    FastAPI's `dependant` here would let the gate and the harness disagree
+    about what "required" means: `/api/onboarding/status` declares
+    `Query(None)` and raises 400 in its own body, so a dependant-only view
+    calls it unrequired, never asks for it to be accounted for, and leaves
+    its `<status:400>` sitting in the golden master looking like an answer.
+    That is the same defect this layer removes, one door over.
+    """
     from backend.main import app
 
     index = route_index(app)
     found = {}
     for route_key in sorted(_golden()):
-        required = required_query_params(index[route_key])
+        required = list(required_query_params(index[route_key]))
+        path = route_key.split(" ", 1)[1]
+        for param in EFFECTIVELY_REQUIRED_QUERY_PARAMS.get(path, ()):
+            if param not in required:
+                required.append(param)
         if required:
-            found[route_key] = required
+            found[route_key] = tuple(required)
     return found
 
 
@@ -434,3 +454,175 @@ def test_variance_is_blocked_by_an_empty_table_not_by_an_unresolvable_id(harness
     response = harness.client.get("/api/capacity/kpi/variance", params={"client_id": client_id})
     assert response.status_code == 200
     assert response.json() == []
+
+
+def test_the_pivot_envelope_holds_for_every_dataset_not_just_the_captured_one(harness: _Harness):
+    """`literal` names ONE dataset; the route serves six with disjoint measures.
+
+    The capture asks `/api/pivot/{dataset}` with the single dataset
+    `QUERY_REGISTRY["dataset"].literal` names, so the golden master records
+    that dataset's measures as "the shape of the route". A cross-model review
+    of the query-param layer raised exactly this: a fixed literal with a
+    `choices` membership check catches a dataset the app DROPS, but never
+    proves the recorded shape is representative of the ones it keeps.
+
+    For pivot it genuinely is not. `registry.DATASETS` gives production,
+    downtime, quality, holds, labor and delivery completely disjoint measure
+    sets, so a response model enumerating any one of them would make Pydantic
+    strip the other five out of the response -- a typed contract that silently
+    deletes data. `PivotResponse` therefore declares only the envelope.
+
+    This walks DATASETS itself rather than the captured literal, and requires
+    of every dataset: the five envelope keys survive, and the measures the
+    registry declares for THAT dataset arrive intact.
+
+    Both ways of getting it wrong were mutation-checked against this test:
+    typing `totals` as a model with production's measures REQUIRED makes the
+    other datasets raise ResponseValidationError (500); typing them Optional
+    makes the response come back 200 with the measures silently deleted
+    ("response model dropped [...]"). The first is loud, the second is not --
+    which is why this asserts on the field set rather than on the status code.
+    """
+    from backend.pivot.registry import DATASETS
+
+    # No DB is touched: `bucket` is a LITERAL and the dates are SEED_WINDOWs.
+    # (The sibling tests above pass None too; mypy only checks this one
+    # because its signature is typed.)
+    resolver = Resolver(engine=None)  # type: ignore[arg-type]
+    bucket = resolver.resolve_query("bucket", "/api/pivot/{dataset}")
+    start = resolver.resolve_query("start_date", "/api/pivot/{dataset}")
+    end = resolver.resolve_query("end_date", "/api/pivot/{dataset}")
+
+    checked = {}
+    for name, spec in DATASETS.items():
+        resp = harness.client.get(
+            f"/api/pivot/{name}",
+            params={"bucket": bucket, "start_date": start, "end_date": end},
+        )
+        assert resp.status_code == 200, f"{name} -> {resp.status_code} {resp.text[:200]}"
+        body = resp.json()
+        assert set(body) == {"dataset", "bucket", "group_by", "rows", "totals"}, name
+        assert body["dataset"] == name
+
+        # The registry's own measure list for THIS dataset, not the captured one.
+        measures = set(spec.measures)
+        missing = measures - set(body["totals"])
+        assert not missing, f"{name}: response model dropped {sorted(missing)}"
+
+        # `totals` is typed `Dict[str, Any]`, and Pydantic renders a Decimal
+        # under `Any` as a JSON STRING -- the same leak this branch's
+        # quality-score fix closed. The engine casts to float today, for all
+        # six datasets; this keeps a dataset that starts returning Decimal
+        # from re-opening it quietly, since an envelope model cannot coerce
+        # what it does not name.
+        stringly = {k: v for k, v in body["totals"].items() if isinstance(v, str)}
+        assert not stringly, f"{name}: numeric totals arrived as strings: {stringly}"
+        checked[name] = sorted(measures)
+
+    assert len(checked) == len(DATASETS) >= 6
+    # The captured dataset must not be the only one with a distinctive set --
+    # otherwise this test would pass even if the route ignored `dataset`.
+    assert len({tuple(v) for v in checked.values()}) > 1, checked
+
+
+def _is_required(param: object) -> bool:
+    """Whether a FastAPI `ModelField` is required, across pydantic shapes.
+
+    `ModelField.required` exists on some versions and not others; where it is
+    absent the truth lives on `field_info.is_required()`. Defaulting to True
+    is the safe direction here -- an unknown shape counts as required, which
+    at worst asks for a declaration that was not needed, rather than silently
+    exempting a route from the gate.
+    """
+    value = getattr(param, "required", None)
+    if value is not None:
+        return bool(value)
+    field_info = getattr(param, "field_info", None)
+    is_required = getattr(field_info, "is_required", None)
+    return bool(is_required()) if callable(is_required) else True
+
+
+def test_an_optional_param_route_that_4xxs_is_declared_one_way_or_the_other():
+    """Closes the door `required_query_params` cannot watch.
+
+    `required_query_params` reads FastAPI's `dependant`, which is right about
+    what provokes a 422 and blind to a route that takes `Query(None)` and
+    then refuses in its own body. A route in that shape records a 4xx in the
+    golden master that is indistinguishable, by inspection, from the route's
+    real answer -- which is how `GET /api/onboarding/status` sat at
+    `<status:400>` while the layer that would have fixed it was already
+    shipped, and how a test in test_frontend_usage.py came to cite that 400
+    as an example of a status that WAS the route's own answer.
+
+    So every golden 4xx on a route with optional query params has to be
+    named: either the harness owes it a param
+    (`EFFECTIVELY_REQUIRED_QUERY_PARAMS`) or the route means it
+    (`STATUS_IS_THE_ROUTES_OWN_ANSWER`, with the evidence). Routes that take
+    a request body are skipped outright -- their 422 is the body talking, not
+    a query param, and that is read off `dependant.body_params` rather than
+    from a list of route names. Routes in `DEFERRED_TO_WRITE_CAPTURE` are
+    skipped too: the read pass plans them with no params deliberately because
+    they mutate, so their 422 records that decision. Neither registry is
+    consulted for routes outside that shape, so this cannot quietly become a
+    dumping ground for unrelated 4xxs.
+    """
+    from backend.main import app
+
+    index = route_index(app)
+    unexplained = {}
+    for route_key, shape in sorted(_golden().items()):
+        if not (shape and str(shape[0]).startswith("<status:4")):
+            continue
+        route = index.get(route_key)
+        dependant = getattr(route, "dependant", None)
+        if dependant is None:
+            continue
+        optional = [q.alias for q in dependant.query_params if not _is_required(q)]
+        if not optional:
+            continue
+        # A route that REQUIRES a body 422s for the body. Its optional query
+        # params are incidental and this gate has no claim on it -- the
+        # write-capture harness owes it a request, not a query param.
+        # Read structurally off `dependant` rather than by naming routes, so
+        # a body route added later is exempt without an edit here.
+        #
+        # Required-ness matters: `body_params` being non-empty is not enough.
+        # `POST /api/defect-types/upload/{client_id}` carries an optional
+        # `replace_existing` beside its required `file`, so a mere non-empty
+        # test would exempt a route whose body is entirely optional -- whose
+        # 4xx could then be a handler-raised complaint about a query param,
+        # exempted without ever being declared.
+        if any(_is_required(param) for param in dependant.body_params):
+            continue
+
+        # Deliberately not sent: the route mutates, so the read pass plans it
+        # with no params on purpose and its 422 is that decision, not a gap.
+        if route_key in DEFERRED_TO_WRITE_CAPTURE:
+            continue
+
+        path = route_key.split(" ", 1)[1]
+        if path in EFFECTIVELY_REQUIRED_QUERY_PARAMS or route_key in STATUS_IS_THE_ROUTES_OWN_ANSWER:
+            continue
+        unexplained[route_key] = (shape[0], optional)
+
+    assert not unexplained, (
+        "4xx on a route with optional query params, explained by neither registry: " f"{unexplained}"
+    )
+
+
+def test_the_routes_own_answer_declarations_still_describe_a_4xx_route():
+    """The other direction: a declaration that outlived its route.
+
+    Once a route is promoted to a real shape -- by seeding the data it wanted,
+    or by a param being supplied -- its entry here is stale, and leaving it
+    would exempt a future 4xx on the same route from ever being explained
+    again. Fails when that happens, naming the route to delete.
+    """
+    golden = _golden()
+    stale = {
+        route: golden.get(route)
+        for route in STATUS_IS_THE_ROUTES_OWN_ANSWER
+        if not (golden.get(route) and str(golden[route][0]).startswith("<status:4"))
+    }
+
+    assert not stale, f"declared as the route's own 4xx but no longer 4xx -- delete these: {stale}"

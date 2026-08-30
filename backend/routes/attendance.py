@@ -17,6 +17,8 @@ from backend.schemas.attendance import (
     AttendanceRecordCreate,
     AttendanceRecordUpdate,
     AttendanceRecordResponse,
+    AttendanceStatisticsSummaryResponse,
+    BradfordFactorResponse,
 )
 from backend.schemas.floor_contracts import AbsenteeismKPIResponse, AbsenteeismTrendPoint
 from backend.services.attendance_service import (
@@ -190,7 +192,7 @@ def get_attendance_by_date_range(
     )
 
 
-@router.get("/statistics/summary")
+@router.get("/statistics/summary", response_model=AttendanceStatisticsSummaryResponse)
 def get_attendance_statistics(
     start_date: date,
     end_date: date,
@@ -563,7 +565,7 @@ def get_absenteeism_trend(
     return trend_data
 
 
-@router.get("/kpi/bradford-factor/{employee_id}")
+@router.get("/kpi/bradford-factor/{employee_id}", response_model=BradfordFactorResponse)
 def get_bradford_factor(
     employee_id: int,
     start_date: date,

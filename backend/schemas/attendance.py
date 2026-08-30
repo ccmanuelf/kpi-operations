@@ -266,3 +266,58 @@ class AbsenteeismCalculationResponse(BaseModel):
     calculation_timestamp: datetime
     # ENHANCEMENT: Inference metadata (ESTIMATED flag) per audit requirement
     inference: Optional[InferenceMetadata] = Field(default=None, description="Inference metadata for estimated values")
+
+
+# =============================================================================
+# GET /api/attendance/kpi/bradford-factor/{employee_id}
+# GET /api/attendance/statistics/summary
+#
+# Both routes were annotated `-> dict`, so they had no declared contract and
+# sat on the response-model allowlist. Types below are measured against the
+# seeded universe (2026-08-30) and cross-checked against the code that
+# produces each value.
+# =============================================================================
+
+
+class BradfordFactorResponse(BaseModel):
+    """`routes/attendance.py::get_bradford_factor`.
+
+    `bradford_score` is `int` at the source -- `calculations/absenteeism.py::
+    calculate_bradford_factor` is declared `-> int` and returns a bare `0`
+    on the empty branch. `interpretation` is one of four prose strings
+    selected by threshold (>250, >125, >50, else).
+    """
+
+    employee_id: int
+    bradford_score: int
+    interpretation: str
+    start_date: date
+    end_date: date
+    calculation_timestamp: datetime
+
+
+class AttendanceStatusStatistic(BaseModel):
+    """One `statistics[]` row: attendance rows grouped by status.
+
+    `total_hours` is `float(row.total_hours)` on the populated branch and a
+    bare int `0` when the aggregate is falsy, so `float` is the declaration
+    that covers both.
+    """
+
+    status: str
+    count: int
+    total_hours: float
+
+
+class AttendanceStatisticsSummaryResponse(BaseModel):
+    """`routes/attendance.py::get_attendance_statistics`.
+
+    `shift_id` is echoed back from the query string and is None whenever the
+    caller omits it.
+    """
+
+    start_date: date
+    end_date: date
+    shift_id: Optional[int] = None
+    statistics: list[AttendanceStatusStatistic]
+    calculation_timestamp: datetime

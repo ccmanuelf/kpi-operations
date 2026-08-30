@@ -148,24 +148,50 @@ def test_real_field_names_uses_top_level_segments_only():
     assert "date" not in real
 
 
-def test_real_field_names_empty_for_status_placeholder_entry():
-    """`GET /api/onboarding/status`'s golden master entry is `["<status:400>"]`
-    -- the capture harness never reached a real response body. That carries
-    no field information at all, so the real field set must be empty, never
-    `{"<status:400>"}` or any other artifact of the placeholder string
-    itself leaking through as if it were a field name.
+def test_real_field_names_empty_for_every_status_placeholder_entry():
+    """A `<status:NNN>` golden entry carries no field information, so the real
+    field set must be empty -- never `{"<status:400>"}` or any other artifact
+    of the placeholder string leaking through as if it were a field name.
 
-    It used to point at `GET /api/kpi/labor-hours`, whose entry was
-    `["<status:422>"]` for a reason that turned out not to be about the route
-    at all: the harness supplied no `start_date`/`end_date`, so the route
-    rejected the request. Now that the capture resolves required query params
-    (`query_specs.py`) that entry is 24 real field paths, and the example had
-    to move to a route whose status is the ROUTE's own answer rather than the
-    harness's omission -- which is what `/api/onboarding/status` is.
+    Written against EVERY placeholder in the golden master rather than one
+    named route, because naming one has now been wrong twice. It first
+    pointed at `GET /api/kpi/labor-hours` (`<status:422>`), which turned out
+    to be the harness supplying no `start_date`/`end_date`. It was moved to
+    `GET /api/onboarding/status` (`<status:400>`) on the reasoning that THAT
+    status was the route's own answer -- and that was wrong too: the route
+    declares `client_id` as `Query(None)` and raises in its own body, so it
+    was the same harness omission arriving through a door
+    `required_query_params` cannot see (see EFFECTIVELY_REQUIRED_QUERY_PARAMS).
+
+    Quantifying over the placeholders removes the guess. If every placeholder
+    is eventually resolved the set is empty and this still holds, which is
+    the direction the ratchet moves anyway.
     """
+    import json
+    import pathlib
+
     from backend.tests.contract.frontend_usage import _real_field_names
 
-    assert _real_field_names("/api/onboarding/status") == frozenset()
+    golden_path = pathlib.Path(__file__).parent / "golden" / "api_shapes.json"
+    golden = json.loads(golden_path.read_text())
+    # `_real_field_names` is keyed by PATH, and a path can carry several
+    # methods. `/api/kpi-thresholds` is GET (a real shape) plus PUT
+    # (`<status:422>`); the GET's fields are the right answer for that path,
+    # so only paths whose EVERY method is a placeholder can be asserted empty.
+    by_path: dict = {}
+    for route, shape in golden.items():
+        by_path.setdefault(route.split(" ", 1)[1], []).append((route, shape))
+
+    checked = 0
+    for path, entries in by_path.items():
+        if not all(shape and str(shape[0]).startswith("<status:") for _, shape in entries):
+            continue
+        checked += 1
+        assert _real_field_names(path) == frozenset(), f"{path} leaked {entries}"
+
+    # Guard the guard: with no all-placeholder path the loop is vacuous and
+    # would pass while asserting nothing.
+    assert checked > 0, "no all-placeholder paths left -- retire or re-aim this test"
 
 
 def test_real_field_names_empty_for_a_non_json_entry():

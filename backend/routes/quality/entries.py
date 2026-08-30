@@ -16,6 +16,7 @@ from backend.auth.jwt import get_current_active_supervisor, get_current_contribu
 from backend.orm.quality_entry import QualityEntry
 from backend.orm.user import User
 from backend.middleware.client_auth import build_client_filter_clause, verify_client_access
+from backend.schemas.quality_contracts import QualityStatisticsSummaryResponse
 from backend.schemas.quality import (
     QualityInspectionCreate,
     QualityInspectionUpdate,
@@ -95,7 +96,7 @@ def list_quality(
     )
 
 
-@entries_router.get("/statistics/summary")
+@entries_router.get("/statistics/summary", response_model=QualityStatisticsSummaryResponse)
 def get_quality_statistics(
     start_date: date,
     end_date: date,
