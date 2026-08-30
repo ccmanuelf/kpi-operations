@@ -90,6 +90,7 @@ before) or always `float()`-cast at the point of construction
 probing one sample.
 """
 
+from datetime import date as date_type, datetime
 from typing import List, Optional
 
 from pydantic import BaseModel
@@ -322,3 +323,75 @@ class TopDefectItem(BaseModel):
     category: Optional[str] = None
     percentage: float
     cumulative_percentage: float
+
+
+# =============================================================================
+# GET /api/quality/kpi/quality-score
+#
+# Closes a live Decimal-as-string leak. `calculations/fpy_rty.py::
+# calculate_quality_score` computes the score with Decimal arithmetic
+# (`fpy * Decimal("0.40") + rty * Decimal("0.30") + ...`) and the route was
+# annotated `-> dict`, so FastAPI inferred a model, ran the payload through
+# Pydantic, and rendered every Decimal as a JSON *string*. Measured against
+# the seeded universe on 2026-08-30, all five numeric fields came back as
+# `str` -- on SQLite, not only MariaDB. Declaring `float` coerces them.
+# =============================================================================
+
+
+class QualityScoreComponents(BaseModel):
+    """The four weighted inputs to the score, all Decimal at the source.
+
+    `fpy` and `rty` come from `calculate_fpy`/`calculate_rty`; `scrap_rate`
+    is off `process_data["scrap_rate"]`; `escape_rate` from
+    `calculate_defect_escape_rate`. Every one is a Decimal, which is why
+    they were stringified before this model existed.
+    """
+
+    fpy: float
+    rty: float
+    scrap_rate: float
+    escape_rate: float
+
+
+class QualityScoreResponse(BaseModel):
+    """`routes/quality/fpy_rty.py::get_quality_score`.
+
+    `quality_score` is the Decimal weighted sum. `grade` is a plain string
+    branch ("A+", "A", "B+", ...) and `interpretation` is prose, so both are
+    genuinely `str` rather than casualties of the Decimal rendering.
+    """
+
+    quality_score: float
+    grade: str
+    interpretation: str
+    components: QualityScoreComponents
+
+
+# =============================================================================
+# GET /api/quality/statistics/summary
+# =============================================================================
+
+
+class QualityStatisticsSummaryResponse(BaseModel):
+    """`routes/quality/entries.py::get_quality_statistics`.
+
+    The four `total_*` counts are explicitly `int(... or 0)` off
+    `func.sum(...)` over Integer columns. `average_ppm`/`average_dpmo` are
+    `float(...)` on the populated branch and a bare int `0` when the
+    aggregate is falsy -- the plain-int widening this module documents
+    elsewhere, so `float` is the declaration that covers both branches.
+    `product_id`/`shift_id` are echoed straight back from the query string
+    and are None whenever the caller omits them.
+    """
+
+    start_date: date_type
+    end_date: date_type
+    product_id: Optional[int] = None
+    shift_id: Optional[int] = None
+    total_units_inspected: int
+    total_defects_found: int
+    total_scrap_units: int
+    total_rework_units: int
+    average_ppm: float
+    average_dpmo: float
+    calculation_timestamp: datetime

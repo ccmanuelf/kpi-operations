@@ -24,6 +24,7 @@ from backend.services.job_service import (
 from backend.calculations.fpy_rty import calculate_job_yield, calculate_work_order_job_rty, calculate_job_rty_summary
 from backend.auth.jwt import get_current_user, get_current_active_supervisor, ClientScope, resolve_client_scope
 from backend.orm.user import User
+from backend.schemas.workorder_contracts import WorkOrderRTYResponse
 from backend.schemas.job_kpi_contracts import (
     JobDPMOResponse,
     JobEfficiencyResponse,
@@ -168,7 +169,7 @@ def get_job_yield(job_id: str, db: Session = Depends(get_db), current_user: User
     return calculate_job_yield(db, job_id)
 
 
-@work_order_jobs_router.get("/{work_order_id}/rty")
+@work_order_jobs_router.get("/{work_order_id}/rty", response_model=WorkOrderRTYResponse)
 def get_work_order_job_rty(
     work_order_id: str,
     db: Session = Depends(get_db),

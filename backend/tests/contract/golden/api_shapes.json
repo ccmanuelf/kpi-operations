@@ -648,7 +648,14 @@
     "units_produced"
   ],
   "GET /api/onboarding/status": [
-    "<status:400>"
+    "all_complete",
+    "completed_count",
+    "steps.capacity_plan_created",
+    "steps.production_data_entered",
+    "steps.products_added",
+    "steps.shifts_configured",
+    "steps.work_orders_created",
+    "total_steps"
   ],
   "GET /api/pivot/{dataset}": [
     "bucket",

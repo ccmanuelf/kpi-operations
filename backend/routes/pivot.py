@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
+from backend.schemas.pivot_contracts import PivotResponse
 from backend.auth.jwt import ClientScope, get_current_user, resolve_client_scope
 from backend.database import get_db
 from backend.orm.user import User
@@ -63,7 +64,7 @@ def _run(
     return run_pivot(db, dataset, bucket, group_by, start_date, end_date, scope.client_ids)
 
 
-@router.get("/{dataset}")
+@router.get("/{dataset}", response_model=PivotResponse)
 def get_pivot(
     dataset: str,
     bucket: str,

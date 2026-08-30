@@ -244,3 +244,68 @@ class AlertsCheckAllResponse(BaseModel):
     alerts_generated: int
     alerts: List[AlertResponse]
     errors: Optional[List[str]] = None
+
+
+# =============================================================================
+# GET /api/work-orders/{work_order_id}/rty
+#
+# `routes/jobs.py::get_work_order_job_rty` was annotated `-> Any` and had no
+# declared contract. Types measured 2026-08-30 and cross-checked against
+# `calculations/fpy_rty.py::calculate_work_order_job_rty`, which is where
+# every value below is built.
+#
+# That calculation has a second, error-shaped return carrying an extra
+# `error` key. It is unreachable through this route: the branch always sets
+# `job_count` to 0, and the route raises 404 on exactly
+# `"error" in result and result.get("job_count", 0) == 0`. So the model
+# describes the success shape only, and no `error` field is declared.
+# =============================================================================
+
+
+class WorkOrderRTYJob(BaseModel):
+    """One `jobs[]` row -- a single operation's yield within the work order.
+
+    `planned_quantity`, `completed_quantity`, `quantity_scrapped` and
+    `good_quantity` are Integer columns or integer arithmetic over them.
+    `yield_percentage` is an explicit `float(yield_pct)` cast off Decimal
+    arithmetic, which is what keeps it a JSON number rather than a string.
+    """
+
+    job_id: str
+    operation_name: str
+    sequence_number: int
+    part_number: str
+    planned_quantity: int
+    completed_quantity: int
+    quantity_scrapped: int
+    good_quantity: int
+    yield_percentage: float
+    is_completed: bool
+
+
+class WorkOrderRTYBottleneck(BaseModel):
+    """The lowest-yield job. Carries only three of the `jobs[]` fields --
+    the calculation builds it as its own narrower dict, not a reference to
+    the corresponding `jobs[]` entry.
+    """
+
+    job_id: str
+    operation_name: str
+    yield_percentage: float
+
+
+class WorkOrderRTYResponse(BaseModel):
+    """`routes/jobs.py::get_work_order_job_rty`.
+
+    `rty_percentage` is `float(rty_percentage)`, cast at the source off
+    Decimal rolled-throughput arithmetic. `bottleneck_job` is None when no
+    job qualifies.
+    """
+
+    work_order_id: str
+    rty_percentage: float
+    job_count: int
+    jobs: List[WorkOrderRTYJob]
+    total_scrapped: int
+    bottleneck_job: Optional[WorkOrderRTYBottleneck] = None
+    interpretation: str

@@ -76,7 +76,11 @@ from backend.tests.contract.param_specs import (
     REGISTRY,
     Kind,
 )
-from backend.tests.contract.query_specs import QUERY_FAMILY_ROUTER, QUERY_REGISTRY
+from backend.tests.contract.query_specs import (
+    EFFECTIVELY_REQUIRED_QUERY_PARAMS,
+    QUERY_FAMILY_ROUTER,
+    QUERY_REGISTRY,
+)
 
 _PARAM = re.compile(r"\{(\w+)\}")
 
@@ -254,10 +258,22 @@ class Resolver:
         return _substitute(route_path, self.values_for(route_path))
 
     def query_for(self, route_path: str, route: Any) -> Dict[str, str]:
-        """Every REQUIRED query param of `route`, resolved. `{}` when it has
-        none -- which is most routes, and is what keeps this a no-op for the
-        155 golden entries that never needed it."""
-        return {param: self.resolve_query(param, route_path) for param in required_query_params(route)}
+        """Every query param `route` will not answer without, resolved. `{}`
+        when it has none -- which is most routes, and is what keeps this a
+        no-op for the 155 golden entries that never needed it.
+
+        Two sources, because required-ness has two homes. `required_query_
+        params` reads FastAPI's `dependant`, which is authoritative for the
+        422 the harness is avoiding but blind to a route that declares
+        `Query(None)` and then raises in its own body. Those are named in
+        `EFFECTIVELY_REQUIRED_QUERY_PARAMS`, declared per route rather than
+        inferred from a status code -- see that registry's note.
+        """
+        params = list(required_query_params(route))
+        for param in EFFECTIVELY_REQUIRED_QUERY_PARAMS.get(route_path, ()):
+            if param not in params:
+                params.append(param)
+        return {param: self.resolve_query(param, route_path) for param in params}
 
 
 def required_query_params(route: Any) -> Tuple[str, ...]:

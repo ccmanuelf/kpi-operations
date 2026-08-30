@@ -163,7 +163,7 @@ def test_every_loose_route_is_inventoried_and_none_is_silently_dropped():
 
     routes = routes_needing_a_response_model(app)
 
-    assert len(routes) == 28
+    assert len(routes) == 22
     methods = {m for m, _, _ in routes}
     assert methods == {"GET", "POST", "PUT", "DELETE"}
 

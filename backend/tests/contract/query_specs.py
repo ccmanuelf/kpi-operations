@@ -53,6 +53,7 @@ empty under this seed).
 
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import Dict, FrozenSet, Tuple
 
 from backend.pivot.buckets import VALID_BUCKETS
@@ -85,7 +86,56 @@ def _seed_window(key: str, offset_days: int, note: str) -> ParamSpec:
 #: property of the route, not of the id. Routing it is how that route-level
 #: fact gets a declaration and a staleness gate instead of a comment.
 QUERY_FAMILY_ROUTER: Dict[str, Tuple[Tuple[str, str], ...]] = {
-    "client_id": (("/api/capacity/kpi/variance", "client_id@capacity-variance"),),
+    "client_id": (
+        ("/api/capacity/kpi/variance", "client_id@capacity-variance"),
+        ("/api/onboarding/status", "client_id@onboarding"),
+    ),
+}
+
+
+#: Query params FastAPI marks OPTIONAL that the route nonetheless refuses to
+#: answer without. `required_query_params` reads `route.dependant`, which is
+#: the right source for required-ness and is what stops the harness provoking
+#: 422s -- but it can only see what FastAPI was told. A route that declares
+#: `Query(None)` and then raises in its own body is required in every sense
+#: that matters to a caller, and invisible there.
+#:
+#: `/api/onboarding/status` is the one such route today. Its `client_id` is
+#: `Query(None)`; `_resolve_client_id` falls back to the caller's assigned
+#: client and raises 400 ("client_id query parameter is required for this
+#: user role") when there is none. The capture user has none, so the golden
+#: master recorded `<status:400>` as this route's contract -- the same defect
+#: class the query layer removes, arriving through a door the required-param
+#: scan does not watch.
+#:
+#: Declared rather than discovered: a heuristic that treats any 4xx as a
+#: missing param would silently start sending params to routes that are
+#: 4xx for real reasons (authorization, a genuinely absent entity), and the
+#: harness would record whatever came back. `test_effectively_required_
+#: params_are_declared_not_discovered` gates the other direction -- a golden
+#: 4xx on a route with optional query params has to appear here or be
+#: explained.
+EFFECTIVELY_REQUIRED_QUERY_PARAMS: Dict[str, Tuple[str, ...]] = {
+    "/api/onboarding/status": ("client_id",),
+}
+
+
+#: The other half of the same question. A golden `<status:4xx>` on a route
+#: with OPTIONAL query params has exactly two explanations: the harness never
+#: sent a param the route actually needs (above), or the route means it. They
+#: look identical in the golden master, so each route carrying that shape is
+#: named here with the evidence that told them apart.
+STATUS_IS_THE_ROUTES_OWN_ANSWER: Dict[str, str] = {
+    "GET /api/predictions/health/{kpi_type}": (
+        "400 'Insufficient data for health assessment'. NOT a missing param: `client_id` is "
+        "`Query(None)` and the handler defaults it to the caller's client, else the literal "
+        "'DEMO-CLIENT-001', so a request without it is already a request with one. Asked "
+        "explicitly with every seeded client -- DEMO-HOURLY, DEMO-HYBRID, DEMO-PIECE, "
+        "SAMPLE_REF -- and with DEMO-CLIENT-001 itself: all five answer 400 with the same "
+        "detail. The gate is `get_historical_kpi_data` returning too few points, which is a "
+        "property of the seed, not of the request. Seeding enough history promotes this route "
+        "to a real shape and this entry should then be deleted."
+    ),
 }
 
 
@@ -127,6 +177,17 @@ QUERY_REGISTRY: Dict[str, ParamSpec] = {
         "itself validates against.",
     ),
     # --- resolvable, but the answer is empty under this seed ------------
+    "client_id@onboarding": replace(
+        REGISTRY["client_id"],
+        key="client_id@onboarding",
+        note=(
+            "Same entity and same seeded row as the path-param `client_id` -- reusing "
+            "REGISTRY['client_id']'s own field values rather than retyping the query, so a "
+            "change to how a client id is found cannot leave this route resolving a stale one. "
+            "Routed separately only because EFFECTIVELY_REQUIRED_QUERY_PARAMS has to name a "
+            "spec, and `client_id` alone already routes to the BLOCKED variance entry."
+        ),
+    ),
     "client_id@capacity-variance": ParamSpec(
         key="client_id@capacity-variance",
         kind=Kind.BLOCKED,
