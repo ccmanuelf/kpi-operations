@@ -63,6 +63,47 @@ GOLDEN = Path(__file__).parent / "golden" / "api_shapes.json"
 SEED_AS_OF = date(2026, 8, 25)
 
 
+#: Every route module that reads `date.today()` to default a query window, and
+#: is therefore capable of recording a shape that expires. Pinned as a group
+#: because the hazard is not special to any one of them: a route asking the REAL
+#: clock is asking about a world that drifts further from the seed every day the
+#: suite is not run, so its golden entry has a quiet expiry date.
+#:
+#: Patching the module's `date` symbol is safe here ONLY because these modules
+#: bind their annotations at decoration time. `simulation_calibration.py` is
+#: deliberately absent: it is the one clock-reading route module that uses
+#: `from __future__ import annotations`, so its `Optional[date]` parameters are
+#: STRINGS resolved later against module globals -- replacing `date` there makes
+#: FastAPI try to build a Pydantic field from a `date` subclass, which pydantic
+#: rejects outright. Its one route stays unpinned and is named in
+#: `test_time_determinism.py` rather than left to be rediscovered.
+#:
+#: `backend.routes.reference` is not here either: it needs the TIME of day, not
+#: the day, and is pinned by `ShiftActivePin` above.
+CLOCK_READING_ROUTE_MODULES = (
+    "backend.routes.analytics._helpers",
+    "backend.routes.analytics.predictions",
+    "backend.routes.attendance",
+    "backend.routes.capacity.scenarios",
+    "backend.routes.data_completeness",
+    "backend.routes.downtime",
+    "backend.routes.floating_pool",
+    "backend.routes.holds",
+    "backend.routes.jobs",
+    "backend.routes.kpi.calculations",
+    "backend.routes.kpi.dashboard",
+    "backend.routes.kpi.efficiency",
+    "backend.routes.kpi.otd",
+    "backend.routes.kpi.trends",
+    "backend.routes.my_shift",
+    "backend.routes.predictions",
+    "backend.routes.quality.fpy_rty",
+    "backend.routes.quality.pareto",
+    "backend.routes.quality.ppm_dpmo",
+    "backend.routes.work_orders",
+)
+
+
 @dataclass
 class _Harness:
     client: TestClient
@@ -166,7 +207,8 @@ def harness(tmp_path_factory: pytest.TempPathFactory) -> Iterator[_Harness]:
     time_pin = pytest.MonkeyPatch()
     time_pin.setattr("backend.routes.reference.datetime", ShiftActivePin)
     time_pin.setattr(SeededToday, "AS_OF", SEED_AS_OF)
-    time_pin.setattr("backend.routes.jobs.date", SeededToday)
+    for module in CLOCK_READING_ROUTE_MODULES:
+        time_pin.setattr(f"{module}.date", SeededToday)
     try:
         client = TestClient(app, raise_server_exceptions=False)
         # Plan against the routes the GOLDEN MASTER names, not the

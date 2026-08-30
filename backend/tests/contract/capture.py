@@ -229,15 +229,32 @@ class SeededToday(date):
     Only `today()` is overridden. Construction, arithmetic, ordering and
     isinstance() all keep working, so a route that does
     `date.today() - timedelta(days=30)` gets a real date back.
+
+    It returns a PLAIN `date`, not `cls`. Returning the subclass reads as the
+    more honest signature and is what this did first, but a `date` subclass is
+    not interchangeable with `date` at two boundaries the routes actually
+    cross: pydantic refuses to build a field from one (so a route annotating
+    `Optional[date]` fails to analyse), and sqlite3 refuses to bind one
+    (`Error binding parameter: type 'SeededToday' is not supported`), which
+    surfaced as four routes answering 503 the moment this pin was applied
+    beyond the single route it was written for. The point of the class is to
+    control what `today()` ANSWERS, not to propagate a new type through query
+    parameters and SQL binds.
     """
 
     AS_OF: Optional[date] = None
 
+    # `type: ignore[override]` because the runtime type is the whole point:
+    # narrowing `date.today()`'s return to a plain `date` is what makes the
+    # value bindable and annotatable, and mypy reads that as a Liskov
+    # violation. tests/_time.py::_FrozenDate returns `cls` specifically to
+    # avoid this ignore -- a reasonable trade there, where the value never
+    # reaches a query, and the wrong one here.
     @classmethod
-    def today(cls) -> "SeededToday":
+    def today(cls) -> date:  # type: ignore[override]
         if cls.AS_OF is None:
             raise AssertionError("SeededToday.AS_OF is unset; pin it to the date the harness seeded with")
-        return cls(cls.AS_OF.year, cls.AS_OF.month, cls.AS_OF.day)
+        return date(cls.AS_OF.year, cls.AS_OF.month, cls.AS_OF.day)
 
 
 def is_loose(response_model) -> bool:
