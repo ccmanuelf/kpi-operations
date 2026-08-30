@@ -63,6 +63,61 @@ GOLDEN = Path(__file__).parent / "golden" / "api_shapes.json"
 SEED_AS_OF = date(2026, 8, 25)
 
 
+#: Every route module that reads `date.today()` to default a query window, and
+#: is therefore capable of recording a shape that expires. Pinned as a group
+#: because the hazard is not special to any one of them: a route asking the REAL
+#: clock is asking about a world that drifts further from the seed every day the
+#: suite is not run, so its golden entry has a quiet expiry date.
+#:
+#: Patching the module's `date` symbol is safe here ONLY because these modules
+#: bind their annotations at decoration time. `simulation_calibration.py` is
+#: deliberately absent: it is the one clock-reading route module that uses
+#: `from __future__ import annotations`, so its `Optional[date]` parameters are
+#: STRINGS resolved later against module globals -- replacing `date` there makes
+#: FastAPI try to build a Pydantic field from a `date` subclass, which pydantic
+#: rejects outright. Its one route stays unpinned and is named in
+#: `test_time_determinism.py` rather than left to be rediscovered.
+#:
+#: `backend.routes.reference` is not here either: it needs the TIME of day, not
+#: the day, and is pinned by `ShiftActivePin` above.
+CLOCK_READING_ROUTE_MODULES = (
+    "backend.routes.analytics._helpers",
+    "backend.routes.analytics.predictions",
+    "backend.routes.attendance",
+    "backend.routes.capacity.scenarios",
+    "backend.routes.data_completeness",
+    "backend.routes.downtime",
+    "backend.routes.floating_pool",
+    "backend.routes.holds",
+    "backend.routes.jobs",
+    "backend.routes.kpi.calculations",
+    "backend.routes.kpi.dashboard",
+    "backend.routes.kpi.efficiency",
+    "backend.routes.kpi.otd",
+    "backend.routes.kpi.trends",
+    "backend.routes.my_shift",
+    "backend.routes.predictions",
+    "backend.routes.quality.fpy_rty",
+    "backend.routes.quality.pareto",
+    "backend.routes.quality.ppm_dpmo",
+    "backend.routes.work_orders",
+)
+
+#: Clock reads BELOW the route layer that still move a captured shape.
+#:
+#: Measured rather than assumed: patching `date.today()` across all 18
+#: non-route modules that call it moves exactly ONE golden entry,
+#: `GET /api/kpi/chronic-holds`, and it moves the opposite way from the rest --
+#: `[]` today, populated a year out, because holds age INTO chronic rather than
+#: out of a window. `wip_aging` computes that age from `date.today()`, so the
+#: empty entry on disk is as much an expiry as a populated one.
+#:
+#: The other 17 move nothing: they shift VALUES, and a golden master recording
+#: field names cannot see a value change. That is why this list is one entry and
+#: not eighteen -- the criterion is "moves a shape", not "reads the clock".
+CLOCK_READING_SUPPORT_MODULES = ("backend.calculations.wip_aging",)
+
+
 @dataclass
 class _Harness:
     client: TestClient
@@ -166,7 +221,8 @@ def harness(tmp_path_factory: pytest.TempPathFactory) -> Iterator[_Harness]:
     time_pin = pytest.MonkeyPatch()
     time_pin.setattr("backend.routes.reference.datetime", ShiftActivePin)
     time_pin.setattr(SeededToday, "AS_OF", SEED_AS_OF)
-    time_pin.setattr("backend.routes.jobs.date", SeededToday)
+    for module in (*CLOCK_READING_ROUTE_MODULES, *CLOCK_READING_SUPPORT_MODULES):
+        time_pin.setattr(f"{module}.date", SeededToday)
     try:
         client = TestClient(app, raise_server_exceptions=False)
         # Plan against the routes the GOLDEN MASTER names, not the

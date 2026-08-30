@@ -281,3 +281,223 @@ def test_an_unset_pin_refuses_to_fall_back_to_the_real_clock(monkeypatch) -> Non
 
     with pytest.raises(AssertionError, match="AS_OF is unset"):
         SeededToday.today()
+
+
+def test_the_whole_capture_would_drift_a_year_out_without_the_pin(harness, monkeypatch) -> None:
+    """The generalisation of the two single-route proofs above: not one route,
+    the WHOLE plan.
+
+    Those answer "is the pin real for rty-summary". They cannot answer "is any
+    OTHER entry still carrying an expiry", and the answer used to be yes for 23
+    of them -- the eight `/api/kpi/*/trend` routes among them, which go from
+    `["[].date", "[].value"]` to `[]` once the window clears the seed.
+
+    Shaped like the ShiftActivePin pair: this half proves the hazard is REAL by
+    removing the pin and advancing the clock a year, asserting the capture
+    genuinely moves. If it ever starts passing with an empty diff, the pin has
+    stopped being necessary -- or the routes stopped reading the clock -- and
+    that is the thing to re-examine, not this test to delete.
+
+    A year, not a day: the windows default to 7, 30 and 90 days, so a shift
+    small enough to sit inside the widest of them would prove nothing.
+    """
+    from backend.tests.contract.capture import capture_all
+    from backend.tests.contract.conftest import CLOCK_READING_ROUTE_MODULES, SEED_AS_OF
+
+    pinned = capture_all(harness.client, harness.plan.requests, urls=harness.plan.urls)
+
+    far_future = SEED_AS_OF + timedelta(days=365)
+
+    class _UnpinnedFarFuture(date):
+        @classmethod
+        def today(cls) -> date:  # type: ignore[override]
+            # A plain date, for the reason SeededToday returns one: sqlite3
+            # cannot bind a date subclass, and pydantic cannot build a field
+            # from one.
+            return date(far_future.year, far_future.month, far_future.day)
+
+    for module in CLOCK_READING_ROUTE_MODULES:
+        monkeypatch.setattr(f"{module}.date", _UnpinnedFarFuture)
+
+    unpinned = capture_all(harness.client, harness.plan.requests, urls=harness.plan.urls)
+
+    drifted = {route for route in pinned if pinned[route] != unpinned[route]}
+    assert drifted, (
+        "advancing the clock a year moved nothing -- either the routes stopped "
+        "reading it or the plan captured nothing, and this proves neither"
+    )
+    assert len(pinned) > 100, "the plan captured almost nothing; this would prove nothing"
+
+
+def test_the_pinned_capture_is_the_one_on_disk(harness) -> None:
+    """And the other half: what the pin produces is what the golden holds.
+
+    Together with the test above -- the clock moves the answer, the pin holds
+    it -- this is what makes a wall-clock-sensitive entry a property of the
+    seed. Neither half is worth anything alone: the first without this proves
+    only that something changed, and this without the first passes happily on a
+    suite where no route reads the clock at all.
+    """
+    import json
+
+    from backend.tests.contract.capture import capture_all
+    from backend.tests.contract.conftest import GOLDEN
+
+    golden = json.loads(GOLDEN.read_text())
+    pinned = capture_all(harness.client, harness.plan.requests, urls=harness.plan.urls)
+
+    mismatched = {r: (golden[r], pinned[r]) for r in pinned if r in golden and golden[r] != pinned[r]}
+    assert mismatched == {}
+
+
+def test_every_clock_reading_route_module_is_pinned() -> None:
+    """The coverage half, and the one the drift test cannot provide.
+
+    `test_the_whole_capture_would_drift_a_year_out_without_the_pin` patches the
+    same list `conftest` pins, so a module DROPPED from that list is patched in
+    neither capture, answers the real clock in both, and the diff stays empty.
+    Removing `backend.routes.kpi.trends` from the tuple is invisible to it --
+    verified, which is why this exists.
+
+    So the list is checked against the source instead: every route module that
+    calls `date.today()` must be pinned, or be the one documented exclusion.
+    A new route defaulting a window off the clock fails here, by name, on the
+    commit that adds it rather than on the date its golden entry expires.
+
+    WHAT THIS DOES NOT COVER, stated rather than implied:
+
+    * It greps the literal `date.today()`. An aliased import
+      (`from datetime import date as d; d.today()`) or a day derived from
+      `datetime.now().date()` reads the clock without matching. Neither occurs
+      in `routes/` today — checked, not assumed — but neither would be caught.
+    * Clock reads BELOW the route layer are covered by a separate, MEASURED
+      list (`CLOCK_READING_SUPPORT_MODULES`) rather than by this grep. All 18
+      non-route modules calling `date.today()` were patched a year forward and
+      exactly one moved a shape: `GET /api/kpi/chronic-holds`, via
+      `calculations/wip_aging`. The other 17 shift only VALUES, which a golden
+      master recording field names cannot see. That module is pinned; this gate
+      does not police the list, so a NEW support-module clock read that moves a
+      shape would not be caught here.
+    * `simulation_calibration` is excluded and keeps its expiry.
+
+    These are the honest edges of a grep-based gate. It closes the class that
+    actually bit -- a route module defaulting a window off `date.today()` -- and
+    the entries it does not reach are named here rather than left to look
+    covered.
+    """
+    from pathlib import Path
+
+    from backend.tests.contract.conftest import CLOCK_READING_ROUTE_MODULES
+
+    #: The one module that CANNOT be pinned: it is the only clock-reading route
+    #: module using `from __future__ import annotations`, so its `Optional[date]`
+    #: parameters are strings resolved against module globals at request time,
+    #: and swapping `date` makes FastAPI try to build a pydantic field from a
+    #: date subclass. Its routes keep their expiry; that is a known cost, not an
+    #: oversight, and it is recorded here rather than left to be rediscovered.
+    UNPINNABLE = {"backend.routes.simulation_calibration"}
+
+    routes_dir = Path(__file__).resolve().parents[2] / "routes"
+    reads_clock = set()
+    for path in routes_dir.rglob("*.py"):
+        if "date.today()" in path.read_text():
+            relative = path.relative_to(routes_dir.parent.parent)
+            reads_clock.add(str(relative)[:-3].replace("/", "."))
+
+    assert reads_clock, "found no clock-reading route module; this test would prove nothing"
+
+    unpinned = reads_clock - set(CLOCK_READING_ROUTE_MODULES) - UNPINNABLE
+    assert unpinned == set(), (
+        f"these route modules default a window off date.today() but are not pinned, so their "
+        f"golden entries expire silently: {sorted(unpinned)}"
+    )
+
+    # Two-sided: a module listed but no longer reading the clock is a stale
+    # declaration, and stale declarations are how a list stops describing
+    # anything.
+    stale = set(CLOCK_READING_ROUTE_MODULES) - reads_clock
+    assert stale == set(), f"pinned but no longer reads the clock: {sorted(stale)}"
+
+
+def test_no_pinned_module_constructs_a_date() -> None:
+    """The pin swaps the module's whole `date` symbol, not just `today()`.
+
+    So a pinned module calling `date(2026, 1, 1)` or `date.fromisoformat(...)`
+    would build a `SeededToday` — and a date SUBCLASS is what sqlite3 refuses to
+    bind and pydantic refuses to make a field from. `today()` returning a plain
+    date protects only `today()`; every other constructor on the class still
+    yields the subclass.
+
+    No pinned module does this today (0 of 20), which is why the pin is safe.
+    This makes that a checked property rather than a lucky one: adding a
+    `date.fromisoformat()` to a pinned route module fails here, instead of
+    surfacing as a 503 nobody connects to the clock pin.
+    """
+    import re
+    from pathlib import Path
+
+    from backend.tests.contract.conftest import (
+        CLOCK_READING_ROUTE_MODULES,
+        CLOCK_READING_SUPPORT_MODULES,
+    )
+
+    repo_root = Path(__file__).resolve().parents[3]
+    offenders = {}
+    for module in (*CLOCK_READING_ROUTE_MODULES, *CLOCK_READING_SUPPORT_MODULES):
+        source = (repo_root / (module.replace(".", "/") + ".py")).read_text()
+        built = sorted(set(re.findall(r"\bdate\.(fromisoformat|strptime|fromtimestamp|fromordinal)\(", source)))
+        built += ["date(...) literal"] * len(re.findall(r"(?<![\w.])date\(\s*\d", source))
+        if built:
+            offenders[module] = built
+    assert offenders == {}, (
+        "these pinned modules construct a date, which under the pin builds a SeededToday "
+        f"that sqlite3 cannot bind: {offenders}"
+    )
+
+
+def test_the_support_module_pin_holds_chronic_holds_where_removing_it_would_not(harness, monkeypatch) -> None:
+    """`calculations/wip_aging` reads the clock BELOW the route layer, and it is
+    the one non-route module whose reading moves a captured shape.
+
+    Removing it from the pin changes nothing TODAY -- the entry is `[]` either
+    way, because the seeded holds have not aged into chronic yet -- so a
+    same-day capture comparison cannot defend it. Its whole value is future:
+    holds age INTO chronic, so the empty entry on disk is as much an expiry as
+    a populated one, just pointing the other way.
+
+    This proves it the only way available: advance the clock a year with the
+    module UNPINNED and assert the entry moves, then with the pin and assert it
+    does not. Deleting `CLOCK_READING_SUPPORT_MODULES` fails the second half.
+    """
+    from backend.tests.contract.capture import capture_all
+    from backend.tests.contract.conftest import CLOCK_READING_SUPPORT_MODULES, SEED_AS_OF
+
+    route = "GET /api/kpi/chronic-holds"
+    request = [entry for entry in harness.plan.requests if f"{entry[0]} {entry[1]}" == route]
+    assert request, f"{route} is not in the capture plan; this test would prove nothing"
+
+    def shape() -> List[str]:
+        captured: List[str] = capture_all(harness.client, request, urls=harness.plan.urls)[route]
+        return captured
+
+    pinned_today = shape()
+
+    far_future = SEED_AS_OF + timedelta(days=365)
+
+    class _Unpinned(date):
+        @classmethod
+        def today(cls) -> date:  # type: ignore[override]
+            return date(far_future.year, far_future.month, far_future.day)
+
+    # Unpinned: the calendar decides, and a year on the holds have aged in.
+    for module in CLOCK_READING_SUPPORT_MODULES:
+        monkeypatch.setattr(f"{module}.date", _Unpinned)
+    assert shape() != pinned_today, (
+        "a year forward moved nothing, so either the holds stopped ageing into "
+        "chronic or this route left the plan -- either way this no longer proves the pin"
+    )
+
+    # Pinned: the seed decides, and the answer is the one on disk.
+    for module in CLOCK_READING_SUPPORT_MODULES:
+        monkeypatch.setattr(f"{module}.date", SeededToday)
+    assert shape() == pinned_today
