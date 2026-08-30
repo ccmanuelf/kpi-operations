@@ -34,6 +34,12 @@ from backend.tests.contract.capture import capture_isolated, was_never_reached
 from backend.tests.contract.conftest import _Harness
 from backend.tests.contract.param_specs import NEVER_404, REGISTRY, Kind
 
+#: The routes no id can reach, because their backing table has zero seeded
+#: rows. 7, down from 15: seeding JOB (S3) promoted `job_id` out of
+#: `Kind.BLOCKED` and with it all eight routes it reached -- the six
+#: `GET /api/jobs/{job_id}/*` KPI routes, `DELETE /api/jobs/{job_id}` and
+#: `GET /api/qr/job/{job_id}/image`. This set may only SHRINK: a route joining
+#: it means something that used to be reachable no longer is.
 BLOCKED_ROUTES = frozenset(
     {
         "DELETE /api/break-times/{break_id}",
@@ -41,16 +47,8 @@ BLOCKED_ROUTES = frozenset(
         "DELETE /api/equipment/{equipment_id}",
         "DELETE /api/filters/{filter_id}",
         "DELETE /api/floating-pool/{pool_id}",
-        "DELETE /api/jobs/{job_id}",
         "DELETE /api/part-opportunities/{part_number}",
         "DELETE /api/v2/simulation/scenarios/{scenario_id}",
-        "GET /api/jobs/{job_id}/dpmo",
-        "GET /api/jobs/{job_id}/efficiency",
-        "GET /api/jobs/{job_id}/kpi-summary",
-        "GET /api/jobs/{job_id}/performance",
-        "GET /api/jobs/{job_id}/ppm",
-        "GET /api/jobs/{job_id}/yield",
-        "GET /api/qr/job/{job_id}/image",
     }
 )
 
@@ -130,11 +128,14 @@ def test_every_blocked_spec_still_has_zero_rows(harness: _Harness) -> None:
     with harness.engine.connect() as conn:
         counts = {name: conn.execute(select(func.count()).select_from(table(name))).scalar() for name in blocked_tables}
 
+    # JOB is absent since S3 seeded it: its spec is no longer BLOCKED, so it is
+    # no longer one of the tables this gate counts. The staleness claim it used
+    # to make here is now made in the opposite direction by
+    # tests/test_seed/test_coverage.py, which fails if JOB has NO rows.
     assert counts == {
         "BREAK_TIME": 0,
         "EQUIPMENT": 0,
         "FLOATING_POOL": 0,
-        "JOB": 0,
         "PART_OPPORTUNITIES": 0,
         "SAVED_FILTER": 0,
         "SIMULATION_SCENARIO": 0,
@@ -228,14 +229,16 @@ def test_a_2xx_is_proof_the_id_was_right_except_where_declared(
     id_insensitive = {route for route, shape in succeeded.items() if bogus_id_shapes[route] == shape}
 
     assert id_insensitive == NEVER_404
-    # 36, up from 30: merging main brought #239, which gave the eleven
-    # soft-deleting tables an `is_active` column. Six of those DELETE routes
-    # were allowlisted BECAUSE they answered 404 for every id, and now return
-    # 204. The remaining five stay unreachable for the reasons the plan
-    # predicted -- four are seed gaps (S3) and work-orders now 409s on its
-    # children. This number may only go UP without a stated reason: a drop
-    # means a route stopped being capturable.
-    assert len(succeeded) == 36
+    # 44, up from 36: S3 seeds JOB, which made eight routes resolvable. Seven
+    # of them landed here -- the six GET /api/jobs/{job_id}/* KPI routes plus
+    # GET /api/qr/job/{job_id}/image, whose PNG records `<non-json>`, itself a
+    # success. (DELETE /api/jobs/{job_id} does NOT: it answers 409, because a
+    # seeded job's work order is not deletable while the job exists.) The
+    # eighth is GET /api/work-orders/{work_order_id}/rty, which was reachable
+    # all along and answered 404 only because the order had no jobs to compute
+    # a rolled-throughput yield from. This number may only go UP without a
+    # stated reason: a drop means a route stopped being capturable.
+    assert len(succeeded) == 44
     # Third side, and the one that keeps the other two honest: a route whose
     # probe URL equals its real URL was compared against ITSELF, so it lands in
     # `id_insensitive` for free and its NEVER_404 membership proves nothing.

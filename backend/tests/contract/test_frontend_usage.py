@@ -181,13 +181,19 @@ def test_real_field_names_empty_for_a_non_json_entry():
 
 
 def test_real_field_names_empty_for_a_blocked_entry():
-    """`GET /api/jobs/{job_id}/yield`'s golden master entry is
-    `["<blocked:job_id>"]`: Task 8b could not resolve a `job_id` because `JOB`
-    has zero seeded rows, so no request was ever issued. A `<blocked:...>`
-    entry is the strongest possible statement that this route's real fields
-    are UNKNOWN, so it must never contribute a field name -- least of all one
-    that reads like the param that blocked it.
+    """`DELETE /api/part-opportunities/{part_number}`'s golden master entry is
+    `["<blocked:part_number>"]`: no `part_number` can be resolved because
+    `PART_OPPORTUNITIES` has zero seeded rows, so no request was ever issued.
+    A `<blocked:...>` entry is the strongest possible statement that this
+    route's real fields are UNKNOWN, so it must never contribute a field name
+    -- least of all one that reads like the param that blocked it.
+
+    Was `GET /api/jobs/{job_id}/yield` until S3 seeded JOB and that entry
+    became a real eight-key shape. The example has to be a route that is STILL
+    blocked, or this test passes for the wrong reason -- an empty set because
+    the golden entry lists real fields none of which survive the `<` filter is
+    not the same fact.
     """
     from backend.tests.contract.frontend_usage import _real_field_names
 
-    assert _real_field_names("/api/jobs/{job_id}/yield") == frozenset()
+    assert _real_field_names("/api/part-opportunities/{part_number}", method="DELETE") == frozenset()

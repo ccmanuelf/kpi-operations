@@ -220,6 +220,12 @@ def _production_recorded(e: ev.ProductionRecorded, sink: RowSink, ids: IdMap) ->
             "product_id": ids.resolve("PRODUCT", e.product_id),
             "shift_id": ids.resolve("SHIFT", e.shift_id),
             "work_order_id": e.work_order_id,
+            # The column the /api/jobs/{job_id}/{efficiency,performance,
+            # kpi-summary} routes join on -- they never traverse
+            # work_order_id. None only on a shift that ran before any order was
+            # received; declared either way so every row in this table's
+            # executemany batch carries the same key set.
+            "job_id": e.job_id,
             # PRODUCTION_ENTRY carries both columns; the app's own schema
             # (backend/schemas/production.py) treats shift_date as defaulting
             # to production_date when not given separately, so the event's
@@ -244,6 +250,9 @@ def _quality_inspected(e: ev.QualityInspected, sink: RowSink, ids: IdMap) -> Non
             "quality_entry_id": e.quality_entry_id,
             "client_id": e.client_id,
             "work_order_id": e.work_order_id,
+            # Same routing step the shift's PRODUCTION_ENTRY names; /ppm,
+            # /dpmo and /kpi-summary read this table by job_id alone.
+            "job_id": e.job_id,
             "shift_date": e.shift_date,
             "units_inspected": e.units_inspected,
             "units_passed": e.units_passed,
@@ -272,6 +281,46 @@ def _defects_found(e: ev.DefectsFound, sink: RowSink, ids: IdMap) -> None:
             "defect_type": e.defect_code,
             "defect_count": e.defect_count,
             "created_at": e.at,
+        },
+    )
+
+
+def _job_defined(e: ev.JobDefined, sink: RowSink, ids: IdMap) -> None:
+    sink.add(
+        "JOB",
+        {
+            "job_id": e.job_id,
+            # `client_id_fk`, not `client_id`: JOB is one of the three tenant
+            # spellings in this schema (materialize.CLIENT_SCOPE_COLUMN), and
+            # the wrong one here is a silent NULL-column insert on SQLite, not
+            # an error.
+            "client_id_fk": e.client_id,
+            "work_order_id": e.work_order_id,
+            "operation_code": e.operation_code,
+            "operation_name": e.operation_name,
+            "sequence_number": e.sequence_number,
+            "part_number": e.part_number,
+            "part_description": e.part_description,
+            "planned_quantity": e.planned_quantity,
+            "completed_quantity": e.completed_quantity,
+            "quantity_scrapped": e.quantity_scrapped,
+            "planned_hours": e.planned_hours,
+            "actual_hours": e.actual_hours,
+            # The column is an Integer used as a boolean (orm/job.py), so the
+            # bool is cast rather than passed through -- MariaDB stores it
+            # either way, but a Python bool in an Integer column is the kind of
+            # thing a later `== 1` comparison gets wrong.
+            "is_completed": int(e.is_completed),
+            "completed_date": e.completed_date,
+            # JOB is registered for soft delete (db/soft_delete_registry.py),
+            # so a row that let is_active fall through to its server_default
+            # would still be visible -- but the seeder's rule is that no column
+            # is ever left to a server default, because created_at/updated_at
+            # falling through is the exact defect that collapsed every
+            # transition chain into one instant.
+            "is_active": True,
+            "created_at": e.at,
+            "updated_at": e.at,
         },
     )
 
@@ -308,5 +357,6 @@ _HANDLERS: Dict[Type[ev.Event], Callable] = {
     ev.ProductionRecorded: _production_recorded,
     ev.QualityInspected: _quality_inspected,
     ev.DefectsFound: _defects_found,
+    ev.JobDefined: _job_defined,
     ev.DowntimeLogged: _downtime_logged,
 }

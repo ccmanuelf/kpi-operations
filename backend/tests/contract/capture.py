@@ -5,10 +5,10 @@ churn constantly and be ignored within a week.
 """
 
 import typing
-from datetime import datetime
+from datetime import date, datetime
 
 from pydantic import RootModel
-from typing import Any, List
+from typing import Any, List, Optional
 
 from fastapi.routing import APIRoute
 
@@ -194,6 +194,50 @@ class ShiftActivePin(datetime):
     def now(cls, tz: Any = None) -> "ShiftActivePin":
         real = cls._real_now(tz)
         return cls(real.year, real.month, real.day, cls.PIN_HOUR_UTC, 0, 0, 0, tzinfo=real.tzinfo)
+
+
+class SeededToday(date):
+    """Deterministic stand-in for `date.today()` inside a captured route that
+    defaults a DATE RANGE off it.
+
+    Same class of defect as `ShiftActivePin`, one dimension over: that one
+    pins the time of day, this one pins the day. `GET /api/jobs/kpi/rty-summary`
+    (routes/jobs.py) defaults its window to `date.today() - 30 days ..
+    date.today()` and `calculate_job_rty_summary` returns a genuinely
+    DIFFERENT key set depending on whether any completed job falls inside it
+    (`response_model_exclude_unset=True` makes total_good_units,
+    jobs_meeting_target and interpretation absent, not null, when none does).
+
+    The harness seeds a universe that ends at a fixed `as_of`, so a route
+    asking the REAL clock is asking about a world that drifts further from its
+    own data every day the suite is not run. Capturing the populated branch
+    against a window that will stop covering the seed pins a shape with an
+    expiry date: nothing changes in the repo, and around as_of + 30 days the
+    entry flips back to the empty branch and `test_no_route_lost_a_field`
+    fails. Pinning `today()` TO `as_of` is what makes the answer a property of
+    the seed rather than of the calendar -- and it is the seed's own notion of
+    now, not an arbitrary freeze, so the two cannot drift apart.
+
+    `AS_OF` is a class attribute, not a literal, for the same reason
+    `ShiftActivePin._real_now` is: `conftest.py`'s `harness` sets it from the
+    SAME constant it seeds with, and `test_time_determinism.py` swaps it to
+    prove the pin is real determinism rather than a lucky capture. Left unset
+    it RAISES -- a silent fallback to the real clock would reinstate exactly
+    the drift this exists to remove. Raised rather than `assert`ed so
+    `python -O` cannot delete it.
+
+    Only `today()` is overridden. Construction, arithmetic, ordering and
+    isinstance() all keep working, so a route that does
+    `date.today() - timedelta(days=30)` gets a real date back.
+    """
+
+    AS_OF: Optional[date] = None
+
+    @classmethod
+    def today(cls) -> "SeededToday":
+        if cls.AS_OF is None:
+            raise AssertionError("SeededToday.AS_OF is unset; pin it to the date the harness seeded with")
+        return cls(cls.AS_OF.year, cls.AS_OF.month, cls.AS_OF.day)
 
 
 def is_loose(response_model) -> bool:

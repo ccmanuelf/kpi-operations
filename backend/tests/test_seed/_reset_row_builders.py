@@ -35,7 +35,19 @@ def _insert_alert_config(conn, client_id):
 
 def _insert_job(conn, client_id):
     """A JOB is a child of WORK_ORDER, so it blocks a different DELETE than
-    ALERT_CONFIG does -- one inside the sweep rather than at CLIENT."""
+    ALERT_CONFIG does -- one inside the sweep rather than at CLIENT.
+
+    NOT in CHILD_ROW_BUILDERS since S3 seeded JOB: that map's test asserts the
+    table holds ZERO rows for the client afterwards, which a seeded table can
+    never satisfy -- --reset re-seeds, so its own JOB rows are back. The
+    planted-row case it used to cover moved to test_jobs.py, which asserts on
+    THIS row's id rather than on the table's count and so still fails if the
+    sweep stops reaching JOB.
+
+    The id deliberately does not collide with the seeder's
+    `{work_order_id}-OP{n}` format (seed/emitters_operations.py::job_id_for);
+    a collision would surface as a PK error rather than as the sweep finding
+    it survived."""
     work_order = Base.metadata.tables["WORK_ORDER"]
     work_order_id = conn.execute(
         select(work_order.c.work_order_id).where(work_order.c.client_id == client_id).limit(1)
@@ -161,7 +173,6 @@ def _insert_null_tenant_alert_history(conn, client_id):
 
 CHILD_ROW_BUILDERS = {
     "ALERT_CONFIG": (_insert_alert_config, "ALERT_CONFIG", "client_id"),
-    "JOB": (_insert_job, "JOB", "client_id_fk"),
     "capacity_calendar": (_insert_capacity_calendar, "capacity_calendar", "client_id"),
     "ALERT_HISTORY": (_insert_alert_history, "ALERT", "client_id"),
 }

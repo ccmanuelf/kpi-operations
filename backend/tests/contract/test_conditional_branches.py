@@ -318,16 +318,20 @@ def test_check_availability_existing_assignment_populates_conflict_dates():
     assert dumped == raw
 
 
-def test_jobs_rty_summary_populated_branch_pins_the_extra_keys():
-    """Forces GET /api/jobs/kpi/rty-summary's non-empty-jobs branch
-    (calculations/fpy_rty.py::calculate_job_rty_summary) and pins the three
-    keys ABSENT from the empty-jobs branch the golden master actually
-    captured (total_good_units, jobs_meeting_target, interpretation) -- the
-    smoke seed has zero Job rows completed in the trailing-30-day window at
-    capture time, so the golden entry is the empty branch's 8-key shape (9
-    golden leaf paths -- `period` flattens into `period.start_date`/
-    `period.end_date`) and offers no evidence these three keys exist, or of
-    their types, at all.
+def test_jobs_rty_summary_pins_the_key_set_of_both_branches():
+    """Both branches of calculations/fpy_rty.py::calculate_job_rty_summary,
+    because which one the golden master captures has now flipped once and can
+    flip again.
+
+    Batch R5 captured the EMPTY branch: JOB had zero seeded rows, so the golden
+    entry was its 8-key shape (9 leaf paths -- `period` flattens into
+    `period.start_date`/`period.end_date`) and offered no evidence that
+    total_good_units, jobs_meeting_target and interpretation exist at all.
+    Since S3 seeds a routing whose steps complete, the capture is the POPULATED
+    branch and the EMPTY one is the unevidenced side. Pinning both is what
+    stops this test having to be rewritten the next time the seed moves -- and
+    the empty half is the one that proves those three keys are ABSENT rather
+    than null, which is the claim `response_model_exclude_unset=True` makes.
     """
     mock_job = Mock()
     mock_job.completed_quantity = 100
@@ -358,6 +362,19 @@ def test_jobs_rty_summary_populated_branch_pins_the_extra_keys():
         "interpretation",
     }
     assert raw["total_good_units"] == 95
+
+    # The empty branch: same function, a query that matches nothing. Three keys
+    # OMITTED, not null -- checked on the RAW dict, before the response model
+    # gets a chance to fill them in as explicit nulls.
+    empty_query = Mock()
+    empty_query.filter.return_value = empty_query
+    empty_query.all.return_value = []
+    empty_db = Mock()
+    empty_db.query.return_value = empty_query
+
+    empty = calculate_job_rty_summary(empty_db, date(2026, 8, 1), date(2026, 8, 27))
+
+    assert set(raw) - set(empty) == {"total_good_units", "jobs_meeting_target", "interpretation"}
     assert raw["jobs_meeting_target"] == 1
     assert raw["interpretation"] == "Good: Meeting standard targets"
 

@@ -218,7 +218,12 @@ def test_the_reset_sweep_covers_client_scoped_tables_the_seeder_never_writes():
     for name in (
         "ALERT",
         "ALERT_CONFIG",
-        "JOB",
+        # JOB was on this list until S3 seeded it. It is now the worked
+        # example of what leaving it here would cost: the moment a table is
+        # seeded, this loop's own failure message ("is seeded after all --
+        # rewrite this test, it proves nothing") is the instruction to remove
+        # the name, and the table moves to coverage.SEEDED, where
+        # test_coverage.py asserts it has rows.
         "EQUIPMENT",
         "BREAK_TIME",
         "FLOATING_POOL",

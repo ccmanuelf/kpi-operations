@@ -33,6 +33,7 @@ SEEDED: FrozenSet[str] = frozenset(
         "PRODUCT",
         "WORK_ORDER",
         "WORKFLOW_TRANSITION_LOG",
+        "JOB",
         "HOLD_ENTRY",
         "HOLD_STATUS_TRANSITION",
         "ATTENDANCE_ENTRY",
