@@ -27,6 +27,15 @@ an answer without something that forces the branch and checks its shape.
    catches the model silently dropping a field it used to declare or
    `exclude_unset` doing the wrong thing.
 
+Batch R1's four `/api/jobs/{job_id}/*` entries share ONE parametrized
+forcing test rather than four near-identical copies. They are not four
+findings: they are one branch -- "this job has no entries joined to it" --
+reached through four handlers, and each parameter case still forces its own
+handler and pins its own key set, so nothing is pooled except the scaffolding.
+That test carries a third assertion the others do not need: those branches
+emit Python `int` zeros for fields declared `float`, so it pins the
+`0` -> `0.0` widening explicitly instead of letting `0 == 0.0` hide it.
+
 `stage_durations`' non-empty interior is NOT an exclude_unset case --
 `calculate_stage_duration_summary` never omits a key, it returns a list that
 is empty or not, and an empty list is a value, not an omitted key. It gets a
@@ -41,6 +50,8 @@ import asyncio
 from datetime import date, datetime, timezone
 from unittest.mock import Mock, patch
 
+import pytest
+
 from backend.calculations.elapsed_time import (
     calculate_client_average_times,
     calculate_stage_duration_summary,
@@ -49,8 +60,15 @@ from backend.calculations.fpy_rty import calculate_job_rty_summary
 from backend.crud.floating_pool.assignments import is_employee_available_for_assignment
 from backend.routes.alerts.config_history import get_prediction_accuracy
 from backend.routes.cache import cache_health
+from backend.routes.jobs import get_job_dpmo, get_job_efficiency, get_job_performance, get_job_ppm
 from backend.routes.work_orders import approve_qc
 from backend.schemas.floor_contracts import FloatingPoolCheckAvailabilityResponse
+from backend.schemas.job_kpi_contracts import (
+    JobDPMOResponse,
+    JobEfficiencyResponse,
+    JobPPMResponse,
+    JobPerformanceResponse,
+)
 from backend.schemas.kpi_metrics_contracts import JobRTYSummaryResponse
 from backend.schemas.ops_contracts import CacheHealthResponse
 from backend.schemas.workflow_contracts import AverageTimesSummary, StageDurationsResponse
@@ -384,3 +402,87 @@ def test_jobs_rty_summary_pins_the_key_set_of_both_branches():
     assert dumped["total_good_units"] == 95
     assert dumped["jobs_meeting_target"] == 1
     assert dumped["interpretation"] == "Good: Meeting standard targets"
+
+
+#: (route, handler, model, the branch's exact key set, the fields that widen
+#: `0` -> `0.0`). Batch R1: one branch -- a job with no PRODUCTION_ENTRY /
+#: QUALITY_ENTRY rows joined to it -- reached through four handlers.
+JOB_KPI_EMPTY_BRANCHES = (
+    (
+        "GET /api/jobs/{job_id}/efficiency",
+        get_job_efficiency,
+        JobEfficiencyResponse,
+        {"job_id", "efficiency_percentage", "total_units_produced", "total_labor_hours", "entry_count", "message"},
+        ("efficiency_percentage", "total_labor_hours"),
+    ),
+    (
+        "GET /api/jobs/{job_id}/performance",
+        get_job_performance,
+        JobPerformanceResponse,
+        {"job_id", "performance_percentage", "total_units_produced", "entry_count", "message"},
+        ("performance_percentage",),
+    ),
+    (
+        "GET /api/jobs/{job_id}/ppm",
+        get_job_ppm,
+        JobPPMResponse,
+        {"job_id", "ppm", "total_inspected", "total_defects", "entry_count", "message"},
+        ("ppm",),
+    ),
+    (
+        "GET /api/jobs/{job_id}/dpmo",
+        get_job_dpmo,
+        JobDPMOResponse,
+        {"job_id", "dpmo", "sigma_level", "total_opportunities", "entry_count", "message"},
+        ("dpmo", "sigma_level"),
+    ),
+)
+
+
+@pytest.mark.parametrize(
+    "route, handler, model, expected_keys, widened",
+    JOB_KPI_EMPTY_BRANCHES,
+    ids=[route.rsplit("/", 1)[-1] for route, *_ in JOB_KPI_EMPTY_BRANCHES],
+)
+def test_job_kpi_empty_entries_branches_keep_their_own_shape(route, handler, model, expected_keys, widened):
+    """Forces the no-entries branch of Batch R1's four conditional
+    `/api/jobs/{job_id}/*` routes and pins each one's exact key set, on BOTH
+    sides of validation.
+
+    The golden master cannot reach any of them, and that is deliberate rather
+    than accidental: `param_specs.py`'s `job_id` spec resolves the id from
+    PRODUCTION_ENTRY precisely so the capture lands on the POPULATED branch of
+    all six R1 routes. So the shorter shape -- which is what an ordinary
+    unstarted routing step returns, S3 having seeded a full routing -- has no
+    captured evidence at all, and `message` (a key the populated branch never
+    sends) would be silently deleted by a model built only from the golden
+    entry. The raw-dict assertion is what catches a key being ADDED here; the
+    dumped assertion is what catches the model dropping one, or
+    `exclude_unset` failing to keep `message` out of the populated branch.
+    """
+    assert route in EXCLUDE_UNSET_ROUTES
+
+    mock_db = Mock()
+    mock_db.query.return_value.filter.return_value.all.return_value = []
+
+    with patch("backend.routes.jobs.get_job", return_value=Mock()):
+        raw = handler(job_id="JOB-1", db=mock_db, current_user=Mock())
+
+    # The branch's real shape, before anything normalises it away.
+    assert set(raw.keys()) == expected_keys
+    assert raw["message"].startswith("No ")
+    assert raw["entry_count"] == 0
+
+    dumped = model(**raw).model_dump(exclude_unset=True)
+    # What the model actually emits over the wire.
+    assert set(dumped.keys()) == expected_keys
+    assert dumped == raw
+
+    # DISCLOSED int -> float widening. `dumped == raw` above cannot see it
+    # (`0 == 0.0`), and neither can the golden master, which compares key sets
+    # and never value types. This branch hands the model Python `int` zeros for
+    # fields that are genuinely fractional whenever there IS data, so `float`
+    # is the right declaration and `0` -> `0.0` is the price.
+    for field in widened:
+        assert type(raw[field]) is int
+        assert type(dumped[field]) is float
