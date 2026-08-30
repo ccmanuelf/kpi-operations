@@ -77,6 +77,7 @@ from backend.tests.contract.param_specs import (
     Kind,
 )
 from backend.tests.contract.query_specs import (
+    DEFERRED_TO_WRITE_CAPTURE,
     EFFECTIVELY_REQUIRED_QUERY_PARAMS,
     QUERY_FAMILY_ROUTER,
     QUERY_REGISTRY,
@@ -422,13 +423,18 @@ def plan_capture(route_keys: Iterable[str], resolver: Resolver, app: Any) -> Cap
     they were resolved from it in the first place.
 
     Query params are resolved here too, and only for NON-mutating routes.
-    That exclusion is not squeamishness about writes: a mutating route is
-    replayed against a restored snapshot only when it carries a path param
-    (`capture_isolated`), so handing a paramless POST the query params it has
-    been 422ing for would move it from "never ran" to "ran in the middle of
-    the read pass and left its writes behind". The seven affected routes are
-    declared in `query_specs.DEFERRED_TO_WRITE_CAPTURE` and gated two-sided,
-    so this is a stated boundary rather than an accident of ordering.
+    That exclusion used to cover every mutation, because a mutating route was
+    replayed against a restored snapshot only when it carried a path param
+    (`capture_isolated`), so handing a paramless POST the query params it had
+    been 422ing for would have moved it from "never ran" to "ran in the middle
+    of the read pass and left its writes behind".
+
+    Every mutator is isolated now, so that reason is gone and the exclusion has
+    narrowed to what it was always really about: routes that additionally want
+    a request BODY, which nothing here can build yet. The remaining routes are
+    declared in `query_specs.DEFERRED_TO_WRITE_CAPTURE`, gated two-sided AND
+    required to justify themselves structurally -- a deferred route with no
+    required body param fails as "just unasked".
 
     `app` is needed because required-ness is FastAPI's answer, not ours --
     see `required_query_params`.
@@ -446,7 +452,14 @@ def plan_capture(route_keys: Iterable[str], resolver: Resolver, app: Any) -> Cap
             )
         try:
             plan.urls[route_key] = resolver.url_for(path)
-            plan.kwargs[route_key] = {} if method in MUTATING_METHODS else _params_kwarg(resolver, path, route)
+            # Deferred routes get nothing on purpose; everything else --
+            # mutations included -- gets what it needs. Being a mutation
+            # stopped being a reason to withhold params when every mutator
+            # moved into the isolated phase, so the test is now the explicit
+            # manifest rather than the method.
+            plan.kwargs[route_key] = (
+                {} if route_key in DEFERRED_TO_WRITE_CAPTURE else _params_kwarg(resolver, path, route)
+            )
         except UnresolvableParam as exc:
             plan.urls.pop(route_key, None)
             plan.blocked[route_key] = exc

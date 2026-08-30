@@ -72,6 +72,18 @@ UNBLOCKED: Dict[str, tuple] = {
     # it refuses to answer without a client, and the step names it returns
     # are structural rather than per-tenant.
     "GET /api/onboarding/status": ("client_id",),
+    # Mutating, and safe to ask now that every mutator is isolated (#249).
+    "POST /api/hold-catalogs/seed-defaults": ("client_id",),
+    "POST /api/attendance/mark-all-present": ("client_id", "shift_id", "shift_date"),
+    "POST /api/floating-pool/simulation/shift-coverage": (
+        "shift_id",
+        "shift_name",
+        "regular_employees",
+        "floating_pool_available",
+        "required_employees",
+    ),
+    "POST /api/workflow/config/{client_id}/apply-template": ("template_id",),
+    "POST /api/workflow/work-orders/{work_order_id}/validate": ("to_status",),
 }
 
 VARIANCE = "GET /api/capacity/kpi/variance"
@@ -166,22 +178,47 @@ def test_the_declared_requirements_are_the_measured_ones():
     assert {route: measured[route] for route in UNBLOCKED} == UNBLOCKED
 
 
-def test_deferred_routes_are_exactly_the_mutating_ones():
-    """The boundary, stated as a rule and checked as a set.
+def test_every_mutating_route_is_either_asked_or_owed_a_body():
+    """The boundary, restated after the isolation fix.
 
-    A mutating route without a path param is NOT isolated by
-    `capture_isolated` -- only path-param mutations are replayed against a
-    restored snapshot. Handing one the query params it has been 422ing for
-    moves it from "never ran" into the middle of the read pass, writes and
-    all. So the rule is method-based, and this asserts the manifest matches
-    it in both directions: a GET listed as deferred (someone quietly giving
-    up on a route) and a mutation missing from it (someone quietly supplying
-    one) both fail.
+    The rule used to be method-based: EVERY mutating route with required query
+    params was deferred, because `capture_isolated` replayed only path-param
+    mutations against a restored snapshot, so supplying params to a paramless
+    POST would have run it inside the read pass, writes and all.
+
+    That is no longer true. Every mutating route is now planned into the
+    isolated phase (`test_no_mutating_route_is_captured_outside_the_isolated_
+    phase`), so "it mutates" has stopped being a reason to leave it 422ing.
+    What remains is the narrower reason the deferral was always really for:
+    the route additionally wants a request BODY, which nothing here can build
+    yet.
+
+    So each mutating route with required query params must be exactly one of
+    asked (`UNBLOCKED`) or owed a body (`DEFERRED_TO_WRITE_CAPTURE`), and the
+    deferral has to be STRUCTURALLY justified -- a deferred route with no
+    required body param is a route nobody got round to, declared as though it
+    were blocked.
     """
+    from backend.main import app
+
+    index = route_index(app)
     mutating = {route for route in _requirements() if route.split(" ", 1)[0] in MUTATING_METHODS}
 
-    assert DEFERRED_TO_WRITE_CAPTURE == mutating
+    assert DEFERRED_TO_WRITE_CAPTURE <= mutating, sorted(DEFERRED_TO_WRITE_CAPTURE - mutating)
+    assert mutating == DEFERRED_TO_WRITE_CAPTURE | (mutating & set(UNBLOCKED)), {
+        "neither asked nor deferred": sorted(mutating - DEFERRED_TO_WRITE_CAPTURE - set(UNBLOCKED)),
+    }
     assert not (DEFERRED_TO_WRITE_CAPTURE & set(UNBLOCKED))
+
+    unjustified = {
+        route
+        for route in DEFERRED_TO_WRITE_CAPTURE
+        if not any(_is_required(param) for param in index[route].dependant.body_params)
+    }
+    assert not unjustified, (
+        "deferred to write capture but needs no request body -- the isolation reason is gone, "
+        f"so these are just unasked: {sorted(unjustified)}"
+    )
 
 
 # ------------------------------------------------------------- declarations

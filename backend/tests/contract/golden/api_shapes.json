@@ -1353,7 +1353,10 @@
     "<status:422>"
   ],
   "POST /api/attendance/mark-all-present": [
-    "<status:422>"
+    "already_exists",
+    "created_ids[]",
+    "records_created",
+    "total_employees"
   ],
   "POST /api/auth/change-password": [
     "<status:422>"
@@ -1384,10 +1387,20 @@
     "<status:422>"
   ],
   "POST /api/floating-pool/simulation/shift-coverage": [
-    "<status:422>"
+    "available_floating_pool",
+    "available_regular",
+    "coverage_gap",
+    "coverage_percent",
+    "date",
+    "recommendations[]",
+    "required_employees",
+    "shift_id",
+    "shift_name"
   ],
   "POST /api/hold-catalogs/seed-defaults": [
-    "<status:422>"
+    "reasons_created",
+    "skipped",
+    "statuses_created"
   ],
   "POST /api/metrics/calculate/run-nightly": [
     "status",
@@ -1432,13 +1445,30 @@
     "<status:422>"
   ],
   "POST /api/workflow/config/{client_id}/apply-template": [
-    "<status:422>"
+    "client_id",
+    "workflow_closure_trigger",
+    "workflow_optional_statuses[]",
+    "workflow_statuses[]",
+    "workflow_transitions.CANCELLED[]",
+    "workflow_transitions.CLOSED[]",
+    "workflow_transitions.COMPLETED[]",
+    "workflow_transitions.DEMOTED[]",
+    "workflow_transitions.IN_PROGRESS[]",
+    "workflow_transitions.ON_HOLD[]",
+    "workflow_transitions.REJECTED[]",
+    "workflow_transitions.RELEASED[]",
+    "workflow_transitions.SHIPPED[]",
+    "workflow_version"
   ],
   "POST /api/workflow/work-orders/{work_order_id}/transition": [
     "<status:422>"
   ],
   "POST /api/workflow/work-orders/{work_order_id}/validate": [
-    "<status:422>"
+    "allowed_transitions[]",
+    "from_status",
+    "is_valid",
+    "reason",
+    "to_status"
   ],
   "PUT /api/kpi-thresholds": [
     "<status:422>"

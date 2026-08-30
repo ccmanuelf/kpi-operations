@@ -57,6 +57,8 @@ from dataclasses import replace
 from typing import Dict, FrozenSet, Tuple
 
 from backend.pivot.buckets import VALID_BUCKETS
+from backend.orm.work_order import WorkOrderStatus
+from backend.schemas.workflow import WORKFLOW_TEMPLATES
 from backend.tests.contract.param_specs import REGISTRY, Kind, ParamSpec
 
 #: How far back the captured date window reaches from the seed's own "today".
@@ -89,6 +91,12 @@ QUERY_FAMILY_ROUTER: Dict[str, Tuple[Tuple[str, str], ...]] = {
     "client_id": (
         ("/api/capacity/kpi/variance", "client_id@capacity-variance"),
         ("/api/onboarding/status", "client_id@onboarding"),
+        ("/api/hold-catalogs/seed-defaults", "client_id@onboarding"),
+        ("/api/attendance/mark-all-present", "client_id@onboarding"),
+    ),
+    "shift_id": (
+        ("/api/attendance/mark-all-present", "shift_id@client-consistent"),
+        ("/api/floating-pool/simulation/shift-coverage", "shift_id@client-consistent"),
     ),
 }
 
@@ -176,6 +184,97 @@ QUERY_REGISTRY: Dict[str, ParamSpec] = {
         "row would not be. `choices` is pivot.buckets.VALID_BUCKETS, the tuple routes/pivot.py "
         "itself validates against.",
     ),
+    # --- the four mutating routes un-deferred once every mutator became
+    # --- isolated (#249). Their params are query params, not bodies.
+    "shift_id@client-consistent": ParamSpec(
+        key="shift_id@client-consistent",
+        kind=Kind.SEEDED_ROW,
+        table="SHIFT",
+        sql=(
+            "SELECT shift_id FROM SHIFT WHERE client_id = "
+            "(SELECT client_id FROM CLIENT ORDER BY client_id LIMIT 1) "
+            "ORDER BY shift_id LIMIT 1"
+        ),
+        note="Routed, and therefore keyed, separately because `Resolver._cache` is keyed on the "
+        "SPEC KEY: a spec called `shift_id` shares its cache entry with the path registry's "
+        "`shift_id`, so whichever resolved first would answer for both and this SQL would never "
+        "run. NOT `REGISTRY['shift_id']`, which is the first shift by id and belongs to whichever "
+        "client happens to sort first in SHIFT -- DEMO-PIECE, while `client_id@onboarding` "
+        "resolves DEMO-HOURLY. `POST /api/attendance/mark-all-present` takes both and 404s "
+        "('Shift 1 not found for client DEMO-HOURLY') when they disagree, which the capture would "
+        "have recorded as the route's answer. The subquery is the client spec's OWN sql, so the "
+        "pair cannot drift apart the way two independent LIMIT 1 lookups did. "
+        "`shift-coverage` routes here too: it only echoes the id back, so consistency costs it "
+        "nothing and one spec beats two that could disagree.",
+    ),
+    "shift_date": _seed_window(
+        "shift_date",
+        0,
+        note="The last day of the seeded universe. `POST /api/attendance/mark-all-present` "
+        "writes an attendance row per employee for this date, so it wants a day the seed "
+        "actually covers; offset 0 is that day. Anchored on SeededToday like every other "
+        "window here, so it cannot drift into a date the seed has no shift for.",
+    ),
+    "template_id": ParamSpec(
+        key="template_id",
+        kind=Kind.LITERAL,
+        literal="standard",
+        choices=tuple(WORKFLOW_TEMPLATES),
+        note="`choices` is schemas/workflow.WORKFLOW_TEMPLATES, the mapping "
+        "routes/workflow.py::apply_workflow_template itself looks the id up in -- so a template "
+        "the app stops shipping fails at capture instead of becoming a 422 recorded as the "
+        "route's answer. `standard` rather than the first key by sort order: naming the member "
+        "keeps the golden master stable when a template is added.",
+    ),
+    "to_status": ParamSpec(
+        key="to_status",
+        kind=Kind.LITERAL,
+        literal="IN_PROGRESS",
+        choices=tuple(status.value for status in WorkOrderStatus),
+        note="`choices` is orm.work_order.WorkOrderStatus, the enum the workflow validates "
+        "against. IN_PROGRESS is a mid-lifecycle status, so validating a transition INTO it "
+        "exercises the rule engine rather than a trivially-allowed terminal hop.",
+    ),
+    # --- simulation inputs: values the caller supplies, not values the seed
+    # --- holds. `POST /api/floating-pool/simulation/shift-coverage` computes
+    # --- from these numbers and writes nothing derived from a lookup, so there
+    # --- is nothing to derive them FROM -- unlike every id above, a query
+    # --- would be inventing a source. Literals with the arithmetic spelled out.
+    "shift_name": ParamSpec(
+        key="shift_name",
+        kind=Kind.LITERAL,
+        literal="Contract Capture Shift",
+        note="A label echoed back in the simulation result; the route neither looks it up nor "
+        "validates it. Named for what it is so a reader of the golden master knows the row came "
+        "from the harness rather than the seeder.",
+    ),
+    "regular_employees": ParamSpec(
+        key="regular_employees",
+        kind=Kind.LITERAL,
+        literal="8",
+        note="Two short of required_employees=10, a shortfall floating_pool_available=5 covers. "
+        "The route counts the pool into availability, so the reported `coverage_gap` is 0 and the "
+        "recommendation reads 'Assign 2 floating pool employees to cover gap' -- the covered "
+        "branch, chosen because `recommendations` is a LIST and an empty one would record no "
+        "shape at all. Measured: a genuine shortfall (8/1/20) returns the same nine keys, so the "
+        "choice is about populating that list, not about which keys exist.",
+    ),
+    "floating_pool_available": ParamSpec(
+        key="floating_pool_available",
+        kind=Kind.LITERAL,
+        literal="5",
+        note="More than the two-employee shortfall above, so the pool covers it with slack and "
+        "the recommendation names the covered branch -- see `regular_employees`.",
+    ),
+    "required_employees": ParamSpec(
+        key="required_employees",
+        kind=Kind.LITERAL,
+        literal="10",
+        note="Two more than `regular_employees`, creating the coverable shortfall -- see that "
+        "spec. NOTE for the response-model pass: this route returns `coverage_percent` as a JSON "
+        "STRING ('100.00'), the Decimal-under-Pydantic leak #248 fixed on quality-score. Its "
+        "model should declare that field `float`.",
+    ),
     # --- resolvable, but the answer is empty under this seed ------------
     "client_id@onboarding": replace(
         REGISTRY["client_id"],
@@ -225,12 +324,7 @@ QUERY_REGISTRY: Dict[str, ParamSpec] = {
 #: a GET that lands here, or a mutation that escapes it, fails by name.
 DEFERRED_TO_WRITE_CAPTURE: FrozenSet[str] = frozenset(
     {
-        "POST /api/attendance/mark-all-present",
         "POST /api/capacity/scenarios/compare",
-        "POST /api/floating-pool/simulation/shift-coverage",
-        "POST /api/hold-catalogs/seed-defaults",
         "POST /api/workflow/bulk-transition",
-        "POST /api/workflow/config/{client_id}/apply-template",
-        "POST /api/workflow/work-orders/{work_order_id}/validate",
     }
 )

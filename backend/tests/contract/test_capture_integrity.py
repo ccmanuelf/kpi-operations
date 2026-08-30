@@ -283,7 +283,20 @@ def test_a_2xx_is_proof_the_id_was_right_except_where_declared(
     # to say so because it re-requests them WITH the same query params: without
     # them every probe answers 422 for the missing params and the difference
     # would prove nothing about the id. See `CapturePlan.kwargs`.
-    assert len(succeeded) == 48
+    # 50, up from 48: two more path-param routes answer now that the
+    # write-capture deferral shrank to routes that actually need a request
+    # body (`DEFERRED_TO_WRITE_CAPTURE`) --
+    # POST /api/workflow/config/{client_id}/apply-template and
+    # POST /api/workflow/work-orders/{work_order_id}/validate.
+    #
+    # apply-template arriving here is what caught a product bug: it answered
+    # the SAME 200 for a real client and for NO-SUCH-CLIENT-XYZ, because both
+    # workflow-config write paths did `ClientConfig(client_id=client_id)` on a
+    # miss and created a row for a client that did not exist. Guarded now by
+    # `crud/workflow/configuration._require_client`, so the route discriminates
+    # and needs no NEVER_404 entry -- see
+    # tests/test_crud/test_workflow_config_requires_client.py.
+    assert len(succeeded) == 50
     # Third side, and the one that keeps the other two honest: a route whose
     # probe URL equals its real URL was compared against ITSELF, so it lands in
     # `id_insensitive` for free and its NEVER_404 membership proves nothing.

@@ -13,6 +13,7 @@ from typing import Any, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
+from backend.schemas.onboarding_contracts import OnboardingStatusResponse
 from backend.auth.jwt import get_current_user
 from backend.database import get_db
 from backend.middleware.client_auth import verify_client_access
@@ -56,7 +57,7 @@ def _resolve_client_id(
     )
 
 
-@router.get("/status")
+@router.get("/status", response_model=OnboardingStatusResponse)
 def get_onboarding_status(
     client_id: Optional[str] = Query(None, description="Client ID to check onboarding for"),
     db: Session = Depends(get_db),
