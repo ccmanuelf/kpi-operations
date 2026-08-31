@@ -55,6 +55,22 @@ def _kpi_thresholds(resolver: Any) -> Dict[str, Any]:
     return {"client_id": client_id, "thresholds": {"fpy": {"target_value": 85.0}}}
 
 
+def _attendance_bulk(resolver: Any) -> Any:
+    route = "/api/attendance/bulk"
+    client_id = resolver.resolve_query("client_id", route)
+    employee_id = int(resolver.resolve_query("employee_id", route))
+    shift_date = resolver.resolve_query("shift_date", route)
+    row = {
+        "client_id": client_id,
+        "employee_id": employee_id,
+        "shift_date": shift_date,
+        "scheduled_hours": 8,
+    }
+    # A SECOND row that is schema-valid and fails at the CRUD layer, so one
+    # request captures both branches -- see the spec note.
+    return [row, {**row, "allocations": []}]
+
+
 def _change_password(resolver: Any) -> Dict[str, Any]:
     from backend.seed.scenarios import DEMO_PASSWORD
 
@@ -113,6 +129,22 @@ BODY_REGISTRY: Dict[str, BodySpec] = {
         "precisely what GET /api/kpi-thresholds reads -- its golden `thresholds` is currently an "
         "empty key and would silently gain entries. `thresholds` must be non-empty or "
         "`updated_kpis` comes back empty and records no shape.",
+    ),
+    "POST /api/attendance/bulk": BodySpec(
+        key="POST /api/attendance/bulk",
+        build=_attendance_bulk,
+        note="A bare ARRAY -- the body param is an un-embedded `List[AttendanceRecordCreate]`.\n\n"
+        "TWO ROWS, and the second fails on purpose. The route is per-row: it catches every row's "
+        "exception and answers 201 regardless, so a status code proves nothing about it. The "
+        "shape is the only evidence, and one all-valid row leaves `errors` an EMPTY LIST -- which "
+        "records as a bare leaf, capturing nothing of `errors[].index` / `errors[].error`. The "
+        "second row carries `allocations: []`, which the endpoint rejects per-row by design (its "
+        "docstring says allocations are not supported here), so a single 201 yields a populated "
+        "`created_ids[]` AND a populated `errors[]`.\n\n"
+        "`client_id` and `employee_id` are resolved through `employee_id@client-consistent`, "
+        "which selects an employee OF that client. Nothing in the route enforces the pairing and "
+        "the harness runs without FK enforcement, so a mismatch would write a cross-tenant "
+        "attendance row and still answer 201.",
     ),
     "POST /api/auth/change-password": BodySpec(
         key="POST /api/auth/change-password",

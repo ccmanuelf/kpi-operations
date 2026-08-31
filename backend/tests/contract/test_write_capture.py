@@ -192,3 +192,74 @@ def test_the_isolated_phase_is_order_independent(harness: _Harness) -> None:
 
     assert plan.isolated, "no isolated routes -- this test would pass on nothing"
     assert not divergent, f"shapes depend on capture order: {divergent}"
+
+
+def test_the_attendance_body_pairs_an_employee_with_their_own_client(harness: _Harness) -> None:
+    """The mismatch this route would NOT report.
+
+    `mark-all-present` answers 404 when its client_id and shift_id disagree, so
+    that pairing defends itself. `bulk_create_attendance_records` checks
+    nothing of the kind, and the harness engine runs without
+    `PRAGMA foreign_keys=ON`, so a body naming another client's employee writes
+    a cross-tenant attendance row and still answers 201. The capture would be a
+    clean-looking record of a contract violation.
+
+    Asserted against the database rather than against the spec's SQL, so
+    rewriting that SQL cannot make this pass by agreeing with itself.
+    """
+    import sqlalchemy as sa
+
+    from backend.tests.contract.param_resolution import Resolver
+
+    body = BODY_REGISTRY["POST /api/attendance/bulk"].build(Resolver(engine=harness.engine))
+    row = body[0]
+
+    with harness.engine.connect() as connection:
+        assigned = connection.execute(
+            sa.text("SELECT client_id_assigned FROM EMPLOYEE WHERE employee_id = :e"),
+            {"e": row["employee_id"]},
+        ).scalar()
+
+    assert assigned, f"employee {row['employee_id']} has no client assignment at all"
+    clients = {part.strip() for part in str(assigned).split(",")}
+    assert row["client_id"] in clients, (
+        f"body pairs client {row['client_id']!r} with employee {row['employee_id']}, who belongs "
+        f"to {assigned!r} -- the route would write it anyway and answer 201"
+    )
+
+
+def test_the_attendance_capture_exercised_both_branches(harness: _Harness) -> None:
+    """One row succeeding and one failing, in a single 201.
+
+    The route catches every per-row exception and answers 201 unconditionally,
+    so 2xx is not evidence it did anything. And an all-valid body leaves
+    `errors` an EMPTY list, which records as a bare leaf -- the error shape
+    would go uncaptured while the entry looked complete.
+
+    Checked on the live response rather than on the golden entry, because the
+    golden entry is what this is defending: if the second row ever stops
+    failing, `errors[].index` and `errors[].error` vanish from the capture and
+    this says why.
+    """
+    from backend.tests.contract.param_resolution import Resolver
+
+    harness.restore()
+    body = BODY_REGISTRY["POST /api/attendance/bulk"].build(Resolver(engine=harness.engine))
+    payload = harness.client.post("/api/attendance/bulk", json=body).json()
+
+    assert payload["successful"] >= 1, f"no row was created, so `created_ids[]` is empty: {payload}"
+    assert payload["failed"] >= 1, (
+        "no row failed, so `errors` comes back empty and its element shape goes uncaptured: " f"{payload}"
+    )
+    assert payload["errors"][0]["index"] == 1, payload["errors"]
+    # The REASON, not just that something failed. Row 2 differs from row 1
+    # only by `allocations`, so a unique constraint on (employee, date) -- or
+    # any other incidental rejection -- would satisfy every assertion above
+    # while the captured `errors[].error` described something else entirely.
+    # Measured: a plain duplicate of row 1 gives failed=0, so no such
+    # constraint exists today and the allocations rejection is the only thing
+    # making this body work.
+    assert "allocations" in payload["errors"][0]["error"], (
+        "row 2 failed for a reason other than the allocations rejection this body relies on: "
+        f"{payload['errors'][0]['error']!r}"
+    )
