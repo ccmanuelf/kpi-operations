@@ -158,6 +158,13 @@ def capture_isolated(client, routes, urls, restore) -> dict:
     for request in routes:
         restore()
         captured.update(capture_all(client, [request], urls=urls))
+    # And once at the END. `restore()` before each request keeps the routes
+    # from contaminating EACH OTHER, but it leaves the last mutation's write
+    # sitting in the database for whatever runs after the phase -- the
+    # bogus-id probes, and any test taking the module-scoped `harness`. Those
+    # restore first today, so this closes a latent hazard rather than a live
+    # bug; it costs one snapshot copy per module.
+    restore()
     return captured
 
 

@@ -1359,10 +1359,10 @@
     "total_employees"
   ],
   "POST /api/auth/change-password": [
-    "<status:422>"
+    "message"
   ],
   "POST /api/auth/forgot-password": [
-    "<status:422>"
+    "message"
   ],
   "POST /api/auth/logout": [
     "detail",
@@ -1384,7 +1384,12 @@
     "<status:422>"
   ],
   "POST /api/floating-pool/simulation/optimize-allocation": [
-    "<status:422>"
+    "allocation_suggestions",
+    "cost_savings",
+    "efficiency_gain",
+    "total_available",
+    "total_needed",
+    "utilization_rate"
   ],
   "POST /api/floating-pool/simulation/shift-coverage": [
     "available_floating_pool",
@@ -1425,7 +1430,7 @@
     "total_records"
   ],
   "POST /api/qr/generate/image": [
-    "<status:422>"
+    "<non-json>"
   ],
   "POST /api/reports/email-config/test": [
     "<status:422>"
@@ -1461,7 +1466,59 @@
     "workflow_version"
   ],
   "POST /api/workflow/work-orders/{work_order_id}/transition": [
-    "<status:422>"
+    "success",
+    "transition.client_id",
+    "transition.elapsed_from_previous_hours",
+    "transition.elapsed_from_received_hours",
+    "transition.from_status",
+    "transition.notes",
+    "transition.to_status",
+    "transition.transition_id",
+    "transition.transitioned_at",
+    "transition.transitioned_by",
+    "transition.trigger_source",
+    "transition.work_order_id",
+    "work_order.actual_delivery_date",
+    "work_order.actual_quantity",
+    "work_order.actual_start_date",
+    "work_order.calculated_cycle_time",
+    "work_order.capacity_order_id",
+    "work_order.client_id",
+    "work_order.closed_by",
+    "work_order.closure_date",
+    "work_order.created_at",
+    "work_order.customer_po_number",
+    "work_order.delay_classification",
+    "work_order.delay_classification_note",
+    "work_order.dispatch_date",
+    "work_order.expected_date",
+    "work_order.ideal_cycle_time",
+    "work_order.internal_notes",
+    "work_order.is_late",
+    "work_order.justified_delay_reason",
+    "work_order.notes",
+    "work_order.origin",
+    "work_order.planned_date",
+    "work_order.planned_quantity",
+    "work_order.planned_ship_date",
+    "work_order.planned_start_date",
+    "work_order.previous_status",
+    "work_order.priority",
+    "work_order.qc_approved",
+    "work_order.qc_approved_by",
+    "work_order.qc_approved_date",
+    "work_order.received_date",
+    "work_order.rejected_by",
+    "work_order.rejected_date",
+    "work_order.rejection_reason",
+    "work_order.required_date",
+    "work_order.shipped_date",
+    "work_order.status",
+    "work_order.style_model",
+    "work_order.total_employees_assigned",
+    "work_order.total_run_time_hours",
+    "work_order.updated_at",
+    "work_order.work_order_id"
   ],
   "POST /api/workflow/work-orders/{work_order_id}/validate": [
     "allowed_transitions[]",
@@ -1471,9 +1528,24 @@
     "to_status"
   ],
   "PUT /api/kpi-thresholds": [
-    "<status:422>"
+    "client_id",
+    "message",
+    "updated_kpis[]"
   ],
   "PUT /api/workflow/config/{client_id}": [
-    "<status:422>"
+    "client_id",
+    "workflow_closure_trigger",
+    "workflow_optional_statuses[]",
+    "workflow_statuses[]",
+    "workflow_transitions.CANCELLED[]",
+    "workflow_transitions.CLOSED[]",
+    "workflow_transitions.COMPLETED[]",
+    "workflow_transitions.DEMOTED[]",
+    "workflow_transitions.IN_PROGRESS[]",
+    "workflow_transitions.ON_HOLD[]",
+    "workflow_transitions.REJECTED[]",
+    "workflow_transitions.RELEASED[]",
+    "workflow_transitions.SHIPPED[]",
+    "workflow_version"
   ]
 }

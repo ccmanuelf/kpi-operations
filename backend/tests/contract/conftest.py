@@ -247,6 +247,30 @@ def harness(tmp_path_factory: pytest.TempPathFactory) -> Iterator[_Harness]:
     # `today()` to SEED_AS_OF -- the seed's own now -- is what makes the
     # recorded shape a property of the data rather than of the calendar. See
     # `SeededToday`, and `test_time_determinism.py` for the proof it works.
+    # The rate limiter is LIVE during capture, and that is not obvious.
+    # `disable_rate_limit` in tests/conftest.py is autouse but FUNCTION-scoped,
+    # while this fixture and `captured_shapes` are MODULE-scoped -- and pytest
+    # builds higher-scoped fixtures first, so the capture runs before the
+    # limiter is switched off. Measured at module-fixture time: enabled=True,
+    # and 14 requests to `/api/auth/forgot-password` answered 10x 200 then
+    # 4x 429. (Probing inside a test BODY reads enabled=False and looks safe,
+    # which is the wrong moment and the wrong answer.)
+    #
+    # Five routes carry `@limiter.limit(AUTH_LIMIT)` at 10/minute: register,
+    # login, forgot-password, reset-password, change-password. Nothing records
+    # a 429 today only because they 422 for want of a request body; the moment
+    # write capture supplies one, a 429 becomes the shape the golden master
+    # learns -- the harness's own throttling recorded as the route's answer,
+    # the same class as `<status:400>` on onboarding/status.
+    #
+    # Saved and restored rather than set, for the reason the dependency
+    # overrides above are: leaving a global flag flipped is not this fixture's
+    # to do.
+    from backend.middleware.rate_limit import limiter as _limiter
+
+    _limiter_was_enabled = _limiter.enabled
+    _limiter.enabled = False
+
     time_pin = pytest.MonkeyPatch()
     time_pin.setattr("backend.routes.reference.datetime", ShiftActivePin)
     time_pin.setattr(SeededToday, "AS_OF", SEED_AS_OF)
@@ -270,6 +294,7 @@ def harness(tmp_path_factory: pytest.TempPathFactory) -> Iterator[_Harness]:
         plan = plan_capture(sorted(json.loads(GOLDEN.read_text())), Resolver(engine), app)
         yield _Harness(client=client, plan=plan, engine=engine, restore=_restore)
     finally:
+        _limiter.enabled = _limiter_was_enabled
         for dependency, previous in _prior_overrides.items():
             if previous is None:
                 app.dependency_overrides.pop(dependency, None)

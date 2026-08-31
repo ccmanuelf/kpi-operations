@@ -76,6 +76,7 @@ from backend.tests.contract.param_specs import (
     REGISTRY,
     Kind,
 )
+from backend.tests.contract.body_specs import BODY_REGISTRY
 from backend.tests.contract.query_specs import (
     DEFERRED_TO_WRITE_CAPTURE,
     EFFECTIVELY_REQUIRED_QUERY_PARAMS,
@@ -458,7 +459,7 @@ def plan_capture(route_keys: Iterable[str], resolver: Resolver, app: Any) -> Cap
             # moved into the isolated phase, so the test is now the explicit
             # manifest rather than the method.
             plan.kwargs[route_key] = (
-                {} if route_key in DEFERRED_TO_WRITE_CAPTURE else _params_kwarg(resolver, path, route)
+                {} if route_key in DEFERRED_TO_WRITE_CAPTURE else _params_kwarg(resolver, path, route, route_key)
             )
         except UnresolvableParam as exc:
             plan.urls.pop(route_key, None)
@@ -482,6 +483,20 @@ def plan_capture(route_keys: Iterable[str], resolver: Resolver, app: Any) -> Cap
     return plan
 
 
-def _params_kwarg(resolver: Resolver, path: str, route: Any) -> dict:
+def _params_kwarg(resolver: Resolver, path: str, route: Any, route_key: str = "") -> dict:
+    """Everything the request needs beyond its URL: query params, and a body.
+
+    `capture_all` does `client.request(method, url, **kwargs)`, and httpx takes
+    `json=` directly, so a body needs no plumbing of its own -- only an entry
+    here. Bodies come from `body_specs.BODY_REGISTRY`, built through the SAME
+    resolver the params use so an id inside a body cannot disagree with the one
+    in the path.
+    """
+    kwargs: dict = {}
     query = resolver.query_for(path, route)
-    return {"params": query} if query else {}
+    if query:
+        kwargs["params"] = query
+    spec = BODY_REGISTRY.get(route_key)
+    if spec is not None:
+        kwargs["json"] = spec.build(resolver)
+    return kwargs

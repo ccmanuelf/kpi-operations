@@ -106,7 +106,10 @@ def test_every_non_json_golden_entry_is_explained():
     # GET /api/qr/job/{job_id}/image. This count rises when a route becomes
     # reachable and falls when one starts sending JSON -- neither is churn, and
     # both must be stated.
-    assert len(non_json_routes) == 37
+    # 38, up from 37: `POST /api/qr/generate/image` joined when write capture
+    # sent it a body. It streamed all along; without a body its entry was the
+    # harness's own 422, not the route's answer.
+    assert len(non_json_routes) == 38
 
     unexplained = [route for route in non_json_routes if classify_non_json_route(_route(app, route)) is None]
     assert unexplained == []
@@ -219,6 +222,10 @@ def test_non_json_entries_decompose_into_exactly_three_categories():
         "GET /api/reports/production/pdf",
         "GET /api/reports/quality/excel",
         "GET /api/reports/quality/pdf",
+        # The only POST here. It streamed all along; until write capture sent
+        # it a body its entry was `<status:422>`, the harness's omission rather
+        # than the route's answer.
+        "POST /api/qr/generate/image",
     ]
     # The six transaction DELETEs joined this list when #239 landed. They used
     # to record `<status:404>` -- not because they had no body, but because they

@@ -296,7 +296,11 @@ def test_a_2xx_is_proof_the_id_was_right_except_where_declared(
     # `crud/workflow/configuration._require_client`, so the route discriminates
     # and needs no NEVER_404 entry -- see
     # tests/test_crud/test_workflow_config_requires_client.py.
-    assert len(succeeded) == 50
+    # 51, up from 50: `PUT /api/workflow/config/{client_id}` answers now that
+    # write capture sends it a body (`body_specs.BODY_REGISTRY`). It is the only
+    # one of the four new body routes carrying a path param, so it is the only
+    # one this count sees.
+    assert len(succeeded) == 52
     # Third side, and the one that keeps the other two honest: a route whose
     # probe URL equals its real URL was compared against ITSELF, so it lands in
     # `id_insensitive` for free and its NEVER_404 membership proves nothing.
