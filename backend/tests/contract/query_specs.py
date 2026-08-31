@@ -97,8 +97,10 @@ QUERY_FAMILY_ROUTER: Dict[str, Tuple[Tuple[str, str], ...]] = {
         # carrying a client_id needs a fragment exactly as a query param does.
         ("/api/kpi-thresholds", "client_id@onboarding"),
         ("/api/attendance/bulk", "client_id@onboarding"),
+        ("/api/workflow/bulk-transition", "client_id@onboarding"),
     ),
     "employee_id": (("/api/attendance/bulk", "employee_id@client-consistent"),),
+    "work_order_id": (("/api/workflow/bulk-transition", "work_order_id@bulk-transition"),),
     "shift_id": (
         ("/api/attendance/mark-all-present", "shift_id@client-consistent"),
         ("/api/floating-pool/simulation/shift-coverage", "shift_id@client-consistent"),
@@ -192,6 +194,31 @@ QUERY_REGISTRY: Dict[str, ParamSpec] = {
     ),
     # --- the four mutating routes un-deferred once every mutator became
     # --- isolated (#249). Their params are query params, not bodies.
+    "username": ParamSpec(
+        key="username",
+        kind=Kind.SEEDED_ROW,
+        table="USER",
+        sql="SELECT username FROM USER ORDER BY user_id LIMIT 1",
+        note="Whose password `POST /api/auth/reset-password` rewrites. A seeded user rather than "
+        "a literal, so the token's `sub` names someone the route can actually find -- an unknown "
+        "subject answers 400 and that 400 would be recorded as the route's contract.",
+    ),
+    "work_order_id@bulk-transition": ParamSpec(
+        key="work_order_id@bulk-transition",
+        kind=Kind.SEEDED_ROW,
+        table="WORK_ORDER",
+        sql=(
+            "SELECT work_order_id FROM WORK_ORDER WHERE client_id = "
+            "(SELECT client_id FROM CLIENT ORDER BY client_id LIMIT 1) "
+            "ORDER BY work_order_id LIMIT 1"
+        ),
+        note="Resolved THROUGH the client spec, because this route takes client_id as a query "
+        "param and the work order in its body must belong to that client. A work order from "
+        "another client does not 404 -- it degrades every result row to {success: false, error}, "
+        "and the capture would record the FAILURE branch as the route's shape while still "
+        "answering 200. Keyed separately from the path registry's `work_order_id` because "
+        "`Resolver._cache` is keyed on the spec key.",
+    ),
     "employee_id@client-consistent": ParamSpec(
         key="employee_id@client-consistent",
         kind=Kind.SEEDED_ROW,
@@ -364,18 +391,6 @@ DEFERRED_TO_WRITE_CAPTURE: FrozenSet[str] = frozenset(
         # fields, which `ALLOWLIST` would then look ready to close from. The
         # "unblocked into no-entries-found" trap #244 hit.
         "POST /api/capacity/scenarios/compare",
-        # Shares DEMO-HOURLY-WO-0001 with the transition route above and drives
-        # it to a terminal status. Both in one capture would make the pair
-        # order-dependent, and its response recurses into element 0 only, so a
-        # single body cannot capture both the success and failure branches.
-        "POST /api/workflow/bulk-transition",
-        # Needs a token minted at REQUEST time from the live SECRET_KEY. A
-        # checked-in literal is green locally and red in CI, which is worse
-        # than not capturing it.
-        "POST /api/auth/reset-password",
-        # multipart/form-data, not JSON. `kwargs["json"]` cannot express an
-        # UploadFile; the registry would need a `files=` shape first.
-        "POST /api/defect-types/upload/{client_id}",
         # Sends real email. Deliberately left until the transport can be
         # stubbed for capture -- a decision taken separately from this layer.
         "POST /api/reports/email-config/test",

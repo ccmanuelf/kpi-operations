@@ -11,6 +11,9 @@ from typing import Optional, List
 from datetime import datetime, timezone
 import uuid
 
+from fastapi import HTTPException
+
+from backend.orm.client import Client
 from backend.orm.defect_type_catalog import DefectTypeCatalog
 from backend.schemas.defect_type_catalog import (
     DefectTypeCatalogCreate,
@@ -197,9 +200,30 @@ def bulk_create_defect_types(
     # Global defect types require admin role
     if is_global_client(client_id):
         if current_user.role not in SUPERVISORY_ROLES:
-            raise ValueError("Only admins can bulk create global defect types")
+            # 403, not a ValueError the route maps to 400: this is an
+            # authorisation refusal, and a 400 tells the caller their input was
+            # malformed when it was their role that was wrong.
+            raise HTTPException(status_code=403, detail="Only admins can bulk create global defect types")
     else:
         verify_client_access(current_user, client_id)
+        # ...and the client must exist. `verify_client_access` asks whether the
+        # CALLER may act for this client and an admin passes for every one,
+        # including clients that are not there -- so an arbitrary path segment
+        # created DEFECT_TYPE_CATALOG rows keyed to a client nobody can ever
+        # look up. Measured before this guard: uploading to
+        # `/api/defect-types/upload/NO-SUCH-CLIENT-XYZ` answered 200 with
+        # created=1 and the row landed.
+        #
+        # Same shape as the orphan CLIENT_CONFIG rows the workflow-config write
+        # paths used to create. Global ids are exempt above by design: they name
+        # no client row.
+        if db.query(Client.client_id).filter(Client.client_id == client_id).first() is None:
+            # Raised as an HTTPException with its OWN status rather than a
+            # ValueError the route maps by inspecting the message. Dispatching
+            # on `"not found" in str(exc)` would give the right answer here and
+            # the wrong one the moment any other ValueError happened to contain
+            # that phrase -- and it echoed raw exception text to the caller.
+            raise HTTPException(status_code=404, detail=f"Client '{client_id}' not found")
 
     if replace_existing:
         # Deactivate all existing defect types for this client.

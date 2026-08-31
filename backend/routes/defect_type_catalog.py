@@ -177,6 +177,20 @@ async def upload_defect_types_csv(
 
     except UnicodeDecodeError:
         raise HTTPException(status_code=400, detail="Invalid file encoding. Use UTF-8")
+    except HTTPException:
+        # Deliberate answers must survive the catch-all below. `HTTPException`
+        # is an `Exception`, so the 400 this handler raises for a CSV with no
+        # usable rows was being caught and re-reported as a 500 -- measured:
+        # an empty CSV answered 500 while the SAME class of 400, raised above
+        # the `try` for a non-CSV filename, answered 400 correctly.
+        raise
+    except ValueError as exc:
+        # Genuine validation failures from the CSV rows. Refusals that carry
+        # their own meaning -- an unknown client, a non-admin attempting a
+        # global upload -- are raised as HTTPExceptions at their own raise
+        # sites and pass through the clause above, so this does NOT have to
+        # guess a status by inspecting the message.
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as e:
         logger.exception("Failed to process defect type catalog: %s", e)
         raise HTTPException(status_code=500, detail="Failed to process defect type catalog")

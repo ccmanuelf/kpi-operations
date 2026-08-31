@@ -1374,7 +1374,7 @@
     "message"
   ],
   "POST /api/auth/reset-password": [
-    "<status:422>"
+    "message"
   ],
   "POST /api/cache/clear": [
     "entries_cleared",
@@ -1386,7 +1386,12 @@
     "<status:422>"
   ],
   "POST /api/defect-types/upload/{client_id}": [
-    "<status:422>"
+    "client_id",
+    "created",
+    "errors",
+    "message",
+    "skipped",
+    "total_processed"
   ],
   "POST /api/floating-pool/simulation/optimize-allocation": [
     "allocation_suggestions",
@@ -1452,7 +1457,13 @@
     "work_order_id"
   ],
   "POST /api/workflow/bulk-transition": [
-    "<status:422>"
+    "failed",
+    "results[].from_status",
+    "results[].success",
+    "results[].to_status",
+    "results[].work_order_id",
+    "successful",
+    "total_requested"
   ],
   "POST /api/workflow/config/{client_id}/apply-template": [
     "client_id",

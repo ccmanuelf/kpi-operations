@@ -84,6 +84,9 @@ UNBLOCKED: Dict[str, tuple] = {
     ),
     "POST /api/workflow/config/{client_id}/apply-template": ("template_id",),
     "POST /api/workflow/work-orders/{work_order_id}/validate": ("to_status",),
+    # Takes client_id as a QUERY param and its work orders in the BODY; the two
+    # must belong together, so both resolve through the client spec.
+    "POST /api/workflow/bulk-transition": ("client_id",),
 }
 
 VARIANCE = "GET /api/capacity/kpi/variance"
@@ -231,10 +234,21 @@ def test_every_mutating_route_is_either_asked_or_owed_a_body():
     # asked without one, answer 422, and record that as its contract -- the
     # precise failure this module exists to prevent, arriving through the
     # manifest that is supposed to prevent it.
-    asked_but_wants_a_body = {route for route in set(UNBLOCKED) & mutating if _wants_a_body(route)}
+    # ...unless it is GIVEN one. A route may legitimately need both query params
+    # and a body -- `POST /api/workflow/bulk-transition` takes client_id in the
+    # query string and its work orders in the body -- and that is fine as long
+    # as `BODY_REGISTRY` supplies the body. What must never happen is a route
+    # asked with params ALONE when it also wants a body: it 422s, and the 422
+    # is recorded as its contract.
+    from backend.tests.contract.body_specs import BODY_REGISTRY
+
+    asked_but_wants_a_body = {
+        route for route in set(UNBLOCKED) & mutating if _wants_a_body(route) and route not in BODY_REGISTRY
+    }
     assert not asked_but_wants_a_body, (
-        "asked as though query params were enough, but the route requires a request body -- it "
-        f"will 422 and the 422 will be recorded: {sorted(asked_but_wants_a_body)}"
+        "asked as though query params were enough, but the route requires a request body and has "
+        f"no BODY_REGISTRY entry -- it will 422 and the 422 will be recorded: "
+        f"{sorted(asked_but_wants_a_body)}"
     )
 
 
