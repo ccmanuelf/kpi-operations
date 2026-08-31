@@ -50,7 +50,13 @@ from backend.db.migrate import upgrade_to_head
 from backend.main import app
 from backend.seed.cli import ALLOWLIST as ALLOWLIST_CLIENTS
 from backend.seed.cli import seed
-from backend.tests.contract.capture import SeededToday, ShiftActivePin, capture_all, capture_isolated
+from backend.tests.contract.capture import (
+    SeededToday,
+    ShiftActivePin,
+    StubbedEmailService,
+    capture_all,
+    capture_isolated,
+)
 from backend.tests.contract.param_resolution import CapturePlan, Resolver, blocked_shape, bogus_url_for, plan_capture
 from backend.tests.test_routes.test_smoke_paramless_get import _mock_admin
 
@@ -271,6 +277,15 @@ def harness(tmp_path_factory: pytest.TempPathFactory) -> Iterator[_Harness]:
     _limiter_was_enabled = _limiter.enabled
     _limiter.enabled = False
 
+    # The two report routes import EmailService inside their handlers and call
+    # it, so an unstubbed capture opens a real SMTP connection -- see
+    # `StubbedEmailService` for why absent credentials do not make that safe.
+    # Patched at the module the handlers import FROM, which is what their
+    # function-local import resolves against.
+    StubbedEmailService.calls = []
+    email_stub = pytest.MonkeyPatch()
+    email_stub.setattr("backend.services.email_service.EmailService", StubbedEmailService)
+
     time_pin = pytest.MonkeyPatch()
     time_pin.setattr("backend.routes.reference.datetime", ShiftActivePin)
     time_pin.setattr(SeededToday, "AS_OF", SEED_AS_OF)
@@ -294,6 +309,7 @@ def harness(tmp_path_factory: pytest.TempPathFactory) -> Iterator[_Harness]:
         plan = plan_capture(sorted(json.loads(GOLDEN.read_text())), Resolver(engine), app)
         yield _Harness(client=client, plan=plan, engine=engine, restore=_restore)
     finally:
+        email_stub.undo()
         _limiter.enabled = _limiter_was_enabled
         for dependency, previous in _prior_overrides.items():
             if previous is None:

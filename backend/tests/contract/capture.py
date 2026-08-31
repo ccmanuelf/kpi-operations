@@ -168,6 +168,42 @@ def capture_isolated(client, routes, urls, restore) -> dict:
     return captured
 
 
+class StubbedEmailService:
+    """Stands in for `services.email_service.EmailService` during capture.
+
+    The two report routes do `from backend.services.email_service import
+    EmailService` INSIDE the handler and call it, so without this the capture
+    opens a real SMTP connection. Measured from configuration rather than by
+    probing the routes: SMTP_USER, SMTP_PASSWORD and SENDGRID_API_KEY are all
+    empty, but SMTP_HOST defaults to smtp.gmail.com -- and the service's
+    `if self.smtp_user and self.smtp_password` merely SKIPS the login, so it
+    would still connect and try to send unauthenticated. Nothing would be
+    delivered; a CI runner would reach the network and wait.
+
+    The routes' own "email service not configured" branch does not save us: it
+    is reached on ImportError alone, never on absent credentials.
+
+    Returns the success shape both call sites branch on, so each route takes
+    its 200 path and the golden master records the real success shape rather
+    than an error.
+    """
+
+    #: Set by each stubbed call so a test can prove the stub, not the real
+    #: service, is what the capture reached.
+    calls: List[str] = []
+
+    def __init__(self) -> None:
+        pass
+
+    def send_test_email(self, *args: Any, **kwargs: Any) -> dict:
+        type(self).calls.append("send_test_email")
+        return {"success": True}
+
+    def send_kpi_report(self, *args: Any, **kwargs: Any) -> dict:
+        type(self).calls.append("send_kpi_report")
+        return {"success": True}
+
+
 class ShiftActivePin(datetime):
     """Deterministic stand-in for `datetime.now()` inside
     `backend.routes.reference`, whose only caller

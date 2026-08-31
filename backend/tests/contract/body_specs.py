@@ -68,6 +68,20 @@ def _kpi_thresholds(resolver: Any) -> Dict[str, Any]:
     return {"client_id": client_id, "thresholds": {"fpy": {"target_value": 85.0}}}
 
 
+def _email_config_test(resolver: Any) -> Dict[str, Any]:
+    return {"email": "contract-harness@example.com"}
+
+
+def _send_manual(resolver: Any) -> Dict[str, Any]:
+    route = "/api/reports/send-manual"
+    return {
+        "client_id": resolver.resolve_query("client_id", route),
+        "start_date": resolver.resolve_query("start_date", route),
+        "end_date": resolver.resolve_query("end_date", route),
+        "recipient_emails": ["contract-harness@example.com"],
+    }
+
+
 def _reset_password(resolver: Any) -> Dict[str, Any]:
     from backend.auth.jwt import create_access_token
     from backend.seed.scenarios import DEMO_PASSWORD
@@ -178,6 +192,23 @@ BODY_REGISTRY: Dict[str, BodySpec] = {
         "which selects an employee OF that client. Nothing in the route enforces the pairing and "
         "the harness runs without FK enforcement, so a mismatch would write a cross-tenant "
         "attendance row and still answer 201.",
+    ),
+    "POST /api/reports/email-config/test": BodySpec(
+        key="POST /api/reports/email-config/test",
+        build=_email_config_test,
+        note="Safe only because the harness replaces `EmailService` with `StubbedEmailService`. "
+        "Absent credentials do NOT make this route safe: SMTP_USER and SMTP_PASSWORD are empty "
+        "but SMTP_HOST defaults to smtp.gmail.com, and the service SKIPS the login rather than "
+        "declining to connect -- so an unstubbed capture reaches the network. A literal address, "
+        "never a seeded one, so nothing here could ever be delivered to a real person.",
+    ),
+    "POST /api/reports/send-manual": BodySpec(
+        key="POST /api/reports/send-manual",
+        build=_send_manual,
+        note="Same stub, same reasoning. `client_id` and the date window resolve through the "
+        "registry so the report is generated over the seeded universe rather than an empty one -- "
+        "the route builds a PDF BEFORE it reaches the email service, and that generation is real "
+        "work whose output shape depends on there being data.",
     ),
     "POST /api/auth/reset-password": BodySpec(
         key="POST /api/auth/reset-password",
