@@ -163,9 +163,13 @@ def test_every_golden_route_with_required_query_params_is_accounted_for():
     that reads like the route's own answer -- which is exactly the state all
     nine of these entries were in.
     """
-    accounted = set(UNBLOCKED) | {VARIANCE} | DEFERRED_TO_WRITE_CAPTURE
+    # DEFERRED_TO_WRITE_CAPTURE means "needs a request body we cannot build",
+    # which is a different question from "has required query params" -- most of
+    # its members have none. Only the overlap is relevant here.
+    requirements = set(_requirements())
+    accounted = set(UNBLOCKED) | {VARIANCE} | (DEFERRED_TO_WRITE_CAPTURE & requirements)
 
-    assert set(_requirements()) == accounted
+    assert requirements == accounted
 
 
 def test_the_declared_requirements_are_the_measured_ones():
@@ -204,8 +208,10 @@ def test_every_mutating_route_is_either_asked_or_owed_a_body():
     index = route_index(app)
     mutating = {route for route in _requirements() if route.split(" ", 1)[0] in MUTATING_METHODS}
 
-    assert DEFERRED_TO_WRITE_CAPTURE <= mutating, sorted(DEFERRED_TO_WRITE_CAPTURE - mutating)
-    assert mutating == DEFERRED_TO_WRITE_CAPTURE | (mutating & set(UNBLOCKED)), {
+    # `mutating` is the mutating routes with required QUERY params. A deferred
+    # route need not have any -- most are deferred for their BODY -- so the
+    # containment is asserted the other way round, over the overlap.
+    assert mutating == (DEFERRED_TO_WRITE_CAPTURE & mutating) | (mutating & set(UNBLOCKED)), {
         "neither asked nor deferred": sorted(mutating - DEFERRED_TO_WRITE_CAPTURE - set(UNBLOCKED)),
     }
     assert not (DEFERRED_TO_WRITE_CAPTURE & set(UNBLOCKED))
@@ -213,7 +219,7 @@ def test_every_mutating_route_is_either_asked_or_owed_a_body():
     def _wants_a_body(route: str) -> bool:
         return any(_is_required(param) for param in index[route].dependant.body_params)
 
-    unjustified = {route for route in DEFERRED_TO_WRITE_CAPTURE if not _wants_a_body(route)}
+    unjustified = {route for route in DEFERRED_TO_WRITE_CAPTURE if route in index and not _wants_a_body(route)}
     assert not unjustified, (
         "deferred to write capture but needs no request body -- the isolation reason is gone, "
         f"so these are just unasked: {sorted(unjustified)}"
@@ -415,11 +421,15 @@ def test_only_the_routes_that_need_query_params_are_given_any(harness: _Harness)
     byte-identical -- which is the property that made the nine-entry diff
     reviewable in the first place.
     """
-    with_params = {route: kwargs["params"] for route, kwargs in harness.plan.kwargs.items() if kwargs}
+    # `kwargs` now carries two things -- "params" and, for body routes, "json".
+    # This gate is about query params only, so it reads the "params" key rather
+    # than treating any non-empty kwargs as evidence of one. A body route with
+    # no query params has kwargs but belongs in neither set here.
+    with_params = {route: kwargs["params"] for route, kwargs in harness.plan.kwargs.items() if kwargs.get("params")}
 
     assert set(with_params) == set(UNBLOCKED)
     assert {route: tuple(params) for route, params in with_params.items()} == UNBLOCKED
-    # Deferred routes are planned, and planned with nothing.
+    # Deferred routes are planned, and planned with nothing -- no params AND no body.
     assert all(harness.plan.kwargs[route] == {} for route in DEFERRED_TO_WRITE_CAPTURE)
 
 

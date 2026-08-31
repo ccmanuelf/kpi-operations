@@ -93,10 +93,14 @@ QUERY_FAMILY_ROUTER: Dict[str, Tuple[Tuple[str, str], ...]] = {
         ("/api/onboarding/status", "client_id@onboarding"),
         ("/api/hold-catalogs/seed-defaults", "client_id@onboarding"),
         ("/api/attendance/mark-all-present", "client_id@onboarding"),
+        # Bodies resolve ids through the same registry as params, so a body
+        # carrying a client_id needs a fragment exactly as a query param does.
+        ("/api/kpi-thresholds", "client_id@onboarding"),
     ),
     "shift_id": (
         ("/api/attendance/mark-all-present", "shift_id@client-consistent"),
         ("/api/floating-pool/simulation/shift-coverage", "shift_id@client-consistent"),
+        ("/api/floating-pool/simulation/optimize-allocation", "shift_id@client-consistent"),
     ),
 }
 
@@ -324,7 +328,40 @@ QUERY_REGISTRY: Dict[str, ParamSpec] = {
 #: a GET that lands here, or a mutation that escapes it, fails by name.
 DEFERRED_TO_WRITE_CAPTURE: FrozenSet[str] = frozenset(
     {
+        # Needs prerequisite DATA, not a body: CAPACITY_SCENARIO has zero
+        # seeded rows, so the only 2xx it can give is `[]` -- an entry with no
+        # fields, which `ALLOWLIST` would then look ready to close from. The
+        # "unblocked into no-entries-found" trap #244 hit.
         "POST /api/capacity/scenarios/compare",
+        # Shares DEMO-HOURLY-WO-0001 with the transition route above and drives
+        # it to a terminal status. Both in one capture would make the pair
+        # order-dependent, and its response recurses into element 0 only, so a
+        # single body cannot capture both the success and failure branches.
         "POST /api/workflow/bulk-transition",
+        # Needs a token minted at REQUEST time from the live SECRET_KEY. A
+        # checked-in literal is green locally and red in CI, which is worse
+        # than not capturing it.
+        "POST /api/auth/reset-password",
+        # multipart/form-data, not JSON. `kwargs["json"]` cannot express an
+        # UploadFile; the registry would need a `files=` shape first.
+        "POST /api/defect-types/upload/{client_id}",
+        # Sends real email. Deliberately left until the transport can be
+        # stubbed for capture -- a decision taken separately from this layer.
+        "POST /api/reports/email-config/test",
+        "POST /api/reports/send-manual",
+        # Body is a raw dict the route hands to an image encoder; the response
+        # is a PNG stream, so the capture records `<non-json>` either way and
+        # a body buys nothing.
+        "POST /api/qr/generate/image",
+        # The mock principal is a SimpleNamespace with no `password_hash`, so
+        # the route AttributeErrors into a 500 before it can be asked anything.
+        # Fixing that is a change to who the harness authenticates AS, which is
+        # its own piece of work.
+        "POST /api/auth/change-password",
+        # Wants two ids that must agree (client_id and employee_id) and the
+        # existing employee spec resolves a DIFFERENT client's employee. Needs
+        # an `employee_id@client-consistent` spec first, exactly as
+        # mark-all-present needed one for shift_id.
+        "POST /api/attendance/bulk",
     }
 )
