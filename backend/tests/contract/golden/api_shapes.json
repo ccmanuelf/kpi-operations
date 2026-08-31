@@ -1443,10 +1443,13 @@
     "<non-json>"
   ],
   "POST /api/reports/email-config/test": [
-    "<status:422>"
+    "message",
+    "success"
   ],
   "POST /api/reports/send-manual": [
-    "<status:422>"
+    "message",
+    "recipients[]",
+    "success"
   ],
   "POST /api/work-orders/{work_order_id}/approve-qc": [
     "message",

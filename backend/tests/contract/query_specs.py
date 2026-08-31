@@ -98,6 +98,7 @@ QUERY_FAMILY_ROUTER: Dict[str, Tuple[Tuple[str, str], ...]] = {
         ("/api/kpi-thresholds", "client_id@onboarding"),
         ("/api/attendance/bulk", "client_id@onboarding"),
         ("/api/workflow/bulk-transition", "client_id@onboarding"),
+        ("/api/reports/send-manual", "client_id@onboarding"),
     ),
     "employee_id": (("/api/attendance/bulk", "employee_id@client-consistent"),),
     "work_order_id": (("/api/workflow/bulk-transition", "work_order_id@bulk-transition"),),
@@ -391,9 +392,5 @@ DEFERRED_TO_WRITE_CAPTURE: FrozenSet[str] = frozenset(
         # fields, which `ALLOWLIST` would then look ready to close from. The
         # "unblocked into no-entries-found" trap #244 hit.
         "POST /api/capacity/scenarios/compare",
-        # Sends real email. Deliberately left until the transport can be
-        # stubbed for capture -- a decision taken separately from this layer.
-        "POST /api/reports/email-config/test",
-        "POST /api/reports/send-manual",
     }
 )

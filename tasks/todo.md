@@ -30,3 +30,36 @@ PLAN (own PR, agreed):
   * test: a same-tenant row still succeeds (or the first test passes on a
     route that rejects everything)
   * check the sibling write paths in crud/attendance.py for the same gap
+
+
+## FOUND, not fixed: unauthenticated SMTP connection attempt in production
+
+`EmailService` connects to SMTP_HOST and attempts a send even when it has NO
+credentials. Read from the code, and demonstrated by removing the contract
+harness's stub -- the suite then logged "SMTP test email delivery failed" and
+"SMTP delivery failed", i.e. it really did try.
+
+    SMTP_USER = ""   SMTP_PASSWORD = ""   SENDGRID_API_KEY = ""
+    SMTP_HOST = set, defaulting to smtp.gmail.com
+
+    services/email_service.py:
+        with smtplib.SMTP(self.smtp_host, self.smtp_port) as server:   # connects
+            if self.smtp_user and self.smtp_password:                  # merely SKIPS
+                server.login(...)                                      # the login
+
+The routes' own "email service not configured" branch is reached on
+ImportError alone, never on absent credentials, so it does not cover this.
+
+CONSEQUENCE: a caller of POST /api/reports/email-config/test or
+POST /api/reports/send-manual on a deployment without mail configured causes an
+outbound connection to smtp.gmail.com that can only fail -- a slow 500 rather
+than a fast, honest "not configured", and an egress attempt from the API host.
+
+The contract harness stubs the transport, so the TEST SUITE is unaffected. That
+stub does not change production behaviour and was never meant to.
+
+DECISION NEEDED, since it changes outward behaviour: should `EmailService`
+report "not configured" when it has no credentials instead of connecting?
+That looks obviously right -- an unauthenticated send to a public relay cannot
+succeed -- but it changes what a deployed API returns, so it is the user's call
+rather than a silent fix.
