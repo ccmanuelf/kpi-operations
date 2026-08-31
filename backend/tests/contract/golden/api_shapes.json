@@ -1350,7 +1350,12 @@
     "status"
   ],
   "POST /api/attendance/bulk": [
-    "<status:422>"
+    "created_ids[]",
+    "errors[].error",
+    "errors[].index",
+    "failed",
+    "successful",
+    "total"
   ],
   "POST /api/attendance/mark-all-present": [
     "already_exists",

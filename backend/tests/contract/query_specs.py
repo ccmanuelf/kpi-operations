@@ -96,7 +96,9 @@ QUERY_FAMILY_ROUTER: Dict[str, Tuple[Tuple[str, str], ...]] = {
         # Bodies resolve ids through the same registry as params, so a body
         # carrying a client_id needs a fragment exactly as a query param does.
         ("/api/kpi-thresholds", "client_id@onboarding"),
+        ("/api/attendance/bulk", "client_id@onboarding"),
     ),
+    "employee_id": (("/api/attendance/bulk", "employee_id@client-consistent"),),
     "shift_id": (
         ("/api/attendance/mark-all-present", "shift_id@client-consistent"),
         ("/api/floating-pool/simulation/shift-coverage", "shift_id@client-consistent"),
@@ -190,6 +192,31 @@ QUERY_REGISTRY: Dict[str, ParamSpec] = {
     ),
     # --- the four mutating routes un-deferred once every mutator became
     # --- isolated (#249). Their params are query params, not bodies.
+    "employee_id@client-consistent": ParamSpec(
+        key="employee_id@client-consistent",
+        kind=Kind.SEEDED_ROW,
+        table="EMPLOYEE",
+        sql=(
+            "SELECT e.employee_id FROM EMPLOYEE e, "
+            "(SELECT client_id AS c FROM CLIENT ORDER BY client_id LIMIT 1) t "
+            "WHERE e.is_active = 1 AND (e.client_id_assigned = t.c "
+            "OR e.client_id_assigned LIKE t.c || ',%' "
+            "OR e.client_id_assigned LIKE '%,' || t.c || ',%' "
+            "OR e.client_id_assigned LIKE '%,' || t.c) "
+            "ORDER BY e.employee_id LIMIT 1"
+        ),
+        note="An employee of the SAME client the body's client_id resolves. "
+        "`REGISTRY['employee_id']` is `SELECT MIN(employee_id)` -- employee 1, a DEMO-PIECE "
+        "employee -- while `client_id@onboarding` resolves DEMO-HOURLY. Measured: co-resolved "
+        "gives employee 2 owned by DEMO-HOURLY; the naive minimum gives employee 1 owned by "
+        "DEMO-PIECE.\n\n"
+        "WORSE THAN THE shift_id CASE, and the reason this is not optional. "
+        "`mark-all-present` 404s on a mismatch, so the disagreement announces itself. "
+        "`bulk_create_attendance_records` checks nothing of the kind and SQLite FKs are off in "
+        "the harness, so a cross-tenant row would be written and the route would still answer "
+        "201 -- a clean capture of a contract violation. `client_id_assigned` is a comma-"
+        "separated list, hence the four-way match rather than equality.",
+    ),
     "shift_id@client-consistent": ParamSpec(
         key="shift_id@client-consistent",
         kind=Kind.SEEDED_ROW,
@@ -349,10 +376,5 @@ DEFERRED_TO_WRITE_CAPTURE: FrozenSet[str] = frozenset(
         # stubbed for capture -- a decision taken separately from this layer.
         "POST /api/reports/email-config/test",
         "POST /api/reports/send-manual",
-        # Wants two ids that must agree (client_id and employee_id) and the
-        # existing employee spec resolves a DIFFERENT client's employee. Needs
-        # an `employee_id@client-consistent` spec first, exactly as
-        # mark-all-present needed one for shift_id.
-        "POST /api/attendance/bulk",
     }
 )
