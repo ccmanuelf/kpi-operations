@@ -372,7 +372,7 @@ defineExpose({
   }
 
   /* Better touch scrolling */
-  :deep(.ag-body-viewport) {
+  :deep(.ag-grid-viewport) {
     -webkit-overflow-scrolling: touch;
   }
 

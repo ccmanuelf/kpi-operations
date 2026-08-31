@@ -201,12 +201,21 @@ test.describe('Attendance grid — OT split + hour allocation', () => {
     // math (uniform 38px rows, no header/padding offset) is slightly off.
     const scrollTarget = Math.max(0, (seed!.rowIndex - 2) * 38)
     const rowIndex = String(seed!.rowIndex)
-    const row = page.locator(`.ag-center-cols-container .ag-row[row-index="${rowIndex}"]`)
-    const viewport = page.locator('.ag-body-viewport').first()
+    const row = page.locator(`.ag-row[row-index="${rowIndex}"]`)
 
     await expect(async () => {
-      await viewport.evaluate((el, top) => {
-        el.scrollTop = top
+      // Find the scroller by MEASURING rather than by class name. AG Grid
+      // renamed its scroll container between v35 and v36
+      // (`.ag-body-viewport` -> the `.ag-grid-*` family), and a hard-coded
+      // class fails silently: `scrollTop` on a non-scrolling element is a
+      // no-op, so the row simply never enters the virtualized window and the
+      // failure reads as "row not found" rather than "wrong selector".
+      await page.evaluate((top) => {
+        const candidates = Array.from(document.querySelectorAll<HTMLElement>('[class*="ag-"]'))
+        const scroller = candidates.find(
+          (el) => el.scrollHeight > el.clientHeight + 5 && el.clientHeight > 50,
+        )
+        if (scroller) scroller.scrollTop = top
       }, scrollTarget)
       await expect(row).toBeVisible({ timeout: 2000 })
     }).toPass({ timeout: 15000 })
@@ -214,7 +223,7 @@ test.describe('Attendance grid — OT split + hour allocation', () => {
     // employee_name-ordered list the grid loads) must land at this row.
     // employee_id is pinned left, so it renders in a separate container.
     const pinnedRow = page.locator(
-      `.ag-pinned-left-cols-container .ag-row[row-index="${rowIndex}"]`,
+      `.ag-row[row-index="${rowIndex}"]`,
     )
     await expect(pinnedRow.locator('.ag-cell[col-id="employee_id"]')).toHaveText(
       String(seed!.employeeId),

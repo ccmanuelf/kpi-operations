@@ -51,7 +51,7 @@ test.describe('Capacity — BOM master-detail (stacked AG Grids)', () => {
     // Wait for the master grid to mount before counting — point-in-time
     // .count() returns 0 if AG-Grid hasn't finished its initial paint yet.
     await expect(page.locator('.ag-root').first()).toBeVisible({ timeout: 20000 })
-    const masterRow = page.locator('.ag-center-cols-container .ag-row').first()
+    const masterRow = page.locator('.ag-row').first()
     if (await masterRow.isVisible({ timeout: 5000 }).catch(() => false)) {
       await masterRow.click({ force: true })
       await page.waitForTimeout(500)
