@@ -20,6 +20,7 @@ from backend.auth.jwt import get_current_user, get_current_active_supervisor
 from backend.orm.user import User
 from backend.dependencies import PaginationParams
 from backend.schemas.workflow import (
+    WorkOrderTransitionResult,
     WorkflowTransitionCreate,
     WorkflowTransitionResponse,
     WorkflowConfigUpdate,
@@ -69,7 +70,7 @@ router = APIRouter(prefix="/api/workflow", tags=["Workflow"])
 # ============================================
 
 
-@router.post("/work-orders/{work_order_id}/transition", response_model=Dict)
+@router.post("/work-orders/{work_order_id}/transition", response_model=WorkOrderTransitionResult)
 def transition_work_order_status(
     work_order_id: str,
     transition: WorkflowTransitionCreate,

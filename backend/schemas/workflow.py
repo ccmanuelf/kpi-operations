@@ -3,6 +3,7 @@ Workflow Pydantic models for request/response validation
 Implements Phase 10: Flexible Workflow Foundation
 """
 
+from backend.schemas.work_order import WorkOrderResponse
 from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional, List, Dict
 from datetime import datetime
@@ -128,6 +129,29 @@ class WorkflowConfigResponse(BaseModel):
     workflow_version: int
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class WorkOrderTransitionResult(BaseModel):
+    """`routes/workflow.py::transition_work_order_status`.
+
+    The route was `response_model=Dict` over
+    `{"work_order": <WorkOrder ORM>, "transition": <WorkflowTransition ORM>,
+      "success": True}`. Pydantic cannot serialize an ORM instance under a
+    bare `Dict`, so every successful transition raised
+
+        PydanticSerializationError: Unable to serialize unknown type:
+        <class 'backend.orm.work_order.WorkOrder'>
+
+    and the caller received 500 -- AFTER `db.commit()` had already moved the
+    work order. The transition happened; the response said it had not.
+
+    Both halves already had schemas with `from_attributes=True`; nothing
+    needed inventing, only declaring.
+    """
+
+    work_order: WorkOrderResponse
+    transition: WorkflowTransitionResponse
+    success: bool
 
 
 class WorkflowConfigUpdate(BaseModel):
