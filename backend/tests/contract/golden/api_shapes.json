@@ -36,7 +36,7 @@
     "<blocked:equipment_id>"
   ],
   "DELETE /api/filters/history": [
-    "<status:422>"
+    "<non-json>"
   ],
   "DELETE /api/filters/{filter_id}": [
     "<blocked:filter_id>"

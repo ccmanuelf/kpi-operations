@@ -109,7 +109,12 @@ def test_every_non_json_golden_entry_is_explained():
     # 38, up from 37: `POST /api/qr/generate/image` joined when write capture
     # sent it a body. It streamed all along; without a body its entry was the
     # harness's own 422, not the route's answer.
-    assert len(non_json_routes) == 38
+    # 39, up from 38: `DELETE /api/filters/history` answers its own 204 now
+    # that it is registered above `DELETE /api/filters/{filter_id}`. It was
+    # declared NO_CONTENT_204 all along on the strength of its `-> None`
+    # annotation; the capture could not confirm it because the route was
+    # unreachable, recording the shadowing route's 422 instead.
+    assert len(non_json_routes) == 39
 
     unexplained = [route for route in non_json_routes if classify_non_json_route(_route(app, route)) is None]
     assert unexplained == []
@@ -239,6 +244,11 @@ def test_non_json_entries_decompose_into_exactly_three_categories():
         "DELETE /api/defects/{defect_detail_id}",
         "DELETE /api/downtime/{downtime_id}",
         "DELETE /api/employees/{employee_id}",
+        # Joined when the route stopped being shadowed by
+        # `DELETE /api/filters/{filter_id}`. It was declared NO_CONTENT_204 all
+        # along on its `-> None` annotation; the capture recorded the shadowing
+        # route's 422 because this handler was unreachable.
+        "DELETE /api/filters/history",
         "DELETE /api/hold-catalogs/reasons/{catalog_id}",
         "DELETE /api/hold-catalogs/statuses/{catalog_id}",
         "DELETE /api/holds/{hold_id}",
