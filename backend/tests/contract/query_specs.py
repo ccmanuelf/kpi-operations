@@ -199,10 +199,8 @@ QUERY_REGISTRY: Dict[str, ParamSpec] = {
         sql=(
             "SELECT e.employee_id FROM EMPLOYEE e, "
             "(SELECT client_id AS c FROM CLIENT ORDER BY client_id LIMIT 1) t "
-            "WHERE e.is_active = 1 AND (e.client_id_assigned = t.c "
-            "OR e.client_id_assigned LIKE t.c || ',%' "
-            "OR e.client_id_assigned LIKE '%,' || t.c || ',%' "
-            "OR e.client_id_assigned LIKE '%,' || t.c) "
+            "WHERE e.is_active = 1 AND instr("
+            "CONCAT(',', e.client_id_assigned, ','), CONCAT(',', t.c, ',')) > 0 "
             "ORDER BY e.employee_id LIMIT 1"
         ),
         note="An employee of the SAME client the body's client_id resolves. "
@@ -215,7 +213,13 @@ QUERY_REGISTRY: Dict[str, ParamSpec] = {
         "`bulk_create_attendance_records` checks nothing of the kind and SQLite FKs are off in "
         "the harness, so a cross-tenant row would be written and the route would still answer "
         "201 -- a clean capture of a contract violation. `client_id_assigned` is a comma-"
-        "separated list, hence the four-way match rather than equality.",
+        "separated LIST, so membership is tested by wrapping both sides in commas and asking "
+        "`instr(...) > 0`, not by LIKE patterns. LIKE treats `_` and `%` inside a client id as "
+        "WILDCARDS -- measured: `'DEMO-HOURLY' LIKE 'DEMO_HOURLY'` is true -- so such an id "
+        "could match an employee of a DIFFERENT client, the exact failure this spec prevents. "
+        "`instr`/`CONCAT` are portable too: `||` concatenates in SQLite but is logical OR in "
+        "MariaDB, and this codebase has already shipped one SQLite-only helper (`julianday` in "
+        "holds.py) that 500'd on MariaDB.",
     ),
     "shift_id@client-consistent": ParamSpec(
         key="shift_id@client-consistent",

@@ -252,3 +252,14 @@ def test_the_attendance_capture_exercised_both_branches(harness: _Harness) -> No
         "no row failed, so `errors` comes back empty and its element shape goes uncaptured: " f"{payload}"
     )
     assert payload["errors"][0]["index"] == 1, payload["errors"]
+    # The REASON, not just that something failed. Row 2 differs from row 1
+    # only by `allocations`, so a unique constraint on (employee, date) -- or
+    # any other incidental rejection -- would satisfy every assertion above
+    # while the captured `errors[].error` described something else entirely.
+    # Measured: a plain duplicate of row 1 gives failed=0, so no such
+    # constraint exists today and the allocations rejection is the only thing
+    # making this body work.
+    assert "allocations" in payload["errors"][0]["error"], (
+        "row 2 failed for a reason other than the allocations rejection this body relies on: "
+        f"{payload['errors'][0]['error']!r}"
+    )
