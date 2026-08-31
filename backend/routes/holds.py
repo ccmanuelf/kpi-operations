@@ -110,192 +110,10 @@ def list_active_holds(
     return get_wip_holds(db, current_user=current_user, skip=skip, limit=limit, client_id=client_id, released=False)
 
 
-@router.get("/{hold_id}", response_model=WIPHoldResponse)
-def get_hold(
-    hold_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
-) -> WIPHoldResponse:
-    """
-    Get WIP hold by ID.
-
-    Returns the full hold record including status, dates, and approval details.
-
-    SECURITY: Requires authentication; client access verified in CRUD layer.
-    """
-    hold = get_wip_hold(db, hold_id, current_user)
-    if not hold:
-        raise HTTPException(status_code=404, detail="WIP hold not found")
-    return hold
-
-
-@router.put("/{hold_id}", response_model=WIPHoldResponse)
-def update_hold(
-    hold_id: str,
-    hold_update: WIPHoldUpdate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_contributor),
-) -> WIPHoldResponse:
-    """Update WIP hold record. Validates hold_reason against catalog if provided."""
-    # Validate hold_reason against catalog when updating
-    if hold_update.hold_reason:
-        # Need to resolve client_id from the existing hold
-        existing = get_wip_hold(db, hold_id, current_user)
-        if existing and not validate_hold_reason_for_client(db, existing.client_id, hold_update.hold_reason):
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=f"Reason '{hold_update.hold_reason}' not found in client catalog",
-            )
-
-    updated = update_wip_hold(db, hold_id, hold_update, current_user)
-    if not updated:
-        raise HTTPException(status_code=404, detail="WIP hold not found")
-    db.commit()
-    return updated
-
-
-@router.delete("/{hold_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_hold(
-    hold_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_supervisor)
-) -> None:
-    """Delete WIP hold (supervisor only)"""
-    success = delete_wip_hold(db, hold_id, current_user)
-    if not success:
-        raise HTTPException(status_code=404, detail="WIP hold not found")
-    db.commit()
-
-
-# =============================================================================
-# Hold/Resume Approval Workflow Endpoints (Phase 6.2)
-# =============================================================================
-
-
-@router.post("/{hold_id}/approve-hold", response_model=WIPHoldResponse)
-def approve_hold(
-    hold_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_supervisor)
-) -> WIPHoldResponse:
-    """
-    Approve a pending hold request (supervisor only).
-    Transitions hold from PENDING_HOLD_APPROVAL to ON_HOLD.
-    """
-    from backend.orm.hold_entry import HoldEntry, HoldStatus
-
-    db_hold = db.query(HoldEntry).filter(HoldEntry.hold_entry_id == hold_id).first()
-    if not db_hold:
-        raise HTTPException(status_code=404, detail="WIP hold not found")
-
-    # Verify caller has access to this hold's client
-    verify_client_access(current_user, db_hold.client_id, db)
-
-    # Validate status transition
-    if db_hold.hold_status != HoldStatus.PENDING_HOLD_APPROVAL:
-        raise HTTPException(
-            status_code=400,
-            detail=(
-                f"Cannot approve hold with status {db_hold.hold_status}. " "Only PENDING_HOLD_APPROVAL can be approved."
-            ),
-        )
-
-    # Approve the hold
-    record_hold_transition(db, db_hold, to_status=HoldStatus.ON_HOLD, current_user=current_user)
-    db_hold.hold_status = HoldStatus.ON_HOLD
-    db_hold.hold_approved_by = current_user.user_id
-    db_hold.updated_by = current_user.user_id
-
-    db.commit()
-    db.refresh(db_hold)
-
-    return db_hold
-
-
-@router.post("/{hold_id}/request-resume", response_model=WIPHoldResponse)
-def request_resume(
-    hold_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_contributor)
-) -> WIPHoldResponse:
-    """
-    Request to resume a hold (any user can request).
-    Transitions hold from ON_HOLD to PENDING_RESUME_APPROVAL.
-    """
-    from backend.orm.hold_entry import HoldEntry, HoldStatus
-
-    db_hold = db.query(HoldEntry).filter(HoldEntry.hold_entry_id == hold_id).first()
-    if not db_hold:
-        raise HTTPException(status_code=404, detail="WIP hold not found")
-
-    # Verify caller has access to this hold's client
-    verify_client_access(current_user, db_hold.client_id, db)
-
-    # Validate status transition
-    if db_hold.hold_status != HoldStatus.ON_HOLD:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Cannot request resume for hold with status {db_hold.hold_status}. Only ON_HOLD can be resumed.",
-        )
-
-    # Request resume
-    record_hold_transition(db, db_hold, to_status=HoldStatus.PENDING_RESUME_APPROVAL, current_user=current_user)
-    db_hold.hold_status = HoldStatus.PENDING_RESUME_APPROVAL
-    db_hold.resumed_by = current_user.user_id  # Track who requested
-    db_hold.updated_by = current_user.user_id
-
-    db.commit()
-    db.refresh(db_hold)
-
-    return db_hold
-
-
-@router.post("/{hold_id}/approve-resume", response_model=WIPHoldResponse)
-def approve_resume(
-    hold_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_supervisor)
-) -> WIPHoldResponse:
-    """
-    Approve a resume request (supervisor only).
-    Transitions hold from PENDING_RESUME_APPROVAL to RESUMED.
-    Auto-calculates hold duration.
-    """
-    from backend.orm.hold_entry import HoldEntry, HoldStatus
-    from decimal import Decimal
-
-    db_hold = db.query(HoldEntry).filter(HoldEntry.hold_entry_id == hold_id).first()
-    if not db_hold:
-        raise HTTPException(status_code=404, detail="WIP hold not found")
-
-    # Verify caller has access to this hold's client
-    verify_client_access(current_user, db_hold.client_id, db)
-
-    # Validate status transition
-    if db_hold.hold_status != HoldStatus.PENDING_RESUME_APPROVAL:
-        raise HTTPException(
-            status_code=400,
-            detail=(
-                f"Cannot approve resume for hold with status {db_hold.hold_status}. "
-                "Only PENDING_RESUME_APPROVAL can be approved."
-            ),
-        )
-
-    # Approve the resume
-    record_hold_transition(db, db_hold, to_status=HoldStatus.RESUMED, current_user=current_user)
-    db_hold.hold_status = HoldStatus.RESUMED
-    db_hold.resume_date = datetime.now(tz=timezone.utc)
-    db_hold.updated_by = current_user.user_id
-
-    # Auto-calculate hold duration
-    if db_hold.hold_date:
-        hold_start = db_hold.hold_date
-        if hasattr(hold_start, "date"):
-            hold_start = datetime.combine(hold_start.date(), datetime.min.time())
-        elif isinstance(hold_start, str):
-            hold_start = datetime.strptime(hold_start.split()[0], "%Y-%m-%d")
-
-        if not hold_start.tzinfo:
-            hold_start = hold_start.replace(tzinfo=timezone.utc)
-        delta = datetime.now(tz=timezone.utc) - hold_start
-        db_hold.total_hold_duration_hours = Decimal(str(delta.total_seconds() / 3600))
-
-    db.commit()
-    db.refresh(db_hold)
-
-    return db_hold
-
-
+# Declared BEFORE the parameterised sibling below, and it must stay there.
+# FastAPI matches in registration order, so with `/{...}` first this literal
+# path was captured as an id and never reached its own handler.
+# Pinned by tests/test_routes/test_no_route_is_shadowed.py.
 @router.get("/pending-approvals", response_model=List[WIPHoldResponse])
 def get_pending_approvals(
     approval_type: Optional[str] = None,  # "hold" or "resume"
@@ -589,3 +407,189 @@ def get_chronic_holds(
     """
     threshold_client = scope.client_ids[0] if scope.client_ids is not None and len(scope.client_ids) == 1 else None
     return identify_chronic_holds(db, threshold_days, client_id=threshold_client, client_ids=scope.client_ids)
+
+
+@router.get("/{hold_id}", response_model=WIPHoldResponse)
+def get_hold(
+    hold_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+) -> WIPHoldResponse:
+    """
+    Get WIP hold by ID.
+
+    Returns the full hold record including status, dates, and approval details.
+
+    SECURITY: Requires authentication; client access verified in CRUD layer.
+    """
+    hold = get_wip_hold(db, hold_id, current_user)
+    if not hold:
+        raise HTTPException(status_code=404, detail="WIP hold not found")
+    return hold
+
+
+@router.put("/{hold_id}", response_model=WIPHoldResponse)
+def update_hold(
+    hold_id: str,
+    hold_update: WIPHoldUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_contributor),
+) -> WIPHoldResponse:
+    """Update WIP hold record. Validates hold_reason against catalog if provided."""
+    # Validate hold_reason against catalog when updating
+    if hold_update.hold_reason:
+        # Need to resolve client_id from the existing hold
+        existing = get_wip_hold(db, hold_id, current_user)
+        if existing and not validate_hold_reason_for_client(db, existing.client_id, hold_update.hold_reason):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Reason '{hold_update.hold_reason}' not found in client catalog",
+            )
+
+    updated = update_wip_hold(db, hold_id, hold_update, current_user)
+    if not updated:
+        raise HTTPException(status_code=404, detail="WIP hold not found")
+    db.commit()
+    return updated
+
+
+@router.delete("/{hold_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_hold(
+    hold_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_supervisor)
+) -> None:
+    """Delete WIP hold (supervisor only)"""
+    success = delete_wip_hold(db, hold_id, current_user)
+    if not success:
+        raise HTTPException(status_code=404, detail="WIP hold not found")
+    db.commit()
+
+
+# =============================================================================
+# Hold/Resume Approval Workflow Endpoints (Phase 6.2)
+# =============================================================================
+
+
+@router.post("/{hold_id}/approve-hold", response_model=WIPHoldResponse)
+def approve_hold(
+    hold_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_supervisor)
+) -> WIPHoldResponse:
+    """
+    Approve a pending hold request (supervisor only).
+    Transitions hold from PENDING_HOLD_APPROVAL to ON_HOLD.
+    """
+    from backend.orm.hold_entry import HoldEntry, HoldStatus
+
+    db_hold = db.query(HoldEntry).filter(HoldEntry.hold_entry_id == hold_id).first()
+    if not db_hold:
+        raise HTTPException(status_code=404, detail="WIP hold not found")
+
+    # Verify caller has access to this hold's client
+    verify_client_access(current_user, db_hold.client_id, db)
+
+    # Validate status transition
+    if db_hold.hold_status != HoldStatus.PENDING_HOLD_APPROVAL:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Cannot approve hold with status {db_hold.hold_status}. " "Only PENDING_HOLD_APPROVAL can be approved."
+            ),
+        )
+
+    # Approve the hold
+    record_hold_transition(db, db_hold, to_status=HoldStatus.ON_HOLD, current_user=current_user)
+    db_hold.hold_status = HoldStatus.ON_HOLD
+    db_hold.hold_approved_by = current_user.user_id
+    db_hold.updated_by = current_user.user_id
+
+    db.commit()
+    db.refresh(db_hold)
+
+    return db_hold
+
+
+@router.post("/{hold_id}/request-resume", response_model=WIPHoldResponse)
+def request_resume(
+    hold_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_contributor)
+) -> WIPHoldResponse:
+    """
+    Request to resume a hold (any user can request).
+    Transitions hold from ON_HOLD to PENDING_RESUME_APPROVAL.
+    """
+    from backend.orm.hold_entry import HoldEntry, HoldStatus
+
+    db_hold = db.query(HoldEntry).filter(HoldEntry.hold_entry_id == hold_id).first()
+    if not db_hold:
+        raise HTTPException(status_code=404, detail="WIP hold not found")
+
+    # Verify caller has access to this hold's client
+    verify_client_access(current_user, db_hold.client_id, db)
+
+    # Validate status transition
+    if db_hold.hold_status != HoldStatus.ON_HOLD:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot request resume for hold with status {db_hold.hold_status}. Only ON_HOLD can be resumed.",
+        )
+
+    # Request resume
+    record_hold_transition(db, db_hold, to_status=HoldStatus.PENDING_RESUME_APPROVAL, current_user=current_user)
+    db_hold.hold_status = HoldStatus.PENDING_RESUME_APPROVAL
+    db_hold.resumed_by = current_user.user_id  # Track who requested
+    db_hold.updated_by = current_user.user_id
+
+    db.commit()
+    db.refresh(db_hold)
+
+    return db_hold
+
+
+@router.post("/{hold_id}/approve-resume", response_model=WIPHoldResponse)
+def approve_resume(
+    hold_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_supervisor)
+) -> WIPHoldResponse:
+    """
+    Approve a resume request (supervisor only).
+    Transitions hold from PENDING_RESUME_APPROVAL to RESUMED.
+    Auto-calculates hold duration.
+    """
+    from backend.orm.hold_entry import HoldEntry, HoldStatus
+    from decimal import Decimal
+
+    db_hold = db.query(HoldEntry).filter(HoldEntry.hold_entry_id == hold_id).first()
+    if not db_hold:
+        raise HTTPException(status_code=404, detail="WIP hold not found")
+
+    # Verify caller has access to this hold's client
+    verify_client_access(current_user, db_hold.client_id, db)
+
+    # Validate status transition
+    if db_hold.hold_status != HoldStatus.PENDING_RESUME_APPROVAL:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Cannot approve resume for hold with status {db_hold.hold_status}. "
+                "Only PENDING_RESUME_APPROVAL can be approved."
+            ),
+        )
+
+    # Approve the resume
+    record_hold_transition(db, db_hold, to_status=HoldStatus.RESUMED, current_user=current_user)
+    db_hold.hold_status = HoldStatus.RESUMED
+    db_hold.resume_date = datetime.now(tz=timezone.utc)
+    db_hold.updated_by = current_user.user_id
+
+    # Auto-calculate hold duration
+    if db_hold.hold_date:
+        hold_start = db_hold.hold_date
+        if hasattr(hold_start, "date"):
+            hold_start = datetime.combine(hold_start.date(), datetime.min.time())
+        elif isinstance(hold_start, str):
+            hold_start = datetime.strptime(hold_start.split()[0], "%Y-%m-%d")
+
+        if not hold_start.tzinfo:
+            hold_start = hold_start.replace(tzinfo=timezone.utc)
+        delta = datetime.now(tz=timezone.utc) - hold_start
+        db_hold.total_hold_duration_hours = Decimal(str(delta.total_seconds() / 3600))
+
+    db.commit()
+    db.refresh(db_hold)
+
+    return db_hold

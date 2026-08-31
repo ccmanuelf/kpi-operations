@@ -63,3 +63,81 @@ report "not configured" when it has no credentials instead of connecting?
 That looks obviously right -- an unauthenticated send to a public relay cannot
 succeed -- but it changes what a deployed API returns, so it is the user's call
 rather than a silent fix.
+
+
+## NEXT: `DELETE /api/filters/history` is unreachable (route shadowing)
+
+The endpoint exists and can never be called. `routes/filters.py` registers
+
+    line 168:  @router.delete("/{filter_id}")     filter_id: int
+    line 315:  @router.delete("/history")         no parameters at all
+
+and FastAPI matches in REGISTRATION order, so `DELETE /api/filters/history`
+binds to `{filter_id}="history"`, fails int parsing, and 422s. Measured:
+
+    DELETE /api/filters/history -> 422
+    {"detail":[{"type":"int_parsing","loc":["path","filter_id"],
+                "input":"history"}]}
+
+`clear_user_filter_history` is therefore dead over HTTP. Any unit test calling
+the CRUD directly would pass while the route stayed unreachable.
+
+Found by the contract harness: `<status:422>` on a route whose handler takes NO
+parameters is impossible from its own signature, which is what made it worth
+looking at.
+
+FIX: register the literal path BEFORE the parameterised one (the standard
+FastAPI ordering rule). Small, but it changes which handler answers a live URL,
+so it wants its own PR and a test that pins the ordering rather than the
+symptom -- a test asserting 204 would pass again if someone later re-ordered
+the file, only for a different literal route to start shadowing.
+
+CHECKED, and it IS a class -- TWO dead endpoints, not one:
+
+    GET /api/holds/pending-approvals   -> 404 {"detail": "WIP hold not found"}
+        Shadowed by GET /api/holds/{hold_id}. WORSE than the filters case: the
+        id is a STRING, so it matches, looks up a hold called
+        "pending-approvals", finds none, and answers a misleading 404. A caller
+        asking for a list is told a hold does not exist.
+
+    DELETE /api/filters/history        -> 422 int_parsing on filter_id
+        Shadowed by DELETE /api/filters/{filter_id}. The int parse fails, so at
+        least the error names the real cause.
+
+    GET /api/alerts/config/            -> 200, NOT affected. Flagged by my
+        first scan only because it normalised away the trailing slash; the
+        registered path really is `/api/alerts/config/`, which does not collide
+        with `/api/alerts/{alert_id}`. A false positive, recorded so the next
+        reader does not re-investigate it.
+
+METHOD NOTE: the first version of that scan reported ZERO shadowed routes while
+I had a proven instance in hand. It walked `app.routes` naively and saw 9
+(method, path) pairs instead of 460 -- FastAPI nests routers behind
+`_IncludedRouter`, which is the same trap that made an earlier structural test
+pass on an empty list. Use `capture.flatten_api_routes`.
+
+FIX: register each literal path BEFORE its parameterised sibling. The test
+should pin the ORDERING PROPERTY across all routers -- a test that merely
+asserts 204/200 on these two would pass again if a third literal route were
+added after a `/{param}` tomorrow.
+
+
+## OBSERVATION: the golden master tracks 164 of 460 live /api routes
+
+Measured while fixing the route shadowing: 296 live routes have no shape
+contract. Zero golden entries point at a route that no longer exists, so the
+subset is deliberate -- it is the scope the response-model refactor drew --
+not rot.
+
+WHY IT MATTERS, concretely. `GET /api/holds/pending-approvals` was dead for as
+long as it was shadowed, and the contract harness never noticed, because the
+harness drives from GOLDEN'S KEYS and that route is not one of them. It was
+found by scanning the route table for a registration-order property, not by
+capture. A route absent from the golden master is invisible to every gate
+built on it.
+
+NOT a bug and NOT fixed here: expanding the golden master to all 460 routes is
+a scope decision with real cost (each new entry needs resolvable params, and
+some need bodies), and it belongs to whoever decides how far the contract
+should reach. Recorded so the 164 is understood as a choice rather than
+mistaken for coverage.

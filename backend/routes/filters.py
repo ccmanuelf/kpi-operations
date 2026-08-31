@@ -165,6 +165,20 @@ def update_filter(
     return _to_filter_response(db_filter)
 
 
+# Declared BEFORE the parameterised sibling below, and it must stay there.
+# FastAPI matches in registration order, so with `/{...}` first this literal
+# path was captured as an id and never reached its own handler.
+# Pinned by tests/test_routes/test_no_route_is_shadowed.py.
+@router.delete("/history", status_code=status.HTTP_204_NO_CONTENT)
+def clear_user_filter_history(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> None:
+    """
+    Clear all filter history for the current user
+
+    SECURITY: Only clears history owned by the current user
+    """
+    clear_filter_history(db, user_id=current_user.user_id)
+
+
 @router.delete("/{filter_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_filter(
     filter_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
@@ -310,16 +324,6 @@ def add_filter_to_history(
     history_entry = add_to_filter_history(db, user_id=current_user.user_id, filter_config=filter_config)
 
     return _to_history_response(history_entry)
-
-
-@router.delete("/history", status_code=status.HTTP_204_NO_CONTENT)
-def clear_user_filter_history(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> None:
-    """
-    Clear all filter history for the current user
-
-    SECURITY: Only clears history owned by the current user
-    """
-    clear_filter_history(db, user_id=current_user.user_id)
 
 
 # ============================================================================
