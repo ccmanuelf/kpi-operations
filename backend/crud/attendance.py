@@ -31,7 +31,6 @@ from backend.calculations.labor_hours import (
 )
 from backend.middleware.client_auth import (
     build_client_filter_clause,
-    client_token_clause,
     verify_client_access,
 )
 from backend.orm.user import User
@@ -107,12 +106,16 @@ def _require_employee_belongs_to_client(db: Session, employee_id: Any, client_id
     employee assigned to DEMO-PIECE returned 201 and wrote the row, on both
     the single and bulk paths.
 
-    Membership is tested with `client_token_clause`, the same helper the
-    read-side scoping uses, rather than a fourth hand-rolled comparison:
-    `client_id_assigned` is a comma-separated LIST, `=` would reject a
-    legitimately multi-client employee, and `LIKE` treats `_` and `%` as
-    wildcards -- which matters here, not hypothetically, because the seeded
-    client `SAMPLE_REF` contains one.
+    Membership is a Python split on commas, matching `verify_employee_access`
+    exactly. `client_id_assigned` is a comma-separated LIST, so `==` would
+    reject a legitimately multi-client employee, and a `LIKE` would treat `_`
+    and `%` as wildcards -- which matters here rather than hypothetically,
+    since the seeded client `SAMPLE_REF` contains one.
+
+    The SQL alternative is `client_token_clause`, whose whole design goal is to
+    "agree with the Python split character for character" -- so the split IS
+    the reference implementation, and using it directly keeps this to a single
+    query rather than a fetch followed by a filtered re-query.
 
     A NULL assignment is left alone: `verify_employee_access` documents it as
     the shared floating-pool marker, and rejecting it here would stop
@@ -122,29 +125,43 @@ def _require_employee_belongs_to_client(db: Session, employee_id: Any, client_id
     single path converts it to a 422 and the bulk path records it against that
     row, which is the idiom the endpoint already uses for an invalid OT split.
     """
+    # Defensive only, and unreachable through the API: `AttendanceRecordCreate`
+    # requires `employee_id: int` with gt=0 and `client_id: str` with
+    # min_length=1, so neither arrives falsy from a request. Kept so a future
+    # internal caller cannot skip the check by passing nothing, rather than as
+    # a branch the routes rely on.
     if not client_id or employee_id is None:
         return
 
-    employee = db.query(Employee).filter(Employee.employee_id == employee_id).first()
-    if employee is None:
-        raise ValueError(f"employee {employee_id} does not exist")
+    # ONE query, on the COLUMN rather than the entity. A `query(Employee)`
+    # can hand back an instance already in the session's identity map, whose
+    # `client_id_assigned` may be stale -- and a stale NULL would short-circuit
+    # the membership check entirely. A column query is not identity-mapped, so
+    # the value comes from the database every time.
+    #
+    # `.first()` distinguishes the two cases that matter: `None` means no such
+    # employee, `(None,)` means the employee exists with no assignment.
+    row = db.query(Employee.client_id_assigned).filter(Employee.employee_id == employee_id).first()
 
-    if employee.client_id_assigned is None:
+    if row is not None and row[0] is None:
+        # The documented shared floating-pool marker -- `verify_employee_access`
+        # returns True for it, and refusing it here would stop floating-pool
+        # employees having attendance recorded at all. NOTE: this makes NULL a
+        # wildcard across clients. That is the existing meaning of the column,
+        # not something introduced here; narrowing it would be a product change.
         return
 
-    belongs = (
-        db.query(Employee.employee_id)
-        .filter(
-            Employee.employee_id == employee_id,
-            client_token_clause(Employee.client_id_assigned, str(client_id)),
-        )
-        .first()
-    )
-    if belongs is None:
-        raise ValueError(
-            f"employee {employee_id} is not assigned to client {client_id} "
-            f"(assigned: {employee.client_id_assigned!r})"
-        )
+    if row is not None:
+        assigned = [token.strip() for token in str(row[0]).split(",") if token.strip()]
+        if str(client_id) in assigned:
+            return
+
+    # ONE message for both "no such employee" and "not this client's employee".
+    # The caller has been authorised for `client_id` and nothing more, so a
+    # reply that distinguishes the two lets anyone scoped to one tenant
+    # enumerate the tenancy of every employee id -- and naming the employee's
+    # actual client would hand it to them outright.
+    raise ValueError(f"employee {employee_id} is not available for client {client_id}")
 
 
 def create_attendance_record(

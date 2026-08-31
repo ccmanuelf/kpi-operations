@@ -55,7 +55,12 @@ def test_single_create_refuses_another_clients_employee(db_session, two_clients)
         create_attendance_record(db_session, _record("TEN-A", two_clients["theirs"].employee_id), two_clients["admin"])
 
     assert excinfo.value.status_code == 422
-    assert "not assigned to client" in str(excinfo.value.detail)
+    detail = str(excinfo.value.detail)
+    assert "not available for client" in detail
+    # And it must NOT name where the employee actually belongs: the caller is
+    # authorised for TEN-A and nothing more, so leaking TEN-B would let anyone
+    # scoped to one tenant enumerate every employee's tenancy by id.
+    assert "TEN-B" not in detail, detail
     db_session.rollback()
     assert _rows_for(db_session, two_clients["theirs"].employee_id) == before
 
@@ -70,7 +75,8 @@ def test_bulk_create_refuses_it_per_row_and_writes_nothing(db_session, two_clien
 
     assert result["failed"] == 1, result
     assert result["successful"] == 0, result
-    assert "not assigned to client" in result["errors"][0]["error"]
+    assert "not available for client" in result["errors"][0]["error"]
+    assert "TEN-B" not in result["errors"][0]["error"], result["errors"]
     assert _rows_for(db_session, theirs) == before
 
 
@@ -117,3 +123,32 @@ def test_a_floating_pool_employee_is_not_locked_out(db_session, two_clients):
     db_session.commit()
 
     assert created.employee_id == floater.employee_id
+
+
+def test_a_missing_employee_is_refused_the_same_way_as_someone_elses(db_session, two_clients):
+    """The two refusals must be indistinguishable.
+
+    A caller authorised for TEN-A and nothing more should not be able to tell
+    "no such employee" from "that employee belongs to another client" -- if
+    they can, they can enumerate the tenancy of every employee id by probing.
+    So both raise with the same wording, and neither names a client the caller
+    was not already authorised for.
+    """
+    theirs = two_clients["theirs"].employee_id
+    missing = 9_999_999
+
+    with pytest.raises(HTTPException) as their_employee:
+        create_attendance_record(db_session, _record("TEN-A", theirs), two_clients["admin"])
+    db_session.rollback()
+    with pytest.raises(HTTPException) as no_employee:
+        create_attendance_record(db_session, _record("TEN-A", missing), two_clients["admin"])
+    db_session.rollback()
+
+    theirs_detail = str(their_employee.value.detail).replace(str(theirs), "<id>")
+    missing_detail = str(no_employee.value.detail).replace(str(missing), "<id>")
+
+    assert theirs_detail == missing_detail, (
+        "the two refusals differ, so a caller can tell an employee of another client from one "
+        f"that does not exist: {theirs_detail!r} vs {missing_detail!r}"
+    )
+    assert their_employee.value.status_code == no_employee.value.status_code
