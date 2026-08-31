@@ -6,7 +6,7 @@ SECURITY: Multi-tenant client filtering enabled
 
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, func
-from typing import Optional, List
+from typing import Any, Optional, List
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 from uuid import uuid4
@@ -29,7 +29,11 @@ from backend.calculations.labor_hours import (
     validate_allocations,
     validate_ot_split,
 )
-from backend.middleware.client_auth import verify_client_access, build_client_filter_clause
+from backend.middleware.client_auth import (
+    build_client_filter_clause,
+    client_token_clause,
+    verify_client_access,
+)
 from backend.orm.user import User
 from backend.db.soft_delete_service import soft_delete_record
 from backend.utils.logging_utils import get_module_logger
@@ -90,6 +94,59 @@ def _build_attendance_responses_batch(db: Session, entries: List[AttendanceEntry
     return [_compose_attendance_response(entry, class_by_employee_id.get(entry.employee_id)) for entry in entries]
 
 
+def _require_employee_belongs_to_client(db: Session, employee_id: Any, client_id: Any) -> None:
+    """Raise unless `employee_id` is assigned to `client_id`.
+
+    `verify_client_access` asks whether the CALLER may write for this client.
+    It does not ask whether the EMPLOYEE belongs to it, and an admin is
+    authorised for every client -- so both checks passed while the row itself
+    was cross-tenant. Foreign keys would not catch it either: the mismatch is
+    COMPOSITE, both ids exist and simply do not belong together.
+
+    Measured before this guard: a body naming client DEMO-HOURLY with an
+    employee assigned to DEMO-PIECE returned 201 and wrote the row, on both
+    the single and bulk paths.
+
+    Membership is tested with `client_token_clause`, the same helper the
+    read-side scoping uses, rather than a fourth hand-rolled comparison:
+    `client_id_assigned` is a comma-separated LIST, `=` would reject a
+    legitimately multi-client employee, and `LIKE` treats `_` and `%` as
+    wildcards -- which matters here, not hypothetically, because the seeded
+    client `SAMPLE_REF` contains one.
+
+    A NULL assignment is left alone: `verify_employee_access` documents it as
+    the shared floating-pool marker, and rejecting it here would stop
+    floating-pool employees having attendance recorded at all.
+
+    Raises `ValueError`, because both call sites already handle one -- the
+    single path converts it to a 422 and the bulk path records it against that
+    row, which is the idiom the endpoint already uses for an invalid OT split.
+    """
+    if not client_id or employee_id is None:
+        return
+
+    employee = db.query(Employee).filter(Employee.employee_id == employee_id).first()
+    if employee is None:
+        raise ValueError(f"employee {employee_id} does not exist")
+
+    if employee.client_id_assigned is None:
+        return
+
+    belongs = (
+        db.query(Employee.employee_id)
+        .filter(
+            Employee.employee_id == employee_id,
+            client_token_clause(Employee.client_id_assigned, str(client_id)),
+        )
+        .first()
+    )
+    if belongs is None:
+        raise ValueError(
+            f"employee {employee_id} is not assigned to client {client_id} "
+            f"(assigned: {employee.client_id_assigned!r})"
+        )
+
+
 def create_attendance_record(
     db: Session, attendance: AttendanceRecordCreate, current_user: User
 ) -> AttendanceRecordResponse:
@@ -100,6 +157,13 @@ def create_attendance_record(
     # SECURITY: Verify user has access to this client
     if hasattr(attendance, "client_id") and attendance.client_id:
         verify_client_access(current_user, attendance.client_id)
+
+    # ... and that the EMPLOYEE belongs to it. The check above is about the
+    # caller, not the row.
+    try:
+        _require_employee_belongs_to_client(db, attendance.employee_id, attendance.client_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     data = attendance.model_dump(exclude={"allocations"})
 
@@ -381,9 +445,14 @@ def bulk_create_attendance_records(db: Session, records: List[AttendanceRecordCr
 
     for idx, record in enumerate(records):
         try:
-            # Validate client access
+            # Validate client access -- of the CALLER...
             if record.client_id:
                 verify_client_access(current_user, record.client_id)
+
+            # ...and of the ROW: an employee of another client would otherwise
+            # be written with a clean 201, since this endpoint answers 201
+            # whatever its rows did.
+            _require_employee_belongs_to_client(db, record.employee_id, record.client_id)
 
             # "allocations" has no matching AttendanceEntry column/kwarg (it's a separate
             # child-table relationship); bulk-create doesn't support labor-hours capture yet.
