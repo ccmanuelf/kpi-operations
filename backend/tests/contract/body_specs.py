@@ -26,7 +26,7 @@ in the status code. `test_write_capture.py` asserts on that, not on 2xx.
 """
 
 from dataclasses import dataclass
-from typing import Any, Callable, Dict
+from typing import Any, Callable, Dict, Literal
 
 from backend.orm.work_order import WorkOrderStatus
 from backend.schemas.qr import QREntityType
@@ -41,12 +41,18 @@ class BodySpec:
     Almost every route takes `json`; a multipart upload takes `files`. Kept as
     a field rather than inferred from the value's shape, so a route that
     happens to build a dict cannot be sent as the wrong kind of request.
+
+    Typed `Literal` rather than `str`: an unconstrained string lets a typo
+    reach `client.request(..., **kwargs)` as an unexpected keyword -- a
+    TypeError inside the harness rather than a readable failure -- or send a
+    route the wrong encoding entirely. `test_write_capture.py` checks the
+    declared key against what the route actually consumes.
     """
 
     key: str
     build: Callable[[Any], Any]
     note: str
-    payload_key: str = "json"
+    payload_key: Literal["json", "data", "files"] = "json"
 
 
 def _forgot_password(resolver: Any) -> Dict[str, Any]:

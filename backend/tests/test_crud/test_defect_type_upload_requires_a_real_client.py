@@ -21,6 +21,7 @@ answering identically for a real and an impossible client.
 """
 
 import pytest
+from fastapi import HTTPException
 
 from backend.crud.defect_type_catalog import bulk_create_defect_types
 from backend.orm.defect_type_catalog import DefectTypeCatalog
@@ -48,17 +49,20 @@ def _count_for(db_session, client_id: str) -> int:
 
 
 def test_a_client_that_does_not_exist_is_refused(db_session, seeded):
-    with pytest.raises(ValueError) as excinfo:
+    """404, and carried by the exception's own status rather than inferred by
+    the route from the message text."""
+    with pytest.raises(HTTPException) as excinfo:
         bulk_create_defect_types(db_session, MISSING, _rows(), seeded["admin"])
 
-    assert "not found" in str(excinfo.value)
+    assert excinfo.value.status_code == 404
+    assert MISSING in str(excinfo.value.detail)
 
 
 def test_the_refusal_leaves_no_orphan_rows(db_session, seeded):
     """The status code is not the point -- the absent row is. A guard that
     raised after the insert would satisfy the test above while leaving exactly
     the data this prevents."""
-    with pytest.raises(ValueError):
+    with pytest.raises(HTTPException):
         bulk_create_defect_types(db_session, MISSING, _rows(), seeded["admin"])
     db_session.rollback()
 
@@ -99,3 +103,22 @@ def test_a_deliberate_4xx_is_not_reported_as_a_server_fault(test_client, seeded)
     assert response.status_code != 500, response.text
     assert response.status_code == 400, response.text
     assert "No valid defect types" in response.text
+
+
+def test_a_non_admin_global_upload_is_403_not_400(db_session, seeded):
+    """An authorisation refusal must not be reported as malformed input.
+
+    It was a ValueError the route mapped to 400 by inspecting the message --
+    and before the error-handling fix, a 500. Neither says what actually
+    happened. Raised with its own 403 at the raise site now, so no caller has
+    to guess a status from prose.
+    """
+    from backend.crud.defect_type_catalog import GLOBAL_CLIENT_ID
+
+    operator = TestDataFactory.create_user(db_session, user_id="DTC-U2", role="operator")
+    db_session.commit()
+
+    with pytest.raises(HTTPException) as excinfo:
+        bulk_create_defect_types(db_session, GLOBAL_CLIENT_ID, _rows(), operator)
+
+    assert excinfo.value.status_code == 403, excinfo.value.detail

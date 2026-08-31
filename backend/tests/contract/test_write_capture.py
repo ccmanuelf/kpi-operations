@@ -263,3 +263,33 @@ def test_the_attendance_capture_exercised_both_branches(harness: _Harness) -> No
         "row 2 failed for a reason other than the allocations rejection this body relies on: "
         f"{payload['errors'][0]['error']!r}"
     )
+
+
+def test_every_payload_key_matches_what_the_route_consumes() -> None:
+    """A spec must not send a route the wrong kind of request.
+
+    `payload_key` is typed `Literal["json", "data", "files"]`, which stops a
+    typo, but not a valid key aimed at the wrong route -- a JSON body sent as
+    `files`, or a multipart route sent `json`, both of which 422 and record
+    that 422 as the route's contract.
+
+    FastAPI distinguishes the two structurally: an `UploadFile` parameter
+    lands in `dependant.body_params` with a form-ish field type, while a
+    Pydantic model body does not. So the declaration is checked against the
+    route rather than trusted.
+    """
+    from backend.main import app
+
+    index = route_index(app)
+    wrong = {}
+    for route_key, spec in BODY_REGISTRY.items():
+        route = index[route_key]
+        takes_upload = any(
+            "UploadFile" in str(getattr(param, "annotation", "") or getattr(param.field_info, "annotation", ""))
+            for param in route.dependant.body_params
+        )
+        expected = "files" if takes_upload else "json"
+        if spec.payload_key != expected:
+            wrong[route_key] = {"declared": spec.payload_key, "route wants": expected}
+
+    assert not wrong, f"payload_key disagrees with the route's own body params: {wrong}"

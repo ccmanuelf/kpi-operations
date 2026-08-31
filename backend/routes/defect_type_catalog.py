@@ -185,11 +185,12 @@ async def upload_defect_types_csv(
         # the `try` for a non-CSV filename, answered 400 correctly.
         raise
     except ValueError as exc:
-        # `bulk_create_defect_types` signals refusals this way: an unknown
-        # client, or a non-admin attempting a global upload. They are the
-        # caller's problem, not a server fault.
-        detail = str(exc)
-        raise HTTPException(status_code=404 if "not found" in detail else 400, detail=detail) from exc
+        # Genuine validation failures from the CSV rows. Refusals that carry
+        # their own meaning -- an unknown client, a non-admin attempting a
+        # global upload -- are raised as HTTPExceptions at their own raise
+        # sites and pass through the clause above, so this does NOT have to
+        # guess a status by inspecting the message.
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as e:
         logger.exception("Failed to process defect type catalog: %s", e)
         raise HTTPException(status_code=500, detail="Failed to process defect type catalog")

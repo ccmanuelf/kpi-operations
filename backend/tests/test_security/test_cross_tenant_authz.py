@@ -413,3 +413,24 @@ class TestCrossTenantByIdRoutes:
         response = tenant_a_client.get("/api/employees")
         assert response.status_code == 200
         assert TENANT_B not in response.text, f"unscoped employee listing leaked tenant B: {response.text[:200]}"
+
+
+def test_no_route_answers_a_cross_tenant_probe_with_a_server_error() -> None:
+    """`CROSS_TENANT_5XX_KNOWN` is empty, and must stay that way.
+
+    An escape hatch that is allowed to grow stops being a record of known
+    problems and becomes the easy way past this suite: the next route that
+    5xxs on a cross-tenant probe gets declared rather than fixed. It held one
+    entry -- `POST /api/defect-types/upload/{client_id}`, whose
+    `except Exception` swallowed ClientAccessError into a 500, so it denied the
+    caller but reported the denial as a server fault. That handler now
+    re-raises HTTPException, the probe gets its 403, and the dict emptied.
+
+    Adding an entry should mean deliberately editing this assertion and saying
+    why, not quietly extending a dict.
+    """
+    assert CROSS_TENANT_5XX_KNOWN == {}, (
+        "a route is answering a cross-tenant probe with a 5xx. Denying is right; reporting the "
+        "denial as a server error is not -- fix the handler rather than declaring it here: "
+        f"{CROSS_TENANT_5XX_KNOWN}"
+    )
