@@ -63,3 +63,10 @@ previous SHA.
 hook rewrites) BEFORE `git commit`. After any commit whose hook output contains
 `files were modified by this hook`, verify with `git rev-parse --short HEAD`
 before doing anything that depends on the commit existing.
+
+**Generalised (third occurrence):** it is not only black. ANY failing
+pre-commit hook aborts the commit — flake8 caught a duplicate import once and
+the same thing happened: `ok N files changed` printed, HEAD had not moved, and
+the subsequent `cross-review-mark` + `git push` both landed on the PREVIOUS
+commit. Treat `git commit` as unverified until `git rev-parse --short HEAD`
+shows a new sha. Run black AND flake8 locally first.

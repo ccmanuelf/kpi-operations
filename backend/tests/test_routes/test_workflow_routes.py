@@ -14,6 +14,7 @@ Tests cover:
 import pytest
 from datetime import datetime, timedelta, timezone
 from unittest.mock import Mock, patch
+from types import SimpleNamespace
 
 
 # Mock user for authentication
@@ -42,9 +43,21 @@ class TestTransitionWorkOrder:
     """Test POST /api/workflow/work-orders/{id}/transition"""
 
     def test_transition_work_order_success(self):
-        """Test successful work order transition"""
+        """The handler returns a VALIDATED `WorkOrderTransitionResult`.
+
+        This test used to patch the CRUD with `{"work_order": Mock(),
+        "transition": Mock(), "success": True}` and assert `result["success"]`.
+        A Mock satisfies any attribute access, so it passed for as long as the
+        route was returning raw ORM objects under `response_model=Dict` -- the
+        state in which every real transition answered 500 after committing.
+        Green on a payload no real caller could receive.
+
+        It now feeds field values a real response actually carries and asserts
+        the handler hands back the declared model, so the same substitution
+        cannot hide the same defect again.
+        """
         from backend.routes.workflow import transition_work_order_status
-        from backend.schemas.workflow import WorkflowStatusEnum
+        from backend.schemas.workflow import WorkflowStatusEnum, WorkOrderTransitionResult
 
         mock_db = Mock()
         mock_user = create_mock_user()
@@ -53,14 +66,45 @@ class TestTransitionWorkOrder:
         transition.to_status = WorkflowStatusEnum.RELEASED
         transition.notes = "Test transition"
 
+        work_order = SimpleNamespace(
+            work_order_id="WO-001",
+            client_id="CLIENT-001",
+            style_model="STYLE-1",
+            planned_quantity=10,
+            actual_quantity=0,
+            status="RELEASED",
+            created_at=datetime(2026, 8, 25, tzinfo=timezone.utc),
+            updated_at=datetime(2026, 8, 25, tzinfo=timezone.utc),
+        )
+        transition_row = SimpleNamespace(
+            transition_id=1,
+            work_order_id="WO-001",
+            client_id="CLIENT-001",
+            from_status="RECEIVED",
+            to_status="RELEASED",
+            transitioned_by="USER-1",
+            transitioned_at=datetime(2026, 8, 25, tzinfo=timezone.utc),
+            notes="Test transition",
+            trigger_source=None,
+        )
+
         with patch("backend.routes.workflow.transition_work_order") as mock_func:
-            mock_func.return_value = {"work_order": Mock(), "transition": Mock(), "success": True}
+            mock_func.return_value = {
+                "work_order": work_order,
+                "transition": transition_row,
+                "success": True,
+            }
 
             result = transition_work_order_status(
                 work_order_id="WO-001", transition=transition, db=mock_db, current_user=mock_user
             )
 
-            assert result["success"] is True
+            assert isinstance(result, WorkOrderTransitionResult)
+            assert result.success is True
+            assert result.work_order.work_order_id == "WO-001"
+            assert result.transition.to_status == "RELEASED"
+            # The original failure was at JSON encoding, not attribute access.
+            assert result.model_dump_json()
             mock_func.assert_called_once()
 
 

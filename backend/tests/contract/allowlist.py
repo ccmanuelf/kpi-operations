@@ -17,7 +17,6 @@ ALLOWLIST = {
     "POST /api/reports/send-manual",
     "POST /api/workflow/bulk-transition",
     "POST /api/workflow/config/{client_id}/apply-template",
-    "POST /api/workflow/work-orders/{work_order_id}/transition",
     "POST /api/workflow/work-orders/{work_order_id}/validate",
     "PUT /api/kpi-thresholds",
     "PUT /api/workflow/config/{client_id}",
