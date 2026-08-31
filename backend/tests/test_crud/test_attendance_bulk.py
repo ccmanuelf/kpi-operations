@@ -97,13 +97,22 @@ class TestBulkCreateAttendanceRecords:
         # Create operator user for CLIENT-B (no access to BULK-ATT-C1)
         TestDataFactory.create_client(db, client_id="BULK-OTHER-C", client_name="Other")
         operator = TestDataFactory.create_user(db, username="bulk_operator", role="operator", client_id="BULK-OTHER-C")
+        # An employee OF that client. This test is about mixed AUTHORIZATION --
+        # one row the operator may write, one they may not -- and it used to
+        # reach for `employees[0]`, who belongs to BULK-ATT-C1. That made its
+        # "valid" row cross-tenant, so the test asserted that a cross-tenant
+        # write succeeds, and kept passing while `bulk_create_attendance_records`
+        # accepted an employee of another client.
+        other_employee = TestDataFactory.create_employee(
+            db, client_id="BULK-OTHER-C", employee_name="Other Client Employee"
+        )
         db.flush()
 
         records = [
             # Valid record for the operator's client
             AttendanceRecordCreate(
                 client_id="BULK-OTHER-C",
-                employee_id=employees[0].employee_id,
+                employee_id=other_employee.employee_id,
                 shift_date=date.today(),
                 shift_id=shift.shift_id,
                 scheduled_hours=Decimal("8.0"),
