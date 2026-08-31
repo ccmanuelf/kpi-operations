@@ -76,7 +76,7 @@ def transition_work_order_status(
     transition: WorkflowTransitionCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_supervisor),
-) -> Dict[str, Any]:
+) -> WorkOrderTransitionResult:
     """
     Transition a work order to a new status.
 
@@ -92,8 +92,20 @@ def transition_work_order_status(
         current_user=current_user,
         notes=transition.notes,
     )
+    # Validate BEFORE committing, not after.
+    #
+    # FastAPI validates `response_model` once the endpoint has returned, which
+    # is unavoidably after any commit inside it. That is how this route came to
+    # answer 500 with the transition already persisted. Doing the validation
+    # here inverts the order: a payload the model cannot serialize raises while
+    # the transaction is still open, so the request fails without having moved
+    # the work order, and the caller's 500 means what it says.
+    #
+    # The returned instance is already validated, so FastAPI's own pass over it
+    # cannot fail for a reason this one would not have caught first.
+    validated = WorkOrderTransitionResult.model_validate(result)
     db.commit()
-    return result
+    return validated
 
 
 @router.post("/work-orders/{work_order_id}/validate", response_model=Dict)
