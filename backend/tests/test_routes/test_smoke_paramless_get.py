@@ -47,6 +47,18 @@ from backend.main import app
 _SKIP_PATHS: Set[str] = set()
 
 
+def _demo_password_hash() -> str:
+    """Hash of the seeder's demo password, computed with the app's own hasher.
+
+    Derived rather than pasted: a checked-in hash would be a credential in the
+    repo and would silently stop matching if the hashing scheme changed.
+    """
+    from backend.auth.jwt import get_password_hash
+    from backend.seed.scenarios import DEMO_PASSWORD
+
+    return get_password_hash(DEMO_PASSWORD)
+
+
 def _mock_admin() -> SimpleNamespace:
     """Mock admin user for routes that pass through `Depends(get_current_user)`.
 
@@ -68,6 +80,14 @@ def _mock_admin() -> SimpleNamespace:
         role="admin",
         client_id="ACME-MFG",
         client_id_assigned=None,
+        # Credentials. A REAL hash of the seeded demo password, not a
+        # placeholder: `POST /api/auth/change-password` reads
+        # `current_user.password_hash` and verifies against it. A
+        # SimpleNamespace without the attribute raises AttributeError inside
+        # the route, which surfaces as a 500 -- and the contract harness
+        # recorded that 500 as the route's answer. The route handles a None
+        # hash; it cannot handle a missing one.
+        password_hash=_demo_password_hash(),
         # State
         is_active=True,
         # Timestamps

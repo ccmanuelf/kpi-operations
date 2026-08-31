@@ -349,15 +349,6 @@ DEFERRED_TO_WRITE_CAPTURE: FrozenSet[str] = frozenset(
         # stubbed for capture -- a decision taken separately from this layer.
         "POST /api/reports/email-config/test",
         "POST /api/reports/send-manual",
-        # Body is a raw dict the route hands to an image encoder; the response
-        # is a PNG stream, so the capture records `<non-json>` either way and
-        # a body buys nothing.
-        "POST /api/qr/generate/image",
-        # The mock principal is a SimpleNamespace with no `password_hash`, so
-        # the route AttributeErrors into a 500 before it can be asked anything.
-        # Fixing that is a change to who the harness authenticates AS, which is
-        # its own piece of work.
-        "POST /api/auth/change-password",
         # Wants two ids that must agree (client_id and employee_id) and the
         # existing employee spec resolves a DIFFERENT client's employee. Needs
         # an `employee_id@client-consistent` spec first, exactly as

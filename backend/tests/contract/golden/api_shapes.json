@@ -1359,7 +1359,7 @@
     "total_employees"
   ],
   "POST /api/auth/change-password": [
-    "<status:422>"
+    "message"
   ],
   "POST /api/auth/forgot-password": [
     "message"
@@ -1430,7 +1430,7 @@
     "total_records"
   ],
   "POST /api/qr/generate/image": [
-    "<status:422>"
+    "<non-json>"
   ],
   "POST /api/reports/email-config/test": [
     "<status:422>"

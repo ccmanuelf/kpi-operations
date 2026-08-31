@@ -115,7 +115,11 @@ OUT_OF_SCOPE_ROUTES: Dict[str, ScopeEntry] = {
     ),
     "POST /api/qr/generate/image": ScopeEntry(
         "-> Response wrapping a raw PNG QR image. A POST, deliberately: the scope "
-        "rule is about whether a route has a JSON body, never about its method."
+        "rule is about whether a route has a JSON body, never about its method. "
+        "Declared here long before it was ever OBSERVED streaming -- until write "
+        "capture sent it an entity_type/entity_id its golden entry was "
+        "`<status:422>`, so this note rested on the annotation alone. The capture "
+        "now confirms it."
     ),
     # --- 204 No Content DELETEs ------------------------------------------
     "DELETE /api/attendance/{attendance_id}": ScopeEntry(

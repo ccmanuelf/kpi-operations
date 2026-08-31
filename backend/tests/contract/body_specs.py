@@ -29,6 +29,7 @@ from dataclasses import dataclass
 from typing import Any, Callable, Dict
 
 from backend.orm.work_order import WorkOrderStatus
+from backend.schemas.qr import QREntityType
 from backend.schemas.workflow import ClosureTriggerEnum
 
 
@@ -52,6 +53,17 @@ def _workflow_config(resolver: Any) -> Dict[str, Any]:
 def _kpi_thresholds(resolver: Any) -> Dict[str, Any]:
     client_id = resolver.resolve_query("client_id", "/api/kpi-thresholds")
     return {"client_id": client_id, "thresholds": {"fpy": {"target_value": 85.0}}}
+
+
+def _change_password(resolver: Any) -> Dict[str, Any]:
+    from backend.seed.scenarios import DEMO_PASSWORD
+
+    return {"current_password": DEMO_PASSWORD, "new_password": DEMO_PASSWORD}
+
+
+def _qr_image(resolver: Any) -> Dict[str, Any]:
+    work_order_id = resolver.resolve("work_order_id", "/api/qr/generate/image")
+    return {"entity_type": QREntityType.WORK_ORDER.value, "entity_id": work_order_id}
 
 
 def _work_order_transition(resolver: Any) -> Dict[str, Any]:
@@ -101,6 +113,31 @@ BODY_REGISTRY: Dict[str, BodySpec] = {
         "precisely what GET /api/kpi-thresholds reads -- its golden `thresholds` is currently an "
         "empty key and would silently gain entries. `thresholds` must be non-empty or "
         "`updated_kpis` comes back empty and records no shape.",
+    ),
+    "POST /api/auth/change-password": BodySpec(
+        key="POST /api/auth/change-password",
+        build=_change_password,
+        note="Re-sends the SAME password as both current and new, deliberately. The route "
+        "verifies `current_password` against the principal's hash and then rehashes the new one, "
+        "so a different value would leave the seeded credential unusable for any later capture "
+        "that logs in. `DEMO_PASSWORD` is imported from the seeder, not pasted.\n\n"
+        "This route answered 500 until the harness's mock principal gained a `password_hash`: it "
+        "is a SimpleNamespace, and the route reads that attribute. The route handles a None hash "
+        "and cannot handle a MISSING one, so the AttributeError surfaced as a 500 that the "
+        "golden master recorded as the route's answer. Fixed at the mock, not deferred -- the "
+        "500 was ours.",
+    ),
+    "POST /api/qr/generate/image": BodySpec(
+        key="POST /api/qr/generate/image",
+        build=_qr_image,
+        note="`entity_id` is the seeded work order, resolved through the path registry rather "
+        "than invented -- the encoder embeds it, and a made-up id would be a made-up contract. "
+        "`QREntityType` is imported. Returns a PNG, so the entry is `<non-json>` -- a SUCCESS, "
+        "not a gap. It "
+        "was briefly deferred on the reasoning that 'the response is a stream so a body buys "
+        "nothing', and that was wrong: without a body the route 422s, and a 422 is the harness's "
+        "omission recorded as the route's answer. `<non-json>` is the honest entry and only a "
+        "valid body reaches it.",
     ),
     "POST /api/workflow/work-orders/{work_order_id}/transition": BodySpec(
         key="POST /api/workflow/work-orders/{work_order_id}/transition",

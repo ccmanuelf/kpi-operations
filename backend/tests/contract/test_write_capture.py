@@ -17,6 +17,13 @@ from backend.tests.contract.test_query_resolution import _is_required
 
 GOLDEN = Path(__file__).parent / "golden" / "api_shapes.json"
 
+#: Registered routes whose successful answer is a byte stream, not JSON. Their
+#: golden entry is `<non-json>`, and that is a SUCCESS -- it is what the route
+#: returns. Distinguished from a `<status:...>` placeholder, which means the
+#: harness never got a real answer at all. Named rather than pattern-matched,
+#: so a route that stops streaming fails instead of being waved through.
+STREAMS_A_BODY = frozenset({"POST /api/qr/generate/image"})
+
 
 def _golden() -> Dict[str, List[str]]:
     data: Dict[str, List[str]] = json.loads(GOLDEN.read_text())
@@ -76,10 +83,35 @@ def test_the_bodies_produced_real_shapes_not_merely_2xx(captured_shapes: Dict[st
     bad = {}
     for route_key in BODY_REGISTRY:
         shape = captured_shapes.get(route_key)
+        if route_key in STREAMS_A_BODY:
+            # A stream's honest answer IS `<non-json>`; anything else means the
+            # body was wrong or the route stopped streaming.
+            if shape != ["<non-json>"]:
+                bad[route_key] = shape
+            continue
         if not shape or str(shape[0]).startswith("<"):
             bad[route_key] = shape
 
     assert not bad, f"registered a body but captured no real shape: {bad}"
+
+
+def test_the_streaming_declarations_still_describe_streaming_routes(
+    captured_shapes: Dict[str, List[str]],
+) -> None:
+    """The other side of `STREAMS_A_BODY`.
+
+    Declaring a route as streaming exempts it from the real-shape assertion
+    above, so a stale entry would hide a route that quietly started returning
+    JSON -- and its fields would go uncaptured while the gate stayed green.
+    """
+    not_streaming = {
+        route: captured_shapes.get(route) for route in STREAMS_A_BODY if captured_shapes.get(route) != ["<non-json>"]
+    }
+
+    assert not not_streaming, (
+        f"declared as streaming but no longer answers <non-json> -- capture the real shape "
+        f"and drop the declaration: {not_streaming}"
+    )
 
 
 def test_the_known_empty_list_gap_is_still_exactly_one_field(captured_shapes: Dict[str, List[str]]) -> None:
@@ -127,3 +159,36 @@ def test_kpi_thresholds_wrote_a_scoped_row_not_a_global_one(harness: _Harness) -
         global_rows = connection.execute(sa.text("SELECT COUNT(*) FROM KPI_THRESHOLD WHERE client_id IS NULL")).scalar()
 
     assert global_rows == 0, "the capture wrote a global threshold row, which GET /api/kpi-thresholds reads"
+
+
+def test_the_isolated_phase_is_order_independent(harness: _Harness) -> None:
+    """Reversing the isolated phase must not change a single shape.
+
+    Bodies made this question sharp. `PUT /api/workflow/config/{client_id}`
+    and `POST .../apply-template` write the SAME CLIENT_CONFIG row, and that
+    row drives the workflow state machine for allowed-transitions, validate
+    and transition. The transition body drives DEMO-HOURLY-WO-0001 to CLOSED,
+    a terminal status several other golden routes read. If `restore()` per
+    request were not enough, the capture would depend on the order routes
+    happen to be planned in -- and the golden master would look stable while
+    resting on an accident.
+
+    Stronger than `test_the_isolated_phase_restores_between_mutations`, which
+    drives ONE route twice: that proves a route does not contaminate itself.
+    This proves no route contaminates any other, which is what writing bodies
+    put at risk. Measured: 45 isolated routes, 0 differences.
+    """
+    from backend.tests.contract.capture import capture_isolated
+
+    plan = harness.plan
+    forward = capture_isolated(harness.client, plan.isolated, plan.urls, harness.restore)
+    reverse = capture_isolated(harness.client, list(reversed(plan.isolated)), plan.urls, harness.restore)
+
+    divergent = {
+        route: {"forward": forward.get(route), "reversed": reverse.get(route)}
+        for route in set(forward) | set(reverse)
+        if forward.get(route) != reverse.get(route)
+    }
+
+    assert plan.isolated, "no isolated routes -- this test would pass on nothing"
+    assert not divergent, f"shapes depend on capture order: {divergent}"
