@@ -300,7 +300,15 @@ def test_a_2xx_is_proof_the_id_was_right_except_where_declared(
     # write capture sends it a body (`body_specs.BODY_REGISTRY`). It is the only
     # one of the four new body routes carrying a path param, so it is the only
     # one this count sees.
-    assert len(succeeded) == 52
+    # 53, up from 52: `POST /api/defect-types/upload/{client_id}` answers now
+    # that the registry can express a multipart body. It is the only one of the
+    # three routes un-deferred alongside it that carries a path param.
+    #
+    # It arrived here id-INSENSITIVE -- the same 200 for a real client and for
+    # NO-SUCH-CLIENT-XYZ, with the DEFECT_TYPE_CATALOG row written either way.
+    # Guarded now in `crud/defect_type_catalog.py`, so it discriminates and
+    # needs no NEVER_404 entry.
+    assert len(succeeded) == 53
     # Third side, and the one that keeps the other two honest: a route whose
     # probe URL equals its real URL was compared against ITSELF, so it lands in
     # `id_insensitive` for free and its NEVER_404 membership proves nothing.

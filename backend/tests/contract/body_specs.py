@@ -35,11 +35,18 @@ from backend.schemas.workflow import ClosureTriggerEnum
 
 @dataclass(frozen=True)
 class BodySpec:
-    """One route's request body, and why it is that body."""
+    """One route's request body, and why it is that body.
+
+    `payload_key` names the httpx keyword the built value is passed under.
+    Almost every route takes `json`; a multipart upload takes `files`. Kept as
+    a field rather than inferred from the value's shape, so a route that
+    happens to build a dict cannot be sent as the wrong kind of request.
+    """
 
     key: str
     build: Callable[[Any], Any]
     note: str
+    payload_key: str = "json"
 
 
 def _forgot_password(resolver: Any) -> Dict[str, Any]:
@@ -53,6 +60,26 @@ def _workflow_config(resolver: Any) -> Dict[str, Any]:
 def _kpi_thresholds(resolver: Any) -> Dict[str, Any]:
     client_id = resolver.resolve_query("client_id", "/api/kpi-thresholds")
     return {"client_id": client_id, "thresholds": {"fpy": {"target_value": 85.0}}}
+
+
+def _reset_password(resolver: Any) -> Dict[str, Any]:
+    from backend.auth.jwt import create_access_token
+    from backend.seed.scenarios import DEMO_PASSWORD
+
+    username = resolver.resolve_query("username", "/api/auth/reset-password")
+    token = create_access_token({"sub": username, "type": "password_reset"})
+    return {"token": token, "new_password": DEMO_PASSWORD}
+
+
+def _bulk_transition(resolver: Any) -> Dict[str, Any]:
+    route = "/api/workflow/bulk-transition"
+    work_order_id = resolver.resolve_query("work_order_id", route)
+    return {"work_order_ids": [work_order_id], "to_status": WorkOrderStatus.CLOSED.value}
+
+
+def _defect_types_upload(resolver: Any) -> Dict[str, Any]:
+    csv = b"defect_code,defect_name\nCONTRACT-CAPTURE,Contract Capture Defect\n"
+    return {"file": ("contract-capture.csv", csv, "text/csv")}
 
 
 def _attendance_bulk(resolver: Any) -> Any:
@@ -145,6 +172,48 @@ BODY_REGISTRY: Dict[str, BodySpec] = {
         "which selects an employee OF that client. Nothing in the route enforces the pairing and "
         "the harness runs without FK enforcement, so a mismatch would write a cross-tenant "
         "attendance row and still answer 201.",
+    ),
+    "POST /api/auth/reset-password": BodySpec(
+        key="POST /api/auth/reset-password",
+        build=_reset_password,
+        note="The token is MINTED, not checked in. It was briefly deferred on the reasoning that "
+        "the route 'needs a token minted at request time, and a checked-in literal is green "
+        "locally and red in CI' -- true of a literal, and irrelevant here: `build` runs at plan "
+        "time, which is run time, so `create_access_token` produces a fresh token from the live "
+        "SECRET_KEY every run. Nobody proposed a literal.\n\n"
+        "`new_password` is the seeded DEMO_PASSWORD, i.e. the value the user already has. The "
+        "route really does rewrite USER.password_hash, and the isolated phase restores it -- but "
+        "re-sending the same password means even an unrestored run leaves the seeded credential "
+        "usable for any later capture that logs in.\n\n"
+        'The `"password_reset"` type claim the route checks is an inline literal at '
+        "routes/auth.py; there is no constant to import, so this spec cannot derive it.",
+    ),
+    "POST /api/workflow/bulk-transition": BodySpec(
+        key="POST /api/workflow/bulk-transition",
+        build=_bulk_transition,
+        note="Deferred, wrongly, on the reasoning that it 'shares DEMO-HOURLY-WO-0001 with the "
+        "single-transition route and drives it terminal, so both in one capture would make the "
+        "pair order-dependent'. `test_the_isolated_phase_is_order_independent` -- written after "
+        "that reason and captured forward and reversed across 45 routes -- shows zero "
+        "differences. restore() per request already handles it.\n\n"
+        "KNOWN SHAPE GAP, declared rather than papered over: `results[]` is recursed into at "
+        "element 0 only, and the two element shapes are DISJOINT -- a success carries "
+        "{work_order_id, success, from_status, to_status}, a failure {work_order_id, success, "
+        "error}. No single body captures both, so the SUCCESS branch is what is recorded. "
+        "Leading with a bogus id to capture the other branch would record the failure shape as "
+        "the route's contract, which is worse.",
+    ),
+    "POST /api/defect-types/upload/{client_id}": BodySpec(
+        key="POST /api/defect-types/upload/{client_id}",
+        build=_defect_types_upload,
+        payload_key="files",
+        note='multipart/form-data, which was the deferral reason -- \'kwargs["json"] cannot '
+        "express an UploadFile'. Half true and not a blocker: httpx takes `files=`, and "
+        "`capture_all` already forwards **kwargs, so the registry only had to be able to SAY "
+        "which keyword to use. Hence `payload_key`.\n\n"
+        "The CSV is a literal, deliberately: it is input the caller supplies, not a seeded row, "
+        "and its `defect_code` is named for the harness so a reader of DEFECT_TYPE_CATALOG can "
+        "see where the row came from. `replace_existing` is left at its default.",
     ),
     "POST /api/auth/change-password": BodySpec(
         key="POST /api/auth/change-password",

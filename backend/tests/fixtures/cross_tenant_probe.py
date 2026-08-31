@@ -438,13 +438,14 @@ CROSS_TENANT_2XX_ALLOWED: dict[tuple[str, str], str] = {
 #: denial: these three had no tenant check at all and only looked safe because
 #: they blew up. Kept so the taxonomy stays explicit and the day they stop
 #: crashing, the guard re-classifies them instead of staying quiet.
-CROSS_TENANT_5XX_KNOWN: dict[tuple[str, str], str] = {
-    ("POST", "/api/defect-types/upload/{client_id}"): (
-        "the route's `except Exception` swallows ClientAccessError into a 500 "
-        "'Failed to process defect type catalog' — it denies, but reports the "
-        "denial as a server error"
-    ),
-}
+#: Empty, and worth keeping empty. Its one entry was
+#: `POST /api/defect-types/upload/{client_id}`, whose `except Exception` sat
+#: below the deliberate 4xx answers and swallowed ClientAccessError into a 500
+#: -- it denied the cross-tenant caller, but reported the denial as a server
+#: fault. The handler now re-raises HTTPException and maps ValueError, so the
+#: probe gets the 403 it always should have, and the entry is gone rather than
+#: relaxed.
+CROSS_TENANT_5XX_KNOWN: dict[tuple[str, str], str] = {}
 
 
 #: Quantities that must differ between the tenants; a symmetric fixture makes

@@ -498,5 +498,5 @@ def _params_kwarg(resolver: Resolver, path: str, route: Any, route_key: str = ""
         kwargs["params"] = query
     spec = BODY_REGISTRY.get(route_key)
     if spec is not None:
-        kwargs["json"] = spec.build(resolver)
+        kwargs[spec.payload_key] = spec.build(resolver)
     return kwargs

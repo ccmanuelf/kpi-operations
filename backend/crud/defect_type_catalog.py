@@ -11,6 +11,7 @@ from typing import Optional, List
 from datetime import datetime, timezone
 import uuid
 
+from backend.orm.client import Client
 from backend.orm.defect_type_catalog import DefectTypeCatalog
 from backend.schemas.defect_type_catalog import (
     DefectTypeCatalogCreate,
@@ -200,6 +201,19 @@ def bulk_create_defect_types(
             raise ValueError("Only admins can bulk create global defect types")
     else:
         verify_client_access(current_user, client_id)
+        # ...and the client must exist. `verify_client_access` asks whether the
+        # CALLER may act for this client and an admin passes for every one,
+        # including clients that are not there -- so an arbitrary path segment
+        # created DEFECT_TYPE_CATALOG rows keyed to a client nobody can ever
+        # look up. Measured before this guard: uploading to
+        # `/api/defect-types/upload/NO-SUCH-CLIENT-XYZ` answered 200 with
+        # created=1 and the row landed.
+        #
+        # Same shape as the orphan CLIENT_CONFIG rows the workflow-config write
+        # paths used to create. Global ids are exempt above by design: they name
+        # no client row.
+        if db.query(Client.client_id).filter(Client.client_id == client_id).first() is None:
+            raise ValueError(f"Client '{client_id}' not found")
 
     if replace_existing:
         # Deactivate all existing defect types for this client.
