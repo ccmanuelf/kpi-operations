@@ -31,8 +31,22 @@ from backend.tests.contract.param_resolution import Resolver
 EMAIL_ROUTES = ("POST /api/reports/email-config/test", "POST /api/reports/send-manual")
 
 
+@pytest.fixture(scope="module")
+def calls_made_during_capture(captured_shapes: Dict[str, List[str]]) -> List[str]:
+    """A SNAPSHOT of the stub's call log, taken right after the capture.
+
+    `StubbedEmailService.calls` is class-level and the harness resets it once
+    per module. Asserting against the live list would make the check
+    order-dependent: the SMTP test below drives both routes too, so if it ran
+    first its calls would satisfy an assertion meant to be about the capture.
+    Snapshotting binds the evidence to the moment that matters.
+    """
+    return list(StubbedEmailService.calls)
+
+
 def test_the_capture_reached_the_stub_and_not_the_real_service(
     captured_shapes: Dict[str, List[str]],
+    calls_made_during_capture: List[str],
 ) -> None:
     """Both routes answered, and the stub recorded both calls.
 
@@ -44,30 +58,53 @@ def test_the_capture_reached_the_stub_and_not_the_real_service(
         shape = captured_shapes.get(route)
         assert shape and not str(shape[0]).startswith("<"), f"{route} did not answer: {shape}"
 
-    assert "send_test_email" in StubbedEmailService.calls, StubbedEmailService.calls
-    assert "send_kpi_report" in StubbedEmailService.calls, StubbedEmailService.calls
+    assert "send_test_email" in calls_made_during_capture, calls_made_during_capture
+    assert "send_kpi_report" in calls_made_during_capture, calls_made_during_capture
 
 
-def test_the_routes_still_answer_with_smtp_made_unusable(harness: _Harness) -> None:
-    """The real guarantee: no socket is attempted at all.
+def test_the_routes_still_answer_with_every_transport_made_unusable(harness: _Harness) -> None:
+    """The real guarantee: no transport is reached at all.
 
-    `smtplib.SMTP` is replaced with something that raises on construction. If
-    any path still reaches a transport, these requests fail -- and if the stub
-    is doing its job, breaking SMTP changes nothing. This is what a
-    stub-is-installed assertion cannot tell you.
+    Breaking `smtplib.SMTP` alone would prove less than it looks. `EmailService`
+    has TWO paths -- SMTP, and SendGrid over HTTPS when SENDGRID_API_KEY is set
+    (`use_sendgrid` in its constructor) -- so an SMTP-only patch would pass on a
+    CI runner that happened to have that key configured, while the capture
+    posted to SendGrid.
+
+    So EVERY transport it can construct is broken here: `smtplib.SMTP`,
+    `smtplib.SMTP_SSL`, and the SendGrid client when that package is installed.
+
+    Not `EmailService.__init__`, which would be the obvious single point --
+    the harness has already replaced that NAME with the stub, so breaking it
+    breaks the stub and the test proves nothing. (Tried; it failed for exactly
+    that reason.) The transports are the honest instrument: they are what a
+    real send has to reach, whichever class builds it.
+
+    If the stub is doing its job, none of this changes anything.
     """
     import smtplib
 
     resolver = Resolver(engine=harness.engine)
 
     def _explode(*args: object, **kwargs: object) -> None:
-        raise AssertionError("the capture tried to open an SMTP connection")
+        raise AssertionError("the capture tried to reach a mail transport")
 
     # `setattr`, not a direct assignment: mypy rejects rebinding a class name,
     # and the point here is to break the transport for the duration, not to
     # convince the type checker that smtplib has a different shape.
-    original = smtplib.SMTP
-    setattr(smtplib, "SMTP", _explode)
+    broken: list = []
+    for module_name, attribute in (("smtplib", "SMTP"), ("smtplib", "SMTP_SSL")):
+        module = smtplib
+        broken.append((module, attribute, getattr(module, attribute)))
+        setattr(module, attribute, _explode)
+    try:
+        import sendgrid  # noqa: F401  -- optional dependency
+
+        broken.append((sendgrid, "SendGridAPIClient", sendgrid.SendGridAPIClient))
+        setattr(sendgrid, "SendGridAPIClient", _explode)
+    except ImportError:
+        pass
+
     try:
         for route in EMAIL_ROUTES:
             harness.restore()
@@ -76,7 +113,8 @@ def test_the_routes_still_answer_with_smtp_made_unusable(harness: _Harness) -> N
             response = harness.client.post(path, json=body)
             assert response.status_code == 200, f"{route} -> {response.status_code} {response.text[:160]}"
     finally:
-        setattr(smtplib, "SMTP", original)
+        for module, attribute, original in broken:
+            setattr(module, attribute, original)
 
 
 def test_no_recipient_is_a_real_address(harness: _Harness) -> None:
