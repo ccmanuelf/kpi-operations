@@ -9,7 +9,7 @@ ROOT="$(git rev-parse --show-toplevel)"
 # --platform linux/amd64 pins generation to the CI/Render/Docker target arch so
 # the lock is byte-identical regardless of the maintainer's host arch.
 docker run --rm --platform linux/amd64 -v "$ROOT/backend:/work" -w /work "$IMAGE" sh -ec '
-  pip install --quiet --no-cache-dir pip-tools==7.5.3
+  pip install --quiet --no-cache-dir pip-tools==7.6.1
   pip-compile --generate-hashes --no-header --output-file=requirements.lock requirements.txt
   pip-compile --generate-hashes --no-header --output-file=requirements-dev.lock requirements-dev.txt
 '

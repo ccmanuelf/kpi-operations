@@ -4,12 +4,12 @@
 # Core Framework
 fastapi==0.141.1
 starlette==1.3.1       # PYSEC-2026-161 fix (transitive via fastapi; was 0.52.1)
-uvicorn[standard]==0.52.1
+uvicorn[standard]==0.52.4
 pydantic[email]==2.13.4
 pydantic-settings==2.15.0  # GHSA-4xgf-cpjx-pc3j (disclosed 2026-06-21); 2.14.1 vulnerable
 
 # Database
-sqlalchemy==2.0.51
+sqlalchemy==2.0.52
 alembic==1.19.1
 pymysql==1.2.0
 cryptography==50.0.0  # GHSA-m2h6-j472-rp4c/GHSA-g6cj-pr64-35w5/GHSA-jwv3-5hgf-82ww (2026-08) + prior CVEs; pinned for pymysql SSL; security-critical
@@ -23,7 +23,7 @@ bcrypt==5.0.0          # Retained for legacy-hash verification path (rehash-on-v
 python-multipart==0.0.32  # GHSA-v9pg-7xvm-68hf + GHSA-5rvq-cxj2-64vf + GHSA-6jv3-5f52-599m + prior CVEs
 
 # CORS & Security
-python-dotenv==1.2.2   # CVE-2026-28684 fix
+python-dotenv==1.2.3   # CVE-2026-28684 fix
 slowapi==0.1.10
 
 # Date Utilities
@@ -49,7 +49,7 @@ qrcode[pil]==8.2
 simpy==4.1.2
 
 # Production WSGI/ASGI process manager (VM compose stack; Render stays on plain uvicorn)
-gunicorn==26.0.0
+gunicorn==26.1.0
 # The gunicorn worker class, split out of uvicorn itself. uvicorn 0.30
 # deprecated `uvicorn.workers` (it still ships in 0.52 but warns on import,
 # pointing here); the VM's docker-compose.prod.yml command uses

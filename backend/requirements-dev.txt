@@ -31,4 +31,4 @@ types-python-dateutil==2.9.0.20260807
 types-PyYAML==6.0.12.20260815
 
 # Lock tooling (C4) — compiles the hash-pinned *.lock files
-pip-tools==7.5.3
+pip-tools==7.6.1
