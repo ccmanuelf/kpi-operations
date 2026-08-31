@@ -36,7 +36,13 @@ config_history_router = APIRouter()
 # ==================== Alert Configuration ====================
 
 
-@config_history_router.get("/config/", response_model=List[AlertConfigResponse])
+# Registered WITHOUT a trailing slash. As `"/config/"` the no-slash spelling
+# `/api/alerts/config` never matched it, and `GET /api/alerts/{alert_id}`
+# full-matched first -- so the common spelling answered 404 "Alert not
+# found" and FastAPI's slash-redirect never got the chance to fire.
+# Declared this way round, `/config` serves directly and `/config/`
+# redirects to it, so both work.
+@config_history_router.get("/config", response_model=List[AlertConfigResponse])
 async def list_alert_configs(
     client_id: Optional[str] = Query(None),
     db: Session = Depends(get_db),
@@ -52,7 +58,7 @@ async def list_alert_configs(
     return [AlertConfigResponse.model_validate(c) for c in configs]
 
 
-@config_history_router.post("/config/", response_model=AlertConfigResponse)
+@config_history_router.post("/config", response_model=AlertConfigResponse)
 async def create_alert_config(
     config_data: AlertConfigCreate,
     db: Session = Depends(get_db),

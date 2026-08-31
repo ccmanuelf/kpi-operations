@@ -166,7 +166,7 @@
     ],
     [
       "GET",
-      "/api/alerts/config/"
+      "/api/alerts/config"
     ],
     [
       "GET",
@@ -1250,7 +1250,7 @@
     ],
     [
       "POST",
-      "/api/alerts/config/"
+      "/api/alerts/config"
     ],
     [
       "POST",

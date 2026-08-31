@@ -348,6 +348,27 @@
     "currently_available",
     "total_floating_pool_employees"
   ],
+  "GET /api/holds/pending-approvals": [
+    "[].client_id",
+    "[].created_at",
+    "[].expected_resolution_date",
+    "[].hold_approved_by",
+    "[].hold_date",
+    "[].hold_entry_id",
+    "[].hold_initiated_by",
+    "[].hold_reason",
+    "[].hold_reason_category",
+    "[].hold_reason_description",
+    "[].hold_status",
+    "[].job_id",
+    "[].notes",
+    "[].quality_issue_type",
+    "[].resume_date",
+    "[].resumed_by",
+    "[].total_hold_duration_hours",
+    "[].updated_at",
+    "[].work_order_id"
+  ],
   "GET /api/import-logs": [],
   "GET /api/inference/cycle-time/{product_id}": [
     "confidence",

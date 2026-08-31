@@ -19,6 +19,11 @@ from .config_history import config_history_router
 
 router = APIRouter(prefix="/api/alerts", tags=["Alerts"])
 
-router.include_router(crud_router)
-router.include_router(generate_router)
+# Literal-path routers FIRST. `crud_router` owns `/{alert_id}`, and FastAPI
+# matches in registration order -- so with it included first, every literal
+# path on the other routers is captured as an alert id and never reaches its
+# own handler. `GET /api/alerts/config` answered 404 "Alert not found" for
+# exactly that reason.
 router.include_router(config_history_router)
+router.include_router(generate_router)
+router.include_router(crud_router)

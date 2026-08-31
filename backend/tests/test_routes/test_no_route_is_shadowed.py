@@ -22,6 +22,7 @@ The property is what is pinned, not the two routes. A test asserting 200 and
 after a `/{param}` tomorrow.
 """
 
+import re
 from typing import List, Tuple
 
 from backend.main import app
@@ -46,28 +47,39 @@ def _registration_order() -> List[Tuple[str, str]]:
     return ordered
 
 
+def _as_pattern(path: str) -> "re.Pattern[str]":
+    """A route path as the regex FastAPI effectively matches it with."""
+    return re.compile(
+        "^" + re.sub(r"\{[^}]+\}", "[^/]+", re.escape(path).replace(r"\{", "{").replace(r"\}", "}")) + "$"
+    )
+
+
 def _shadowed() -> List[Tuple[str, str, str]]:
-    seen: dict = {}
+    """Every literal route already matched by an EARLIER parameterised one.
+
+    Asked as "does an earlier pattern match this path", not as "is there a
+    `/{param}` sibling under the same prefix". The sibling formulation was the
+    first version and it is narrower in one direction and wronger in another:
+
+    * it only sees a param in the LAST segment, so `/api/x/{id}/sub` shadowing
+      `/api/x/literal/sub` would slip past;
+    * it needed a special case for trailing slashes, because normalising them
+      away invented collisions for `/api/alerts/config/` and
+      `/api/client-config/`, both of which answer 200. Anchored matching gets
+      that right for free -- the trailing slash makes the strings differ, so
+      no pattern matches.
+    """
+    ordered = _registration_order()
     found: List[Tuple[str, str, str]] = []
-    for index, (method, path) in enumerate(_registration_order()):
-        segments = path.split("/")
-        parent, last = "/".join(segments[:-1]), segments[-1]
-
-        # A TRAILING SLASH is not a literal segment. `/api/alerts/config/` and
-        # `/api/client-config/` are registered with one, which makes each a
-        # distinct path that `/{param}` does not capture -- both answer 200.
-        # Normalising the slash away flagged them as victims (my first scan
-        # did, twice), and treating the empty segment as a literal flags them
-        # again. Verified by request, not by reasoning.
-        if last == "":
+    for later, (method, path) in enumerate(ordered):
+        if "{" in path:
             continue
-
-        if last.startswith("{") and last.endswith("}"):
-            seen.setdefault((method, parent), (index, path))
-        elif (method, parent) in seen:
-            earlier_index, earlier_path = seen[(method, parent)]
-            if earlier_index < index:
+        for earlier_method, earlier_path in ordered[:later]:
+            if earlier_method != method or "{" not in earlier_path:
+                continue
+            if _as_pattern(earlier_path).match(path):
                 found.append((method, path, earlier_path))
+                break
     return found
 
 
@@ -89,7 +101,16 @@ def test_the_scan_actually_sees_the_whole_route_table() -> None:
     """
     ordered = _registration_order()
 
-    assert len(ordered) > 400, f"only {len(ordered)} routes enumerated — the walk is not descending"
+    # An exact count, not a threshold. `> 400` would let a scanner regression
+    # from 460 to 410 pass while the check quietly stopped covering fifty
+    # routes -- and a shadowing scan over a subset reads as evidence while
+    # proving nothing. Changing this number should mean routes really were
+    # added or removed.
+    assert len(ordered) == 460, (
+        f"{len(ordered)} routes enumerated, expected 460. If routes were genuinely added or "
+        "removed, update this number; if not, the walk has stopped descending into "
+        "_IncludedRouter and this scan is no longer covering the whole table."
+    )
     assert ("GET", "/api/holds/pending-approvals") in ordered
     assert ("DELETE", "/api/filters/history") in ordered
 
@@ -120,3 +141,37 @@ def test_the_two_routes_that_were_dead_now_answer(test_client) -> None:
 
     assert history.status_code != 422, "still shadowed by /{filter_id} — int parsing of 'history'"
     assert history.status_code == 204, history.text[:200]
+
+
+def test_alerts_config_answers_with_and_without_a_trailing_slash(test_client) -> None:
+    """The third victim of the same rule, and the one the scan could not see.
+
+    `GET /api/alerts/config` answered 404 "Alert not found" -- swallowed by
+    `GET /api/alerts/{alert_id}` -- because the route was registered as
+    `/config/` and the no-slash spelling never matched it. `{alert_id}`
+    FULL-matched first, so FastAPI's slash-redirect never got the chance to
+    fire, and reordering the routers alone did not help.
+
+    Invisible to `_shadowed()` above, which compares REGISTERED paths: the
+    broken spelling was not a registered path at all. That is the limit of a
+    structural scan, and the reason this URL is asserted directly.
+
+    Registered as `/config` now, so the bare spelling serves directly and the
+    slashed one redirects to it. Both are pinned -- swapping the declaration
+    back to `/config/` breaks the first.
+    """
+    from backend.auth.jwt import get_current_user
+    from backend.main import app
+    from backend.tests.test_routes.test_smoke_paramless_get import _mock_admin
+
+    app.dependency_overrides[get_current_user] = _mock_admin
+    try:
+        bare = test_client.get("/api/alerts/config")
+        slashed = test_client.get("/api/alerts/config/", follow_redirects=True)
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+
+    assert bare.status_code != 404, "still swallowed by /{alert_id} — it answers 'Alert not found'"
+    assert bare.status_code == 200, bare.text[:200]
+    assert isinstance(bare.json(), list), bare.text[:200]
+    assert slashed.status_code == 200, slashed.text[:200]
