@@ -55,6 +55,23 @@ def test_shift_coverage_reconciles_with_the_attendance_it_describes(full_db):
         ).scalar_one()
     assert wrong == 0, f"{wrong} shift_coverage rows disagree with attendance"
 
+    # The inner join above compares only rows that HAVE a counterpart, so a
+    # coverage row describing a shift-day with no attendance at all would be
+    # silently dropped and the assertion would pass on an empty comparison.
+    with full_db.begin() as conn:
+        unmatched = conn.execute(
+            text(
+                "SELECT COUNT(*) FROM shift_coverage sc"
+                " WHERE NOT EXISTS ("
+                "   SELECT 1 FROM ATTENDANCE_ENTRY e"
+                "    WHERE e.client_id = sc.client_id AND e.shift_id = sc.shift_id"
+                "      AND DATE(e.shift_date) = DATE(sc.coverage_date))"
+            )
+        ).scalar_one()
+        total = conn.execute(text("SELECT COUNT(*) FROM shift_coverage")).scalar_one()
+    assert total > 0, "no shift_coverage rows seeded; the comparison above is vacuous"
+    assert unmatched == 0, f"{unmatched} shift_coverage rows describe a shift-day with no attendance"
+
 
 def test_no_floater_covers_two_absences_in_the_same_shift(full_db):
     """A person cannot cover two lines at once. The assignment sits inside the
@@ -87,6 +104,37 @@ def test_coverage_only_ever_explains_a_real_absence(full_db):
         ).scalar_one()
     assert bogus == 0, "coverage names an employee the attendance stream marked present"
 
+    # Same blind spot, and the more dangerous half: the join above can only see
+    # a covered employee who HAS an attendance row. One with none at all --
+    # never rostered that shift, so never absent from it -- would vanish from
+    # the comparison rather than fail it.
+    with full_db.begin() as conn:
+        unrostered = conn.execute(
+            text(
+                "SELECT COUNT(*) FROM COVERAGE_ENTRY c"
+                " WHERE NOT EXISTS ("
+                "   SELECT 1 FROM ATTENDANCE_ENTRY e"
+                "    WHERE e.employee_id = c.covered_employee_id"
+                "      AND DATE(e.shift_date) = DATE(c.shift_date)"
+                "      AND e.shift_id = c.shift_id)"
+            )
+        ).scalar_one()
+        total = conn.execute(text("SELECT COUNT(*) FROM COVERAGE_ENTRY")).scalar_one()
+    assert total > 0, "no coverage rows seeded; the comparison above is vacuous"
+    assert unrostered == 0, f"{unrostered} coverage rows name an employee not rostered on that shift"
+
+    # And the floater must NOT be rostered on the shift they cover: a person
+    # cannot work their own line and stand in on another at the same time.
+    with full_db.begin() as conn:
+        double_booked = conn.execute(
+            text(
+                "SELECT COUNT(*) FROM COVERAGE_ENTRY c"
+                "  JOIN ATTENDANCE_ENTRY e ON e.employee_id = c.floating_employee_id"
+                "   AND DATE(e.shift_date) = DATE(c.shift_date) AND e.shift_id = c.shift_id"
+            )
+        ).scalar_one()
+    assert double_booked == 0, f"{double_booked} coverage rows name a floater who was rostered on that very shift"
+
 
 def test_the_labour_ledger_balances_and_never_books_an_absence(full_db):
     with full_db.begin() as conn:
@@ -111,6 +159,19 @@ def test_the_labour_ledger_balances_and_never_books_an_absence(full_db):
             )
         ).scalar_one()
         categories = {r[0] for r in conn.execute(text("SELECT DISTINCT category FROM ATTENDANCE_HOUR_ALLOCATION"))}
+    with full_db.begin() as conn:
+        orphaned = conn.execute(
+            text(
+                "SELECT COUNT(*) FROM ATTENDANCE_HOUR_ALLOCATION al"
+                " WHERE NOT EXISTS ("
+                "   SELECT 1 FROM ATTENDANCE_ENTRY e"
+                "    WHERE e.attendance_entry_id = al.attendance_entry_id)"
+            )
+        ).scalar_one()
+        allocated = conn.execute(text("SELECT COUNT(*) FROM ATTENDANCE_HOUR_ALLOCATION")).scalar_one()
+    assert allocated > 0, "no allocations seeded; the balance check above is vacuous"
+    # The balance join can only weigh an allocation that HAS a parent entry.
+    assert orphaned == 0, f"{orphaned} allocations point at an attendance row that does not exist"
     assert unbalanced == 0, f"{unbalanced} entries whose allocations do not sum to hours worked"
     assert on_absent == 0, "hours booked against a day nobody worked"
     # BILLABLE_CATEGORIES and PRODUCTIVE_CATEGORIES are different subsets of

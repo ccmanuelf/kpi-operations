@@ -196,6 +196,11 @@ def emit_alerts(
 
         current = round(rng.uniform(62.0, 88.0), 2)
         threshold = 90.0 if category == "otd" else 95.0
+        # Drawn ONCE and shared with the history row below. Drawing it twice
+        # made ALERT.predicted_value and ALERT_HISTORY.predicted_value disagree
+        # on 12 of 12 rows, so the accuracy ledger graded a forecast the alert
+        # never made.
+        predicted = round(current - rng.uniform(1.0, 6.0), 2) if category == "otd" else None
         emit(
             AlertRaised,
             raised_at,
@@ -214,7 +219,7 @@ def emit_alerts(
             # Only the forward-looking categories carry a prediction; a
             # confidence on a hold alert would imply a model that does not
             # exist.
-            predicted_value=round(current - rng.uniform(1.0, 6.0), 2) if category == "otd" else None,
+            predicted_value=predicted,
             confidence=round(rng.uniform(0.62, 0.94), 2) if category == "otd" else None,
             alert_metadata={"source": "seed", "category": category},
             acknowledged_at=acknowledged_at,
@@ -227,8 +232,7 @@ def emit_alerts(
         # Accuracy ledger, for the predictive category only. Both outcomes
         # appear: a history where every prediction was right shows a column,
         # not a track record.
-        if category == "otd":
-            predicted = round(current - rng.uniform(1.0, 6.0), 2)
+        if category == "otd" and predicted is not None:
             actual = round(predicted + rng.uniform(-4.0, 4.0), 2)
             error = abs(actual - predicted) / predicted * 100 if predicted else 0.0
             emit(

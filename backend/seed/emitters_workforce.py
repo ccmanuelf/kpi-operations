@@ -17,7 +17,7 @@ from __future__ import annotations
 from datetime import date, datetime, time, timedelta
 from typing import Any, Callable, List, Type
 
-from backend.seed.emitters_master import ClientSetup
+from backend.seed.emitters_master import POOL_SIZE, ClientSetup
 from backend.seed.events import BreakTimeDefined, Event, FloatingPoolMemberAdded
 from backend.seed.profiles import Profile
 from backend.seed.scenarios import ClientScenario
@@ -29,12 +29,6 @@ BREAKS = (
     ("Morning break", 120, 15, "ALL"),
     ("Lunch", 240, 30, "ALL"),
 )
-
-#: How many of a client's employees sit in the floating pool. Small on
-#: purpose: a pool holding most of the workforce is not a pool, and the
-#: coverage screen's whole question is whether the few available people are
-#: enough for the day's absences.
-POOL_SIZE = 2
 
 
 def emit_workforce(
@@ -70,9 +64,9 @@ def emit_workforce(
                 applies_to=applies_to,
             )
 
-    # The LAST employees of the roster, so the pool does not overlap the crews
-    # the line assignments hand to the first ones -- a floater already tied to
-    # a line cannot stand in for anyone.
+    # The LAST employees of the roster: emit_setup appends exactly POOL_SIZE of
+    # them beyond the line headcount and flags them is_floating_pool, so these
+    # are the extras and no crew ever counts them.
     employee_ids = [employee_id for employee_id, _line in setup.employees]
     pool = employee_ids[-POOL_SIZE:] if len(employee_ids) > POOL_SIZE else employee_ids[:1]
 

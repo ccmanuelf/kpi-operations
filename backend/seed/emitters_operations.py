@@ -504,7 +504,14 @@ def emit_shifts(
     lines = setup.lines
     shifts = setup.shifts
     products = setup.products
-    employees = setup.employees
+    # Floaters are NOT rostered on a line. A person cannot be counted in one
+    # line's crew and simultaneously stand in for an absence on another, and
+    # the pool is drawn from the same roster -- so without this exclusion the
+    # two overlap. Measured before the fix: 47 COVERAGE_ENTRY rows named a
+    # floater who had an ATTENDANCE_ENTRY for the very shift they were
+    # covering, 6 of which had the floater covering their OWN absence.
+    pool_members = set(floating_pool or ())
+    employees = [(employee_id, line) for employee_id, line in setup.employees if employee_id not in pool_members]
     line_minute_step = setup.line_minute_step
     shift_hour_step = setup.shift_hour_step
     activity_start = setup.activity_start

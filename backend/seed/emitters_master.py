@@ -69,6 +69,14 @@ class ClientSetup(NamedTuple):
     activity_days: int
 
 
+#: How many floaters each client keeps. Small on purpose: a pool holding most
+#: of the workforce is not a pool, and the coverage screen's whole question is
+#: whether the few available people cover the day's absences. Defined here
+#: rather than in emitters_workforce because that module imports ClientSetup
+#: from this one, and the reverse import would be a cycle.
+POOL_SIZE = 2
+
+
 def emit_setup(
     emit: Callable[..., None],
     scenario: ClientScenario,
@@ -175,7 +183,14 @@ def emit_setup(
     # Retained for the same kind of reason: attendance is one row per employee
     # ON THIS LINE, so the shift loop needs the roster, not just the count.
     employees: List[Tuple[str, str]] = []
-    for i in range(profile.employees_per_client):
+    # The pool is EXTRA headcount, appended after the line roster rather than
+    # carved out of it. Carving left a floater rostered on the very shift they
+    # were covering (47 such rows, 6 of them covering their own absence), and
+    # removing them from the crews instead shrank a smoke-profile line to a
+    # single operator. A plant's float pool is additional people, which is
+    # also what EMPLOYEE.is_floating_pool exists to say.
+    for i in range(profile.employees_per_client + POOL_SIZE):
+        is_floater = i >= profile.employees_per_client
         employee_id = f"{cid}-EMP-{i + 1:03d}"
         employee_line = lines[i % len(lines)]
         employees.append((employee_id, employee_line))
@@ -187,7 +202,7 @@ def emit_setup(
             # client, so the code carries the client prefix.
             employee_code=employee_id,
             employee_name=f"Operator {i + 1}",
-            is_floating_pool=False,
+            is_floating_pool=is_floater,
         )
 
     # Per client, not global: KPI_THRESHOLD.client_id is a real nullable FK

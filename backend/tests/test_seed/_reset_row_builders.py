@@ -191,5 +191,9 @@ def _insert_null_tenant_alert_history(conn, client_id):
 CHILD_ROW_BUILDERS = {
     "ALERT_CONFIG": (_insert_alert_config, "ALERT_CONFIG", "config_id", "AC-{client_id}"),
     "EQUIPMENT": (_insert_equipment, "EQUIPMENT", "equipment_code", "MCH-RESET-01"),
-    "ALERT_HISTORY": (_insert_alert_history, "ALERT", "alert_id", "ALRT-{client_id}"),
+    # ALERT_HISTORY, not ALERT: this case exists for the GRANDCHILD, the one
+    # row with no ondelete, and asserting its parent is gone would pass while
+    # the history row survived as an orphan -- exactly the failure the
+    # DEPENDENT_SWEEPS subquery exists to prevent.
+    "ALERT_HISTORY": (_insert_alert_history, "ALERT_HISTORY", "history_id", "AH-{client_id}"),
 }
