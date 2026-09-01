@@ -24,6 +24,10 @@ export async function collectSamples(
       if (r.bottom < 0 || r.top > window.innerHeight || r.right < 0 || r.left > window.innerWidth) continue
       const bgStack: string[] = []
       const gradientStops: string[] = []
+      // Tracked apart from the ancestor stops: a gradient on the element
+      // itself paints over its own background-color, whereas an ancestor's
+      // only shows through when the element in front of it is see-through.
+      const ownGradientStops: string[] = []
       let node: Element | null = el
       while (node) {
         const ncs = getComputedStyle(node)
@@ -32,6 +36,7 @@ export async function collectSamples(
         if (bi && bi.includes('gradient')) {
           const ms = bi.match(/rgba?\([^)]*\)|#[0-9a-fA-F]{3,8}/g) || []
           gradientStops.push(...ms)
+          if (node === el) ownGradientStops.push(...ms)
         }
         node = node.parentElement
       }
@@ -43,6 +48,7 @@ export async function collectSamples(
         fontWeight: parseInt(cs.fontWeight) || 400,
         bgStack,
         gradientStops,
+        ownGradientStops,
       })
     }
     return out
