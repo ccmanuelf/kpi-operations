@@ -477,7 +477,10 @@
     "staffing_scenarios[].scenario"
   ],
   "GET /api/floating-pool/summary": [
-    "available_employees",
+    "available_employees[].employee_code",
+    "available_employees[].employee_id",
+    "available_employees[].employee_name",
+    "available_employees[].position",
     "currently_assigned",
     "currently_available",
     "total_floating_pool_employees"
