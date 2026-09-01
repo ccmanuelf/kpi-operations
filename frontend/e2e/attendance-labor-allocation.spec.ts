@@ -166,8 +166,51 @@ async function seedExistingAttendanceEntry(page: Page) {
 }
 
 test.describe('Attendance grid — OT split + hour allocation', () => {
+  // Id of the ATTENDANCE_ENTRY seeded by this test, torn down in afterEach.
+  //
+  // Without the teardown the spec permanently consumes one employee per run:
+  // seedExistingAttendanceEntry needs an employee with NO entry for today, and
+  // it draws only from the logged-in user's own client -- `demo_operator` ->
+  // `DEMO-PIECE` -> 8 eligible employees. The 9th run of a calendar day fails
+  // in setup. CI never sees it because CI builds a fresh database per run, so
+  // the cost lands entirely on local re-runs, which is exactly when someone is
+  // iterating on this grid and needs the spec most.
+  let seededEntryId: string | null = null
+
   test.beforeEach(async ({ page }) => {
     await login(page, 'operator')
+  })
+
+  test.afterEach(async ({ page }) => {
+    const entryId = seededEntryId
+    seededEntryId = null
+    if (!entryId) return
+    // Two things make this teardown look odd, both deliberate:
+    //
+    // 1. It authenticates separately. DELETE /api/attendance/{id} requires
+    //    supervisor-or-above, and this spec runs as an operator.
+    // 2. A soft delete is enough. The endpoint only sets is_active=0, but a
+    //    global do_orm_execute listener (backend/db/soft_delete_filter.py)
+    //    applies with_loader_criteria to hide inactive rows from every ORM
+    //    read -- including the existence check the seeder uses -- so the
+    //    employee really is free again for the next run.
+    //
+    // Teardown failure must not fail an otherwise-passing test, hence catch.
+    await page
+      .evaluate(async (id) => {
+        const auth = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: 'demo_admin', password: 'DemoSeed#2026' }),
+        })
+        if (!auth.ok) return
+        const { access_token: token } = await auth.json()
+        await fetch(`/api/attendance/${id}`, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${token}` },
+        })
+      }, entryId)
+      .catch(() => {})
   })
 
   test('OT split (via Save Records) + allocation dialog round-trip through the entry-update path', async ({
@@ -176,6 +219,7 @@ test.describe('Attendance grid — OT split + hour allocation', () => {
     await navigateToAttendance(page)
 
     const seed = await seedExistingAttendanceEntry(page)
+    seededEntryId = seed?.attendanceEntryId ?? null
     expect(
       seed,
       "setup: the logged-in user's own client needs a shift and at least one " +

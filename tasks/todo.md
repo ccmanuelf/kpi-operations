@@ -167,11 +167,22 @@ by mutation-testing the migrated selector (the guard fires with its own message)
 and by the fact that all three touched specs passed 13/13 on the final code
 before the pool ran dry.
 
-FIX WHEN TAKEN UP: give the spec an `afterEach` that deletes the row it created
-(it already holds the created entry's id), making it idempotent. Deferred out of
-the dependency-bump PR deliberately -- it is pre-existing, unrelated to AG Grid,
-and changing shared e2e fixture lifecycle deserves its own review surface.
+FIXED on branch `fix/attendance-e2e-idempotent` (its own PR, stacked on the AG
+Grid bump). The spec now tears the row down in an `afterEach`. Two wrinkles the
+implementation had to account for:
 
-LOCAL CLEANUP STILL PENDING: 8 rows in ATTENDANCE_ENTRY for today, all
-`entered_by='USR-DEMO-OP'`, are residue from this session's runs. They are
-harmless to CI but will keep the spec failing locally until removed.
+  - DELETE /api/attendance/{id} requires supervisor-or-above and the spec runs
+    as an operator, so the teardown authenticates separately as `demo_admin`.
+  - The endpoint only SOFT-deletes. That is sufficient because a global
+    `do_orm_execute` listener (`backend/db/soft_delete_filter.py`) applies
+    `with_loader_criteria` to hide inactive rows from every ORM read, including
+    the existence check the seeder uses -- verified, not assumed.
+
+PROVEN, not asserted: with the teardown, five consecutive runs left the free-
+employee count at 7 and soft-deleted all five rows they created. Mutation test
+-- disabling the teardown -- drops the count from 8 to 7 on a single run, so the
+gate is load-bearing.
+
+LOCAL CLEANUP DONE: the 8 residue rows (plus 14 orphan-able
+ATTENDANCE_HOUR_ALLOCATION children) were removed after backing the database up;
+entry count went 16648 -> 16640 exactly, with zero orphaned allocations.
