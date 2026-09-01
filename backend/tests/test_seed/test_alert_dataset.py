@@ -82,3 +82,31 @@ def test_a_disabled_alert_config_exists(full_db):
         disabled = conn.execute(text("SELECT COUNT(*) FROM ALERT_CONFIG WHERE enabled = 0")).scalar_one()
         enabled = conn.execute(text("SELECT COUNT(*) FROM ALERT_CONFIG WHERE enabled = 1")).scalar_one()
     assert disabled > 0 and enabled > 0
+
+
+def test_every_seeded_row_survives_the_schema_its_endpoint_returns(full_db):
+    """ALERT_CONFIG.alert_type is a bare String(30) with no DB constraint, so a
+    value outside AlertCategory inserts cleanly and only raises when the
+    endpoint serializes it back. `hold_approval` -- the kpi_key of the alert
+    rows, which ALERT_CONFIG has no column for -- shipped in that field and
+    turned the paramless-GET smoke test red with a 500 rather than failing
+    anything here. Validating the seeded rows against the response models
+    catches that class where it is introduced.
+    """
+    from sqlalchemy.orm import Session
+
+    from backend.orm.alert import Alert, AlertConfig
+    from backend.schemas.alert import AlertConfigResponse, AlertResponse
+
+    broken = []
+    with Session(bind=full_db) as session:
+        for model, schema in ((AlertConfig, AlertConfigResponse), (Alert, AlertResponse)):
+            rows = session.query(model).all()
+            assert rows, f"no {model.__tablename__} rows seeded"
+            for row in rows:
+                try:
+                    schema.model_validate(row, from_attributes=True)
+                except Exception as exc:
+                    fields = "; ".join(f"{'.'.join(str(p) for p in e['loc'])}={e.get('input')!r}" for e in exc.errors())
+                    broken.append(f"{model.__tablename__}: {fields}")
+    assert not broken, "seeded rows the endpoint cannot serialize:\n  " + "\n  ".join(sorted(set(broken)))

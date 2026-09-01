@@ -41,7 +41,12 @@ ALERT_CONFIGS = (
     ("quality", True, 97.0, 94.0, True, False, 60),
     ("efficiency", True, 85.0, 75.0, True, False, 120),
     ("capacity", True, 90.0, 100.0, True, True, 30),
-    ("hold_approval", False, 48.0, 72.0, False, False, 240),
+    # "hold", not "hold_approval": the first field is alert_type, which the
+    # response validates against AlertCategory. "hold_approval" is the
+    # kpi_key the alert rows below carry, and ALERT_CONFIG has no such
+    # column -- the column is a bare String(30), so the wrong value
+    # inserted cleanly and only raised when the endpoint read it back.
+    ("hold", False, 48.0, 72.0, False, False, 240),
 )
 
 #: The board itself. Spread across category, severity and status so the

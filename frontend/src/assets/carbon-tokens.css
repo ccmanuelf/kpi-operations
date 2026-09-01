@@ -148,6 +148,9 @@
      #806000 (not a lighter amber) so it clears AA on the off-white layer-01
      surface (#f4f4f4), not just pure white. */
   --cds-text-warning: #806000;
+  /* red-60 is AA on white (5.00) but only 4.10 on the 10%-red tint the
+     urgent alert chip paints behind it. red-70 clears both (6.38). */
+  --cds-text-error: var(--cds-red-70);
 
   --cds-focus: var(--cds-blue-60);
   --cds-interactive: var(--cds-blue-60);
@@ -314,6 +317,8 @@
   --cds-support-info: #4589ff;
   /* On dark surfaces the bright Carbon yellow is readable as warning text. */
   --cds-text-warning: #f1c21b;
+  /* On dark the bright variant is the readable one, as with warning. */
+  --cds-text-error: #ff8389;
   --cds-support-success-subtle: #044317;
   --cds-support-error-subtle: #520408;
 }

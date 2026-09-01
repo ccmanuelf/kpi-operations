@@ -208,7 +208,7 @@ onMounted(() => {
 
 .stat.urgent {
   background: rgba(220, 38, 38, 0.1);
-  color: #dc2626;
+  color: var(--cds-text-error);
 }
 
 .stat.critical {
@@ -295,7 +295,7 @@ onMounted(() => {
 }
 
 .urgent-section h3 {
-  color: #dc2626;
+  color: var(--cds-text-error);
 }
 
 .critical-section h3 {
