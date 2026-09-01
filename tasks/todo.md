@@ -304,3 +304,51 @@ unreadable (oklch, oklab) contributes nothing and the walk carries on; a
 comma-separated multi-layer `background-image` has its stops flattened (all 86
 elements ship a single layer); and `url(...)` backgrounds remain invisible to
 the collector, which is pre-existing.
+
+
+## FINDING: the scenario comparison sends its numbers as JSON STRINGS
+
+Surfaced the moment `POST /api/capacity/scenarios/compare` became reachable
+(the seeder now writes `capacity_scenario`, so the route finally answers with
+data instead of `[]`). Measured against a seeded database, not inferred:
+
+    "original_capacity_hours": "0.0",   <- string
+    "capacity_increase_percent": "0",   <- string
+    "cost_impact": "0.0",               <- string
+    "scenario_id": 2,                   <- number
+    "bottlenecks_resolved": 0           <- number
+
+Six of the eleven fields are Decimal-typed and every one of them serialises as
+a string. This is the repo's known `-> Any` mechanism: an annotated return runs
+through Pydantic, which renders Decimal as a string, while only an unannotated
+handler reaches `decimal_encoder`. Same class as the KPI serialisation fix that
+shipped in #145 for five fields on other routes.
+
+WHY IT MATTERS: a caller has to `Number()`-coerce six fields or arithmetic on
+them silently concatenates. The golden master records field PATHS, not types, so
+the contract harness cannot see this and will not catch it changing.
+
+NOT FIXED HERE. The fix is to give the route a response model with float-typed
+fields, which also closes its `ALLOWLIST` entry ("routes still awaiting a
+response model"). That is an API-typing change with its own OpenAPI surface to
+regenerate, and it belongs beside the other five allowlist entries of the same
+shape rather than riding along with a seeding change.
+
+## OBSERVATION: the seeded comparison is structurally real but numerically zero
+
+The same probe shows every capacity figure is 0: `original_capacity_hours`
+"0.0", `modified_capacity_hours` "0", `capacity_increase_percent` "0".
+
+The scenarios themselves are real -- two per client, correct types, parameters
+the service reads -- and the RESPONSE is real: two rows, eleven fields each, so
+the captured contract is genuine and is not the empty-list trap the deferral
+warned about. What is zero is the capacity the scenarios are applied TO.
+`analyze_capacity` derives it from line capacity and schedules, and the 13
+`capacity_*` tables other than `capacity_scenario` are still unseeded, so there
+is nothing for a 20% overtime uplift to be 20% OF.
+
+CONSEQUENCE, stated plainly: the contract goal is met and the demo's what-if
+screen is no longer empty, but it will show every plan delivering a 0% capacity
+increase. Making those numbers mean something needs `capacity_schedule` and the
+line-capacity tables seeded -- a materially bigger scope than this change, and
+its own decision about how much of the capacity module the demo should model.
