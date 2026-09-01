@@ -93,6 +93,10 @@ KPI_COMMITMENTS = (
     ("otd", "On-Time Delivery", "95.0000", "91.2000"),
 )
 
+#: How far back the committed schedule reaches. Named because the CALENDAR has
+#: to cover at least this far too -- see the calendar loop.
+SCHEDULE_LOOKBACK_DAYS = 30
+
 #: A forward window so the workbook has something to PLAN, not only history.
 #: The seeded universe ends at `as_of`; a planner looking at a calendar that
 #: stops today has no horizon to schedule into.
@@ -147,7 +151,17 @@ def emit_capacity(
         )
 
     # --- calendar --------------------------------------------------------
-    day = setup.activity_start
+    #
+    # Starts at whichever is EARLIER: the activity window or the schedule's
+    # own start. Anchoring it to activity_start alone is only safe while
+    # `profile.days` exceeds the schedule lookback -- a shorter profile puts
+    # activity_start after `as_of - 30d`, leaving the first scheduled days
+    # with no calendar row at all. Those days then contribute demand while
+    # contributing no working day, so capacity is undercounted against
+    # demand that is fully counted, and utilisation reads high for a reason
+    # nothing in the data explains.
+    schedule_lookback_start = as_of - timedelta(days=SCHEDULE_LOOKBACK_DAYS)
+    day = min(setup.activity_start, schedule_lookback_start)
     last = as_of + timedelta(days=FORWARD_HORIZON_DAYS)
     while day <= last:
         weekday = day.weekday()
@@ -247,7 +261,7 @@ def emit_capacity(
     # ACTIVE schedules, so a draft leaves utilisation at zero however much
     # detail hangs off it.
     schedule_key = f"{cid}-CAPSCHED-01"
-    sched_start = as_of - timedelta(days=30)
+    sched_start = schedule_lookback_start
     sched_end = as_of + timedelta(days=FORWARD_HORIZON_DAYS)
     declare(
         CapacityScheduleCommitted,
@@ -291,7 +305,12 @@ def emit_capacity(
     capacity_hours_per_line_day = shifts_per_day * effective_hours_per_shift * 0.85 * 0.95 * operators_per_line
     units_per_line_day = int(capacity_hours_per_line_day * TARGET_UTILIZATION * 60.0 / total_sam_minutes)
 
-    order_refs = [f"{cid}-CAPORD-{n:03d}" for n in range(1, order_n + 1)]
+    # PAIRS, not two independently-derived strings. `order_ref` resolves to a
+    # row and `order_number` is the denormalised label displayed beside it;
+    # computing them from the same index in two places is how a schedule row
+    # ends up pointing at one order while showing another's number. They agree
+    # today only because both happen to use `idx + 1`.
+    order_book = [(f"{cid}-CAPORD-{n:03d}", f"CO-{as_of.year}-{n:04d}") for n in range(1, order_n + 1)]
     seq = 0
     day = sched_start
     while day <= sched_end:
@@ -305,8 +324,8 @@ def emit_capacity(
                 declare(
                     CapacityWorkScheduled,
                     schedule_key=schedule_key,
-                    order_ref=order_refs[seq % len(order_refs)],
-                    order_number=f"CO-{as_of.year}-{(seq % len(order_refs)) + 1:04d}",
+                    order_ref=order_book[seq % len(order_book)][0],
+                    order_number=order_book[seq % len(order_book)][1],
                     style_model=product.style,
                     line_key=f"{cid}-CAPLINE-{li + 1:02d}",
                     line_code=f"L{li + 1:02d}",
@@ -365,15 +384,18 @@ def emit_capacity(
 
     # --- component availability against the open order book ---------------
     for oi, product in enumerate(scenario.products):
-        order_ref = f"{cid}-CAPORD-{(oi * 2) + 1:03d}"
-        order_number = f"CO-{as_of.year}-{(oi * 2) + 1:04d}"
+        order_ref, order_number = order_book[(oi * 2) % len(order_book)]
         for comp_code, comp_desc, qty, _uom, waste, _ctype in COMPONENTS:
             # Named apart from the order block's `required`, which is a DATE.
             # Reusing that name here bound a float to it and mypy caught the
             # collision as `date - float`; the two quantities also read better
             # with their unit in the name.
             required_qty = 900.0 * float(qty) * (1 + float(waste) / 100)
-            available_qty = float(rng.randint(300, 2600))
+            # One component in six is genuinely OUT, not merely short. With a
+            # floor of 300 the `SHORTAGE` branch below is unreachable and the
+            # demo only ever shows OK and PARTIAL -- a shortage workflow whose
+            # worst state never occurs demonstrates a screen, not the workflow.
+            available_qty = 0.0 if rng.randint(1, 6) == 1 else float(rng.randint(300, 2600))
             shortage_qty = max(0.0, required_qty - available_qty)
             declare(
                 CapacityComponentChecked,
