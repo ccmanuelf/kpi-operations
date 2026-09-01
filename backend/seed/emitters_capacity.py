@@ -28,6 +28,11 @@ from typing import Any, Callable, Type
 from backend.seed.emitters_master import ClientSetup
 from backend.seed.events import (
     CapacityBomDefined,
+    CapacityComponentChecked,
+    CapacityKpiCommitted,
+    CapacityLineAnalyzed,
+    CapacityScheduleCommitted,
+    CapacityWorkScheduled,
     CapacityBomLineDefined,
     CapacityCalendarDayDeclared,
     CapacityLineDefined,
@@ -37,7 +42,7 @@ from backend.seed.events import (
     Event,
 )
 from backend.seed.profiles import Profile
-from backend.seed.scenarios import ClientScenario
+from backend.seed.scenarios import USERS, ClientScenario
 
 #: The departments a garment order passes through, in route order. Cycled
 #: across lines so every department owns at least one, which is what makes an
@@ -60,6 +65,32 @@ COMPONENTS = (
     ("FAB-LINE", "Lining fabric", "0.850000", "M", "4.50", "FABRIC"),
     ("TRM-THREAD", "Thread cone", "0.120000", "EA", "2.00", "TRIM"),
     ("TRM-LABEL", "Care label set", "1.000000", "EA", "0.50", "TRIM"),
+)
+
+#: Who commits a schedule. Resolved from the seeded roster rather than typed
+#: as a literal: `capacity_schedule.committed_by` is a ForeignKey to
+#: USER.user_id, so a hardcoded id that drifts from the roster becomes a NULL
+#: FK or an IntegrityError, and the planner is the role that actually owns a
+#: capacity plan.
+COMMITTED_BY = next(u.user_id for u in USERS if u.role == "poweruser")
+
+#: Target utilisation for the committed schedule, and the one line deliberately
+#: pushed past it. A plant scheduled at 100% everywhere has no bottleneck to
+#: find and no slack an overtime scenario could consume; one at 40% has no
+#: pressure worth planning around. `BOTTLENECK_LINE_INDEX` is the line the
+#: schedule overloads, so `is_bottleneck` and `bottlenecks_resolved` describe
+#: something real rather than defaulting to zero everywhere.
+TARGET_UTILIZATION = 0.78
+BOTTLENECK_UPLIFT = 1.45
+BOTTLENECK_LINE_INDEX = 1
+
+#: The KPI targets a planner commits with a schedule, and how the period
+#: actually went. Actuals sit slightly under target on two of three, which is
+#: what makes the variance view show something other than a row of zeroes.
+KPI_COMMITMENTS = (
+    ("efficiency", "Efficiency", "85.0000", "82.4000"),
+    ("quality", "First Pass Yield", "97.0000", "97.6000"),
+    ("otd", "On-Time Delivery", "95.0000", "91.2000"),
 )
 
 #: A forward window so the workbook has something to PLAN, not only history.
@@ -208,6 +239,160 @@ def emit_capacity(
                 # Order SAM = per-unit standard minutes * quantity, so the
                 # workbook's demand hours and the standards table agree.
                 order_sam_minutes=f"{13.5 * quantity:.4f}",
+            )
+
+    # --- the committed schedule, and the work under it -------------------
+    #
+    # ACTIVE, not DRAFT: `_get_demand_by_line` counts only COMMITTED and
+    # ACTIVE schedules, so a draft leaves utilisation at zero however much
+    # detail hangs off it.
+    schedule_key = f"{cid}-CAPSCHED-01"
+    sched_start = as_of - timedelta(days=30)
+    sched_end = as_of + timedelta(days=FORWARD_HORIZON_DAYS)
+    declare(
+        CapacityScheduleCommitted,
+        schedule_key=schedule_key,
+        schedule_name=f"{as_of.strftime('%B %Y')} production plan",
+        period_start=sched_start,
+        period_end=sched_end,
+        status="ACTIVE",
+        committed_at=sched_start,
+        committed_by=COMMITTED_BY,
+    )
+
+    # Demand is `scheduled_quantity * total SAM / 60`. Sizing it from the
+    # capacity the calendar and lines imply -- rather than picking a
+    # quantity that "looks busy" -- is what puts utilisation at a defensible
+    # ~78% instead of 4% or 400%.
+    working_days = sum(
+        1 for i in range((sched_end - sched_start).days + 1) if (sched_start + timedelta(days=i)).weekday() < 5
+    )
+    line_count = max(1, profile.lines_per_client)
+    total_sam_minutes = sum(float(op[3]) for op in OPERATIONS)
+
+    # Sized against the arithmetic CapacityAnalysisService actually performs,
+    # not against the arithmetic one would expect -- the two differ, and
+    # guessing put utilisation at 15% instead of the intended 78%.
+    #
+    # The service derives hours-per-shift as
+    #   avg_hours       = total_hours / total_shifts     (already per shift)
+    #   hours_per_shift = avg_hours / avg_shifts         (per shift AGAIN)
+    # so it divides by the shift count twice and a two-shift day contributes
+    # 3 hours where the calendar declares 12. That halving is mirrored here
+    # deliberately: the seeded schedule has to land at a sensible utilisation
+    # against the number the APP REPORTS. Recorded as a finding in
+    # tasks/todo.md -- correcting the service is a product change that moves
+    # every capacity figure and belongs in its own PR, and this constant is
+    # where the seed would need revisiting when that lands.
+    shifts_per_day = 2
+    declared_hours_per_day = 8.0 + 4.0
+    effective_hours_per_shift = (declared_hours_per_day / shifts_per_day) / shifts_per_day
+    operators_per_line = 12
+    capacity_hours_per_line_day = shifts_per_day * effective_hours_per_shift * 0.85 * 0.95 * operators_per_line
+    units_per_line_day = int(capacity_hours_per_line_day * TARGET_UTILIZATION * 60.0 / total_sam_minutes)
+
+    order_refs = [f"{cid}-CAPORD-{n:03d}" for n in range(1, order_n + 1)]
+    seq = 0
+    day = sched_start
+    while day <= sched_end:
+        if day.weekday() < 5:
+            for li in range(line_count):
+                seq += 1
+                product = scenario.products[li % len(scenario.products)]
+                quantity = units_per_line_day
+                if li == BOTTLENECK_LINE_INDEX % line_count:
+                    quantity = int(quantity * BOTTLENECK_UPLIFT)
+                declare(
+                    CapacityWorkScheduled,
+                    schedule_key=schedule_key,
+                    order_ref=order_refs[seq % len(order_refs)],
+                    order_number=f"CO-{as_of.year}-{(seq % len(order_refs)) + 1:04d}",
+                    style_model=product.style,
+                    line_key=f"{cid}-CAPLINE-{li + 1:02d}",
+                    line_code=f"L{li + 1:02d}",
+                    scheduled_date=day,
+                    scheduled_quantity=quantity,
+                    # Past days are done, future days are not: a schedule where
+                    # everything is complete has nothing left to plan.
+                    completed_quantity=quantity if day < as_of else 0,
+                    sequence=(seq % line_count) + 1,
+                )
+        day += timedelta(days=1)
+
+    for kpi_key, kpi_name, committed, actual in KPI_COMMITMENTS:
+        variance = float(actual) - float(committed)
+        declare(
+            CapacityKpiCommitted,
+            schedule_key=schedule_key,
+            kpi_key=kpi_key,
+            kpi_name=kpi_name,
+            period_start=sched_start,
+            period_end=sched_end,
+            committed_value=committed,
+            actual_value=actual,
+            variance=f"{variance:.4f}",
+            variance_percent=f"{(variance / float(committed)) * 100:.2f}",
+        )
+
+    # --- stored analysis, one row per line on the seed's last day ---------
+    for li in range(line_count):
+        department = DEPARTMENTS[li % len(DEPARTMENTS)]
+        hot = li == BOTTLENECK_LINE_INDEX % line_count
+        gross = working_days * 12.0
+        net = gross * 0.95
+        capacity = net * 0.85
+        demand = capacity * (TARGET_UTILIZATION * (BOTTLENECK_UPLIFT if hot else 1.0))
+        declare(
+            CapacityLineAnalyzed,
+            analysis_date=as_of,
+            line_key=f"{cid}-CAPLINE-{li + 1:02d}",
+            line_code=f"L{li + 1:02d}",
+            department=department,
+            working_days=working_days,
+            shifts_per_day=2,
+            hours_per_shift="6.00",
+            operators_available=12,
+            efficiency_factor="0.8500",
+            absenteeism_factor="0.0500",
+            gross_hours=f"{gross:.2f}",
+            net_hours=f"{net:.2f}",
+            capacity_hours=f"{capacity:.2f}",
+            demand_hours=f"{demand:.2f}",
+            demand_units=int(demand * 60 / total_sam_minutes),
+            utilization_percent=f"{(demand / capacity) * 100:.2f}",
+            is_bottleneck=hot,
+        )
+
+    # --- component availability against the open order book ---------------
+    for oi, product in enumerate(scenario.products):
+        order_ref = f"{cid}-CAPORD-{(oi * 2) + 1:03d}"
+        order_number = f"CO-{as_of.year}-{(oi * 2) + 1:04d}"
+        for comp_code, comp_desc, qty, _uom, waste, _ctype in COMPONENTS:
+            # Named apart from the order block's `required`, which is a DATE.
+            # Reusing that name here bound a float to it and mypy caught the
+            # collision as `date - float`; the two quantities also read better
+            # with their unit in the name.
+            required_qty = 900.0 * float(qty) * (1 + float(waste) / 100)
+            available_qty = float(rng.randint(300, 2600))
+            shortage_qty = max(0.0, required_qty - available_qty)
+            declare(
+                CapacityComponentChecked,
+                run_date=as_of,
+                order_ref=order_ref,
+                order_number=order_number,
+                component_item_code=f"{comp_code}-{oi + 1:02d}",
+                component_description=comp_desc,
+                required_quantity=f"{required_qty:.4f}",
+                available_quantity=f"{available_qty:.4f}",
+                shortage_quantity=f"{shortage_qty:.4f}",
+                # The three values ComponentStatus actually defines -- OK,
+                # PARTIAL, SHORTAGE -- not the "SHORT" a reasonable guess
+                # produces. SQLAlchemy rejects an undefined member on READ, so
+                # the wrong string seeds cleanly and then raises the first time
+                # anything selects the column. Distinguishing partial from none
+                # is also what the shortage workflow is for: a check where
+                # nothing is ever short demonstrates a screen, not a workflow.
+                status=("OK" if shortage_qty <= 0 else "PARTIAL" if available_qty > 0 else "SHORTAGE"),
             )
 
     # --- stock, one position per component, counted on the seed's last day --

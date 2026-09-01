@@ -49,6 +49,11 @@ SEEDED: FrozenSet[str] = frozenset(
         "capacity_bom_header",
         "capacity_bom_detail",
         "capacity_stock_snapshot",
+        "capacity_schedule",
+        "capacity_schedule_detail",
+        "capacity_analysis",
+        "capacity_component_check",
+        "capacity_kpi_commitment",
     }
 )
 

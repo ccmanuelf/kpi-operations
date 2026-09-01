@@ -34,6 +34,11 @@ INT_PK_TABLES = (
     "capacity_bom_header",
     "capacity_bom_detail",
     "capacity_stock_snapshot",
+    "capacity_schedule",
+    "capacity_schedule_detail",
+    "capacity_analysis",
+    "capacity_component_check",
+    "capacity_kpi_commitment",
 )
 
 
@@ -213,6 +218,137 @@ def _stock_counted(
     )
 
 
+def _schedule_committed(
+    e: ev.CapacityScheduleCommitted, sink: RowSink, ids: IdMap, allocators: Dict[str, IntPkAllocator]
+) -> None:
+    schedule_id = allocators["capacity_schedule"].next()
+    ids.assign("capacity_schedule", e.schedule_key, schedule_id)
+    sink.add(
+        "capacity_schedule",
+        {
+            "id": schedule_id,
+            "client_id": e.client_id,
+            "schedule_name": e.schedule_name,
+            "period_start": e.period_start,
+            "period_end": e.period_end,
+            "status": e.status,
+            "committed_at": e.committed_at,
+            "committed_by": e.committed_by,
+            "kpi_commitments_json": None,
+            "notes": None,
+            "created_at": e.at,
+            "updated_at": e.at,
+        },
+    )
+
+
+def _work_scheduled(
+    e: ev.CapacityWorkScheduled, sink: RowSink, ids: IdMap, allocators: Dict[str, IntPkAllocator]
+) -> None:
+    sink.add(
+        "capacity_schedule_detail",
+        {
+            "id": allocators["capacity_schedule_detail"].next(),
+            "schedule_id": ids.resolve("capacity_schedule", e.schedule_key),
+            "client_id": e.client_id,
+            "order_id": ids.resolve("capacity_orders", e.order_ref),
+            "order_number": e.order_number,
+            "style_model": e.style_model,
+            # Both halves matter: demand skips a row with no line_id, and the
+            # hours for one that has it come from the style's standards.
+            "line_id": ids.resolve("capacity_production_lines", e.line_key),
+            "line_code": e.line_code,
+            "scheduled_date": e.scheduled_date,
+            "scheduled_quantity": e.scheduled_quantity,
+            "completed_quantity": e.completed_quantity,
+            "sequence": e.sequence,
+            "notes": None,
+            "created_at": e.at,
+            "updated_at": e.at,
+        },
+    )
+
+
+def _line_analyzed(
+    e: ev.CapacityLineAnalyzed, sink: RowSink, ids: IdMap, allocators: Dict[str, IntPkAllocator]
+) -> None:
+    sink.add(
+        "capacity_analysis",
+        {
+            "id": allocators["capacity_analysis"].next(),
+            "client_id": e.client_id,
+            "analysis_date": e.analysis_date,
+            "line_id": ids.resolve("capacity_production_lines", e.line_key),
+            "line_code": e.line_code,
+            "department": e.department,
+            "working_days": e.working_days,
+            "shifts_per_day": e.shifts_per_day,
+            "hours_per_shift": e.hours_per_shift,
+            "operators_available": e.operators_available,
+            "efficiency_factor": e.efficiency_factor,
+            "absenteeism_factor": e.absenteeism_factor,
+            "gross_hours": e.gross_hours,
+            "net_hours": e.net_hours,
+            "capacity_hours": e.capacity_hours,
+            "demand_hours": e.demand_hours,
+            "demand_units": e.demand_units,
+            "utilization_percent": e.utilization_percent,
+            "is_bottleneck": e.is_bottleneck,
+            "notes": None,
+            "created_at": e.at,
+            "updated_at": e.at,
+        },
+    )
+
+
+def _component_checked(
+    e: ev.CapacityComponentChecked, sink: RowSink, ids: IdMap, allocators: Dict[str, IntPkAllocator]
+) -> None:
+    sink.add(
+        "capacity_component_check",
+        {
+            "id": allocators["capacity_component_check"].next(),
+            "client_id": e.client_id,
+            "run_date": e.run_date,
+            "order_id": ids.resolve("capacity_orders", e.order_ref),
+            "order_number": e.order_number,
+            "component_item_code": e.component_item_code,
+            "component_description": e.component_description,
+            "required_quantity": e.required_quantity,
+            "available_quantity": e.available_quantity,
+            "shortage_quantity": e.shortage_quantity,
+            "status": e.status,
+            "notes": None,
+            "created_at": e.at,
+            "updated_at": e.at,
+        },
+    )
+
+
+def _kpi_committed(
+    e: ev.CapacityKpiCommitted, sink: RowSink, ids: IdMap, allocators: Dict[str, IntPkAllocator]
+) -> None:
+    sink.add(
+        "capacity_kpi_commitment",
+        {
+            "id": allocators["capacity_kpi_commitment"].next(),
+            "client_id": e.client_id,
+            "schedule_id": ids.resolve("capacity_schedule", e.schedule_key),
+            "kpi_key": e.kpi_key,
+            "kpi_name": e.kpi_name,
+            "period_start": e.period_start,
+            "period_end": e.period_end,
+            "committed_value": e.committed_value,
+            "actual_value": e.actual_value,
+            "variance": e.variance,
+            "variance_percent": e.variance_percent,
+            "notes": None,
+            "created_at": e.at,
+            "updated_at": e.at,
+        },
+    )
+
+
 _HANDLERS: Dict[Type[ev.Event], Callable] = {
     ev.CapacityLineDefined: _line_defined,
     ev.CapacityCalendarDayDeclared: _calendar_day,
@@ -221,4 +357,9 @@ _HANDLERS: Dict[Type[ev.Event], Callable] = {
     ev.CapacityBomDefined: _bom_defined,
     ev.CapacityBomLineDefined: _bom_line_defined,
     ev.CapacityStockCounted: _stock_counted,
+    ev.CapacityScheduleCommitted: _schedule_committed,
+    ev.CapacityWorkScheduled: _work_scheduled,
+    ev.CapacityLineAnalyzed: _line_analyzed,
+    ev.CapacityComponentChecked: _component_checked,
+    ev.CapacityKpiCommitted: _kpi_committed,
 }

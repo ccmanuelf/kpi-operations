@@ -352,3 +352,34 @@ screen is no longer empty, but it will show every plan delivering a 0% capacity
 increase. Making those numbers mean something needs `capacity_schedule` and the
 line-capacity tables seeded -- a materially bigger scope than this change, and
 its own decision about how much of the capacity module the demo should model.
+
+
+## FINDING: capacity analysis divides by the shift count twice
+
+`CapacityAnalysisService._get_calendar_data` derives hours-per-shift as:
+
+    avg_hours       = total_hours / total_shifts     # already PER SHIFT
+    hours_per_shift = avg_hours / avg_shifts         # divided per shift AGAIN
+
+so a calendar declaring 2 shifts of 8h + 4h contributes 3 hours per shift where
+12 hours per day were declared. `_calculate_line_capacity` then multiplies
+`working_days * shifts_per_day * hours_per_shift`, giving 23 * 2 * 3 = 138
+gross hours where the calendar says 23 * 12 = 276.
+
+MEASURED, not inferred: seeded capacity came out at 58.1 h per line-day, and
+58.1 = 2 shifts * 3h * 0.85 efficiency * 0.95 attendance * 12 operators
+reproduces it exactly. The correct figure would be double.
+
+WHO IS AFFECTED: every capacity figure the app reports understates by a factor
+of `shifts_per_day` for any client running more than one shift. A single-shift
+calendar is unaffected (dividing by 1 twice is still 1), which is presumably
+why it has not been noticed.
+
+NOT FIXED HERE. Correcting it moves every capacity number, every utilisation
+percentage and every scenario comparison, so it needs its own before/after
+measurement and its own review -- shipping it inside a seeding change would
+mean an unmeasured change to the numbers a planner reads. The seeder
+deliberately MIRRORS the current arithmetic when sizing the demo schedule
+(`emitters_capacity.py`, the block above `units_per_line_day`) so utilisation
+lands where intended against what the app actually reports; that constant is
+where the seed needs revisiting when the service is corrected.

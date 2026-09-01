@@ -55,9 +55,10 @@ from backend.tests.contract.query_specs import (
 #: and what each needed. Written out rather than derived so the gates
 #: below compare the mechanism against a stated intent, not against itself.
 #:
-#: The ninth, `GET /api/capacity/kpi/variance`, is deliberately absent: its
-#: `client_id` resolves, and the route still has nothing to say. It is
-#: declared `Kind.BLOCKED` and lives in `test_capture_integrity.BLOCKED_ROUTES`.
+#: `GET /api/capacity/kpi/variance` was deliberately absent while it was
+#: `Kind.BLOCKED`: its `client_id` resolved and the route still had nothing to
+#: say. Seeding `capacity_kpi_commitment` gave it something, so it joins the
+#: map like any other asked route.
 UNBLOCKED: Dict[str, tuple] = {
     "GET /api/attendance/statistics/summary": ("start_date", "end_date"),
     "GET /api/attendance/kpi/bradford-factor/{employee_id}": ("start_date", "end_date"),
@@ -92,6 +93,10 @@ UNBLOCKED: Dict[str, tuple] = {
     # writes two scenarios per client, and the ids in its body resolve to the
     # same client this param names.
     "POST /api/capacity/scenarios/compare": ("client_id",),
+    # Promoted out of Kind.BLOCKED when the seeder began writing
+    # capacity_kpi_commitment. Its `client_id` always resolved; what changed is
+    # that the route now has commitments to report instead of `[]`.
+    "GET /api/capacity/kpi/variance": ("client_id",),
 }
 
 VARIANCE = "GET /api/capacity/kpi/variance"
@@ -533,29 +538,36 @@ def test_the_id_probe_reuses_the_capture_s_query_params(harness: _Harness, bogus
     assert without[route] == ["<status:422>"]
 
 
-def test_variance_is_blocked_by_an_empty_table_not_by_an_unresolvable_id(harness: _Harness):
-    """The declaration says the id resolves and the route still has nothing to
-    say. Both halves are checked, because the reason is the whole value of the
-    entry: if `client_id` were actually unresolvable this would be a seeder
-    regression wearing a data-gap label.
+def test_variance_resolves_now_that_its_table_is_seeded(harness: _Harness):
+    """The mirror of what this test used to assert.
+
+    It required `client_id` on `/api/capacity/kpi/variance` to raise, because
+    CAPACITY_KPI_COMMITMENT had zero rows and the route could only answer `[]`.
+    The seeder writes that table now, so the declaration is spent -- and
+    keeping the old assertion would have pinned the route into a blocked state
+    the data no longer justifies, which is the "rotting into folklore" failure
+    section 5.5 names, arriving from the other direction.
+
+    Both halves still matter: the id resolves through the PATH registry where
+    thirteen other routes use it, AND it resolves through the QUERY registry
+    for this route specifically.
     """
     resolver = Resolver(harness.engine)
 
-    # The id itself resolves -- through the PATH registry, where it is used by
-    # thirteen other routes -- so nothing about this route's id is broken.
     assert resolver.resolve("client_id", "/api/capacity/workbook/{client_id}")
+    assert resolver.resolve_query("client_id", "/api/capacity/kpi/variance")
 
-    with pytest.raises(UnresolvableParam) as raised:
-        resolver.resolve_query("client_id", "/api/capacity/kpi/variance")
-    assert "CAPACITY_KPI_COMMITMENT has zero seeded rows" in raised.value.reason
-
-    # And the claim it rests on: asked with a real client, the route answers
-    # 200 with a body carrying no fields. That is what would have gone into the
-    # golden master as this route's contract.
+    # And the claim it now rests on: asked with a real client, the route
+    # answers 200 with COMMITMENTS IN IT. The empty body was the whole reason
+    # for the old declaration, so an empty one here would mean the promotion
+    # was premature and the golden master is about to record an entry with no
+    # fields.
     client_id = resolver.resolve("client_id", "/api/capacity/workbook/{client_id}")
     response = harness.client.get("/api/capacity/kpi/variance", params={"client_id": client_id})
     assert response.status_code == 200
-    assert response.json() == []
+    body = response.json()
+    assert body, "variance answered empty -- the promotion out of BLOCKED is premature"
+    assert {"kpi_key", "committed"} <= set(body[0])
 
 
 def test_the_pivot_envelope_holds_for_every_dataset_not_just_the_captured_one(harness: _Harness):

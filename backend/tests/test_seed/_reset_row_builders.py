@@ -5,7 +5,7 @@ Shared by test_cli_reset.py and test_cli_reset_sweep.py. Leading underscore:
 not collected as a test module.
 """
 
-from datetime import date, datetime
+from datetime import datetime
 
 from sqlalchemy import insert, select
 
@@ -68,25 +68,28 @@ def _insert_job(conn, client_id):
     )
 
 
-def _insert_capacity_schedule(conn, client_id):
-    """One of the 13 capacity_* tables the retiring seeder swept and the plan
-    dropped.
+def _insert_equipment(conn, client_id):
+    """A client-scoped table the seeder does not write.
 
-    Was `capacity_calendar` until the seeder began writing it. The case needs a
-    table the seeder does NOT write, or "cleared by the sweep" and "re-seeded
-    immediately after" are indistinguishable -- which is exactly how it failed:
-    59 legitimately re-seeded rows read as 59 rows that survived the sweep.
-    `capacity_schedule` is the same FK cluster and still unseeded."""
+    Was `capacity_calendar`, then `capacity_schedule`. Both stopped working as
+    the seeder reached them: "cleared by the sweep" and "re-seeded immediately
+    after" are indistinguishable, so legitimately re-seeded rows read as rows
+    that survived. ALL THIRTEEN capacity_* tables are seeded now, so the case
+    moved out of that cluster entirely. EQUIPMENT is client-scoped, unseeded,
+    and on the list of areas still to cover -- when it is seeded this case must
+    move again, or be retired if nothing client-scoped is left unseeded, which
+    would be the good ending."""
     conn.execute(
-        insert(Base.metadata.tables["capacity_schedule"]),
+        insert(Base.metadata.tables["EQUIPMENT"]),
         [
             {
                 "client_id": client_id,
-                "schedule_name": "Reset sweep fixture",
-                "period_start": date(2026, 8, 3),
-                "period_end": date(2026, 8, 31),
+                "equipment_code": "MCH-RESET-01",
+                "equipment_name": "Reset sweep fixture",
+                "is_shared": False,
+                "status": "ACTIVE",
+                "is_active": True,
                 "created_at": datetime(2026, 8, 1),
-                "updated_at": datetime(2026, 8, 1),
             }
         ],
     )
@@ -179,6 +182,6 @@ def _insert_null_tenant_alert_history(conn, client_id):
 
 CHILD_ROW_BUILDERS = {
     "ALERT_CONFIG": (_insert_alert_config, "ALERT_CONFIG", "client_id"),
-    "capacity_schedule": (_insert_capacity_schedule, "capacity_schedule", "client_id"),
+    "EQUIPMENT": (_insert_equipment, "EQUIPMENT", "client_id"),
     "ALERT_HISTORY": (_insert_alert_history, "ALERT", "client_id"),
 }

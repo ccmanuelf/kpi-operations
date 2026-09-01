@@ -100,6 +100,11 @@ CLIENT_SCOPE_COLUMN = {
     "capacity_bom_header": "client_id",
     "capacity_bom_detail": "client_id",
     "capacity_stock_snapshot": "client_id",
+    "capacity_schedule": "client_id",
+    "capacity_schedule_detail": "client_id",
+    "capacity_analysis": "client_id",
+    "capacity_component_check": "client_id",
+    "capacity_kpi_commitment": "client_id",
 }
 
 

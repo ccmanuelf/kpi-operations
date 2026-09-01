@@ -447,6 +447,105 @@ class CapacityStockCounted(Event):
     location: str
 
 
+@dataclass(frozen=True)
+class CapacityScheduleCommitted(Event):
+    """A production schedule a planner has committed.
+
+    Only COMMITTED and ACTIVE schedules are demand: `_get_demand_by_line`
+    filters on exactly those two statuses, so a DRAFT schedule leaves
+    utilisation at zero no matter how much detail hangs off it.
+    """
+
+    schedule_key: str
+    schedule_name: str
+    period_start: date
+    period_end: date
+    status: str
+    committed_at: date
+    committed_by: str
+
+
+@dataclass(frozen=True)
+class CapacityWorkScheduled(Event):
+    """One line's work for one day under a schedule.
+
+    `line_id` and `style_model` are both load-bearing: demand skips any row
+    without a line, and hours come from
+    `scheduled_quantity * SUM(sam_minutes for the style) / 60`, so a style
+    with no matching row in `capacity_production_standards` contributes zero
+    hours while still looking scheduled.
+    """
+
+    schedule_key: str
+    order_ref: str
+    order_number: str
+    style_model: str
+    line_key: str
+    line_code: str
+    scheduled_date: date
+    scheduled_quantity: int
+    completed_quantity: int
+    sequence: int
+
+
+@dataclass(frozen=True)
+class CapacityLineAnalyzed(Event):
+    """A stored capacity analysis for one line on one date.
+
+    The service recomputes analysis live; these rows are the HISTORY a trend
+    view reads, which is why they carry the derived figures rather than
+    recomputing them.
+    """
+
+    analysis_date: date
+    line_key: str
+    line_code: str
+    department: str
+    working_days: int
+    shifts_per_day: int
+    hours_per_shift: str
+    operators_available: int
+    efficiency_factor: str
+    absenteeism_factor: str
+    gross_hours: str
+    net_hours: str
+    capacity_hours: str
+    demand_hours: str
+    demand_units: int
+    utilization_percent: str
+    is_bottleneck: bool
+
+
+@dataclass(frozen=True)
+class CapacityComponentChecked(Event):
+    """One component's availability against one order's requirement."""
+
+    run_date: date
+    order_ref: str
+    order_number: str
+    component_item_code: str
+    component_description: str
+    required_quantity: str
+    available_quantity: str
+    shortage_quantity: str
+    status: str
+
+
+@dataclass(frozen=True)
+class CapacityKpiCommitted(Event):
+    """A KPI target a planner committed alongside a schedule."""
+
+    schedule_key: str
+    kpi_key: str
+    kpi_name: str
+    period_start: date
+    period_end: date
+    committed_value: str
+    actual_value: str
+    variance: str
+    variance_percent: str
+
+
 EVENT_TYPES = (
     ClientCreated,
     UserCreated,
@@ -478,4 +577,9 @@ EVENT_TYPES = (
     CapacityBomDefined,
     CapacityBomLineDefined,
     CapacityStockCounted,
+    CapacityScheduleCommitted,
+    CapacityWorkScheduled,
+    CapacityLineAnalyzed,
+    CapacityComponentChecked,
+    CapacityKpiCommitted,
 )
