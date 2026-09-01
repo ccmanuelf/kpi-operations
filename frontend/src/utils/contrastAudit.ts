@@ -19,11 +19,17 @@ export interface Sample {
   fontSize: number // px
   fontWeight: number
   bgStack: string[] // ancestor backgroundColors, nearest-first
-  gradientStops: string[] // colors from any ancestor background-image gradient
-  // Stops of a gradient on the ELEMENT ITSELF, which paints over that
-  // element's own background-color. Optional so existing Sample literals
-  // (and older fixtures) stay valid; absent means "no own gradient".
-  ownGradientStops?: string[]
+  // Every background-image gradient found walking from the element outwards,
+  // nearest-first, each tagged with the depth in `bgStack` of the node that
+  // carries it. Depth is what makes a stop scoreable: it identifies the
+  // surface the stop is painted ON, so a translucent stop can be composited
+  // over it rather than mistaken for an opaque colour.
+  gradients: GradientLayer[]
+}
+
+export interface GradientLayer {
+  depth: number // index into bgStack of the node carrying this gradient
+  stops: string[]
 }
 
 export interface Violation extends Sample {
@@ -97,37 +103,175 @@ function effectiveBg(bgStack: string[]): Rgb {
   return acc
 }
 
+// Every background surface the text could be sitting on, so the caller can
+// score the worst of them. Two rules decide what belongs in the list.
+//
+// PAINTING ORDER. Nearest surface first: a gradient paints over its own node's
+// background-color, and an opaque background occludes everything behind it.
+// An ANCESTOR gradient is therefore only visible when what is in front of it
+// is see-through, and must not outrank the element's own surfaces. Getting
+// this wrong is what made AG Grid v36 fail this gate: it paints
+// `linear-gradient(#fff, #fff)` on `.ag-grid-pinned-right-cells`, so a
+// white-on-red delete button in the pinned column was scored against those
+// white stops and reported as white-on-white at ratio 1.
+//
+// COMPOSITING. A stop is a paint, not a surface. `rgba(0,0,0,.2)` over white
+// looks light grey; scored as if it were opaque black it reads 21:1 against
+// white text and a real failure passes. Every stop is composited over
+// `effectiveBg(bgStack.slice(depth))` -- the surface beneath the node that
+// carries it. This also handles fully transparent stops correctly: compositing
+// one yields its base, which is exactly what shows through, so they no longer
+// have to be discarded.
+//
+// KNOWN APPROXIMATION. `under` is built from background-COLORS only, so a
+// translucent gradient stacked over ANOTHER gradient is composited over the
+// solid stack rather than over the gradient beneath it. Modelling that needs a
+// per-stop cross-product down the layers; it is not worth the complexity while
+// a census of all 15 audited screens in both themes finds 172 gradient stops
+// and not one translucent.
+// A gradient renders every colour BETWEEN its stops, and contrast against it
+// is NOT monotonic along the ramp, so the worst point can sit strictly between
+// two stops -- and a fixed grid can step straight over it. Black text on
+// `rgb(251,0,251) -> rgb(0,251,0)` reads >= 4.52 at every eighth of the way
+// across, yet dips to 4.47 at t ~ 0.324, which is a real AA failure a
+// stops-only or coarse-grid check passes.
+//
+// So: scan coarsely to bracket the dip, then refine inside that bracket by
+// golden-section search, keeping the refined point only when it actually beats
+// the scan. Relative luminance along a stop pair is convex (verified
+// numerically over the ramp, minimum second difference 8.2e-07), but the
+// contrast ratio built on it is not always unimodal, which is exactly why the
+// refinement is guarded rather than trusted.
+//
+// This is a search, not a proof: no finite method can certify a global minimum
+// over a continuum. It is strictly better than the grid alone and never worse.
+const COARSE_STEPS = 24
+const REFINE_ITERATIONS = 40
+const INV_PHI = 0.6180339887498949
+
+function mixRgb(from: Rgb, to: Rgb, t: number): Rgb {
+  return {
+    r: from.r + (to.r - from.r) * t,
+    g: from.g + (to.g - from.g) * t,
+    b: from.b + (to.b - from.b) * t,
+    a: from.a + (to.a - from.a) * t,
+  }
+}
+
+// The ratio the caller will compute for this background, replicated here so
+// refinement optimises the same quantity rather than a proxy.
+function contrastAgainst(fg: Rgb, bg: Rgb): number {
+  return ratio(fg.a < 1 ? composite(fg, bg) : fg, bg)
+}
+
+// Worst-contrast point of one stop-to-stop segment, as an actual background
+// colour. `paint` maps a raw stop colour to what is finally on screen
+// (composited over what is behind, then tinted by the layers in front).
+function worstPointOnSegment(
+  from: Rgb,
+  to: Rgb,
+  fg: Rgb,
+  paint: (_stop: Rgb) => Rgb,
+): Rgb {
+  const at = (t: number) => paint(mixRgb(from, to, t))
+  let bestT = 0
+  let best = Infinity
+  for (let k = 0; k <= COARSE_STEPS; k++) {
+    const t = k / COARSE_STEPS
+    const r = contrastAgainst(fg, at(t))
+    if (r < best) {
+      best = r
+      bestT = t
+    }
+  }
+  // Refine within one coarse step either side of the best sample.
+  //
+  // Golden-section assumes a unimodal minimum, and the contrast RATIO is not
+  // guaranteed to be one: where background luminance crosses the foreground's,
+  // the ratio has two minima of 1 with a local maximum between them. So the
+  // refined point is ACCEPTED ONLY IF IT BEATS the coarse scan, keeping the
+  // search monotonically no worse than the grid it started from.
+  //
+  // Belt and braces rather than a fix for an observed failure: a 40k-case
+  // random search over opaque stop pairs and foregrounds found a maximum
+  // regression of 3e-6, i.e. float noise. The guard costs one comparison and
+  // makes the property exact instead of merely almost always true.
+  const step = 1 / COARSE_STEPS
+  let lo = Math.max(0, bestT - step)
+  let hi = Math.min(1, bestT + step)
+  for (let i = 0; i < REFINE_ITERATIONS && hi - lo > 1e-6; i++) {
+    const m1 = hi - (hi - lo) * INV_PHI
+    const m2 = lo + (hi - lo) * INV_PHI
+    if (contrastAgainst(fg, at(m1)) < contrastAgainst(fg, at(m2))) hi = m2
+    else lo = m1
+  }
+  const refined = at((lo + hi) / 2)
+  return contrastAgainst(fg, refined) < best ? refined : at(bestT)
+}
+
+function backgroundCandidates(s: Sample, solidBg: Rgb, fg: Rgb): Rgb[] {
+  const byDepth = new Map((s.gradients ?? []).map((g) => [g.depth, g]))
+
+  // Walk outwards and take the NEAREST painted surface -- the first gradient,
+  // or the first opaque background-color, whichever comes first. At a given
+  // node the gradient paints over that node's own background-color, so the
+  // gradient is checked first.
+  //
+  // Only the nearest surface is scored. Offering deeper layers as extra
+  // candidates would manufacture backgrounds the user never sees: a
+  // `rgba(0,0,0,.8)` gradient over a white ancestor composites to a dark grey
+  // that white text reads fine against, and separately scoring that white
+  // would fail a control that renders correctly -- the same false positive
+  // this checker was just fixed for.
+  // Translucent background-colors NEARER than whatever the walk settles on are
+  // painted in front of it and tint what the eye sees. `rgba(0,0,0,.8)` on the
+  // element over a white parent is dark grey, not white, and white text on it
+  // is perfectly readable -- returning the bare white would fail a correct
+  // control.
+  const overlayNearerLayers = (base: Rgb, depth: number): Rgb => {
+    let acc = base
+    for (let i = depth - 1; i >= 0; i--) {
+      const c = parseColor(s.bgStack[i])
+      if (c && c.a > 0) acc = composite(c, acc)
+    }
+    return acc
+  }
+
+  for (let d = 0; d < s.bgStack.length; d++) {
+    const g = byDepth.get(d)
+    if (g) {
+      const under = effectiveBg(s.bgStack.slice(d))
+      const stops = g.stops.map(parseColor).filter((c): c is Rgb => !!c)
+      // No readable stop (oklch and friends) means this gradient contributes
+      // nothing and the walk carries on; a gradient with SOME readable stops
+      // is scored on those.
+      if (stops.length) {
+        const paint = (stop: Rgb) => overlayNearerLayers(composite(stop, under), d)
+        // The stops themselves, plus the worst point inside each segment.
+        const out = stops.map(paint)
+        for (let i = 0; i < stops.length - 1; i++) {
+          out.push(worstPointOnSegment(stops[i], stops[i + 1], fg, paint))
+        }
+        return out
+      }
+    }
+    const bg = parseColor(s.bgStack[d])
+    // `solidBg` is effectiveBg over the whole stack, which already composites
+    // the nearer translucent layers onto this opaque one, so it is the answer
+    // here rather than the bare colour.
+    if (bg && bg.a >= 1) return [solidBg]
+  }
+
+  return [solidBg]
+}
+
 export function findViolations(samples: Sample[], allow: AllowEntry[]): Violation[] {
   const out: Violation[] = []
   for (const s of samples) {
     const fg = parseColor(s.color)
     if (!fg) continue
     const solidBg = effectiveBg(s.bgStack)
-    // gradient-aware: an ancestor gradient paints OVER the solid backgroundColor,
-    // so when gradient stops exist they ARE the visible background — evaluate
-    // worst-case across the stops; otherwise use the composited solid bg.
-    const stops = s.gradientStops.map(parseColor).filter((c): c is Rgb => !!c && c.a > 0)
-    // Painting order, nearest surface first. An ANCESTOR gradient is only
-    // visible when everything in front of it is see-through, so it must not
-    // outrank either of the element's own surfaces:
-    //   1. the element's own gradient  — paints over its own background-color
-    //   2. the element's own OPAQUE background-color — occludes all ancestors
-    //   3. ancestor gradient stops, else the composited ancestor stack
-    // Skipping step 2 is what made AG Grid v36 fail this gate: it paints
-    // `linear-gradient(#fff, #fff)` on `.ag-grid-pinned-right-cells`, so a
-    // white-on-red delete button in the pinned column was scored against
-    // those white stops and reported as white-on-white at ratio 1.
-    const ownGradient = (s.ownGradientStops ?? [])
-      .map(parseColor)
-      .filter((c): c is Rgb => !!c && c.a > 0)
-    const ownBg = parseColor(s.bgStack[0])
-    const candidates: Rgb[] = ownGradient.length
-      ? ownGradient
-      : ownBg && ownBg.a >= 1
-        ? [ownBg]
-        : stops.length
-          ? stops
-          : [solidBg]
+    const candidates = backgroundCandidates(s, solidBg, fg)
     let worst = Infinity
     let bgUsed = solidBg
     for (const cand of candidates) {

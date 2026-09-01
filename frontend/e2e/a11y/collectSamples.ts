@@ -23,22 +23,32 @@ export async function collectSamples(
       if (r.width < 1 || r.height < 1) continue
       if (r.bottom < 0 || r.top > window.innerHeight || r.right < 0 || r.left > window.innerWidth) continue
       const bgStack: string[] = []
-      const gradientStops: string[] = []
-      // Tracked apart from the ancestor stops: a gradient on the element
-      // itself paints over its own background-color, whereas an ancestor's
-      // only shows through when the element in front of it is see-through.
-      const ownGradientStops: string[] = []
+      // Each gradient is tagged with the depth of the node carrying it, so the
+      // contrast math can composite its stops over the surface beneath THAT
+      // node. Without the depth a stop is just a colour with nowhere to sit,
+      // and a translucent one gets mistaken for an opaque background.
+      const gradients: Array<{ depth: number; stops: string[] }> = []
       let node: Element | null = el
+      let depth = 0
       while (node) {
         const ncs = getComputedStyle(node)
-        if (ncs.backgroundColor) bgStack.push(ncs.backgroundColor)
+        // Push unconditionally: bgStack indexes MUST line up with `depth`.
+        // Skipping a node here would silently shift every deeper gradient
+        // onto the wrong surface.
+        bgStack.push(ncs.backgroundColor)
         const bi = ncs.backgroundImage
         if (bi && bi.includes('gradient')) {
-          const ms = bi.match(/rgba?\([^)]*\)|#[0-9a-fA-F]{3,8}/g) || []
-          gradientStops.push(...ms)
-          if (node === el) ownGradientStops.push(...ms)
+          // `color()` is matched as well as rgb/hex because parseColor
+          // understands the srgb form and computed styles can serialise wide-
+          // gamut colours that way. A stop in a syntax parseColor cannot read
+          // (oklch, oklab) yields null, gets filtered, and the walk falls
+          // through to the background-color rather than scoring a wrong value.
+          const stops =
+            bi.match(/rgba?\([^)]*\)|color\([^)]*\)|#[0-9a-fA-F]{3,8}/g) || []
+          if (stops.length) gradients.push({ depth, stops })
         }
         node = node.parentElement
+        depth++
       }
       out.push({
         text: own.slice(0, 60),
@@ -47,8 +57,7 @@ export async function collectSamples(
         fontSize: parseFloat(cs.fontSize) || 0,
         fontWeight: parseInt(cs.fontWeight) || 400,
         bgStack,
-        gradientStops,
-        ownGradientStops,
+        gradients,
       })
     }
     return out
