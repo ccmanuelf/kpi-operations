@@ -36,8 +36,15 @@ The 204 DELETEs are now populated, which is what Task 10 built the reusable
 `classify_non_json_route` predicate FOR. Measured rather than assumed: 24 of
 the 25 allowlisted DELETE routes annotate `-> None` and send no body, not the
 9 the plan estimated -- that figure predates the routes being annotated. The
-one exception, `DELETE /api/v2/simulation/scenarios/{scenario_id}`, returns a
-JSON body and stays in the ratchet where it belongs.
+one exception, `DELETE /api/v2/simulation/scenarios/{scenario_id}`, stays in
+the ratchet because it declares no response model -- NOT because it carries a
+body. It annotates `-> None` and answers 204 like the other 24. The note here
+previously said it returned a JSON body, which is what the predicate below
+reported at the time, and the predicate was wrong: its module postpones
+annotations, so the `-> None` reached `classify_non_json_route` as the STRING
+`"None"` and matched no branch. Seeding SIMULATION_SCENARIO produced the
+route's first real capture, `<non-json>`, which is what forced the question
+and exposed the hole.
 
 Reachability is deliberately NOT a factor here. Four of these routes cannot be
 captured at all because the seeder writes no rows for them (S3), and
@@ -49,6 +56,7 @@ annotation -- so the seed gap does not block this declaration.
 from __future__ import annotations
 
 import inspect
+import typing
 from dataclasses import dataclass
 from typing import Dict, Optional
 
@@ -205,7 +213,23 @@ def _real_return_annotation(route: APIRoute):
     already erased the distinction -- is the one place that cannot be
     consulted to make it.
     """
-    return inspect.signature(route.endpoint).return_annotation
+    annotation = inspect.signature(route.endpoint).return_annotation
+    if isinstance(annotation, str):
+        # PEP 563. `from __future__ import annotations` makes EVERY annotation
+        # in the module a string, so `-> None` arrives here as `"None"` and the
+        # `annotation is None` identity check below silently fails -- the route
+        # falls through to "unexplained" as though it carried a body. Five
+        # route modules use postponed annotations and one of them
+        # (simulation_scenarios.py) owns a 204 DELETE, which is the route this
+        # predicate could not explain. Nothing surfaced it while that route was
+        # unreachable: it recorded `<blocked:scenario_id@simulation>`, never
+        # `<non-json>`, so it was never a route this function was asked about.
+        resolved = typing.get_type_hints(route.endpoint).get("return", inspect.Signature.empty)
+        # get_type_hints maps `-> None` to NoneType. Normalise it back so every
+        # caller compares against None exactly as it does for a module that
+        # does not postpone its annotations.
+        return None if resolved is type(None) else resolved  # noqa: E721
+    return annotation
 
 
 def classify_non_json_route(route: APIRoute) -> Optional[str]:

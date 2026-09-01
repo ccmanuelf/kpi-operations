@@ -322,10 +322,15 @@ REGISTRY: Dict[str, ParamSpec] = {
         "now, and its rows are derived from the attendance the stream already recorded rather "
         "than invented beside it.",
     ),
-    "equipment_id": _blocked(
+    "equipment_id": _seeded(
         "equipment_id",
         "EQUIPMENT",
-        "EQUIPMENT has zero seeded rows; named in seed/cli.py's never-written list.",
+        "SELECT equipment_id FROM EQUIPMENT WHERE is_active = 1 ORDER BY equipment_id LIMIT 1",
+        note="PROMOTED out of Kind.BLOCKED when the seeder began writing EQUIPMENT. The "
+        "is_active filter is load-bearing rather than decorative: the seed deliberately "
+        "carries one soft-deleted machine so list_equipment's include_inactive parameter has "
+        "something to reveal, and resolving to it would capture a route the default list "
+        "never returns.",
     ),
     "filter_id": _blocked(
         "filter_id",
@@ -355,17 +360,24 @@ REGISTRY: Dict[str, ParamSpec] = {
         "production actually ran carries quality entries for the same shift too (the emitter "
         "names one step for both), so this one id reaches every one of the six.",
     ),
-    "part_number": _blocked(
+    "part_number": _seeded(
         "part_number",
         "PART_OPPORTUNITIES",
-        "PART_OPPORTUNITIES has zero seeded rows. Note the trap: part_number VALUES exist on "
-        "PRODUCT and JOB, so a resolver that greps for the value finds a real one and gets a "
-        "confident 404 -- the value is real, the table is empty.",
+        "SELECT part_number FROM PART_OPPORTUNITIES WHERE is_active = 1 ORDER BY part_number LIMIT 1",
+        note="PROMOTED out of Kind.BLOCKED when the seeder began writing PART_OPPORTUNITIES. "
+        "The old trap is now closed rather than merely documented: the seeded part numbers ARE "
+        "the product codes JOB carries, so the value that exists on PRODUCT and JOB is the same "
+        "value this table holds -- pinned by test_equipment_dataset, which fails if the two "
+        "vocabularies ever diverge.",
     ),
-    "scenario_id@simulation": _blocked(
+    "scenario_id@simulation": _seeded(
         "scenario_id@simulation",
         "SIMULATION_SCENARIO",
-        "SIMULATION_SCENARIO has zero seeded rows; named in seed/cli.py among the USER-FK " "tables the seeder avoids.",
+        "SELECT id FROM SIMULATION_SCENARIO WHERE is_active = 1 ORDER BY id LIMIT 1",
+        note="PROMOTED out of Kind.BLOCKED when the seeder began writing SIMULATION_SCENARIO. "
+        "The column is `id`, not `scenario_id` -- the param name lies about its column the way "
+        "several others in this map do. Ordering by id takes the baseline scenario, the one "
+        "carrying a last_run_summary.",
     ),
 }
 
