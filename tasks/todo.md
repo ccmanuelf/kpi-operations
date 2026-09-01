@@ -235,13 +235,72 @@ already the behaviour. #260 changed only WHICH gradient's stops win -- the
 element's own rather than any ancestor's, i.e. the one actually in front -- and
 did not touch how stops are combined with what is behind them.
 
-NOT FIXED IN #260 DELIBERATELY. The fix is to composite each stop over the
-background stack beneath it, which changes the contrast math for every sample
-carrying a gradient. That can newly flag findings across all 13 screens in both
-themes, so it needs its own before/after sweep and its own review surface --
-bundling it into a dependency bump would have shipped an unmeasured change to a
-blocking CI gate.
+FIXED on branch `fix/contrast-composite-gradient-stops`, as its own PR.
 
-WHERE: `frontend/src/utils/contrastAudit.ts`, the `candidates` construction in
-`findViolations`. `composite()` already exists in that file and is what
-`effectiveBg` uses.
+`collectSamples` now records each gradient with the DEPTH of the node carrying
+it, so a stop can be composited over `effectiveBg(bgStack.slice(depth))` -- the
+surface it is actually painted on. Transparent stops then need no special case:
+compositing one yields its base, which is exactly what shows through.
+
+THE SWEEP THAT JUSTIFIED IT, run before writing the fix: across all 15 audited
+screens in both themes there are 86 gradient-carrying elements and 172 stops, of
+which ZERO are translucent and ZERO use a syntax the collector cannot read
+(computed styles serialise to rgb()). So the fix changes no current result --
+it closes a class that would pass silently the first time someone ships a
+translucent overlay. The census was itself checked for vacuity: it reports the
+totals it scanned, not just the hits.
+
+TWO FALSE POSITIVES WERE INTRODUCED AND CAUGHT BEFORE MERGE, both from getting
+the layer order wrong, and both now pinned by tests:
+  - offering deeper layers as extra worst-case candidates -- an
+    `rgba(0,0,0,.8)` gradient over a white ancestor is dark grey that white
+    text reads fine against, and scoring that white separately fails a correct
+    control;
+  - skipping translucent background-colors NEARER than the surface the walk
+    settles on -- same error mirrored, it flagged readable white text sitting
+    on a dark scrim.
+
+ALSO CLOSED, found by the same review: only the STOP colours were scored, but a
+gradient renders every colour between them and the worst contrast can fall
+strictly in between. `#767676` text on a black-to-white gradient clears AA at
+both ends (4.62:1 on black, 4.54:1 on white) and collapses to 1.15:1 against
+the mid grey.
+
+The first attempt at this -- a fixed 8-step grid -- was itself shown unsound by
+the next review round, and the counterexample was reproduced numerically before
+being believed: black text on `rgb(251,0,251) -> rgb(0,251,0)` reads >= 4.52 at
+every eighth of the ramp yet dips to 4.4666 at t ~ 0.3235. A grid steps over
+minima. What ships instead brackets with a coarse scan and then refines by
+golden-section search, which converges because relative luminance along a stop
+pair is convex (checked numerically over the ramp, min second difference
+8.2e-07).
+
+Pinning that gate needed care: `ratio` is rounded to 2dp, so both the refined
+and the coarse answers print 4.47 and an assertion on the ratio proves nothing.
+The test asserts `bgUsed` instead -- refinement lands on rgb(170,81,170), the
+coarse grid on rgb(167,84,167) -- and only then does disabling refinement fail
+the test.
+
+A further round objected that golden-section assumes a unimodal minimum while
+the contrast RATIO is not always one (where background luminance crosses the
+foreground's there are two minima with a local maximum between). The refined
+point is therefore accepted only when it beats the coarse scan, so the search
+is monotonically no worse than the grid. Honest scope of that guard: a
+40k-case random search over opaque stop pairs put the largest regression at
+3e-6, float noise, so it is belt-and-braces rather than a fix for an observed
+failure -- and it is NOT mutation-proven, because no input distinguishes it.
+The invariant is pinned by a 120-case property test instead, which asserts the
+reported ratio never beats a plain grid and counts the violations it actually
+exercised so it cannot pass vacuously.
+
+This only ADDS candidates, so it was checked against the live gate rather than
+assumed safe: light and dark still pass, because every gradient the app ships is
+a pair of near-identical colours.
+
+KNOWN LIMITS, documented in the code rather than papered over: a translucent
+gradient stacked over ANOTHER gradient composites over the solid stack, because
+`effectiveBg` sees background-colors only; a gradient whose stops are all
+unreadable (oklch, oklab) contributes nothing and the walk carries on; a
+comma-separated multi-layer `background-image` has its stops flattened (all 86
+elements ship a single layer); and `url(...)` backgrounds remain invisible to
+the collector, which is pre-existing.
