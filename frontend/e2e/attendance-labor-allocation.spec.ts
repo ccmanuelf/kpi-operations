@@ -221,11 +221,10 @@ test.describe('Attendance grid — OT split + hour allocation', () => {
     }).toPass({ timeout: 15000 })
     // Correlation check: the seeded employee (from the same unfiltered,
     // employee_name-ordered list the grid loads) must land at this row.
-    // employee_id is pinned left, so it renders in a separate container.
-    const pinnedRow = page.locator(
-      `.ag-row[row-index="${rowIndex}"]`,
-    )
-    await expect(pinnedRow.locator('.ag-cell[col-id="employee_id"]')).toHaveText(
+    // employee_id is pinned left, but as of v36 the pinned and centre cell
+    // groups live inside the SAME `.ag-row`, so the row locator above already
+    // covers it -- no separate container locator is needed.
+    await expect(row.locator('.ag-cell[col-id="employee_id"]')).toHaveText(
       String(seed!.employeeId),
     )
 
