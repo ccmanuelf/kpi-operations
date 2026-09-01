@@ -537,6 +537,12 @@ def emit_shifts(
         # describe. Accumulated here, emitted once per shift after the line
         # loop.
         coverage_by_shift: dict = {}
+        # Which floaters are already committed for each shift TODAY. The pool
+        # is a roster of people, and a person cannot cover two lines at once --
+        # but the assignment below sits inside the LINE loop, so without this
+        # the pool refilled for every line and the same floater was handed two
+        # absences in the same shift. Measured before the fix: 2 such rows.
+        committed_floaters: dict = {}
         for li, line_id in enumerate(lines):
             for si, shift_id in enumerate(shifts):
                 # Draws taken unconditionally and in a fixed order, before any
@@ -700,8 +706,14 @@ def emit_shifts(
                     ]
                     # One floater covers at most one absence per shift, so the
                     # pool runs out exactly as it would in a plant -- which is
-                    # the shortfall the coverage screen exists to show.
-                    for absentee, floater in zip(absentees, floating_pool or []):
+                    # the shortfall the coverage screen exists to show. Taken
+                    # from those NOT already committed to this shift today, so
+                    # the constraint holds across lines and not merely within
+                    # one.
+                    busy = committed_floaters.setdefault(shift_id, set())
+                    free = [f for f in (floating_pool or []) if f not in busy]
+                    for absentee, floater in zip(absentees, free):
+                        busy.add(floater)
                         emit(
                             AbsenceCovered,
                             at,
