@@ -105,6 +105,11 @@ CLIENT_SCOPE_COLUMN = {
     "capacity_analysis": "client_id",
     "capacity_component_check": "client_id",
     "capacity_kpi_commitment": "client_id",
+    # The alert board. ALERT_HISTORY is deliberately absent: it carries no
+    # client column at all -- it hangs off ALERT.alert_id -- so it is scoped
+    # transitively, not directly.
+    "ALERT": "client_id",
+    "ALERT_CONFIG": "client_id",
 }
 
 
@@ -163,6 +168,7 @@ def materialize(conn: Connection, events: Iterable[Event], profile: Profile) -> 
     # ignore_missing_imports; the submodule-import form is what that flag
     # actually covers, so the whole-package mypy gate stays green without
     # stubbing the modules into existence.
+    import backend.seed.writers_alerts as writers_alerts
     import backend.seed.writers_capacity as writers_capacity
     import backend.seed.writers_master as writers_master
     import backend.seed.writers_operations as writers_operations
@@ -180,6 +186,8 @@ def materialize(conn: Connection, events: Iterable[Event], profile: Profile) -> 
     allocators.update(writers_capacity.build_allocators(conn))
 
     for event in events:
+        if writers_alerts.handle(event, sink, ids, allocators):
+            continue
         if writers_capacity.handle(event, sink, ids, allocators):
             continue
         if writers_master.handle(event, sink, ids, allocators):

@@ -84,8 +84,10 @@
     "<status:409>"
   ],
   "GET /api/alerts/history/accuracy": [
-    "accuracy_metrics",
-    "message",
+    "accuracy_rate_percent",
+    "accurate_predictions",
+    "average_error_percent",
+    "category",
     "period_days",
     "total_predictions"
   ],

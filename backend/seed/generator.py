@@ -21,6 +21,7 @@ from dataclasses import fields, replace
 from datetime import date, datetime, time, timedelta
 from typing import Any, Callable, Iterable, List, Sequence, Type
 
+from backend.seed.emitters_alerts import emit_alerts
 from backend.seed.emitters_capacity import emit_capacity
 from backend.seed.emitters_master import emit_setup
 from backend.seed.emitters_operations import emit_shifts, emit_work_orders
@@ -166,3 +167,6 @@ def _generate_client(
     emit_capacity(emit, scenario, profile, setup, as_of)
     received = emit_work_orders(emit, rng, scenario, profile, setup, as_of)
     emit_shifts(emit, rng, scenario, profile, setup, received, as_of)
+    # Last: the OTD alerts reference real work orders, so they cannot be
+    # raised before the orders exist in the stream.
+    emit_alerts(emit, scenario, profile, setup, received, as_of)

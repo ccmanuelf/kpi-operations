@@ -546,6 +546,78 @@ class CapacityKpiCommitted(Event):
     variance_percent: str
 
 
+@dataclass(frozen=True)
+class AlertConfigured(Event):
+    """A client's thresholds for one alert type.
+
+    ALERT_CONFIG is what the alert-configuration screen writes the first time
+    anyone edits a threshold. Seeding it is why that screen opens with the
+    tenant's own numbers instead of an empty form.
+    """
+
+    config_key: str
+    alert_type: str
+    enabled: bool
+    warning_threshold: float
+    critical_threshold: float
+    notification_email: bool
+    notification_sms: bool
+    check_frequency_minutes: int
+
+
+@dataclass(frozen=True)
+class AlertRaised(Event):
+    """One alert, in whatever state it reached.
+
+    Mirrors what `routes/alerts/generate.py` actually writes -- same
+    categories, same `kpi_key`s, `work_order_id` on the ones that have one --
+    so a seeded alert is indistinguishable from a generated one rather than a
+    row that merely fills the table.
+
+    `acknowledged_at`/`resolved_at` are carried rather than derived: the
+    dashboard counts by status, and a board where every alert is active
+    demonstrates the list but never the workflow.
+    """
+
+    alert_key: str
+    category: str
+    severity: str
+    status: str
+    title: str
+    message: str
+    recommendation: Optional[str]
+    kpi_key: str
+    work_order_id: Optional[str]
+    current_value: Optional[float]
+    threshold_value: Optional[float]
+    predicted_value: Optional[float]
+    confidence: Optional[float]
+    alert_metadata: Mapping[str, Any]
+    acknowledged_at: Optional[datetime]
+    acknowledged_by: Optional[str]
+    resolved_at: Optional[datetime]
+    resolved_by: Optional[str]
+    resolution_notes: Optional[str]
+
+
+@dataclass(frozen=True)
+class AlertPredictionRecorded(Event):
+    """How a predictive alert's forecast turned out.
+
+    ALERT_HISTORY is the accuracy ledger the prediction views read: without
+    rows, "was this alert right?" has no answer to show.
+    """
+
+    history_key: str
+    alert_key: str
+    predicted_value: float
+    actual_value: float
+    prediction_date: datetime
+    actual_date: datetime
+    was_accurate: bool
+    error_percent: float
+
+
 EVENT_TYPES = (
     ClientCreated,
     UserCreated,
@@ -582,4 +654,7 @@ EVENT_TYPES = (
     CapacityLineAnalyzed,
     CapacityComponentChecked,
     CapacityKpiCommitted,
+    AlertConfigured,
+    AlertRaised,
+    AlertPredictionRecorded,
 )
