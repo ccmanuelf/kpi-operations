@@ -304,17 +304,23 @@ REGISTRY: Dict[str, ParamSpec] = {
         "old literal-brace capture returned a perfectly plausible 200 with "
         "entries_invalidated=0; the real prefix invalidates 2.",
     ),
-    "break_id": _blocked(
+    "break_id": _seeded(
         "break_id",
         "BREAK_TIME",
-        "BREAK_TIME has zero seeded rows in both the smoke and full profiles. Depends only on "
-        "SHIFT, which IS seeded, so it is cheap to add -- Task 8d, not a harness workaround.",
+        "SELECT break_id FROM BREAK_TIME WHERE is_active = 1 ORDER BY break_id LIMIT 1",
+        note="PROMOTED out of Kind.BLOCKED when the seeder began writing BREAK_TIME. The old "
+        "note called it 'cheap to add -- Task 8d, not a harness workaround', and that is what "
+        "happened: the staleness gate counting this table's rows every run is what failed the "
+        "moment breaks were seeded.",
     ),
-    "coverage_id": _blocked(
+    "coverage_id": _seeded(
         "coverage_id",
         "shift_coverage",
-        "shift_coverage has zero seeded rows and is absent from both seed/coverage.py's SEEDED "
-        "set and its NOT_SEEDED dict, i.e. outside the seeder's declared scope entirely.",
+        "SELECT coverage_id FROM shift_coverage WHERE is_active = 1 ORDER BY coverage_id LIMIT 1",
+        note="PROMOTED out of Kind.BLOCKED. The old note said this table sat outside the "
+        "seeder's declared scope entirely -- neither SEEDED nor NOT_SEEDED. It is in SEEDED "
+        "now, and its rows are derived from the attendance the stream already recorded rather "
+        "than invented beside it.",
     ),
     "equipment_id": _blocked(
         "equipment_id",
@@ -329,11 +335,13 @@ REGISTRY: Dict[str, ParamSpec] = {
         "a non-owner INCLUDING an admin -- seeding a row would not unblock it either. Only "
         "request chaining (POST a filter as the capturing identity) ever could.",
     ),
-    "pool_id": _blocked(
+    "pool_id": _seeded(
         "pool_id",
         "FLOATING_POOL",
-        "FLOATING_POOL has zero seeded rows; test_cli_derived_sets.py asserts it is not in "
-        "SEEDED. Not to be confused with EMPLOYEE.is_floating_pool, a bool the seeder writes.",
+        "SELECT pool_id FROM FLOATING_POOL WHERE is_active = 1 ORDER BY pool_id LIMIT 1",
+        note="PROMOTED out of Kind.BLOCKED when the seeder began writing FLOATING_POOL. Still "
+        "not to be confused with EMPLOYEE.is_floating_pool, a bool the seeder has always "
+        "written -- the pool TABLE is the roster the coverage screen assigns from.",
     ),
     "job_id": _seeded(
         "job_id",

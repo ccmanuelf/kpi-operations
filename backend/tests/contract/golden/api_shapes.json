@@ -3,7 +3,7 @@
     "<non-json>"
   ],
   "DELETE /api/break-times/{break_id}": [
-    "<blocked:break_id>"
+    "<non-json>"
   ],
   "DELETE /api/cache/invalidate/{pattern}": [
     "entries_invalidated",
@@ -18,7 +18,7 @@
     "<non-json>"
   ],
   "DELETE /api/coverage/{coverage_id}": [
-    "<blocked:coverage_id>"
+    "<non-json>"
   ],
   "DELETE /api/defect-types/{defect_type_id}": [
     "<non-json>"
@@ -42,7 +42,7 @@
     "<blocked:filter_id>"
   ],
   "DELETE /api/floating-pool/{pool_id}": [
-    "<blocked:pool_id>"
+    "<non-json>"
   ],
   "DELETE /api/hold-catalogs/reasons/{catalog_id}": [
     "<non-json>"
@@ -84,8 +84,10 @@
     "<status:409>"
   ],
   "GET /api/alerts/history/accuracy": [
-    "accuracy_metrics",
-    "message",
+    "accuracy_rate_percent",
+    "accurate_predictions",
+    "average_error_percent",
+    "category",
     "period_days",
     "total_predictions"
   ],
@@ -427,7 +429,16 @@
     "total_filters",
     "total_usage_count"
   ],
-  "GET /api/floating-pool/available/list": [],
+  "GET /api/floating-pool/available/list": [
+    "[].available_from",
+    "[].available_to",
+    "[].employee_code",
+    "[].employee_id",
+    "[].employee_name",
+    "[].notes",
+    "[].pool_id",
+    "[].position"
+  ],
   "GET /api/floating-pool/check-availability/{employee_id}": [
     "conflict_dates",
     "current_assignment",
@@ -466,7 +477,10 @@
     "staffing_scenarios[].scenario"
   ],
   "GET /api/floating-pool/summary": [
-    "available_employees",
+    "available_employees[].employee_code",
+    "available_employees[].employee_id",
+    "available_employees[].employee_name",
+    "available_employees[].position",
     "currently_assigned",
     "currently_available",
     "total_floating_pool_employees"

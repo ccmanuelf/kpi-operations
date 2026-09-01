@@ -114,7 +114,12 @@ def test_every_non_json_golden_entry_is_explained():
     # declared NO_CONTENT_204 all along on the strength of its `-> None`
     # annotation; the capture could not confirm it because the route was
     # unreachable, recording the shadowing route's 422 instead.
-    assert len(non_json_routes) == 39
+    # 42, up from 39: the three workforce DELETEs -- break-times, coverage and
+    # floating-pool -- answer their own 204 now that the seeder writes the
+    # tables their ids come from. Like filters/history above, all three were
+    # declared NO_CONTENT_204 all along on their annotations; the capture could
+    # not confirm it because no id could reach them.
+    assert len(non_json_routes) == 42
 
     unexplained = [route for route in non_json_routes if classify_non_json_route(_route(app, route)) is None]
     assert unexplained == []
@@ -238,8 +243,14 @@ def test_non_json_entries_decompose_into_exactly_three_categories():
     # that had no such column. Fixing that turned them into ordinary 204s.
     assert no_content_204 == [
         "DELETE /api/attendance/{attendance_id}",
+        # Joined when the seeder began writing BREAK_TIME, shift_coverage and
+        # FLOATING_POOL. All three were declared 204 on their annotations all
+        # along; the capture recorded `<blocked:...>` because no id could reach
+        # them while their tables were empty.
+        "DELETE /api/break-times/{break_id}",
         "DELETE /api/client-config/{client_id}",
         "DELETE /api/clients/{client_id}",
+        "DELETE /api/coverage/{coverage_id}",
         "DELETE /api/defect-types/{defect_type_id}",
         "DELETE /api/defects/{defect_detail_id}",
         "DELETE /api/downtime/{downtime_id}",
@@ -249,6 +260,7 @@ def test_non_json_entries_decompose_into_exactly_three_categories():
         # along on its `-> None` annotation; the capture recorded the shadowing
         # route's 422 because this handler was unreachable.
         "DELETE /api/filters/history",
+        "DELETE /api/floating-pool/{pool_id}",
         "DELETE /api/hold-catalogs/reasons/{catalog_id}",
         "DELETE /api/hold-catalogs/statuses/{catalog_id}",
         "DELETE /api/holds/{hold_id}",

@@ -15,7 +15,7 @@ from datetime import date
 from pathlib import Path
 
 import pytest
-from sqlalchemy import create_engine, func, insert, select
+from sqlalchemy import create_engine, func, insert, select, text
 
 from backend.database import Base
 from backend.seed.cli import seed
@@ -38,9 +38,10 @@ def test_reset_clears_a_client_scoped_row_the_seeder_never_wrote(seed_engine, ca
     before the sweep was widened to cli.CLIENT_SCOPED_TABLES; MariaDB/InnoDB
     enforces foreign keys unconditionally, so the VM path failed identically.
     """
-    builder, table_name, column = CHILD_ROW_BUILDERS[case]
+    builder, table_name, column, planted = CHILD_ROW_BUILDERS[case]
     table = Base.metadata.tables[table_name]
     kwargs = dict(client_ids=("DEMO-PIECE",), profile_name="smoke", seed_value=1234, as_of=date(2026, 8, 18))
+    planted_value = planted.format(client_id="DEMO-PIECE")
 
     seed(seed_engine, reset=False, **kwargs)
     with seed_engine.begin() as conn:
@@ -50,9 +51,14 @@ def test_reset_clears_a_client_scoped_row_the_seeder_never_wrote(seed_engine, ca
     seed(seed_engine, reset=True, **kwargs)
 
     with seed_engine.connect() as conn:
-        left = conn.execute(select(func.count()).select_from(table).where(table.c[column] == "DEMO-PIECE")).scalar_one()
+        # The PLANTED row specifically, not a count of the client's rows. The
+        # seeder writes ALERT and ALERT_CONFIG now, so a count cannot tell a
+        # swept row from a re-seeded one and would pass without the sweep.
+        left = conn.execute(
+            select(func.count()).select_from(table).where(table.c[column] == planted_value)
+        ).scalar_one()
 
-    assert left == 0, f"{table_name} rows for a reset client survived the sweep"
+    assert left == 0, f"{table_name} row {planted_value!r} survived the sweep"
 
 
 def test_cli_subprocess_reset_sweeps_grandchildren_on_the_production_engine(tmp_path):
@@ -113,10 +119,17 @@ def test_cli_subprocess_reset_sweeps_grandchildren_on_the_production_engine(tmp_
             attendance_entry_id = conn.execute(
                 select(attendance.c.attendance_entry_id).where(attendance.c.client_id == "DEMO-PIECE").limit(1)
             ).scalar_one()
-            conn.execute(
-                insert(allocation),
-                [{"attendance_entry_id": attendance_entry_id, "category": "billed_production", "hours": 8}],
-            )
+            # The planted row's own PK, captured at insert. The seeder writes
+            # ATTENDANCE_HOUR_ALLOCATION now, so a count of the table cannot
+            # tell a swept row from a re-seeded one.
+            planted_allocation_id = conn.execute(
+                # `training`, not `billed_production`: the table is UNIQUE on
+                # (attendance_entry_id, category) and the seeder now writes
+                # billed_production for every allocated entry, so planting that
+                # category collides instead of testing anything. `training` is
+                # a real HourCategoryEnum value the seeder does not emit.
+                insert(allocation).values(attendance_entry_id=attendance_entry_id, category="training", hours=8)
+            ).inserted_primary_key[0]
 
         second = subprocess.run(
             argv + ["--reset"], cwd=str(repo_root), env=env, capture_output=True, text=True, timeout=180
@@ -124,16 +137,47 @@ def test_cli_subprocess_reset_sweeps_grandchildren_on_the_production_engine(tmp_
         assert second.returncode == 0, f"stdout={second.stdout}\nstderr={second.stderr}"
 
         with engine.connect() as conn:
-            alerts = conn.execute(select(func.count()).select_from(Base.metadata.tables["ALERT"])).scalar_one()
-            history = conn.execute(select(func.count()).select_from(Base.metadata.tables["ALERT_HISTORY"])).scalar_one()
-            allocations = conn.execute(select(func.count()).select_from(allocation)).scalar_one()
+            # The PLANTED alert, not every alert: the seeder writes ALERT now,
+            # so a total count cannot distinguish a swept row from a re-seeded
+            # one and would pass without the sweep having run at all.
+            alert_tbl = Base.metadata.tables["ALERT"]
+            alerts = conn.execute(
+                select(func.count()).select_from(alert_tbl).where(alert_tbl.c.alert_id == "ALRT-NULL-DEMO-PIECE")
+            ).scalar_one()
+            history_tbl = Base.metadata.tables["ALERT_HISTORY"]
+            history = conn.execute(
+                select(func.count()).select_from(history_tbl).where(history_tbl.c.history_id == "AH-NULL-DEMO-PIECE")
+            ).scalar_one()
+            # The property the two-pass sweep protects, independent of how many
+            # rows the seeder puts back: no history may outlive its alert.
+            orphans = conn.execute(
+                text(
+                    "SELECT COUNT(*) FROM ALERT_HISTORY h "
+                    "WHERE NOT EXISTS (SELECT 1 FROM ALERT a WHERE a.alert_id = h.alert_id)"
+                )
+            ).scalar_one()
+            allocations = conn.execute(
+                select(func.count()).select_from(allocation).where(allocation.c.allocation_id == planted_allocation_id)
+            ).scalar_one()
+            # ATTENDANCE_HOUR_ALLOCATION has no cascade, so the sweep is the
+            # only thing standing between a reset and an allocation pointing
+            # at an attendance row that no longer exists.
+            orphan_allocations = conn.execute(
+                text(
+                    "SELECT COUNT(*) FROM ATTENDANCE_HOUR_ALLOCATION al "
+                    "WHERE NOT EXISTS (SELECT 1 FROM ATTENDANCE_ENTRY e "
+                    "                  WHERE e.attendance_entry_id = al.attendance_entry_id)"
+                )
+            ).scalar_one()
             clients = conn.execute(select(func.count()).select_from(Base.metadata.tables["CLIENT"])).scalar_one()
     finally:
         engine.dispose()
 
     assert alerts == 0
-    assert history == 0, "ALERT_HISTORY survived --reset on the engine main() actually builds"
-    assert allocations == 0, "ATTENDANCE_HOUR_ALLOCATION survived --reset with no cascade to clean it up"
+    assert history == 0, "the planted ALERT_HISTORY survived --reset on the engine main() builds"
+    assert orphans == 0, "--reset orphaned an ALERT_HISTORY row from its ALERT parent"
+    assert allocations == 0, "the planted ATTENDANCE_HOUR_ALLOCATION survived --reset (it has no cascade)"
+    assert orphan_allocations == 0, "--reset orphaned an allocation from its ATTENDANCE_ENTRY"
     assert clients == 1
 
 
@@ -174,11 +218,26 @@ def test_reset_sweeps_the_history_of_an_alert_only_pass_two_deletes(seed_engine)
     seed(seed_engine, reset=True, **kwargs)
 
     with seed_engine.connect() as conn:
-        alerts = conn.execute(select(func.count()).select_from(alert)).scalar_one()
-        histories = conn.execute(select(func.count()).select_from(history)).scalar_one()
+        # Identity, not totals. ALERT and ALERT_HISTORY are seeded now, so
+        # "swept" and "re-seeded" are the same number in a total count.
+        alerts = conn.execute(
+            select(func.count()).select_from(alert).where(alert.c.alert_id == "ALRT-NULL-DEMO-PIECE")
+        ).scalar_one()
+        histories = conn.execute(
+            select(func.count()).select_from(history).where(history.c.history_id == "AH-NULL-DEMO-PIECE")
+        ).scalar_one()
+        # And the property the two-pass sweep exists to protect: no history
+        # row may outlive the alert it hangs off.
+        orphans = conn.execute(
+            text(
+                "SELECT COUNT(*) FROM ALERT_HISTORY h "
+                "WHERE NOT EXISTS (SELECT 1 FROM ALERT a WHERE a.alert_id = h.alert_id)"
+            )
+        ).scalar_one()
 
     assert alerts == 0
     assert histories == 0
+    assert orphans == 0
 
 
 def test_reset_orphans_no_alert_history_on_the_engine_main_actually_builds(tmp_path):
@@ -215,7 +274,9 @@ def test_reset_orphans_no_alert_history_on_the_engine_main_actually_builds(tmp_p
         seed(engine, reset=True, **kwargs)
 
         with engine.connect() as conn:
-            alerts = conn.execute(select(func.count()).select_from(alert)).scalar_one()
+            alerts = conn.execute(
+                select(func.count()).select_from(alert).where(alert.c.alert_id == "ALRT-NULL-DEMO-PIECE")
+            ).scalar_one()
             orphans = conn.execute(
                 select(func.count()).select_from(history).where(history.c.alert_id.notin_(select(alert.c.alert_id)))
             ).scalar_one()

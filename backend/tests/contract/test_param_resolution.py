@@ -101,7 +101,7 @@ def test_a_seeded_spec_reads_the_table_it_names():
     # 17, up from 16: S3 promoted `job_id` out of Kind.BLOCKED into a
     # SEEDED_ROW. Rises with each promotion; a drop means a spec stopped
     # reading a table, which this test can no longer check.
-    assert len(reads) == 17
+    assert len(reads) == 20
 
 
 def test_only_literal_specs_declare_a_bogus_probe_value():

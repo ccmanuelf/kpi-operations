@@ -401,13 +401,28 @@ def test_holds_stay_within_their_work_orders_active_window():
         ), f"{profile.name}: swept seeds produced no hold status changes; the assertion above is vacuous"
 
 
-def test_each_client_gets_its_declared_employee_count():
-    per_client = {}
+def test_each_client_gets_its_declared_employee_count_plus_its_floaters():
+    """The roster is the line headcount PLUS the pool, and the split is pinned
+    rather than just the total.
+
+    The pool used to be carved out of the declared headcount, which left a
+    floater rostered on the very shift they were covering. Making them extra
+    fixed that -- but a total-only assertion would pass just as well if the
+    carving came back and the count were simply raised, so both halves are
+    asserted here.
+    """
+    from backend.seed.emitters_master import POOL_SIZE
+
+    per_client: dict = {}
+    floaters: dict = {}
     for e in _gen():
         if isinstance(e, EmployeeHired):
             per_client[e.client_id] = per_client.get(e.client_id, 0) + 1
+            if e.is_floating_pool:
+                floaters[e.client_id] = floaters.get(e.client_id, 0) + 1
     for scenario in SCENARIOS:
-        assert per_client[scenario.client_id] == SMOKE.employees_per_client
+        assert per_client[scenario.client_id] == SMOKE.employees_per_client + POOL_SIZE
+        assert floaters.get(scenario.client_id, 0) == POOL_SIZE
 
 
 def test_every_defects_found_references_an_earlier_quality_entry():

@@ -216,8 +216,9 @@ def test_the_reset_sweep_covers_client_scoped_tables_the_seeder_never_writes():
     from backend.seed.coverage import SEEDED
 
     for name in (
-        "ALERT",
-        "ALERT_CONFIG",
+        # ALERT and ALERT_CONFIG left this list when the seeder began writing
+        # them, the way JOB and the capacity cluster did before. What remains
+        # is the set still awaiting demo data.
         # JOB was on this list until S3 seeded it. It is now the worked
         # example of what leaving it here would cost: the moment a table is
         # seeded, this loop's own failure message ("is seeded after all --
@@ -225,10 +226,6 @@ def test_the_reset_sweep_covers_client_scoped_tables_the_seeder_never_writes():
         # the name, and the table moves to coverage.SEEDED, where
         # test_coverage.py asserts it has rows.
         "EQUIPMENT",
-        "BREAK_TIME",
-        "FLOATING_POOL",
-        "COVERAGE_ENTRY",
-        "shift_coverage",
         "SIMULATION_SCENARIO",
         "CALCULATION_ASSUMPTION",
         "METRIC_CALCULATION_RESULT",

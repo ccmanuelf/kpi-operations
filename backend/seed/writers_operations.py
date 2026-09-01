@@ -8,6 +8,7 @@ collapsed all 40 existing WORKFLOW_TRANSITION_LOG chains into a single
 instant and made "what status was this on date D" unanswerable.
 """
 
+from datetime import datetime
 from typing import Callable, Dict, Type
 
 from backend.orm.work_order import WorkOrderStatus
@@ -169,9 +170,23 @@ def _hold_status_changed(e: ev.HoldStatusChanged, sink: RowSink, ids: IdMap) -> 
         hold["resume_date"] = e.at
 
 
+def attendance_key(shift_date: datetime, shift_id: str, employee_id: str) -> str:
+    """The stream-level handle for one attendance row.
+
+    Exists so ATTENDANCE_HOUR_ALLOCATION can RESOLVE its parent's primary key
+    rather than recomputing the `AE-...` formula a second time. Two
+    independent derivations of the same id is how a child ends up pointing at
+    a row that does not exist the first time the formula changes -- the same
+    hazard the capacity order book had.
+    """
+    return f"{shift_date:%Y%m%d}|{shift_id}|{employee_id}"
+
+
 def _attendance_recorded(e: ev.AttendanceRecorded, sink: RowSink, ids: IdMap) -> None:
     shift_pk = ids.resolve("SHIFT", e.shift_id)
     employee_pk = ids.resolve("EMPLOYEE", e.employee_id)
+    entry_id = f"AE-{e.shift_date:%Y%m%d}-{shift_pk}-{employee_pk}"
+    ids.assign("ATTENDANCE_ENTRY", attendance_key(e.shift_date, e.shift_id, e.employee_id), entry_id)
     sink.add(
         "ATTENDANCE_ENTRY",
         {
@@ -186,7 +201,7 @@ def _attendance_recorded(e: ev.AttendanceRecorded, sink: RowSink, ids: IdMap) ->
             # resolved ints are already globally unique per their own table
             # for this run, so (day, shift_pk, employee_pk) alone is
             # collision-free without the client prefix.
-            "attendance_entry_id": f"AE-{e.shift_date:%Y%m%d}-{shift_pk}-{employee_pk}",
+            "attendance_entry_id": entry_id,
             "client_id": e.client_id,
             "line_id": ids.resolve("PRODUCTION_LINE", e.line_id),
             "employee_id": employee_pk,
@@ -348,12 +363,28 @@ def _downtime_logged(e: ev.DowntimeLogged, sink: RowSink, ids: IdMap) -> None:
     )
 
 
+def _labor_hours_allocated(e: ev.LaborHoursAllocated, sink: RowSink, ids: IdMap) -> None:
+    sink.add(
+        "ATTENDANCE_HOUR_ALLOCATION",
+        {
+            # RESOLVED, never recomputed: the parent's id formula lives in
+            # exactly one place.
+            "attendance_entry_id": ids.resolve(
+                "ATTENDANCE_ENTRY", attendance_key(e.shift_date, e.shift_id, e.employee_id)
+            ),
+            "category": e.category,
+            "hours": e.hours,
+        },
+    )
+
+
 _HANDLERS: Dict[Type[ev.Event], Callable] = {
     ev.WorkOrderReceived: _work_order_received,
     ev.WorkOrderStatusChanged: _work_order_status_changed,
     ev.HoldOpened: _hold_opened,
     ev.HoldStatusChanged: _hold_status_changed,
     ev.AttendanceRecorded: _attendance_recorded,
+    ev.LaborHoursAllocated: _labor_hours_allocated,
     ev.ProductionRecorded: _production_recorded,
     ev.QualityInspected: _quality_inspected,
     ev.DefectsFound: _defects_found,

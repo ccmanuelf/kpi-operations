@@ -11,11 +11,14 @@ exist in the stream.
 
 import random
 from datetime import date, datetime, time, timedelta
-from typing import Callable, List, Tuple
+from typing import Callable, List, Optional, Tuple
 
 from backend.seed.emitters_master import SHIFT_LENGTH_HOURS, ClientSetup
 from backend.seed.events import (
     AttendanceRecorded,
+    AbsenceCovered,
+    LaborHoursAllocated,
+    ShiftCoverageRecorded,
     DefectsFound,
     DowntimeLogged,
     HoldOpened,
@@ -39,6 +42,7 @@ from backend.seed.narrative import (
 from backend.seed.profiles import Profile
 from backend.seed.scenarios import (
     ATTRIBUTION_USER_ID,
+    USERS,
     DEFECT_CODES,
     IDEAL_CYCLE_TIME_HOURS,
     ROUTING,
@@ -102,6 +106,38 @@ def operations_completed(depth: int, order_index: int) -> int:
     if depth >= WORK_ORDER_FLOW.index("IN_PROGRESS") + 1:
         return 1 + order_index % (len(ROUTING) - 1)
     return 0
+
+
+#: Who records coverage. Resolved from the roster, not typed: both
+#: `shift_coverage.entered_by` and `COVERAGE_ENTRY.assigned_by` are
+#: ForeignKeys to USER.user_id, and the supervisor is the role that actually
+#: staffs a shift.
+COVERAGE_ENTERED_BY = next(u.user_id for u in USERS if u.role == "supervisor")
+
+#: How far back coverage records are written, for the same reason the labour
+#: ledger is bounded: a year of daily shift-coverage rows is a load test, not a
+#: demo, and the coverage screen looks at recent operations.
+COVERAGE_WINDOW_DAYS = 21
+
+#: How far back the labour ledger is written. Every attendance row COULD carry
+#: allocations, but 16,640 of them times three categories is fifty thousand
+#: rows of a screen nobody scrolls back a year in -- and the split is a recent
+#: -operations view. Bounded to a fortnight so the demo has depth where it is
+#: looked at and stays a seed rather than a load test.
+ALLOCATION_WINDOW_DAYS = 14
+
+#: How a present employee's shift divides. Sums to 1.0 exactly, so the ledger
+#: reconciles against `actual_hours` rather than merely looking plausible.
+#: Spans billable, productive-but-unbilled and non-productive because
+#: BILLABLE_CATEGORIES and PRODUCTIVE_CATEGORIES are different subsets -- a day
+#: booked entirely to billed_production makes both ratios 100% and proves
+#: neither.
+HOUR_SPLIT = (
+    ("billed_production", 0.78),
+    ("unbilled_production", 0.10),
+    ("idle_wait", 0.07),
+    ("meeting", 0.05),
+)
 
 
 def emit_work_orders(
@@ -462,12 +498,20 @@ def emit_shifts(
     setup: ClientSetup,
     received: List[Tuple[date, str, int]],
     as_of: date,
+    floating_pool: Optional[List[str]] = None,
 ) -> None:
     cid = scenario.client_id
     lines = setup.lines
     shifts = setup.shifts
     products = setup.products
-    employees = setup.employees
+    # Floaters are NOT rostered on a line. A person cannot be counted in one
+    # line's crew and simultaneously stand in for an absence on another, and
+    # the pool is drawn from the same roster -- so without this exclusion the
+    # two overlap. Measured before the fix: 47 COVERAGE_ENTRY rows named a
+    # floater who had an ATTENDANCE_ENTRY for the very shift they were
+    # covering, 6 of which had the floater covering their OWN absence.
+    pool_members = set(floating_pool or ())
+    employees = [(employee_id, line) for employee_id, line in setup.employees if employee_id not in pool_members]
     line_minute_step = setup.line_minute_step
     shift_hour_step = setup.shift_hour_step
     activity_start = setup.activity_start
@@ -492,6 +536,20 @@ def emit_shifts(
         # travelled travels alongside it, and is consulted below when a step is
         # attributed; that is a separate question from which orders exist yet.)
         orders_received_earlier = [(wo, done) for received_day, wo, done in received if received_day < day]
+        # shift_coverage is keyed on (client, shift, DATE) -- it has no line
+        # column -- so it must aggregate every line working that shift. Emitting
+        # one row per line produced as many rows per shift-day as there were
+        # lines, each carrying a single line's headcount as if it were the
+        # shift's: measured, all 224 rows disagreed with the attendance they
+        # describe. Accumulated here, emitted once per shift after the line
+        # loop.
+        coverage_by_shift: dict = {}
+        # Which floaters are already committed for each shift TODAY. The pool
+        # is a roster of people, and a person cannot cover two lines at once --
+        # but the assignment below sits inside the LINE loop, so without this
+        # the pool refilled for every line and the same floater was handed two
+        # absences in the same shift. Measured before the fix: 2 such rows.
+        committed_floaters: dict = {}
         for li, line_id in enumerate(lines):
             for si, shift_id in enumerate(shifts):
                 # Draws taken unconditionally and in a fixed order, before any
@@ -609,6 +667,74 @@ def emit_shifts(
                         is_absent=is_absent,
                     )
 
+                    # Present employees only. An absent row has zero worked
+                    # hours, so any allocation against it would make the
+                    # ledger claim time that was never worked.
+                    if not is_absent and (as_of - day).days < ALLOCATION_WINDOW_DAYS:
+                        worked = float(SHIFT_LENGTH_HOURS)
+                        booked = 0.0
+                        for ci, (category, share) in enumerate(HOUR_SPLIT):
+                            # The last slice takes the remainder rather than
+                            # its own rounded share, so the parts sum to the
+                            # worked hours EXACTLY instead of drifting a
+                            # hundredth away from them.
+                            hours = round(worked - booked, 2) if ci == len(HOUR_SPLIT) - 1 else round(worked * share, 2)
+                            booked += hours
+                            emit(
+                                LaborHoursAllocated,
+                                at,
+                                cid,
+                                employee_id=employee_id,
+                                shift_id=shift_id,
+                                shift_date=shift_date,
+                                category=category,
+                                hours=hours,
+                            )
+
+                # --- coverage: who was missing, and who stood in
+                #
+                # Both records derive from the crew and absences the loop
+                # ABOVE just produced, so they reconcile with attendance
+                # instead of making a second, independent claim about the same
+                # day. A coverage row invented against a present employee
+                # would contradict the very data it explains.
+                if (as_of - day).days < COVERAGE_WINDOW_DAYS and crew:
+                    seen_required, seen_present, _stamp = coverage_by_shift.get(shift_id, (0, 0, at))
+                    coverage_by_shift[shift_id] = (
+                        seen_required + len(crew),
+                        seen_present + present,
+                        at,
+                    )
+
+                    absentees = [
+                        employee_id
+                        for ei, employee_id in enumerate(crew)
+                        if attendance_draws[ei] > scale["attendance"] * ATTENDANCE_PRESENT_THRESHOLD
+                    ]
+                    # One floater covers at most one absence per shift, so the
+                    # pool runs out exactly as it would in a plant -- which is
+                    # the shortfall the coverage screen exists to show. Taken
+                    # from those NOT already committed to this shift today, so
+                    # the constraint holds across lines and not merely within
+                    # one.
+                    busy = committed_floaters.setdefault(shift_id, set())
+                    free = [f for f in (floating_pool or []) if f not in busy]
+                    for absentee, floater in zip(absentees, free):
+                        busy.add(floater)
+                        emit(
+                            AbsenceCovered,
+                            at,
+                            cid,
+                            coverage_key=f"{cid}-COV-{day:%Y%m%d}-{si}-{absentee}",
+                            floating_employee_id=floater,
+                            covered_employee_id=absentee,
+                            shift_id=shift_id,
+                            shift_date=shift_date,
+                            coverage_hours=int(SHIFT_LENGTH_HOURS),
+                            coverage_reason="Absence",
+                            assigned_by=COVERAGE_ENTERED_BY,
+                        )
+
                 # --- production
                 emit(
                     ProductionRecorded,
@@ -706,3 +832,21 @@ def emit_shifts(
                             defect_code=DEFECT_CODES[(li + si + k + offset) % len(DEFECT_CODES)],
                             defect_count=count,
                         )
+
+        # --- one shift_coverage row per SHIFT for this day, after every line
+        # working it has been counted. The table carries no line column, so a
+        # per-line row would claim one line's headcount as the whole shift's.
+        for cov_shift_id, (required, present_total, cov_at) in coverage_by_shift.items():
+            if required <= 0:
+                continue
+            emit(
+                ShiftCoverageRecorded,
+                cov_at,
+                cid,
+                shift_id=cov_shift_id,
+                coverage_date=day,
+                required_employees=required,
+                actual_employees=present_total,
+                coverage_percentage=f"{(present_total / required) * 100:.2f}",
+                entered_by=COVERAGE_ENTERED_BY,
+            )

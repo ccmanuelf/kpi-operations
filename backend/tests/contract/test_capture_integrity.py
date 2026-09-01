@@ -51,6 +51,10 @@ from backend.tests.contract.query_specs import QUERY_REGISTRY
 #: with a staleness gate, not an empty shape that would look like a captured
 #: contract. See `query_specs.QUERY_REGISTRY["client_id@capacity-variance"]`.
 #:
+#: 4, down from 7: seeding BREAK_TIME, shift_coverage and FLOATING_POOL
+#: promoted `break_id`, `coverage_id` and `pool_id` out of `Kind.BLOCKED`, and
+#: with them the three DELETE routes they reached.
+#:
 #: 7 again, down from 8: seeding `capacity_kpi_commitment` promoted
 #: `GET /api/capacity/kpi/variance` out of `Kind.BLOCKED`. Its declaration said
 #: the id resolved and the route still had nothing to say; it has something to
@@ -62,11 +66,8 @@ from backend.tests.contract.query_specs import QUERY_REGISTRY
 #: `GET /api/qr/job/{job_id}/image`.
 BLOCKED_ROUTES = frozenset(
     {
-        "DELETE /api/break-times/{break_id}",
-        "DELETE /api/coverage/{coverage_id}",
         "DELETE /api/equipment/{equipment_id}",
         "DELETE /api/filters/{filter_id}",
-        "DELETE /api/floating-pool/{pool_id}",
         "DELETE /api/part-opportunities/{part_number}",
         "DELETE /api/v2/simulation/scenarios/{scenario_id}",
     }
@@ -167,17 +168,18 @@ def test_every_blocked_spec_still_has_zero_rows(harness: _Harness) -> None:
     # to make here is now made in the opposite direction by
     # tests/test_seed/test_coverage.py, which fails if JOB has NO rows.
     assert counts == {
+        # BREAK_TIME, FLOATING_POOL and shift_coverage left this map the same
+        # way CAPACITY_KPI_COMMITMENT did: the seeder writes them now, so the
+        # count that used to prove a real gap would prove nothing.
+        #
         # CAPACITY_KPI_COMMITMENT left this map when the seeder began writing
         # it. Counting it here is exactly what turned "seed some commitments
         # and the route becomes capturable" from a note into a failing test --
         # and it did fail, which is how the variance route got promoted.
-        "BREAK_TIME": 0,
         "EQUIPMENT": 0,
-        "FLOATING_POOL": 0,
         "PART_OPPORTUNITIES": 0,
         "SAVED_FILTER": 0,
         "SIMULATION_SCENARIO": 0,
-        "shift_coverage": 0,
     }
 
 
@@ -311,7 +313,12 @@ def test_a_2xx_is_proof_the_id_was_right_except_where_declared(
     # NO-SUCH-CLIENT-XYZ, with the DEFECT_TYPE_CATALOG row written either way.
     # Guarded now in `crud/defect_type_catalog.py`, so it discriminates and
     # needs no NEVER_404 entry.
-    assert len(succeeded) == 53
+    # 56, up from 53: seeding BREAK_TIME, shift_coverage and FLOATING_POOL made
+    # DELETE /api/break-times/{break_id}, /api/coverage/{coverage_id} and
+    # /api/floating-pool/{pool_id} reachable. All three DISCRIMINATE on a bogus
+    # id, so none needs a NEVER_404 entry -- which is the half of this test that
+    # proves the promotion was real and not a route that answers 200 regardless.
+    assert len(succeeded) == 56
     # Third side, and the one that keeps the other two honest: a route whose
     # probe URL equals its real URL was compared against ITSELF, so it lands in
     # `id_insensitive` for free and its NEVER_404 membership proves nothing.

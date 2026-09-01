@@ -71,6 +71,8 @@ describe('Carbon token WCAG-AA contrast contracts', () => {
     pass(light('--cds-link-primary'), bg) // text-primary utility
     pass(light('--cds-link-primary'), layer)
     pass(light('--cds-support-error'), bg) // text-danger / text-error
+    pass(light('--cds-text-error'), bg)
+    pass(light('--cds-text-error'), layer)
     pass(light('--cds-support-success'), bg) // text-success
   })
 
@@ -91,12 +93,41 @@ describe('Carbon token WCAG-AA contrast contracts', () => {
     pass(dark('--cds-link-primary'), bg)
     pass(dark('--cds-link-primary'), layer)
     pass(dark('--cds-support-error'), layer)
+    pass(dark('--cds-text-error'), bg)
+    pass(dark('--cds-text-error'), layer)
     pass(dark('--cds-support-success'), layer)
   })
 
   it('dark theme: solid brand/status backgrounds carry an AA on-color', () => {
     expect(contrastRatio(WHITE, dark('--cds-interactive'))).toBeGreaterThanOrEqual(4.5)
     expect(contrastRatio(NEAR_BLACK, dark('--cds-support-warning'))).toBeGreaterThanOrEqual(4.5)
+  })
+
+  it('error text is AA on the tinted alert chip, not just on plain surfaces', () => {
+    // The regression this token was added for. support-error is AA on white
+    // (5.00) and passed every check here, yet rendered at 3.95 on the alert
+    // dashboard: the urgent chip paints rgba(220,38,38,0.1) behind the text,
+    // and no surface in this file models that. These two literals are the
+    // composited backgrounds the browser gate actually measured.
+    const LIGHT_URGENT_CHIP = '#f8e4e3' // 10% red over white
+    const DARK_URGENT_CHIP = '#382626' // 10% red over layer-01
+    // `.stat .label` carries opacity 0.8, which composites the text toward the
+    // chip and costs real contrast: red-40 measures 6.01 solid on the dark chip
+    // but only 4.39 composited. Checking the solid colour alone reported a pass
+    // for a label that renders below AA.
+    const LABEL_OPACITY = 0.8
+    const over = (fg: string, alpha: number, bg: string): string => {
+      const ch = (hex: string, i: number) => parseInt(hex.slice(1 + i * 2, 3 + i * 2), 16)
+      const mix = (i: number) => Math.round(ch(fg, i) * alpha + ch(bg, i) * (1 - alpha))
+      return '#' + [0, 1, 2].map((i) => mix(i).toString(16).padStart(2, '0')).join('')
+    }
+    expect(contrastRatio(light('--cds-support-error'), LIGHT_URGENT_CHIP)).toBeLessThan(4.5)
+    expect(
+      contrastRatio(over(light('--cds-text-error'), LABEL_OPACITY, LIGHT_URGENT_CHIP), LIGHT_URGENT_CHIP),
+    ).toBeGreaterThanOrEqual(4.5)
+    expect(
+      contrastRatio(over(dark('--cds-text-error'), LABEL_OPACITY, DARK_URGENT_CHIP), DARK_URGENT_CHIP),
+    ).toBeGreaterThanOrEqual(4.5)
   })
 
   it('the warning text token is theme-aware (amber on light, brighter on dark)', () => {

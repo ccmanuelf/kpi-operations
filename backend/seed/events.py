@@ -546,6 +546,165 @@ class CapacityKpiCommitted(Event):
     variance_percent: str
 
 
+@dataclass(frozen=True)
+class AlertConfigured(Event):
+    """A client's thresholds for one alert type.
+
+    ALERT_CONFIG is what the alert-configuration screen writes the first time
+    anyone edits a threshold. Seeding it is why that screen opens with the
+    tenant's own numbers instead of an empty form.
+    """
+
+    config_key: str
+    alert_type: str
+    enabled: bool
+    warning_threshold: float
+    critical_threshold: float
+    notification_email: bool
+    notification_sms: bool
+    check_frequency_minutes: int
+
+
+@dataclass(frozen=True)
+class AlertRaised(Event):
+    """One alert, in whatever state it reached.
+
+    Mirrors what `routes/alerts/generate.py` actually writes -- same
+    categories, same `kpi_key`s, `work_order_id` on the ones that have one --
+    so a seeded alert is indistinguishable from a generated one rather than a
+    row that merely fills the table.
+
+    `acknowledged_at`/`resolved_at` are carried rather than derived: the
+    dashboard counts by status, and a board where every alert is active
+    demonstrates the list but never the workflow.
+    """
+
+    alert_key: str
+    category: str
+    severity: str
+    status: str
+    title: str
+    message: str
+    recommendation: Optional[str]
+    kpi_key: str
+    work_order_id: Optional[str]
+    current_value: Optional[float]
+    threshold_value: Optional[float]
+    predicted_value: Optional[float]
+    confidence: Optional[float]
+    alert_metadata: Mapping[str, Any]
+    acknowledged_at: Optional[datetime]
+    acknowledged_by: Optional[str]
+    resolved_at: Optional[datetime]
+    resolved_by: Optional[str]
+    resolution_notes: Optional[str]
+
+
+@dataclass(frozen=True)
+class AlertPredictionRecorded(Event):
+    """How a predictive alert's forecast turned out.
+
+    ALERT_HISTORY is the accuracy ledger the prediction views read: without
+    rows, "was this alert right?" has no answer to show.
+    """
+
+    history_key: str
+    alert_key: str
+    predicted_value: float
+    actual_value: float
+    prediction_date: datetime
+    actual_date: datetime
+    was_accurate: bool
+    error_percent: float
+
+
+@dataclass(frozen=True)
+class LaborHoursAllocated(Event):
+    """One category's share of an employee's shift.
+
+    The ledger the labour-efficiency split reads: `BILLABLE_CATEGORIES` and
+    `PRODUCTIVE_CATEGORIES` are subsets of `HourCategoryEnum`, so a day
+    allocated entirely to `billed_production` makes both ratios 100% and
+    demonstrates neither.
+
+    Carries the attendance row's BUSINESS key (date, shift, employee), not its
+    primary key: the writer resolves that, so the `AE-...` formula has one home.
+    """
+
+    employee_id: str
+    shift_id: str
+    shift_date: datetime
+    category: str
+    hours: float
+
+
+@dataclass(frozen=True)
+class BreakTimeDefined(Event):
+    """A scheduled break within a shift.
+
+    BREAK_TIME is what the shift-configuration screen reads. Offsets are from
+    the shift's start, which is how the app stores them -- an absolute time
+    would silently mean something different for each of the client's shifts.
+    """
+
+    shift_id: str
+    break_name: str
+    start_offset_minutes: int
+    duration_minutes: int
+    applies_to: str
+
+
+@dataclass(frozen=True)
+class FloatingPoolMemberAdded(Event):
+    """An employee available to cover other lines.
+
+    The floating pool is the supply side of coverage: without members, the
+    coverage screen has nobody to assign and the shift-coverage simulation has
+    no slack to draw on.
+    """
+
+    employee_id: str
+    available_from: datetime
+    available_to: datetime
+    current_assignment: Optional[str]
+
+
+@dataclass(frozen=True)
+class AbsenceCovered(Event):
+    """A floating employee standing in for an absent one.
+
+    Emitted against REAL absences the attendance stream already produced, not
+    invented ones -- a coverage record for an employee who was present would
+    contradict the attendance it is meant to explain.
+    """
+
+    coverage_key: str
+    floating_employee_id: str
+    covered_employee_id: str
+    shift_id: str
+    shift_date: datetime
+    coverage_hours: int
+    coverage_reason: str
+    assigned_by: str
+
+
+@dataclass(frozen=True)
+class ShiftCoverageRecorded(Event):
+    """Headcount required versus actually present, for one shift on one day.
+
+    Derived from the crew the stream already staffed and the absences it
+    already recorded, so the percentage reconciles with attendance instead of
+    being a second, independent claim about the same day.
+    """
+
+    shift_id: str
+    coverage_date: date
+    required_employees: int
+    actual_employees: int
+    coverage_percentage: str
+    entered_by: str
+
+
 EVENT_TYPES = (
     ClientCreated,
     UserCreated,
@@ -582,4 +741,12 @@ EVENT_TYPES = (
     CapacityLineAnalyzed,
     CapacityComponentChecked,
     CapacityKpiCommitted,
+    AlertConfigured,
+    AlertRaised,
+    AlertPredictionRecorded,
+    LaborHoursAllocated,
+    BreakTimeDefined,
+    FloatingPoolMemberAdded,
+    AbsenceCovered,
+    ShiftCoverageRecorded,
 )

@@ -54,6 +54,14 @@ SEEDED: FrozenSet[str] = frozenset(
         "capacity_analysis",
         "capacity_component_check",
         "capacity_kpi_commitment",
+        "ALERT",
+        "ALERT_CONFIG",
+        "ALERT_HISTORY",
+        "ATTENDANCE_HOUR_ALLOCATION",
+        "BREAK_TIME",
+        "FLOATING_POOL",
+        "COVERAGE_ENTRY",
+        "shift_coverage",
     }
 )
 
