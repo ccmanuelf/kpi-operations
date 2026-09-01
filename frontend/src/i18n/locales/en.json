@@ -3010,7 +3010,14 @@
       "recommendation": "Recommendation:",
       "visualComparison": "Visual Comparison",
       "noResults": "No comparison results available.",
-      "exportComparison": "Export Comparison"
+      "exportComparison": "Export Comparison",
+      "capacityBefore": "Capacity Before",
+      "capacityAfter": "Capacity After",
+      "capacityIncrease": "Capacity Increase",
+      "utilizationBefore": "Utilization Before",
+      "utilizationAfter": "Utilization After",
+      "bottlenecksResolved": "Bottlenecks Resolved",
+      "costImpact": "Cost Impact"
     },
     "scheduleCommit": {
       "title": "Commit Production Schedule",

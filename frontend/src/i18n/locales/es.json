@@ -3010,7 +3010,14 @@
       "recommendation": "Recomendación:",
       "visualComparison": "Comparación Visual",
       "noResults": "No hay resultados de comparación disponibles.",
-      "exportComparison": "Exportar Comparación"
+      "exportComparison": "Exportar Comparación",
+      "capacityBefore": "Capacidad Antes",
+      "capacityAfter": "Capacidad Después",
+      "capacityIncrease": "Aumento de Capacidad",
+      "utilizationBefore": "Utilización Antes",
+      "utilizationAfter": "Utilización Después",
+      "bottlenecksResolved": "Cuellos de Botella Resueltos",
+      "costImpact": "Impacto en Costo"
     },
     "scheduleCommit": {
       "title": "Confirmar Programación de Producción",
