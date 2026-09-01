@@ -41,6 +41,7 @@ SEEDED: FrozenSet[str] = frozenset(
         "QUALITY_ENTRY",
         "DEFECT_DETAIL",
         "DOWNTIME_ENTRY",
+        "capacity_scenario",
     }
 )
 

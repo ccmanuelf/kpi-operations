@@ -17,6 +17,7 @@ from backend.seed.events import (
     ClientConfigured,
     ClientCreated,
     DefectTypeDefined,
+    CapacityScenarioDefined,
     EmployeeHired,
     Event,
     HoldReasonDefined,
@@ -202,6 +203,32 @@ def emit_setup(
             kpi_key=kpi_key,
             target_value=target_value,
         )
+
+    # Two saved what-if plans per client, so the capacity comparison screen
+    # has something to compare rather than an empty list. Both carry the
+    # parameter keys ScenarioService actually reads for their type.
+    #
+    # `affected_departments` is deliberately EMPTY. The service treats an
+    # empty list as "every line" (`not affected_departments`), while its own
+    # default is ["SEWING", "FINISHING"] -- and seeded PRODUCTION_LINE rows
+    # carry no department at all, so naming any department would match zero
+    # lines and the scenario would compare as a no-op while looking configured.
+    setup(
+        CapacityScenarioDefined,
+        scenario_key=f"{cid}-SCENARIO-OT",
+        scenario_name="Overtime: +20% on every line",
+        scenario_type="OVERTIME",
+        parameters={"overtime_percent": 20, "affected_departments": [], "cost_per_hour": 15},
+        notes="Saved plan: absorb the current backlog with overtime rather than new capacity.",
+    )
+    setup(
+        CapacityScenarioDefined,
+        scenario_key=f"{cid}-SCENARIO-SETUP",
+        scenario_name="Changeover: cut setup time 30%",
+        scenario_type="SETUP_REDUCTION",
+        parameters={"reduction_percent": 30},
+        notes="Saved plan: recover capacity from changeovers instead of paying overtime.",
+    )
 
     # --- Setup is finished. Everything the operations emitters produce
     # references entities created above, so all of it must be stamped

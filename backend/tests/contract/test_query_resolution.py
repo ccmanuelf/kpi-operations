@@ -51,8 +51,8 @@ from backend.tests.contract.query_specs import (
     WINDOW_DAYS,
 )
 
-#: The eight routes this layer took from `<status:422>` to a real captured
-#: answer, and what each needed. Written out rather than derived so the gates
+#: The routes this layer took from `<status:422>` to a real captured answer,
+#: and what each needed. Written out rather than derived so the gates
 #: below compare the mechanism against a stated intent, not against itself.
 #:
 #: The ninth, `GET /api/capacity/kpi/variance`, is deliberately absent: its
@@ -87,6 +87,11 @@ UNBLOCKED: Dict[str, tuple] = {
     # Takes client_id as a QUERY param and its work orders in the BODY; the two
     # must belong together, so both resolve through the client spec.
     "POST /api/workflow/bulk-transition": ("client_id",),
+    # Was DEFERRED rather than merely unasked: `capacity_scenario` had zero
+    # seeded rows, so the only 2xx it could give was `[]`. The seeder now
+    # writes two scenarios per client, and the ids in its body resolve to the
+    # same client this param names.
+    "POST /api/capacity/scenarios/compare": ("client_id",),
 }
 
 VARIANCE = "GET /api/capacity/kpi/variance"

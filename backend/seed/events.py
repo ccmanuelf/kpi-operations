@@ -14,7 +14,7 @@ guard and untested by the narrative suite.
 
 from dataclasses import dataclass, fields
 from datetime import datetime
-from typing import Optional
+from typing import Any, Mapping, Optional
 
 #: Events not scoped to a tenant (platform users, global thresholds) carry this
 #: as `client_id`. It is a stream-level sentinel and must never reach a database
@@ -302,6 +302,27 @@ class DowntimeLogged(Event):
     downtime_minutes: int
 
 
+@dataclass(frozen=True)
+class CapacityScenarioDefined(Event):
+    """A what-if capacity plan a planner has saved but not yet run.
+
+    `parameters` are the keys ScenarioService actually reads for the given
+    `scenario_type`, not decoration -- a scenario carrying keys the service
+    ignores would look configured and change nothing when compared.
+
+    No results are carried. Results are what RUNNING a scenario produces, and
+    the compare endpoint recomputes them live from current capacity; storing
+    fabricated ones would put numbers in the database that no analysis ever
+    generated.
+    """
+
+    scenario_key: str
+    scenario_name: str
+    scenario_type: str
+    parameters: Mapping[str, Any]
+    notes: str
+
+
 EVENT_TYPES = (
     ClientCreated,
     UserCreated,
@@ -325,4 +346,5 @@ EVENT_TYPES = (
     DefectsFound,
     JobDefined,
     DowntimeLogged,
+    CapacityScenarioDefined,
 )

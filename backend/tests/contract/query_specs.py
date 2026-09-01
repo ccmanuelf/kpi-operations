@@ -99,8 +99,17 @@ QUERY_FAMILY_ROUTER: Dict[str, Tuple[Tuple[str, str], ...]] = {
         ("/api/attendance/bulk", "client_id@onboarding"),
         ("/api/workflow/bulk-transition", "client_id@onboarding"),
         ("/api/reports/send-manual", "client_id@onboarding"),
+        # Without this the bare `client_id` key routes to the BLOCKED variance
+        # entry and the comparison captures `<blocked:client_id>` -- the route
+        # is perfectly reachable, it just inherited another route's gap.
+        ("/api/capacity/scenarios/compare", "client_id@onboarding"),
     ),
     "employee_id": (("/api/attendance/bulk", "employee_id@client-consistent"),),
+    # Both ids the comparison body carries. Two, not one: `compare_scenarios`
+    # loops the ids and appends one comparison each, so a single id exercises
+    # the loop once and never the "side-by-side" the route exists for.
+    "scenario_id": (("/api/capacity/scenarios/compare", "scenario_id@client-consistent"),),
+    "scenario_id_other": (("/api/capacity/scenarios/compare", "scenario_id-other@client-consistent"),),
     "work_order_id": (("/api/workflow/bulk-transition", "work_order_id@bulk-transition"),),
     "shift_id": (
         ("/api/attendance/mark-all-present", "shift_id@client-consistent"),
@@ -350,6 +359,40 @@ QUERY_REGISTRY: Dict[str, ParamSpec] = {
             "spec, and `client_id` alone already routes to the BLOCKED variance entry."
         ),
     ),
+    "scenario_id@client-consistent": ParamSpec(
+        key="scenario_id@client-consistent",
+        kind=Kind.SEEDED_ROW,
+        table="capacity_scenario",
+        sql=(
+            "SELECT s.id FROM capacity_scenario s, "
+            "(SELECT client_id AS c FROM CLIENT ORDER BY client_id LIMIT 1) t "
+            "WHERE s.client_id = t.c AND s.is_active = 1 "
+            "ORDER BY s.id LIMIT 1"
+        ),
+        note="A scenario of the SAME client the route's `client_id` resolves. Co-resolved "
+        "against `CLIENT ORDER BY client_id LIMIT 1` -- the very query "
+        "`REGISTRY['client_id']` runs -- rather than `MIN(id)`, because "
+        "`compare_scenarios` filters on client_id and a scenario belonging to another "
+        "tenant simply vanishes from the result: the route answers 200 with a SHORTER "
+        "list, so the mismatch would be captured as a successful comparison rather than "
+        "announcing itself.",
+    ),
+    "scenario_id-other@client-consistent": ParamSpec(
+        key="scenario_id-other@client-consistent",
+        kind=Kind.SEEDED_ROW,
+        table="capacity_scenario",
+        sql=(
+            "SELECT s.id FROM capacity_scenario s, "
+            "(SELECT client_id AS c FROM CLIENT ORDER BY client_id LIMIT 1) t "
+            "WHERE s.client_id = t.c AND s.is_active = 1 "
+            "ORDER BY s.id LIMIT 1 OFFSET 1"
+        ),
+        note="The client's SECOND scenario, so the captured comparison has two rows to "
+        "compare. `LIMIT 1 OFFSET 1` rather than `LIMIT 1,1`: the former is the form both "
+        "SQLite and MariaDB accept, and this harness runs on both. The seeder writes an "
+        "OVERTIME and a SETUP_REDUCTION plan per client, so the two ids differ in "
+        "scenario_type and the comparison is between genuinely different plans.",
+    ),
     "client_id@capacity-variance": ParamSpec(
         key="client_id@capacity-variance",
         kind=Kind.BLOCKED,
@@ -385,12 +428,15 @@ QUERY_REGISTRY: Dict[str, ParamSpec] = {
 #: Gated two-sided by
 #: `test_query_resolution.test_deferred_routes_are_exactly_the_mutating_ones`:
 #: a GET that lands here, or a mutation that escapes it, fails by name.
-DEFERRED_TO_WRITE_CAPTURE: FrozenSet[str] = frozenset(
-    {
-        # Needs prerequisite DATA, not a body: CAPACITY_SCENARIO has zero
-        # seeded rows, so the only 2xx it can give is `[]` -- an entry with no
-        # fields, which `ALLOWLIST` would then look ready to close from. The
-        # "unblocked into no-entries-found" trap #244 hit.
-        "POST /api/capacity/scenarios/compare",
-    }
-)
+#: Empty since the seeder began writing `capacity_scenario`. Its sole entry,
+#: `POST /api/capacity/scenarios/compare`, was here because the table had zero
+#: seeded rows: the only 2xx it could give was `[]`, an entry with no fields
+#: that `ALLOWLIST` would then look ready to close from -- the "unblocked into
+#: no-entries-found" trap #244 hit. Two scenarios per client now exist, so the
+#: route answers with real comparisons and is captured like any other.
+#:
+#: Kept as an empty frozenset rather than deleted: the two-sided gate in
+#: `test_query_resolution` reads it, and the concept -- a route blocked by
+#: missing DATA rather than a missing body -- is the one this file needs a home
+#: for the next time it happens.
+DEFERRED_TO_WRITE_CAPTURE: FrozenSet[str] = frozenset()

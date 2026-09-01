@@ -397,9 +397,15 @@ COMPOSITES: Dict[str, Tuple[str, Tuple[str, ...]]] = {
 #: Why each one cannot discriminate (verified by probing, not by reading):
 #:   cache/invalidate  the param is a cache-key PREFIX, not an entity; the
 #:                     response is a fixed envelope plus a count.
-#:   capacity/workbook an envelope of 13 empty `capacity_*` lists plus
-#:                     hardcoded `dashboard_inputs` defaults -- no client data
-#:                     reaches it at all, so no client can change it.
+#:   capacity/workbook LEFT this set when the seeder began writing
+#:                     `capacity_scenario`. It was an envelope of 13 EMPTY
+#:                     `capacity_*` lists plus hardcoded `dashboard_inputs`
+#:                     defaults -- no client data reached it, so no client
+#:                     could change it. `what_if_scenarios` is now populated
+#:                     per tenant, so the route discriminates and must not be
+#:                     declared id-insensitive. Same shape of correction as
+#:                     inference/cycle-time below: the declaration was true
+#:                     when written and stopped being true.
 #:   client-config/effective  falls back to system defaults for an unknown
 #:                     client rather than 404ing.
 #:   floating-pool/check-availability  answers "available" for any employee
@@ -421,7 +427,6 @@ COMPOSITES: Dict[str, Tuple[str, Tuple[str, ...]]] = {
 NEVER_404 = frozenset(
     {
         "DELETE /api/cache/invalidate/{pattern}",
-        "GET /api/capacity/workbook/{client_id}",
         "GET /api/client-config/{client_id}/effective",
         "GET /api/floating-pool/check-availability/{employee_id}",
         "GET /api/workflow/analytics/{client_id}/stage-durations",

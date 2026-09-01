@@ -33,6 +33,15 @@ MAP_FIELDS = frozenset(
         "weekly_demand",  # POST /api/v2/simulation/plan-horizon
         "pieces_by_product",  # POST /api/v2/simulation/plan-horizon
         "fulfillment_by_product",  # POST /api/v2/simulation/plan-horizon
+        # capacity_scenario.parameters_json, surfaced by
+        # GET /api/capacity/workbook/{client_id} and the scenario routes. The
+        # keys are whatever the scenario TYPE needs -- `reduction_percent` for
+        # SETUP_REDUCTION, `overtime_percent`/`cost_per_hour` for OVERTIME --
+        # and `shape_of` recurses into the first element only, so without this
+        # the recorded contract is whichever scenario happens to sort first.
+        # Matching is on the exact key, so `query_parameters`,
+        # `simulation_parameters` and `input_parameters` are untouched.
+        "parameters",  # GET /api/capacity/workbook/{client_id}, /api/capacity/scenarios
     }
 )
 

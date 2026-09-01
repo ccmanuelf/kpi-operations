@@ -44,7 +44,7 @@ def test_a_value_keyed_map_records_one_stable_entry_not_its_data():
     assert shape_of(quiet) == ["by_severity.*", "total"]
 
 
-def test_map_fields_are_exactly_the_known_five():
+def test_map_fields_are_exactly_the_known_six():
     """MAP_FIELDS cannot be derived -- nothing distinguishes {"critical": 2} from
     an object with a "critical" attribute -- so it is listed, and pinned here so
     that adding one is a deliberate act rather than a quiet widening of what the
@@ -52,7 +52,14 @@ def test_map_fields_are_exactly_the_known_five():
     from backend.tests.contract.capture import MAP_FIELDS
 
     assert MAP_FIELDS == frozenset(
-        {"by_severity", "by_category", "weekly_demand", "pieces_by_product", "fulfillment_by_product"}
+        {
+            "by_severity",
+            "by_category",
+            "weekly_demand",
+            "pieces_by_product",
+            "fulfillment_by_product",
+            "parameters",
+        }
     )
 
 
