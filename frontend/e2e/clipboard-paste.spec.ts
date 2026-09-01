@@ -131,7 +131,7 @@ test.describe('Excel Clipboard Paste', () => {
       await page.waitForTimeout(300);
       await page.keyboard.press('Escape');
 
-      const row = page.locator('.ag-center-cols-container .ag-row[row-index="0"]');
+      const row = page.locator('.ag-row[row-index="0"]');
       const reasonCell = row.locator('.ag-cell[col-id="downtime_reason"]');
       const categoryCell = row.locator('.ag-cell[col-id="root_cause_category"]');
 

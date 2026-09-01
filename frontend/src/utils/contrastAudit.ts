@@ -20,6 +20,10 @@ export interface Sample {
   fontWeight: number
   bgStack: string[] // ancestor backgroundColors, nearest-first
   gradientStops: string[] // colors from any ancestor background-image gradient
+  // Stops of a gradient on the ELEMENT ITSELF, which paints over that
+  // element's own background-color. Optional so existing Sample literals
+  // (and older fixtures) stay valid; absent means "no own gradient".
+  ownGradientStops?: string[]
 }
 
 export interface Violation extends Sample {
@@ -103,7 +107,27 @@ export function findViolations(samples: Sample[], allow: AllowEntry[]): Violatio
     // so when gradient stops exist they ARE the visible background — evaluate
     // worst-case across the stops; otherwise use the composited solid bg.
     const stops = s.gradientStops.map(parseColor).filter((c): c is Rgb => !!c && c.a > 0)
-    const candidates: Rgb[] = stops.length ? stops : [solidBg]
+    // Painting order, nearest surface first. An ANCESTOR gradient is only
+    // visible when everything in front of it is see-through, so it must not
+    // outrank either of the element's own surfaces:
+    //   1. the element's own gradient  — paints over its own background-color
+    //   2. the element's own OPAQUE background-color — occludes all ancestors
+    //   3. ancestor gradient stops, else the composited ancestor stack
+    // Skipping step 2 is what made AG Grid v36 fail this gate: it paints
+    // `linear-gradient(#fff, #fff)` on `.ag-grid-pinned-right-cells`, so a
+    // white-on-red delete button in the pinned column was scored against
+    // those white stops and reported as white-on-white at ratio 1.
+    const ownGradient = (s.ownGradientStops ?? [])
+      .map(parseColor)
+      .filter((c): c is Rgb => !!c && c.a > 0)
+    const ownBg = parseColor(s.bgStack[0])
+    const candidates: Rgb[] = ownGradient.length
+      ? ownGradient
+      : ownBg && ownBg.a >= 1
+        ? [ownBg]
+        : stops.length
+          ? stops
+          : [solidBg]
     let worst = Infinity
     let bgUsed = solidBg
     for (const cand of candidates) {

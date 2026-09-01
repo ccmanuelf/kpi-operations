@@ -201,22 +201,28 @@ test.describe('Attendance grid — OT split + hour allocation', () => {
     // math (uniform 38px rows, no header/padding offset) is slightly off.
     const scrollTarget = Math.max(0, (seed!.rowIndex - 2) * 38)
     const rowIndex = String(seed!.rowIndex)
-    const row = page.locator(`.ag-center-cols-container .ag-row[row-index="${rowIndex}"]`)
-    const viewport = page.locator('.ag-body-viewport').first()
+    const row = page.locator(`.ag-row[row-index="${rowIndex}"]`)
 
     await expect(async () => {
-      await viewport.evaluate((el, top) => {
-        el.scrollTop = top
+      // v36 renamed the scroll container `.ag-body-viewport` ->
+      // `.ag-grid-viewport` (verified against the shipped bundle: zero
+      // occurrences of the old name, 58 of the new). Throw rather than
+      // no-op if it is missing: `scrollTop` on a non-existent or
+      // non-scrolling element is silent, which would surface as "row not
+      // found" and send the next reader hunting the wrong bug.
+      await page.evaluate((top) => {
+        const scroller = document.querySelector<HTMLElement>('.ag-grid-viewport')
+        if (!scroller) throw new Error('.ag-grid-viewport not found - AG Grid DOM changed again')
+        scroller.scrollTop = top
       }, scrollTarget)
       await expect(row).toBeVisible({ timeout: 2000 })
     }).toPass({ timeout: 15000 })
     // Correlation check: the seeded employee (from the same unfiltered,
     // employee_name-ordered list the grid loads) must land at this row.
-    // employee_id is pinned left, so it renders in a separate container.
-    const pinnedRow = page.locator(
-      `.ag-pinned-left-cols-container .ag-row[row-index="${rowIndex}"]`,
-    )
-    await expect(pinnedRow.locator('.ag-cell[col-id="employee_id"]')).toHaveText(
+    // employee_id is pinned left, but as of v36 the pinned and centre cell
+    // groups live inside the SAME `.ag-row`, so the row locator above already
+    // covers it -- no separate container locator is needed.
+    await expect(row.locator('.ag-cell[col-id="employee_id"]')).toHaveText(
       String(seed!.employeeId),
     )
 
