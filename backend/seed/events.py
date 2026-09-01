@@ -306,9 +306,11 @@ class DowntimeLogged(Event):
 class CapacityScenarioDefined(Event):
     """A what-if capacity plan a planner has saved but not yet run.
 
-    `parameters` are the keys ScenarioService actually reads for the given
+    `parameters` carry the keys ScenarioService actually reads for the given
     `scenario_type`, not decoration -- a scenario carrying keys the service
-    ignores would look configured and change nothing when compared.
+    ignores would look configured and change nothing when compared. Keys whose
+    default already says what the plan means are left out rather than restated;
+    see the emitter for which and why.
 
     No results are carried. Results are what RUNNING a scenario produces, and
     the compare endpoint recomputes them live from current capacity; storing

@@ -14,10 +14,10 @@ from datetime import date, datetime, time, timedelta
 from typing import Any, Callable, Dict, List, NamedTuple, Tuple, Type
 
 from backend.seed.events import (
+    CapacityScenarioDefined,
     ClientConfigured,
     ClientCreated,
     DefectTypeDefined,
-    CapacityScenarioDefined,
     EmployeeHired,
     Event,
     HoldReasonDefined,
@@ -208,11 +208,18 @@ def emit_setup(
     # has something to compare rather than an empty list. Both carry the
     # parameter keys ScenarioService actually reads for their type.
     #
-    # `affected_departments` is deliberately EMPTY. The service treats an
-    # empty list as "every line" (`not affected_departments`), while its own
-    # default is ["SEWING", "FINISHING"] -- and seeded PRODUCTION_LINE rows
-    # carry no department at all, so naming any department would match zero
-    # lines and the scenario would compare as a no-op while looking configured.
+    # `affected_departments` is EMPTY for clarity, not because anything
+    # depends on it. The service combines the two selectors with OR --
+    # `if dept_match or line_match` -- and `affected_lines` defaults to `[]`,
+    # which makes `line_match` true for every line. So an OVERTIME plan
+    # affects all lines whatever this list says. Empty states that plainly;
+    # the service's own default of ["SEWING", "FINISHING"] would imply a
+    # narrowing that does not happen, and seeded PRODUCTION_LINE rows carry no
+    # department for it to match anyway.
+    #
+    # `affected_lines` is left out rather than written as `[]`: omitted and
+    # empty are the same value to `params.get("affected_lines", [])`, and
+    # spelling out a key only to restate its default is noise.
     setup(
         CapacityScenarioDefined,
         scenario_key=f"{cid}-SCENARIO-OT",

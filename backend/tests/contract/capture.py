@@ -35,12 +35,21 @@ MAP_FIELDS = frozenset(
         "fulfillment_by_product",  # POST /api/v2/simulation/plan-horizon
         # capacity_scenario.parameters_json, surfaced by
         # GET /api/capacity/workbook/{client_id} and the scenario routes. The
-        # keys are whatever the scenario TYPE needs -- `reduction_percent` for
+        # key set is chosen by the scenario TYPE -- `reduction_percent` for
         # SETUP_REDUCTION, `overtime_percent`/`cost_per_hour` for OVERTIME --
-        # and `shape_of` recurses into the first element only, so without this
-        # the recorded contract is whichever scenario happens to sort first.
-        # Matching is on the exact key, so `query_parameters`,
-        # `simulation_parameters` and `input_parameters` are untouched.
+        # and `shape_of` recurses into the first element of a list only, so
+        # without this the recorded contract is whichever scenario happens to
+        # sort first. That is not a contract at all: it changes when seeding
+        # order changes, while the code does not.
+        #
+        # THE COST, stated because it is real: `parameters.*` means a key
+        # going missing from this blob is no longer caught here, and any
+        # FUTURE response field literally named `parameters` -- including one
+        # with a genuinely fixed schema -- is masked the same way. Matching is
+        # exact-key, so today's `query_parameters`, `simulation_parameters`
+        # and `input_parameters` are untouched. The trade is deliberate: an
+        # order-dependent record is worse than a coarse one, because it fails
+        # for reasons unrelated to the API and teaches readers to ignore it.
         "parameters",  # GET /api/capacity/workbook/{client_id}, /api/capacity/scenarios
     }
 )
