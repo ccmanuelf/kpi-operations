@@ -166,8 +166,64 @@ async function seedExistingAttendanceEntry(page: Page) {
 }
 
 test.describe('Attendance grid — OT split + hour allocation', () => {
+  // Id of the ATTENDANCE_ENTRY seeded by this test, torn down in afterEach.
+  //
+  // Without the teardown the spec permanently consumes one employee per run:
+  // seedExistingAttendanceEntry needs an employee with NO entry for today, and
+  // it draws only from the logged-in user's own client -- `demo_operator` ->
+  // `DEMO-PIECE` -> 8 eligible employees. The 9th run of a calendar day fails
+  // in setup. CI never sees it because CI builds a fresh database per run, so
+  // the cost lands entirely on local re-runs, which is exactly when someone is
+  // iterating on this grid and needs the spec most.
+  let seededEntryId: string | null = null
+
   test.beforeEach(async ({ page }) => {
     await login(page, 'operator')
+  })
+
+  // Uses the `request` fixture, not page.evaluate: teardown must not depend on
+  // the page still being alive. A test that ends with the page crashed or
+  // navigated away would otherwise skip cleanup and quietly reintroduce the
+  // leak this hook exists to prevent.
+  test.afterEach(async ({ request }) => {
+    const entryId = seededEntryId
+    seededEntryId = null
+    if (!entryId) return
+
+    // Two things make this teardown look odd, both deliberate:
+    //
+    // 1. It authenticates separately. DELETE /api/attendance/{id} requires
+    //    supervisor-or-above, and this spec runs as an operator.
+    // 2. A soft delete is enough. The endpoint only sets is_active=0, but a
+    //    global do_orm_execute listener (backend/db/soft_delete_filter.py)
+    //    applies with_loader_criteria to hide inactive rows from every ORM
+    //    read -- including the existence check the seeder uses -- so the
+    //    employee really is free again for the next run.
+    //
+    // A failed teardown must not fail an otherwise-passing test, but it must
+    // not be silent either: silence is precisely how the original leak went
+    // unnoticed. Every failure path warns with the id, so a leaked row can be
+    // traced from the test output.
+    const warn = (why: string) =>
+      console.warn(
+        `[attendance teardown] LEAKED entry ${entryId} (${why}). ` +
+          "The next local run of this spec has one fewer employee available.",
+      )
+    try {
+      const auth = await request.post('/api/auth/login', {
+        // Same seeded demo credentials e2e/helpers.ts already uses to log in;
+        // they exist only in the demo database, not in any real environment.
+        data: { username: 'demo_admin', password: 'DemoSeed#2026' }, // pragma: allowlist secret
+      })
+      if (!auth.ok()) return warn(`admin login returned ${auth.status()}`)
+      const { access_token: token } = await auth.json()
+      const deleted = await request.delete(`/api/attendance/${entryId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!deleted.ok()) warn(`DELETE returned ${deleted.status()}`)
+    } catch (err) {
+      warn(String(err))
+    }
   })
 
   test('OT split (via Save Records) + allocation dialog round-trip through the entry-update path', async ({
@@ -176,6 +232,7 @@ test.describe('Attendance grid — OT split + hour allocation', () => {
     await navigateToAttendance(page)
 
     const seed = await seedExistingAttendanceEntry(page)
+    seededEntryId = seed?.attendanceEntryId ?? null
     expect(
       seed,
       "setup: the logged-in user's own client needs a shift and at least one " +
