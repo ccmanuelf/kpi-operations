@@ -499,6 +499,36 @@ class ScenarioResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class ScenarioComparisonResponse(BaseModel):
+    """One scenario's side-by-side comparison row.
+
+    Every hours/percent/cost field is declared `float`, and that declaration is
+    the whole point. `ScenarioService.ScenarioComparison` carries them as
+    `Decimal`; under the route's previous `-> Any` annotation Pydantic rendered
+    each one as a JSON STRING, so a caller received
+    `"capacity_increase_percent": "0"` and had to coerce six of the eleven
+    fields before doing arithmetic. Same Decimal class the KPI contracts closed
+    the same way -- see schemas/kpi_contracts.py.
+
+    `from_attributes` because the service hands back a plain dataclass, not a
+    dict.
+    """
+
+    scenario_id: int = Field(description="Unique identifier of the compared scenario")
+    scenario_name: str = Field(description="Descriptive name for the what-if scenario")
+    scenario_type: Optional[str] = Field(description="Scenario type (OVERTIME, SETUP_REDUCTION, etc.)")
+    original_capacity_hours: float = Field(description="Capacity hours before the scenario is applied")
+    modified_capacity_hours: float = Field(description="Capacity hours after the scenario is applied")
+    capacity_increase_percent: float = Field(description="Percent change in capacity hours")
+    original_utilization: float = Field(description="Utilization before the scenario is applied")
+    modified_utilization: float = Field(description="Utilization after the scenario is applied")
+    bottlenecks_resolved: int = Field(description="Count of bottleneck lines the scenario clears")
+    cost_impact: float = Field(description="Estimated cost of the scenario over the period")
+    notes: Optional[str] = Field(description="Free-text notes carried from the scenario")
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class ScenarioCompareRequest(BaseModel):
     scenario_ids: List[int] = Field(description="List of scenario IDs to compare side-by-side")
     period_start: Optional[date] = Field(

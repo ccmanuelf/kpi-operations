@@ -157,13 +157,21 @@ def test_every_loose_route_is_inventoried_and_none_is_silently_dropped():
        typing.List[...] wrappers and silently dropped four live routes. See is_loose.
     The count is pinned so a
        route that stops being enumerated — a decorator change, a router rename —
-       fails here instead of quietly leaving the refactor's scope."""
+       fails here instead of quietly leaving the refactor's scope.
+
+       19 -> 18: `POST /api/capacity/scenarios/compare` gained
+       `response_model=List[ScenarioComparisonResponse]`. It was reachable but
+       untypeable until the seeder wrote `capacity_scenario` — with zero rows
+       the route could only answer `[]`, so there was no shape to declare a
+       model from. Typing it also closed the Decimal-as-string leak: six of its
+       eleven fields were `Decimal` and serialised as JSON strings under the
+       previous `-> Any`."""
     from backend.main import app
     from backend.tests.contract.schema_document_routes import routes_needing_a_response_model
 
     routes = routes_needing_a_response_model(app)
 
-    assert len(routes) == 19
+    assert len(routes) == 18
     methods = {m for m, _, _ in routes}
     assert methods == {"GET", "POST", "PUT", "DELETE"}
 

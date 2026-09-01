@@ -17,133 +17,61 @@
           @click="$emit('close')"
         />
       </v-card-title>
-      <v-card-text v-if="results" class="pa-4">
-        <!-- Comparison Table -->
-        <v-table v-if="results.scenarios?.length" density="compact">
+
+      <v-card-text v-if="rows.length" class="pa-4">
+        <v-table density="compact">
           <thead>
             <tr>
               <th>{{ t('capacityPlanning.compare.metric') }}</th>
-              <th
-                v-for="scenario in results.scenarios"
-                :key="scenario.id"
-                class="text-center"
-              >
-                {{ scenario.name }}
+              <th v-for="row in rows" :key="row.scenario_id" class="text-center">
+                {{ row.scenario_name }}
+                <div v-if="row.scenario_type" class="text-caption text-medium-emphasis">
+                  {{ row.scenario_type }}
+                </div>
               </th>
             </tr>
           </thead>
           <tbody>
-            <tr>
-              <td class="font-weight-bold">{{ t('capacityPlanning.compare.totalOutput') }}</td>
-              <td
-                v-for="scenario in results.scenarios"
-                :key="scenario.id"
-                class="text-center"
-              >
-                <span :class="getBestClass('total_output', scenario.results?.total_output)">
-                  {{ scenario.results?.total_output?.toLocaleString() || t('common.na') }}
-                </span>
-              </td>
-            </tr>
-            <tr>
-              <td class="font-weight-bold">{{ t('capacityPlanning.compare.avgUtilization') }}</td>
-              <td
-                v-for="scenario in results.scenarios"
-                :key="scenario.id"
-                class="text-center"
-              >
-                <span :class="getBestClass('avg_utilization', scenario.results?.avg_utilization)">
-                  {{ scenario.results?.avg_utilization?.toFixed(1) || t('common.na') }}%
-                </span>
-              </td>
-            </tr>
-            <tr>
-              <td class="font-weight-bold">{{ t('capacityPlanning.compare.onTimeDelivery') }}</td>
-              <td
-                v-for="scenario in results.scenarios"
-                :key="scenario.id"
-                class="text-center"
-              >
-                <span :class="getBestClass('on_time_rate', scenario.results?.on_time_rate)">
-                  {{ scenario.results?.on_time_rate?.toFixed(1) || t('common.na') }}%
-                </span>
-              </td>
-            </tr>
-            <tr>
-              <td class="font-weight-bold">{{ t('capacityPlanning.compare.totalHours') }}</td>
-              <td
-                v-for="scenario in results.scenarios"
-                :key="scenario.id"
-                class="text-center"
-              >
-                {{ scenario.results?.total_hours?.toFixed(1) || t('common.na') }}
-              </td>
-            </tr>
-            <tr>
-              <td class="font-weight-bold">{{ t('capacityPlanning.compare.overtimeHours') }}</td>
-              <td
-                v-for="scenario in results.scenarios"
-                :key="scenario.id"
-                class="text-center"
-              >
-                {{ scenario.results?.overtime_hours?.toFixed(1) || '0' }}
-              </td>
-            </tr>
-            <tr>
-              <td class="font-weight-bold">{{ t('capacityPlanning.compare.estimatedCost') }}</td>
-              <td
-                v-for="scenario in results.scenarios"
-                :key="scenario.id"
-                class="text-center"
-              >
-                <span :class="getLowestClass('estimated_cost', scenario.results?.estimated_cost)">
-                  ${{ scenario.results?.estimated_cost?.toLocaleString() || t('common.na') }}
+            <tr v-for="metric in METRICS" :key="metric.field">
+              <td class="font-weight-bold">{{ t(metric.label) }}</td>
+              <td v-for="row in rows" :key="row.scenario_id" class="text-center">
+                <span :class="highlightClass(metric, row[metric.field])">
+                  {{ format(metric, row[metric.field]) }}
                 </span>
               </td>
             </tr>
           </tbody>
         </v-table>
 
-        <!-- Recommendation -->
-        <v-alert
-          v-if="results.recommendation"
-          type="info"
-          variant="tonal"
-          class="mt-4"
-        >
-          <strong>{{ t('capacityPlanning.compare.recommendation') }}</strong> {{ results.recommendation }}
-        </v-alert>
-
-        <!-- Chart Placeholder -->
         <v-card variant="outlined" class="mt-4">
-          <v-card-title class="text-subtitle-1">{{ t('capacityPlanning.compare.visualComparison') }}</v-card-title>
+          <v-card-title class="text-subtitle-1">
+            {{ t('capacityPlanning.compare.visualComparison') }}
+          </v-card-title>
           <v-card-text>
             <div class="d-flex justify-space-around align-end" style="height: 200px">
-              <div
-                v-for="scenario in results.scenarios"
-                :key="scenario.id"
-                class="text-center"
-              >
+              <div v-for="row in rows" :key="row.scenario_id" class="text-center">
                 <div
                   :style="{
                     width: '60px',
-                    height: `${Math.min(scenario.results?.avg_utilization || 0, 100) * 1.5}px`,
-                    backgroundColor: getBarColor(scenario.results?.avg_utilization)
+                    height: `${Math.min(row.modified_utilization || 0, 100) * 1.5}px`,
+                    backgroundColor: barColor(row.modified_utilization),
                   }"
                   class="mx-auto rounded-t"
                 />
-                <div class="text-caption mt-2">{{ scenario.name }}</div>
+                <div class="text-caption mt-2">{{ row.scenario_name }}</div>
                 <div class="text-body-2 font-weight-bold">
-                  {{ scenario.results?.avg_utilization?.toFixed(1) || 0 }}%
+                  {{ (row.modified_utilization ?? 0).toFixed(1) }}%
                 </div>
               </div>
             </div>
           </v-card-text>
         </v-card>
       </v-card-text>
+
       <v-card-text v-else class="text-center pa-8 text-grey">
         {{ t('capacityPlanning.compare.noResults') }}
       </v-card-text>
+
       <v-card-actions>
         <v-btn variant="tonal" @click="exportComparison">
           <v-icon start>mdi-download</v-icon>
@@ -157,58 +85,106 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const props = defineProps({
   modelValue: {
     type: Boolean,
-    default: false
+    default: false,
   },
+  // POST /api/capacity/scenarios/compare answers with a bare ARRAY of
+  // comparison rows. It used to be read as `results.scenarios[]` with a nested
+  // `results` object per scenario -- a shape the API has never sent -- so the
+  // table's `v-if` was always false and the dialog opened empty. Typed Array
+  // here so the mismatch cannot come back silently.
   results: {
-    type: Object,
-    default: null
-  }
+    type: Array,
+    default: null,
+  },
 })
 
 defineEmits(['update:modelValue', 'close'])
 
-const { t } = useI18n()
+//: The response's own field names, in the order a planner reads them:
+//: what capacity was, what the plan makes it, and what that costs.
+//: `better` says which direction wins, so one comparison can highlight a
+//: high capacity gain and a low cost with the same code path.
+const METRICS = [
+  {
+    field: 'original_capacity_hours',
+    label: 'capacityPlanning.compare.capacityBefore',
+    unit: 'hours',
+    better: null,
+  },
+  {
+    field: 'modified_capacity_hours',
+    label: 'capacityPlanning.compare.capacityAfter',
+    unit: 'hours',
+    better: 'high',
+  },
+  {
+    field: 'capacity_increase_percent',
+    label: 'capacityPlanning.compare.capacityIncrease',
+    unit: 'percent',
+    better: 'high',
+  },
+  {
+    field: 'original_utilization',
+    label: 'capacityPlanning.compare.utilizationBefore',
+    unit: 'percent',
+    better: null,
+  },
+  {
+    field: 'modified_utilization',
+    label: 'capacityPlanning.compare.utilizationAfter',
+    unit: 'percent',
+    better: null,
+  },
+  {
+    field: 'bottlenecks_resolved',
+    label: 'capacityPlanning.compare.bottlenecksResolved',
+    unit: 'count',
+    better: 'high',
+  },
+  {
+    field: 'cost_impact',
+    label: 'capacityPlanning.compare.costImpact',
+    unit: 'currency',
+    better: 'low',
+  },
+]
 
-// Find the best (highest) value for a metric
-const getBestValue = (metric) => {
-  if (!props.results?.scenarios) return null
-  const values = props.results.scenarios
-    .map(s => s.results?.[metric])
-    .filter(v => v !== null && v !== undefined)
-  return values.length > 0 ? Math.max(...values) : null
+const rows = computed(() => (Array.isArray(props.results) ? props.results : []))
+
+const format = (metric, value) => {
+  if (value === null || value === undefined) return t('common.na')
+  if (metric.unit === 'percent') return `${Number(value).toFixed(1)}%`
+  if (metric.unit === 'currency') return `$${Number(value).toLocaleString()}`
+  if (metric.unit === 'count') return String(value)
+  return Number(value).toLocaleString(undefined, { maximumFractionDigits: 1 })
 }
 
-// Find the lowest value for a metric (for cost)
-const getLowestValue = (metric) => {
-  if (!props.results?.scenarios) return null
-  const values = props.results.scenarios
-    .map(s => s.results?.[metric])
-    .filter(v => v !== null && v !== undefined)
-  return values.length > 0 ? Math.min(...values) : null
+//: Only highlights when the rows actually DISAGREE. Marking a winner when
+//: every scenario reports the same number -- which is what an unseeded
+//: capacity module produces -- would tell a reader one plan beat another when
+//: nothing distinguished them.
+const highlightClass = (metric, value) => {
+  if (!metric.better || value === null || value === undefined) return ''
+  const values = rows.value
+    .map((r) => r[metric.field])
+    .filter((v) => v !== null && v !== undefined)
+    .map(Number)
+  if (values.length < 2) return ''
+  const best = metric.better === 'high' ? Math.max(...values) : Math.min(...values)
+  const worst = metric.better === 'high' ? Math.min(...values) : Math.max(...values)
+  if (best === worst) return ''
+  return Number(value) === best ? 'text-success font-weight-bold' : ''
 }
 
-const getBestClass = (metric, value) => {
-  const best = getBestValue(metric)
-  if (best !== null && value === best) {
-    return 'text-success font-weight-bold'
-  }
-  return ''
-}
-
-const getLowestClass = (metric, value) => {
-  const lowest = getLowestValue(metric)
-  if (lowest !== null && value === lowest) {
-    return 'text-success font-weight-bold'
-  }
-  return ''
-}
-
-const getBarColor = (utilization) => {
+const barColor = (utilization) => {
   if (!utilization) return '#e0e0e0'
   if (utilization >= 100) return '#f44336'
   if (utilization >= 90) return '#ff9800'
@@ -217,9 +193,8 @@ const getBarColor = (utilization) => {
 }
 
 const exportComparison = () => {
-  if (!props.results) return
-
-  const json = JSON.stringify(props.results, null, 2)
+  if (!rows.value.length) return
+  const json = JSON.stringify(rows.value, null, 2)
   const blob = new Blob([json], { type: 'application/json' })
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')

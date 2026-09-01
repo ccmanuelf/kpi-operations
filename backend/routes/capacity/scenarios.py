@@ -22,6 +22,7 @@ from ._models import (
     ScenarioResponse,
     ScenarioRunRequest,
     ScenarioRunResponse,
+    ScenarioComparisonResponse,
     ScenarioCompareRequest,
     MessageResponse,
 )
@@ -214,6 +215,7 @@ def delete_scenario(
 
 @scenarios_router.post(
     "/scenarios/compare",
+    response_model=List[ScenarioComparisonResponse],
     responses={
         400: {"description": "Scenario comparison failed"},
         501: {"description": "Scenario service not yet implemented"},
@@ -224,7 +226,7 @@ def compare_scenarios(
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_planner),
-) -> Any:
+) -> List[ScenarioComparisonResponse]:
     """Compare multiple scenarios."""
     verify_client_access(current_user, client_id, db)
 
@@ -241,7 +243,11 @@ def compare_scenarios(
         period_end = request.period_end or (period_start + _timedelta(days=30))
 
         comparison = service.compare_scenarios(client_id, request.scenario_ids, period_start, period_end)
-        return comparison
+        # Validated here rather than left to FastAPI's response_model pass so
+        # the Decimal -> float conversion happens INSIDE the try: a bad row
+        # surfaces as this route's 500 with a logged traceback, not as an
+        # unhandled error in the serialisation layer with no context.
+        return [ScenarioComparisonResponse.model_validate(c) for c in comparison]
     except ImportError:
         raise HTTPException(status_code=501, detail="Scenario service not yet implemented")
     except HTTPException:
