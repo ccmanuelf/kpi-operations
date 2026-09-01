@@ -209,3 +209,39 @@ than the product does would hide this behaviour rather than record it. If the
 accumulation is judged undesirable, the fix belongs in the delete path -- either
 give the table soft-delete columns so the cascade covers it, or hard-delete the
 children when the parent is soft-deleted -- not in a spec.
+
+
+## FINDING: the contrast checker uses gradient stops raw, never composited
+
+Raised by cross-model review of the v36 contrast fix (#260) and adjudicated as
+PRE-EXISTING, not a regression from that change.
+
+`findViolations` treats every gradient stop as an opaque background. A
+semi-transparent stop is scored as if it were solid instead of being composited
+over whatever sits behind it, and fully-transparent stops are dropped outright
+by the `c.a > 0` filter.
+
+CONCRETE FALSE NEGATIVE. An element whose own gradient is
+`linear-gradient(rgba(0,0,0,.2), rgba(0,0,0,.2))` over a white ancestor is
+scored as white-on-black -- 21:1, a clean pass -- when what a user actually sees
+is white on light grey at roughly 1.6:1, a hard WCAG-AA failure. Likewise a
+`#000 -> transparent` gradient keeps only the black stop and ignores the light
+background showing through the transparent end.
+
+WHY IT IS PRE-EXISTING. The line before #260 read
+`candidates = stops.length ? stops : [solidBg]`, drawing `stops` from the same
+`.filter((c) => c.a > 0)`. Uncomposited stops and dropped transparent stops were
+already the behaviour. #260 changed only WHICH gradient's stops win -- the
+element's own rather than any ancestor's, i.e. the one actually in front -- and
+did not touch how stops are combined with what is behind them.
+
+NOT FIXED IN #260 DELIBERATELY. The fix is to composite each stop over the
+background stack beneath it, which changes the contrast math for every sample
+carrying a gradient. That can newly flag findings across all 13 screens in both
+themes, so it needs its own before/after sweep and its own review surface --
+bundling it into a dependency bump would have shipped an unmeasured change to a
+blocking CI gate.
+
+WHERE: `frontend/src/utils/contrastAudit.ts`, the `candidates` construction in
+`findViolations`. `composite()` already exists in that file and is what
+`effectiveBg` uses.
