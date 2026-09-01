@@ -57,6 +57,11 @@ SEEDED: FrozenSet[str] = frozenset(
         "ALERT",
         "ALERT_CONFIG",
         "ALERT_HISTORY",
+        "ATTENDANCE_HOUR_ALLOCATION",
+        "BREAK_TIME",
+        "FLOATING_POOL",
+        "COVERAGE_ENTRY",
+        "shift_coverage",
     }
 )
 

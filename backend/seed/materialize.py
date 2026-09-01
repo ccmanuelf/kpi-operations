@@ -110,6 +110,13 @@ CLIENT_SCOPE_COLUMN = {
     # transitively, not directly.
     "ALERT": "client_id",
     "ALERT_CONFIG": "client_id",
+    # The workforce tables. ATTENDANCE_HOUR_ALLOCATION is absent for the same
+    # reason ALERT_HISTORY is: it carries no client column, hanging off
+    # ATTENDANCE_ENTRY instead, so it is scoped transitively.
+    "BREAK_TIME": "client_id",
+    "FLOATING_POOL": "client_id",
+    "COVERAGE_ENTRY": "client_id",
+    "shift_coverage": "client_id",
 }
 
 
@@ -170,6 +177,7 @@ def materialize(conn: Connection, events: Iterable[Event], profile: Profile) -> 
     # stubbing the modules into existence.
     import backend.seed.writers_alerts as writers_alerts
     import backend.seed.writers_capacity as writers_capacity
+    import backend.seed.writers_workforce as writers_workforce
     import backend.seed.writers_master as writers_master
     import backend.seed.writers_operations as writers_operations
 
@@ -184,8 +192,11 @@ def materialize(conn: Connection, events: Iterable[Event], profile: Profile) -> 
     ids = IdMap()
     allocators = writers_master.build_allocators(conn)
     allocators.update(writers_capacity.build_allocators(conn))
+    allocators.update(writers_workforce.build_allocators(conn))
 
     for event in events:
+        if writers_workforce.handle(event, sink, ids, allocators):
+            continue
         if writers_alerts.handle(event, sink, ids, allocators):
             continue
         if writers_capacity.handle(event, sink, ids, allocators):

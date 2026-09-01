@@ -50,6 +50,9 @@ EXEMPTED_MODULE_PATHS = {
     # side of the capacity module, emitters_capacity.py, is NOT exempt and
     # stays provable without a database.
     "writers_capacity.py",
+    # Same write layer again: maps workforce events to rows and needs
+    # `Connection` for its PK allocators. emitters_workforce.py is NOT exempt.
+    "writers_workforce.py",
     "cli.py",
 }
 

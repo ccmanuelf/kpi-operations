@@ -226,10 +226,6 @@ def test_the_reset_sweep_covers_client_scoped_tables_the_seeder_never_writes():
         # the name, and the table moves to coverage.SEEDED, where
         # test_coverage.py asserts it has rows.
         "EQUIPMENT",
-        "BREAK_TIME",
-        "FLOATING_POOL",
-        "COVERAGE_ENTRY",
-        "shift_coverage",
         "SIMULATION_SCENARIO",
         "CALCULATION_ASSUMPTION",
         "METRIC_CALCULATION_RESULT",

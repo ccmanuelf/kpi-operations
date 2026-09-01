@@ -618,6 +618,93 @@ class AlertPredictionRecorded(Event):
     error_percent: float
 
 
+@dataclass(frozen=True)
+class LaborHoursAllocated(Event):
+    """One category's share of an employee's shift.
+
+    The ledger the labour-efficiency split reads: `BILLABLE_CATEGORIES` and
+    `PRODUCTIVE_CATEGORIES` are subsets of `HourCategoryEnum`, so a day
+    allocated entirely to `billed_production` makes both ratios 100% and
+    demonstrates neither.
+
+    Carries the attendance row's BUSINESS key (date, shift, employee), not its
+    primary key: the writer resolves that, so the `AE-...` formula has one home.
+    """
+
+    employee_id: str
+    shift_id: str
+    shift_date: datetime
+    category: str
+    hours: float
+
+
+@dataclass(frozen=True)
+class BreakTimeDefined(Event):
+    """A scheduled break within a shift.
+
+    BREAK_TIME is what the shift-configuration screen reads. Offsets are from
+    the shift's start, which is how the app stores them -- an absolute time
+    would silently mean something different for each of the client's shifts.
+    """
+
+    shift_id: str
+    break_name: str
+    start_offset_minutes: int
+    duration_minutes: int
+    applies_to: str
+
+
+@dataclass(frozen=True)
+class FloatingPoolMemberAdded(Event):
+    """An employee available to cover other lines.
+
+    The floating pool is the supply side of coverage: without members, the
+    coverage screen has nobody to assign and the shift-coverage simulation has
+    no slack to draw on.
+    """
+
+    employee_id: str
+    available_from: datetime
+    available_to: datetime
+    current_assignment: Optional[str]
+
+
+@dataclass(frozen=True)
+class AbsenceCovered(Event):
+    """A floating employee standing in for an absent one.
+
+    Emitted against REAL absences the attendance stream already produced, not
+    invented ones -- a coverage record for an employee who was present would
+    contradict the attendance it is meant to explain.
+    """
+
+    coverage_key: str
+    floating_employee_id: str
+    covered_employee_id: str
+    shift_id: str
+    shift_date: datetime
+    coverage_hours: int
+    coverage_reason: str
+    assigned_by: str
+
+
+@dataclass(frozen=True)
+class ShiftCoverageRecorded(Event):
+    """Headcount required versus actually present, for one shift on one day.
+
+    Derived from the crew the stream already staffed and the absences it
+    already recorded, so the percentage reconciles with attendance instead of
+    being a second, independent claim about the same day.
+    """
+
+    shift_id: str
+    coverage_date: date
+    required_employees: int
+    actual_employees: int
+    coverage_percentage: str
+    entered_by: str
+
+
 EVENT_TYPES = (
     ClientCreated,
     UserCreated,
@@ -657,4 +744,9 @@ EVENT_TYPES = (
     AlertConfigured,
     AlertRaised,
     AlertPredictionRecorded,
+    LaborHoursAllocated,
+    BreakTimeDefined,
+    FloatingPoolMemberAdded,
+    AbsenceCovered,
+    ShiftCoverageRecorded,
 )

@@ -119,10 +119,17 @@ def test_cli_subprocess_reset_sweeps_grandchildren_on_the_production_engine(tmp_
             attendance_entry_id = conn.execute(
                 select(attendance.c.attendance_entry_id).where(attendance.c.client_id == "DEMO-PIECE").limit(1)
             ).scalar_one()
-            conn.execute(
-                insert(allocation),
-                [{"attendance_entry_id": attendance_entry_id, "category": "billed_production", "hours": 8}],
-            )
+            # The planted row's own PK, captured at insert. The seeder writes
+            # ATTENDANCE_HOUR_ALLOCATION now, so a count of the table cannot
+            # tell a swept row from a re-seeded one.
+            planted_allocation_id = conn.execute(
+                # `training`, not `billed_production`: the table is UNIQUE on
+                # (attendance_entry_id, category) and the seeder now writes
+                # billed_production for every allocated entry, so planting that
+                # category collides instead of testing anything. `training` is
+                # a real HourCategoryEnum value the seeder does not emit.
+                insert(allocation).values(attendance_entry_id=attendance_entry_id, category="training", hours=8)
+            ).inserted_primary_key[0]
 
         second = subprocess.run(
             argv + ["--reset"], cwd=str(repo_root), env=env, capture_output=True, text=True, timeout=180
@@ -149,7 +156,19 @@ def test_cli_subprocess_reset_sweeps_grandchildren_on_the_production_engine(tmp_
                     "WHERE NOT EXISTS (SELECT 1 FROM ALERT a WHERE a.alert_id = h.alert_id)"
                 )
             ).scalar_one()
-            allocations = conn.execute(select(func.count()).select_from(allocation)).scalar_one()
+            allocations = conn.execute(
+                select(func.count()).select_from(allocation).where(allocation.c.allocation_id == planted_allocation_id)
+            ).scalar_one()
+            # ATTENDANCE_HOUR_ALLOCATION has no cascade, so the sweep is the
+            # only thing standing between a reset and an allocation pointing
+            # at an attendance row that no longer exists.
+            orphan_allocations = conn.execute(
+                text(
+                    "SELECT COUNT(*) FROM ATTENDANCE_HOUR_ALLOCATION al "
+                    "WHERE NOT EXISTS (SELECT 1 FROM ATTENDANCE_ENTRY e "
+                    "                  WHERE e.attendance_entry_id = al.attendance_entry_id)"
+                )
+            ).scalar_one()
             clients = conn.execute(select(func.count()).select_from(Base.metadata.tables["CLIENT"])).scalar_one()
     finally:
         engine.dispose()
@@ -157,7 +176,8 @@ def test_cli_subprocess_reset_sweeps_grandchildren_on_the_production_engine(tmp_
     assert alerts == 0
     assert history == 0, "the planted ALERT_HISTORY survived --reset on the engine main() builds"
     assert orphans == 0, "--reset orphaned an ALERT_HISTORY row from its ALERT parent"
-    assert allocations == 0, "ATTENDANCE_HOUR_ALLOCATION survived --reset with no cascade to clean it up"
+    assert allocations == 0, "the planted ATTENDANCE_HOUR_ALLOCATION survived --reset (it has no cascade)"
+    assert orphan_allocations == 0, "--reset orphaned an allocation from its ATTENDANCE_ENTRY"
     assert clients == 1
 
 
