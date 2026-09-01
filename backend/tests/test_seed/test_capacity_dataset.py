@@ -93,6 +93,41 @@ def test_a_schedule_rows_order_number_names_the_order_it_points_at(full_db):
     assert mismatches == 0, f"{mismatches} rows display one order's number while referencing another"
 
 
+def test_an_orders_completion_is_the_sum_of_the_work_scheduled_against_it(full_db):
+    """Both tables carry a `completed_quantity`, and they used to disagree.
+
+    The order carried an invented 55% while every past schedule day was marked
+    fully complete, so a reader summing schedule detail got one completion
+    total and a reader looking at the order got another. The order book is
+    derived from the schedule plan now, so the two are the same number by
+    construction rather than by coincidence.
+
+    `order_quantity` must also cover what is scheduled, with a tail left over:
+    an order with nothing left to schedule gives the planning screen nothing
+    to do.
+    """
+    with full_db.begin() as conn:
+        bad = conn.execute(
+            text(
+                "SELECT COUNT(*) FROM ("
+                "  SELECT o.id FROM capacity_orders o "
+                "    JOIN capacity_schedule_detail d ON d.order_id = o.id "
+                "   GROUP BY o.id "
+                "  HAVING o.completed_quantity <> SUM(d.completed_quantity) "
+                "      OR o.order_quantity < SUM(d.scheduled_quantity))"
+            )
+        ).scalar_one()
+        tail = conn.execute(
+            text(
+                "SELECT MIN(o.order_quantity - t.sched) FROM capacity_orders o JOIN ("
+                "  SELECT order_id, SUM(scheduled_quantity) AS sched "
+                "    FROM capacity_schedule_detail GROUP BY order_id) t ON t.order_id = o.id"
+            )
+        ).scalar_one()
+    assert bad == 0, f"{bad} orders disagree with the schedule about what was completed or ordered"
+    assert tail > 0, "every order is fully consumed by the schedule -- nothing left to plan"
+
+
 def test_the_component_check_exercises_all_three_statuses(full_db):
     with full_db.begin() as conn:
         seen = {row[0] for row in conn.execute(text("SELECT DISTINCT status FROM capacity_component_check"))}

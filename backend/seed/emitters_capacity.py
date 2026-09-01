@@ -23,7 +23,7 @@ from __future__ import annotations
 
 import random
 from datetime import date, datetime, time, timedelta
-from typing import Any, Callable, Type
+from typing import Any, Callable, Dict, List, Type
 
 from backend.seed.emitters_master import ClientSetup
 from backend.seed.events import (
@@ -220,41 +220,6 @@ def emit_capacity(
                 component_type=comp_type,
             )
 
-    # Two orders per style: one already in progress, one still to plan. A book
-    # of only-future orders shows no throughput; only-past shows nothing to
-    # schedule.
-    order_n = 0
-    for si, product in enumerate(scenario.products):
-        for leg, (offset_days, status, priority, done_fraction) in enumerate(
-            (
-                (-21, "IN_PROGRESS", "HIGH", 0.55),
-                (18, "CONFIRMED", "NORMAL", 0.0),
-            )
-        ):
-            order_n += 1
-            required = as_of + timedelta(days=offset_days)
-            quantity = 800 + 200 * ((si + leg) % 4)
-            planned_start = required - timedelta(days=14)
-            declare(
-                CapacityOrderPlaced,
-                order_ref=f"{cid}-CAPORD-{order_n:03d}",
-                order_number=f"CO-{as_of.year}-{order_n:04d}",
-                customer_name=f"{scenario.name.split()[0]} Retail",
-                style_model=product.style,
-                style_description=product.name,
-                order_quantity=quantity,
-                completed_quantity=int(quantity * done_fraction),
-                order_date=planned_start - timedelta(days=10),
-                required_date=required,
-                planned_start_date=planned_start,
-                planned_end_date=required - timedelta(days=2),
-                priority=priority,
-                status=status,
-                # Order SAM = per-unit standard minutes * quantity, so the
-                # workbook's demand hours and the standards table agree.
-                order_sam_minutes=f"{13.5 * quantity:.4f}",
-            )
-
     # --- the committed schedule, and the work under it -------------------
     #
     # ACTIVE, not DRAFT: `_get_demand_by_line` counts only COMMITTED and
@@ -305,38 +270,105 @@ def emit_capacity(
     capacity_hours_per_line_day = shifts_per_day * effective_hours_per_shift * 0.85 * 0.95 * operators_per_line
     units_per_line_day = int(capacity_hours_per_line_day * TARGET_UTILIZATION * 60.0 / total_sam_minutes)
 
-    # PAIRS, not two independently-derived strings. `order_ref` resolves to a
-    # row and `order_number` is the denormalised label displayed beside it;
-    # computing them from the same index in two places is how a schedule row
-    # ends up pointing at one order while showing another's number. They agree
-    # today only because both happen to use `idx + 1`.
-    order_book = [(f"{cid}-CAPORD-{n:03d}", f"CO-{as_of.year}-{n:04d}") for n in range(1, order_n + 1)]
+    # THE ORDER BOOK IS DERIVED FROM THE SCHEDULE, not invented beside it.
+    #
+    # Both tables carry a `completed_quantity`, and the first version picked an
+    # order-level fraction (55%) while marking every past schedule day fully
+    # complete. Those are two different answers to the same question: a reader
+    # summing schedule detail got one completion total and a reader looking at
+    # the order got another. Recording that as a known quirk would not make the
+    # data self-consistent -- so the plan is computed first, and the order's
+    # quantities are the totals of the work actually scheduled against it.
+    order_count = max(1, len(scenario.products) * 2)
+    plan: List[Dict[str, Any]] = []
     seq = 0
     day = sched_start
     while day <= sched_end:
         if day.weekday() < 5:
             for li in range(line_count):
-                seq += 1
                 product = scenario.products[li % len(scenario.products)]
                 quantity = units_per_line_day
                 if li == BOTTLENECK_LINE_INDEX % line_count:
                     quantity = int(quantity * BOTTLENECK_UPLIFT)
-                declare(
-                    CapacityWorkScheduled,
-                    schedule_key=schedule_key,
-                    order_ref=order_book[seq % len(order_book)][0],
-                    order_number=order_book[seq % len(order_book)][1],
-                    style_model=product.style,
-                    line_key=f"{cid}-CAPLINE-{li + 1:02d}",
-                    line_code=f"L{li + 1:02d}",
-                    scheduled_date=day,
-                    scheduled_quantity=quantity,
-                    # Past days are done, future days are not: a schedule where
-                    # everything is complete has nothing left to plan.
-                    completed_quantity=quantity if day < as_of else 0,
-                    sequence=(seq % line_count) + 1,
+                plan.append(
+                    {
+                        "order_index": seq % order_count,
+                        "style": product.style,
+                        "line_index": li,
+                        "date": day,
+                        "quantity": quantity,
+                        # Past days are done, future days are not: a schedule
+                        # where everything is complete has nothing left to plan.
+                        "completed": quantity if day < as_of else 0,
+                        "sequence": (seq % line_count) + 1,
+                    }
                 )
+                seq += 1
         day += timedelta(days=1)
+
+    scheduled_by_order = [0] * order_count
+    completed_by_order = [0] * order_count
+    style_by_order: List[str] = [scenario.products[0].style] * order_count
+    for row in plan:
+        idx = row["order_index"]
+        scheduled_by_order[idx] += row["quantity"]
+        completed_by_order[idx] += row["completed"]
+        style_by_order[idx] = row["style"]
+
+    order_book = []
+    for n in range(1, order_count + 1):
+        idx = n - 1
+        si = idx // 2
+        leg = idx % 2
+        product = scenario.products[si % len(scenario.products)]
+        offset_days, status, priority = ((-21, "IN_PROGRESS", "HIGH"), (18, "CONFIRMED", "NORMAL"))[leg]
+        required = as_of + timedelta(days=offset_days)
+        planned_start = required - timedelta(days=14)
+        # A tail beyond what is scheduled, so the book is not exactly consumed
+        # by the plan -- an order with nothing left to schedule gives the
+        # planning screen nothing to do.
+        quantity = scheduled_by_order[idx] + 200
+        completed = min(completed_by_order[idx], quantity)
+        order_ref = f"{cid}-CAPORD-{n:03d}"
+        order_number = f"CO-{as_of.year}-{n:04d}"
+        order_book.append((order_ref, order_number))
+        declare(
+            CapacityOrderPlaced,
+            order_ref=order_ref,
+            order_number=order_number,
+            customer_name=f"{scenario.name.split()[0]} Retail",
+            style_model=style_by_order[idx] if scheduled_by_order[idx] else product.style,
+            style_description=product.name,
+            order_quantity=quantity,
+            completed_quantity=completed,
+            order_date=planned_start - timedelta(days=10),
+            required_date=required,
+            planned_start_date=planned_start,
+            planned_end_date=required - timedelta(days=2),
+            priority=priority,
+            status=status,
+            # Order SAM = per-unit standard minutes * quantity, so the
+            # workbook's demand hours and the standards table agree.
+            order_sam_minutes=f"{total_sam_minutes * quantity:.4f}",
+        )
+
+    # Emitted straight from the plan the order book was derived from, so the
+    # two tables cannot disagree about what was scheduled or completed.
+    for row in plan:
+        order_ref, order_number = order_book[row["order_index"]]
+        declare(
+            CapacityWorkScheduled,
+            schedule_key=schedule_key,
+            order_ref=order_ref,
+            order_number=order_number,
+            style_model=row["style"],
+            line_key=f"{cid}-CAPLINE-{row['line_index'] + 1:02d}",
+            line_code=f"L{row['line_index'] + 1:02d}",
+            scheduled_date=row["date"],
+            scheduled_quantity=row["quantity"],
+            completed_quantity=row["completed"],
+            sequence=row["sequence"],
+        )
 
     for kpi_key, kpi_name, committed, actual in KPI_COMMITMENTS:
         variance = float(actual) - float(committed)
