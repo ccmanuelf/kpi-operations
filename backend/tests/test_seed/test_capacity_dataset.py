@@ -107,14 +107,28 @@ def test_an_orders_completion_is_the_sum_of_the_work_scheduled_against_it(full_d
     to do.
     """
     with full_db.begin() as conn:
+        # Written to survive BOTH dialects, which took two goes:
+        #   * MariaDB requires an ALIAS on a derived table; SQLite does not.
+        #   * MariaDB's ONLY_FULL_GROUP_BY rejects a bare `o.completed_quantity`
+        #     in HAVING when it is neither grouped nor aggregated; SQLite
+        #     accepts it.
+        # So every non-aggregated column is grouped, and the comparison moves
+        # to an outer WHERE. Both failures were MariaDB-only and invisible to
+        # the default SQLite run -- the class the MariaDB job exists to catch.
         bad = conn.execute(
             text(
                 "SELECT COUNT(*) FROM ("
-                "  SELECT o.id FROM capacity_orders o "
-                "    JOIN capacity_schedule_detail d ON d.order_id = o.id "
-                "   GROUP BY o.id "
-                "  HAVING o.completed_quantity <> SUM(d.completed_quantity) "
-                "      OR o.order_quantity < SUM(d.scheduled_quantity))"
+                "  SELECT o.id AS order_id,"
+                "         o.completed_quantity AS ord_done,"
+                "         o.order_quantity AS ord_qty,"
+                "         SUM(d.completed_quantity) AS sched_done,"
+                "         SUM(d.scheduled_quantity) AS sched_qty"
+                "    FROM capacity_orders o"
+                "    JOIN capacity_schedule_detail d ON d.order_id = o.id"
+                "   GROUP BY o.id, o.completed_quantity, o.order_quantity"
+                ") AS totals"
+                " WHERE totals.ord_done <> totals.sched_done"
+                "    OR totals.ord_qty < totals.sched_qty"
             )
         ).scalar_one()
         tail = conn.execute(
