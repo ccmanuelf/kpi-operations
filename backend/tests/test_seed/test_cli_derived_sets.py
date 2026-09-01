@@ -225,15 +225,14 @@ def test_the_reset_sweep_covers_client_scoped_tables_the_seeder_never_writes():
         # rewrite this test, it proves nothing") is the instruction to remove
         # the name, and the table moves to coverage.SEEDED, where
         # test_coverage.py asserts it has rows.
-        "EQUIPMENT",
-        "SIMULATION_SCENARIO",
-        "CALCULATION_ASSUMPTION",
+        # One name left. EQUIPMENT, PART_OPPORTUNITIES, SIMULATION_SCENARIO
+        # and CALCULATION_ASSUMPTION all left this list the way JOB and the
+        # capacity cluster did, when the seeder began writing them --
+        # METRIC_CALCULATION_RESULT is now the ONLY client-scoped table the
+        # seeder never writes, because it is nightly dual-view cron output
+        # rather than demo data. The count assertion below still proves the
+        # FK-derived sweep reaches every capacity table whether seeded or not.
         "METRIC_CALCULATION_RESULT",
-        "PART_OPPORTUNITIES",
-        # No capacity_* name remains here: all thirteen are seeded now, so the
-        # cluster left this list the way JOB did. EQUIPMENT carries the case
-        # instead, and the count assertion below still proves the FK-derived
-        # sweep reaches every capacity table whether seeded or not.
     ):
         assert name not in SEEDED, f"{name} is seeded after all -- rewrite this test, it proves nothing"
         assert name in CLIENT_SCOPED_TABLES, f"{name} would survive --reset and RESTRICT the CLIENT delete"

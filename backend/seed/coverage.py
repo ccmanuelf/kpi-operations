@@ -62,10 +62,31 @@ SEEDED: FrozenSet[str] = frozenset(
         "FLOATING_POOL",
         "COVERAGE_ENTRY",
         "shift_coverage",
+        "CALCULATION_ASSUMPTION",
+        "ASSUMPTION_CHANGE",
+        "SIMULATION_SCENARIO",
+        "EQUIPMENT",
+        "PART_OPPORTUNITIES",
     }
 )
 
 NOT_SEEDED: Dict[str, str] = {
+    "METRIC_ASSUMPTION_DEPENDENCY": (
+        "Seeded by the BOOT path, not by this seeder: bootstrap/lifecycle.py runs "
+        "`seed_metric_dependencies` from services/calculations/assumption_catalog.py, which "
+        "inserts the 18 CANONICAL_METRIC_DEPENDENCIES idempotently. Verified on the running VM: "
+        "exactly 18 rows. Writing them here too would give one table two owners that must agree, "
+        "and the catalog is the authoritative one -- the service layer rejects any "
+        "assumption_name not registered there."
+    ),
+    "METRIC_CALCULATION_RESULT": (
+        "Calculation OUTPUT, not fixture data. The dual-view scheduler recomputes it nightly "
+        "from whatever assumptions and operational rows exist, so seeded values would be numbers "
+        "no calculation produced -- the same reason capacity_scenario.results_json is left NULL. "
+        "The VM holds 2277 rows generated this way. After a --reset the table is empty until the "
+        "next nightly run, so the reseed procedure triggers a recalculation rather than "
+        "fabricating one."
+    ),
     "TOKEN_BLACKLIST": (
         "JWT revocation ledger written when a user logs out. Fabricated revoked tokens "
         "would demonstrate nothing about the feature and could only mislead a reader into "

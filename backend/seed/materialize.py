@@ -117,6 +117,11 @@ CLIENT_SCOPE_COLUMN = {
     "FLOATING_POOL": "client_id",
     "COVERAGE_ENTRY": "client_id",
     "shift_coverage": "client_id",
+    # Assumptions and saved simulations. ASSUMPTION_CHANGE is absent for the
+    # same reason ALERT_HISTORY is: no client column of its own, scoped through
+    # the assumption it records a change to.
+    "CALCULATION_ASSUMPTION": "client_id",
+    "SIMULATION_SCENARIO": "client_id",
 }
 
 
@@ -176,7 +181,9 @@ def materialize(conn: Connection, events: Iterable[Event], profile: Profile) -> 
     # actually covers, so the whole-package mypy gate stays green without
     # stubbing the modules into existence.
     import backend.seed.writers_alerts as writers_alerts
+    import backend.seed.writers_assumptions as writers_assumptions
     import backend.seed.writers_capacity as writers_capacity
+    import backend.seed.writers_equipment as writers_equipment
     import backend.seed.writers_workforce as writers_workforce
     import backend.seed.writers_master as writers_master
     import backend.seed.writers_operations as writers_operations
@@ -193,13 +200,19 @@ def materialize(conn: Connection, events: Iterable[Event], profile: Profile) -> 
     allocators = writers_master.build_allocators(conn)
     allocators.update(writers_capacity.build_allocators(conn))
     allocators.update(writers_workforce.build_allocators(conn))
+    allocators.update(writers_assumptions.build_allocators(conn))
+    allocators.update(writers_equipment.build_allocators(conn))
 
     for event in events:
+        if writers_assumptions.handle(event, sink, ids, allocators):
+            continue
         if writers_workforce.handle(event, sink, ids, allocators):
             continue
         if writers_alerts.handle(event, sink, ids, allocators):
             continue
         if writers_capacity.handle(event, sink, ids, allocators):
+            continue
+        if writers_equipment.handle(event, sink, ids, allocators):
             continue
         if writers_master.handle(event, sink, ids, allocators):
             continue

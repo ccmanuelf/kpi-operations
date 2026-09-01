@@ -273,3 +273,71 @@ SCENARIOS = (
         narrative=(),
     ),
 )
+
+#: The site's calculation assumptions, as VALUES drawn from
+#: `services/calculations/assumption_catalog.V1_CATALOG`.
+#:
+#: Restated here rather than imported: that module imports
+#: `sqlalchemy.orm.Session` at module level, and the purity guard forbids the
+#: seed engine from importing database machinery. Restating risks drift, so
+#: `test_assumption_specs_match_the_catalog` asserts every name exists in the
+#: catalog and every value is one the catalog permits -- the two-sided pattern
+#: this package already uses for enums.
+#:
+#: Two of the six deviate from `default_value` ON PURPOSE. The dual-view
+#: feature exists to show standard-versus-site-adjusted numbers; if every
+#: assumption matched the textbook default, both views would be identical and
+#: the delta column would be zero everywhere.
+#:
+#: The catalog default travels with each row so the change history can say
+#: what the value moved AWAY from. It cannot be imported: assumption_catalog
+#: pulls in sqlalchemy.orm.Session. test_assumption_dataset pins it against
+#: V1_CATALOG, so a drifting default fails rather than seeds a false trail.
+#:
+#: (assumption_name, value, default_value, deviates_from_default, rationale)
+CALCULATION_ASSUMPTIONS = (
+    (
+        "planned_production_time_basis",
+        "exclude_scheduled_maintenance",
+        "include_scheduled_maintenance",
+        True,
+        "Planned maintenance is scheduled outside production windows here, so counting it as "
+        "available time understates availability.",
+    ),
+    (
+        "ideal_cycle_time_source",
+        "demonstrated_best",
+        "engineering_standard",
+        True,
+        "Engineering standards predate the current line layout; the demonstrated best cycle is "
+        "the honest reference for this site.",
+    ),
+    (
+        "setup_treatment",
+        "count_as_downtime",
+        "count_as_downtime",
+        False,
+        "Textbook default retained: setup is genuinely lost availability on these lines.",
+    ),
+    (
+        "scrap_classification_rule",
+        "rework_counted_as_good",
+        "rework_counted_as_good",
+        False,
+        "Textbook default retained: reworked units ship and are counted good.",
+    ),
+    (
+        "otd_carrier_buffer_pct",
+        0,
+        0,
+        False,
+        "No carrier buffer negotiated; delivery is judged against the planned date itself.",
+    ),
+    (
+        "yield_baseline_source",
+        "theoretical",
+        "theoretical",
+        False,
+        "Textbook default retained pending a demonstrated baseline study.",
+    ),
+)

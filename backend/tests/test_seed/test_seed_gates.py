@@ -131,7 +131,9 @@ def test_the_write_layer_derivation_covers_identity_and_excludes_only_cli():
     assert WRITE_LAYER == (
         "identity.py",
         "materialize.py",
+        "writers_assumptions.py",
         "writers_capacity.py",
+        "writers_equipment.py",
         "writers_master.py",
         "writers_operations.py",
         "writers_workforce.py",

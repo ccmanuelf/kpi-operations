@@ -705,6 +705,108 @@ class ShiftCoverageRecorded(Event):
     entered_by: str
 
 
+@dataclass(frozen=True)
+class AssumptionRegistered(Event):
+    """One named calculation assumption, as this site has set it.
+
+    `value_json` is stored as TEXT holding JSON, which is how the column is
+    declared -- not as a bare string, or the dual-view services cannot decode
+    it back into the typed value the catalog promises.
+    """
+
+    assumption_key: str
+    assumption_name: str
+    value_json: str
+    rationale: str
+    effective_date: datetime
+    status: str
+    # NOT NULL on the table, and easy to miss: reading the model with a
+    # truncated `head` hid it, and the seed only failed at INSERT.
+    proposed_by: str
+    proposed_at: datetime
+
+
+@dataclass(frozen=True)
+class AssumptionChanged(Event):
+    """The audit row behind an assumption reaching its current state.
+
+    ASSUMPTION_CHANGE is what the assumption-history view reads: without it an
+    active assumption appears to have existed forever, with nothing showing
+    who proposed it or what it replaced.
+    """
+
+    assumption_key: str
+    changed_by: str
+    previous_value_json: Optional[str]
+    new_value_json: str
+    previous_status: Optional[str]
+    new_status: str
+    change_reason: str
+
+
+@dataclass(frozen=True)
+class SimulationScenarioSaved(Event):
+    """A saved what-if simulation.
+
+    `config` must satisfy SimulationConfig -- operations, schedule and demands
+    are all required and min_length=1 -- or the scenario loads into a form the
+    engine refuses to run, which is worse than no scenario at all.
+    """
+
+    scenario_key: str
+    name: str
+    description: str
+    config: Mapping[str, Any]
+    last_run_summary: Optional[Mapping[str, Any]]
+    last_run_at: Optional[datetime]
+
+
+@dataclass(frozen=True)
+class EquipmentRegistered(Event):
+    """One machine in the floor registry.
+
+    `line_key` is a SEED key, not a database id: PRODUCTION_LINE ids are
+    autoincrement and unknown until write time, so the writer resolves it
+    through the IdMap. None means the machine hangs off no line, which is
+    how a shared resource is modelled -- GET /api/equipment/shared filters
+    on exactly that, so without one the route can only ever return [].
+
+    `status` and `is_active` are different axes and the seed needs both:
+    status is the lifecycle the CheckConstraint enforces
+    (ACTIVE/MAINTENANCE/RETIRED), while is_active is the soft-delete flag
+    that list_equipment's `include_inactive` parameter toggles.
+    """
+
+    equipment_key: str
+    line_key: Optional[str]
+    equipment_code: str
+    equipment_name: str
+    equipment_type: str
+    is_shared: bool
+    status: str
+    is_active: bool
+    last_maintenance_date: Optional[date]
+    next_maintenance_date: Optional[date]
+    notes: Optional[str]
+
+
+@dataclass(frozen=True)
+class PartOpportunityDefined(Event):
+    """DPMO metadata for one part: how many ways a single unit can be wrong.
+
+    `part_number` must be the product code the JOB rows already carry.
+    dpmo.get_opportunities_for_part looks this table up by that exact value
+    and silently falls back to a default when nothing matches, so a part
+    number invented here would leave every DPMO reading the fallback while
+    appearing to be configured.
+    """
+
+    part_number: str
+    opportunities_per_unit: int
+    part_description: str
+    part_category: str
+
+
 EVENT_TYPES = (
     ClientCreated,
     UserCreated,
@@ -749,4 +851,9 @@ EVENT_TYPES = (
     FloatingPoolMemberAdded,
     AbsenceCovered,
     ShiftCoverageRecorded,
+    AssumptionRegistered,
+    AssumptionChanged,
+    SimulationScenarioSaved,
+    EquipmentRegistered,
+    PartOpportunityDefined,
 )
