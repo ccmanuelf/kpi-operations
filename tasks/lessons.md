@@ -70,3 +70,57 @@ the same thing happened: `ok N files changed` printed, HEAD had not moved, and
 the subsequent `cross-review-mark` + `git push` both landed on the PREVIOUS
 commit. Treat `git commit` as unverified until `git rev-parse --short HEAD`
 shows a new sha. Run black AND flake8 locally first.
+
+## A retargeted PR reports NO checks, and "no checks" is not "checks passed"
+
+**Pattern:** #261 was opened against a feature branch (`chore/ag-grid-36-lockstep`)
+because verifying it needed that branch's code. After the base PR merged, the
+branch was rebased onto `main`, force-pushed, and THEN retargeted with
+`gh pr edit --base main`. No workflow ran. `ci.yml` and `e2e.yml` both trigger on
+`pull_request: branches: [main]`, and at the moment of the push the PR still
+pointed at the feature branch, so the filter did not match. Retargeting
+afterwards does not replay the push event.
+
+`gh pr checks` printed `no checks reported on the ... branch` and
+`gh pr view` said `mergeable=MERGEABLE state=BLOCKED`. The merge was blocked only
+because branch protection requires checks that had never been queued — the same
+BLOCKED that a failing run produces.
+
+**Rule:** after retargeting a PR's base, confirm a run actually exists for the
+current head sha before trusting anything:
+
+    gh run list --branch <branch> --limit 5 --json name,status,headSha
+
+If nothing is listed, re-trigger. `gh pr close <n> && gh pr reopen <n>` fires the
+default `reopened` activity type and works without touching commits; an empty
+commit or an amend also works but rewrites history and invalidates the
+cross-review marker.
+
+**Why it matters:** the failure mode is silence, not red. A PR with zero checks
+looks calm, and the only thing standing between it and a merge is branch
+protection. Never read BLOCKED as "waiting" without checking whether any run
+was ever created — and never read an empty check list as green.
+
+## Ship the fix that is verified; measure before widening it
+
+**Pattern:** while fixing gradient scoring in the contrast checker (#262), an
+adversarial review chain ran seven rounds. Twice I widened the fix on reasoning
+alone and each time introduced a FALSE POSITIVE on a blocking a11y gate — the
+same class of bug the change existed to fix. Both came from asserting a layer
+was visible without working the arithmetic: offering hidden deeper layers as
+"conservative" extra candidates, and skipping translucent layers nearer than
+the chosen surface.
+
+What worked, every time, was computing the number first. A reviewer's
+counterexample was reproduced with a 400k-point scan before being believed
+(true minimum 4.4666 where an 8-step grid reported 4.5226). A claimed
+unimodality hazard was measured across 40k random cases and turned out to be
+3e-6 — float noise — so it was documented as belt-and-braces rather than sold
+as a fix.
+
+**Rule:** for any change to scoring or math behind a gate, produce the number
+before changing the code, and measure the blast radius before shipping. A
+census that reports the totals it scanned (86 gradient elements, 172 stops,
+zero translucent) is evidence; "this should not change anything" is not. When a
+guard cannot be mutation-proven, say so plainly rather than implying coverage
+the tests do not provide.

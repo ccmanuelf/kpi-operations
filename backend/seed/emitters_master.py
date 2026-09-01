@@ -14,6 +14,7 @@ from datetime import date, datetime, time, timedelta
 from typing import Any, Callable, Dict, List, NamedTuple, Tuple, Type
 
 from backend.seed.events import (
+    CapacityScenarioDefined,
     ClientConfigured,
     ClientCreated,
     DefectTypeDefined,
@@ -202,6 +203,39 @@ def emit_setup(
             kpi_key=kpi_key,
             target_value=target_value,
         )
+
+    # Two saved what-if plans per client, so the capacity comparison screen
+    # has something to compare rather than an empty list. Both carry the
+    # parameter keys ScenarioService actually reads for their type.
+    #
+    # `affected_departments` is EMPTY for clarity, not because anything
+    # depends on it. The service combines the two selectors with OR --
+    # `if dept_match or line_match` -- and `affected_lines` defaults to `[]`,
+    # which makes `line_match` true for every line. So an OVERTIME plan
+    # affects all lines whatever this list says. Empty states that plainly;
+    # the service's own default of ["SEWING", "FINISHING"] would imply a
+    # narrowing that does not happen, and seeded PRODUCTION_LINE rows carry no
+    # department for it to match anyway.
+    #
+    # `affected_lines` is left out rather than written as `[]`: omitted and
+    # empty are the same value to `params.get("affected_lines", [])`, and
+    # spelling out a key only to restate its default is noise.
+    setup(
+        CapacityScenarioDefined,
+        scenario_key=f"{cid}-SCENARIO-OT",
+        scenario_name="Overtime: +20% on every line",
+        scenario_type="OVERTIME",
+        parameters={"overtime_percent": 20, "affected_departments": [], "cost_per_hour": 15},
+        notes="Saved plan: absorb the current backlog with overtime rather than new capacity.",
+    )
+    setup(
+        CapacityScenarioDefined,
+        scenario_key=f"{cid}-SCENARIO-SETUP",
+        scenario_name="Changeover: cut setup time 30%",
+        scenario_type="SETUP_REDUCTION",
+        parameters={"reduction_percent": 30},
+        notes="Saved plan: recover capacity from changeovers instead of paying overtime.",
+    )
 
     # --- Setup is finished. Everything the operations emitters produce
     # references entities created above, so all of it must be stamped

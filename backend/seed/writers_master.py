@@ -19,7 +19,7 @@ from backend.seed.materialize import RowSink
 from backend.seed.scenarios import USERS
 
 #: Tables whose PK is an autoincrement integer the stream does not carry.
-INT_PK_TABLES = ("PRODUCTION_LINE", "SHIFT", "PRODUCT", "EMPLOYEE")
+INT_PK_TABLES = ("PRODUCTION_LINE", "SHIFT", "PRODUCT", "EMPLOYEE", "capacity_scenario")
 
 #: user_id -> the client list from the declarative roster. UserCreated does
 #: not carry it (the assignment already travels as its own
@@ -155,6 +155,40 @@ def _shift_defined(e: ev.ShiftDefined, sink: RowSink, ids: IdMap, allocators: Di
     )
 
 
+def _capacity_scenario_defined(
+    e: ev.CapacityScenarioDefined, sink: RowSink, ids: IdMap, allocators: Dict[str, IntPkAllocator]
+) -> None:
+    scenario_id = allocators["capacity_scenario"].next()
+    ids.assign("capacity_scenario", e.scenario_key, scenario_id)
+    sink.add(
+        "capacity_scenario",
+        {
+            "id": scenario_id,
+            "client_id": e.client_id,
+            "scenario_name": e.scenario_name,
+            "scenario_type": e.scenario_type,
+            # NULL: capacity_schedule is not seeded, and the column is
+            # nullable precisely so a scenario can sit against current
+            # capacity rather than a stored schedule.
+            "base_schedule_id": None,
+            "parameters_json": dict(e.parameters),
+            # NULL, not {}: results are what a RUN produces. The comparison
+            # endpoint recomputes them live, and an empty dict would read as
+            # "ran and produced nothing" rather than "never run".
+            "results_json": None,
+            "is_active": True,
+            "notes": e.notes,
+            "created_at": e.at,
+            # Set explicitly, unlike most seeded tables: this column carries
+            # `server_default=func.now()`, so leaving it out stamps the row
+            # with the wall clock and the seeded universe would contain a
+            # scenario edited in the future. Caught by
+            # test_created_at_is_back_dated_on_every_seeded_table.
+            "updated_at": e.at,
+        },
+    )
+
+
 def _product_defined(e: ev.ProductDefined, sink: RowSink, ids: IdMap, allocators: Dict[str, IntPkAllocator]) -> None:
     product_id = allocators["PRODUCT"].next()
     ids.assign("PRODUCT", e.product_id, product_id)
@@ -286,6 +320,7 @@ _HANDLERS: Dict[Type[ev.Event], Callable] = {
     ev.ClientAccessGranted: _client_access_granted,
     ev.LineCommissioned: _line_commissioned,
     ev.ShiftDefined: _shift_defined,
+    ev.CapacityScenarioDefined: _capacity_scenario_defined,
     ev.ProductDefined: _product_defined,
     ev.EmployeeHired: _employee_hired,
     ev.DefectTypeDefined: _defect_type_defined,

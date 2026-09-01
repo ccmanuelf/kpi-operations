@@ -177,7 +177,14 @@
     "production_schedule",
     "production_standards",
     "stock_snapshot",
-    "what_if_scenarios"
+    "what_if_scenarios[].base_schedule_id",
+    "what_if_scenarios[].id",
+    "what_if_scenarios[].is_active",
+    "what_if_scenarios[].notes",
+    "what_if_scenarios[].parameters.*",
+    "what_if_scenarios[].results",
+    "what_if_scenarios[].scenario_name",
+    "what_if_scenarios[].scenario_type"
   ],
   "GET /api/client-config/{client_id}/effective": [
     "absenteeism_target_percent",
@@ -1404,7 +1411,17 @@
     "timestamp"
   ],
   "POST /api/capacity/scenarios/compare": [
-    "<status:422>"
+    "[].bottlenecks_resolved",
+    "[].capacity_increase_percent",
+    "[].cost_impact",
+    "[].modified_capacity_hours",
+    "[].modified_utilization",
+    "[].notes",
+    "[].original_capacity_hours",
+    "[].original_utilization",
+    "[].scenario_id",
+    "[].scenario_name",
+    "[].scenario_type"
   ],
   "POST /api/defect-types/upload/{client_id}": [
     "client_id",

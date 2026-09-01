@@ -68,6 +68,20 @@ def _kpi_thresholds(resolver: Any) -> Dict[str, Any]:
     return {"client_id": client_id, "thresholds": {"fpy": {"target_value": 85.0}}}
 
 
+def _scenario_compare(resolver: Any) -> Dict[str, Any]:
+    route = "/api/capacity/scenarios/compare"
+    # Ints, not the strings the resolver returns: `scenario_ids: List[int]`,
+    # and Pydantic would coerce "3" here but the ids are also what the service
+    # filters rows on -- keeping them typed means a future non-numeric key
+    # fails in the body rather than silently matching nothing.
+    return {
+        "scenario_ids": [
+            int(resolver.resolve_query("scenario_id", route)),
+            int(resolver.resolve_query("scenario_id_other", route)),
+        ]
+    }
+
+
 def _email_config_test(resolver: Any) -> Dict[str, Any]:
     return {"email": "contract-harness@example.com"}
 
@@ -157,6 +171,19 @@ BODY_REGISTRY: Dict[str, BodySpec] = {
         "so a seeded address would buy nothing and would couple this entry to the seeder. Every "
         "seeded email is `.invalid` anyway, which EmailStr rejects. Writes nothing but a security-"
         "event log line.",
+    ),
+    "POST /api/capacity/scenarios/compare": BodySpec(
+        key="POST /api/capacity/scenarios/compare",
+        build=_scenario_compare,
+        note="Two seeded scenario ids belonging to the client the route's `client_id` "
+        "resolves. Dates are omitted deliberately: both are Optional and the route "
+        "defaults the window to today..today+30, so supplying them would pin the capture "
+        "to a window the seeded universe may not cover while testing nothing the route "
+        "does not already do for a caller who omits them.\n\n"
+        "This route was DEFERRED, not merely body-less, until the seeder wrote "
+        "`capacity_scenario`. With zero rows the only 2xx it could give was `[]` -- an "
+        "entry with no fields, which the golden master would then compare against itself "
+        "forever and `ALLOWLIST` would look ready to close from.",
     ),
     "PUT /api/workflow/config/{client_id}": BodySpec(
         key="PUT /api/workflow/config/{client_id}",
