@@ -89,6 +89,22 @@ CLIENT_SCOPE_COLUMN = {
     "QUALITY_ENTRY": "client_id",
     "DEFECT_DETAIL": "client_id_fk",
     "DOWNTIME_ENTRY": "client_id",
+    # The capacity workbook. Every one of these carries a plain `client_id`;
+    # the three-spellings problem this map exists for is confined to the
+    # operational tables above.
+    "capacity_scenario": "client_id",
+    "capacity_production_lines": "client_id",
+    "capacity_calendar": "client_id",
+    "capacity_orders": "client_id",
+    "capacity_production_standards": "client_id",
+    "capacity_bom_header": "client_id",
+    "capacity_bom_detail": "client_id",
+    "capacity_stock_snapshot": "client_id",
+    "capacity_schedule": "client_id",
+    "capacity_schedule_detail": "client_id",
+    "capacity_analysis": "client_id",
+    "capacity_component_check": "client_id",
+    "capacity_kpi_commitment": "client_id",
 }
 
 
@@ -147,6 +163,7 @@ def materialize(conn: Connection, events: Iterable[Event], profile: Profile) -> 
     # ignore_missing_imports; the submodule-import form is what that flag
     # actually covers, so the whole-package mypy gate stays green without
     # stubbing the modules into existence.
+    import backend.seed.writers_capacity as writers_capacity
     import backend.seed.writers_master as writers_master
     import backend.seed.writers_operations as writers_operations
 
@@ -160,8 +177,11 @@ def materialize(conn: Connection, events: Iterable[Event], profile: Profile) -> 
     sink = RowSink()
     ids = IdMap()
     allocators = writers_master.build_allocators(conn)
+    allocators.update(writers_capacity.build_allocators(conn))
 
     for event in events:
+        if writers_capacity.handle(event, sink, ids, allocators):
+            continue
         if writers_master.handle(event, sink, ids, allocators):
             continue
         if writers_operations.handle(event, sink, ids, profile):

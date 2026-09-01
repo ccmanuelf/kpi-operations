@@ -13,7 +13,7 @@ guard and untested by the narrative suite.
 """
 
 from dataclasses import dataclass, fields
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any, Mapping, Optional
 
 #: Events not scoped to a tenant (platform users, global thresholds) carry this
@@ -325,6 +325,227 @@ class CapacityScenarioDefined(Event):
     notes: str
 
 
+@dataclass(frozen=True)
+class CapacityLineDefined(Event):
+    """A production line as the CAPACITY module sees it.
+
+    Deliberately a second line table, not a reuse of PRODUCTION_LINE: the
+    schema has both, and `capacity_production_lines` carries the planning
+    attributes the operational one does not -- department, rated units/hour,
+    efficiency and absenteeism factors. `ScenarioService` filters overtime by
+    `department`, which only exists here.
+    """
+
+    line_key: str
+    line_code: str
+    line_name: str
+    department: str
+    units_per_hour: str
+    efficiency_factor: str
+    absenteeism_factor: str
+    max_operators: int
+
+
+@dataclass(frozen=True)
+class CapacityCalendarDayDeclared(Event):
+    """One day's working pattern.
+
+    A DECLARATION, not something that happens on `calendar_date`: a planner
+    writes the year's calendar up front. So the event is stamped in the setup
+    band and carries its date as a field -- which is also what lets the
+    calendar reach past `as_of`, since `generate()` clamps events whose `at`
+    is in the future and would otherwise drop every forward-looking day.
+    """
+
+    calendar_date: date
+    is_working_day: bool
+    shifts_available: int
+    shift1_hours: str
+    shift2_hours: str
+    holiday_name: Optional[str]
+
+
+@dataclass(frozen=True)
+class CapacityOrderPlaced(Event):
+    """A demand order the capacity module plans against.
+
+    `style_model` is a style the operations side already builds, so the
+    workbook plans the same products the shop floor runs rather than a second,
+    unrelated catalogue.
+    """
+
+    # NOT `order_key`: `Event.order_key` is the property `generate()` sorts the
+    # stream by, and a subclass annotating that name makes dataclasses read the
+    # inherited property as this field's DEFAULT -- which both fails to build
+    # and, if forced through with a default, would shadow the sort key.
+    order_ref: str
+    order_number: str
+    customer_name: str
+    style_model: str
+    style_description: str
+    order_quantity: int
+    completed_quantity: int
+    order_date: date
+    required_date: date
+    planned_start_date: date
+    planned_end_date: date
+    priority: str
+    status: str
+    order_sam_minutes: str
+
+
+@dataclass(frozen=True)
+class CapacityStandardDefined(Event):
+    """One operation's standard time for a style, in a department."""
+
+    style_model: str
+    operation_code: str
+    operation_name: str
+    department: str
+    sam_minutes: str
+    setup_time_minutes: str
+    machine_time_minutes: str
+    manual_time_minutes: str
+
+
+@dataclass(frozen=True)
+class CapacityBomDefined(Event):
+    """The bill of materials header for a style."""
+
+    bom_key: str
+    parent_item_code: str
+    parent_item_description: str
+    style_model: str
+    revision: str
+
+
+@dataclass(frozen=True)
+class CapacityBomLineDefined(Event):
+    """One component line under a BOM header."""
+
+    bom_key: str
+    component_item_code: str
+    component_description: str
+    quantity_per: str
+    unit_of_measure: str
+    waste_percentage: str
+    component_type: str
+
+
+@dataclass(frozen=True)
+class CapacityStockCounted(Event):
+    """An inventory position for a component, as of a snapshot date."""
+
+    snapshot_date: date
+    item_code: str
+    item_description: str
+    on_hand_quantity: str
+    allocated_quantity: str
+    on_order_quantity: str
+    available_quantity: str
+    unit_of_measure: str
+    location: str
+
+
+@dataclass(frozen=True)
+class CapacityScheduleCommitted(Event):
+    """A production schedule a planner has committed.
+
+    Only COMMITTED and ACTIVE schedules are demand: `_get_demand_by_line`
+    filters on exactly those two statuses, so a DRAFT schedule leaves
+    utilisation at zero no matter how much detail hangs off it.
+    """
+
+    schedule_key: str
+    schedule_name: str
+    period_start: date
+    period_end: date
+    status: str
+    committed_at: date
+    committed_by: str
+
+
+@dataclass(frozen=True)
+class CapacityWorkScheduled(Event):
+    """One line's work for one day under a schedule.
+
+    `line_id` and `style_model` are both load-bearing: demand skips any row
+    without a line, and hours come from
+    `scheduled_quantity * SUM(sam_minutes for the style) / 60`, so a style
+    with no matching row in `capacity_production_standards` contributes zero
+    hours while still looking scheduled.
+    """
+
+    schedule_key: str
+    order_ref: str
+    order_number: str
+    style_model: str
+    line_key: str
+    line_code: str
+    scheduled_date: date
+    scheduled_quantity: int
+    completed_quantity: int
+    sequence: int
+
+
+@dataclass(frozen=True)
+class CapacityLineAnalyzed(Event):
+    """A stored capacity analysis for one line on one date.
+
+    The service recomputes analysis live; these rows are the HISTORY a trend
+    view reads, which is why they carry the derived figures rather than
+    recomputing them.
+    """
+
+    analysis_date: date
+    line_key: str
+    line_code: str
+    department: str
+    working_days: int
+    shifts_per_day: int
+    hours_per_shift: str
+    operators_available: int
+    efficiency_factor: str
+    absenteeism_factor: str
+    gross_hours: str
+    net_hours: str
+    capacity_hours: str
+    demand_hours: str
+    demand_units: int
+    utilization_percent: str
+    is_bottleneck: bool
+
+
+@dataclass(frozen=True)
+class CapacityComponentChecked(Event):
+    """One component's availability against one order's requirement."""
+
+    run_date: date
+    order_ref: str
+    order_number: str
+    component_item_code: str
+    component_description: str
+    required_quantity: str
+    available_quantity: str
+    shortage_quantity: str
+    status: str
+
+
+@dataclass(frozen=True)
+class CapacityKpiCommitted(Event):
+    """A KPI target a planner committed alongside a schedule."""
+
+    schedule_key: str
+    kpi_key: str
+    kpi_name: str
+    period_start: date
+    period_end: date
+    committed_value: str
+    actual_value: str
+    variance: str
+    variance_percent: str
+
+
 EVENT_TYPES = (
     ClientCreated,
     UserCreated,
@@ -349,4 +570,16 @@ EVENT_TYPES = (
     JobDefined,
     DowntimeLogged,
     CapacityScenarioDefined,
+    CapacityLineDefined,
+    CapacityCalendarDayDeclared,
+    CapacityOrderPlaced,
+    CapacityStandardDefined,
+    CapacityBomDefined,
+    CapacityBomLineDefined,
+    CapacityStockCounted,
+    CapacityScheduleCommitted,
+    CapacityWorkScheduled,
+    CapacityLineAnalyzed,
+    CapacityComponentChecked,
+    CapacityKpiCommitted,
 )

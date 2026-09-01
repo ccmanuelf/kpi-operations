@@ -40,7 +40,18 @@ SEED_PACKAGE = ("backend", "seed")
 # date.today() (the run must anchor to the actual run date in production) --
 # the one sanctioned date.today() outside a test, at the CLI boundary rather
 # than inside the seeding path itself.
-EXEMPTED_MODULE_PATHS = {"identity.py", "materialize.py", "writers_master.py", "writers_operations.py", "cli.py"}
+EXEMPTED_MODULE_PATHS = {
+    "identity.py",
+    "materialize.py",
+    "writers_master.py",
+    "writers_operations.py",
+    # Same write layer as the two writers above: it maps capacity events to
+    # rows and needs `Connection` to build its PK allocators. The generation
+    # side of the capacity module, emitters_capacity.py, is NOT exempt and
+    # stays provable without a database.
+    "writers_capacity.py",
+    "cli.py",
+}
 
 
 def _engine_modules():

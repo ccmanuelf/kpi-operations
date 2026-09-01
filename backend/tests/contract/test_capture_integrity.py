@@ -51,6 +51,11 @@ from backend.tests.contract.query_specs import QUERY_REGISTRY
 #: with a staleness gate, not an empty shape that would look like a captured
 #: contract. See `query_specs.QUERY_REGISTRY["client_id@capacity-variance"]`.
 #:
+#: 7 again, down from 8: seeding `capacity_kpi_commitment` promoted
+#: `GET /api/capacity/kpi/variance` out of `Kind.BLOCKED`. Its declaration said
+#: the id resolved and the route still had nothing to say; it has something to
+#: say now.
+#:
 #: 7 was itself down from 15: seeding JOB (S3) promoted `job_id` out of
 #: `Kind.BLOCKED` and with it all eight routes it reached -- the six
 #: `GET /api/jobs/{job_id}/*` KPI routes, `DELETE /api/jobs/{job_id}` and
@@ -64,7 +69,6 @@ BLOCKED_ROUTES = frozenset(
         "DELETE /api/floating-pool/{pool_id}",
         "DELETE /api/part-opportunities/{part_number}",
         "DELETE /api/v2/simulation/scenarios/{scenario_id}",
-        "GET /api/capacity/kpi/variance",
     }
 )
 
@@ -163,11 +167,10 @@ def test_every_blocked_spec_still_has_zero_rows(harness: _Harness) -> None:
     # to make here is now made in the opposite direction by
     # tests/test_seed/test_coverage.py, which fails if JOB has NO rows.
     assert counts == {
-        # Not a param gap: `client_id` resolves fine on GET /api/capacity/kpi/
-        # variance. This table being empty is what makes its answer `[]`, and
-        # counting it here is what turns "seed some commitments and the route
-        # becomes capturable" from a note into a failing test.
-        "CAPACITY_KPI_COMMITMENT": 0,
+        # CAPACITY_KPI_COMMITMENT left this map when the seeder began writing
+        # it. Counting it here is exactly what turned "seed some commitments
+        # and the route becomes capturable" from a note into a failing test --
+        # and it did fail, which is how the variance route got promoted.
         "BREAK_TIME": 0,
         "EQUIPMENT": 0,
         "FLOATING_POOL": 0,

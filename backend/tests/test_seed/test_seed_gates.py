@@ -128,7 +128,13 @@ def test_the_write_layer_derivation_covers_identity_and_excludes_only_cli():
     assert "cli.py" not in WRITE_LAYER
     assert set(WRITE_LAYER) | set(CLOCK_EXEMPT) == set(EXEMPTED_MODULE_PATHS)
     assert CLOCK_EXEMPT == frozenset({"cli.py"})
-    assert WRITE_LAYER == ("identity.py", "materialize.py", "writers_master.py", "writers_operations.py")
+    assert WRITE_LAYER == (
+        "identity.py",
+        "materialize.py",
+        "writers_capacity.py",
+        "writers_master.py",
+        "writers_operations.py",
+    )
 
 
 def test_the_cli_holds_exactly_one_clock_call_and_it_is_the_as_of_default():

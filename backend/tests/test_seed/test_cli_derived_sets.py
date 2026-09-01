@@ -233,7 +233,10 @@ def test_the_reset_sweep_covers_client_scoped_tables_the_seeder_never_writes():
         "CALCULATION_ASSUMPTION",
         "METRIC_CALCULATION_RESULT",
         "PART_OPPORTUNITIES",
-        "capacity_calendar",
+        # No capacity_* name remains here: all thirteen are seeded now, so the
+        # cluster left this list the way JOB did. EQUIPMENT carries the case
+        # instead, and the count assertion below still proves the FK-derived
+        # sweep reaches every capacity table whether seeded or not.
     ):
         assert name not in SEEDED, f"{name} is seeded after all -- rewrite this test, it proves nothing"
         assert name in CLIENT_SCOPED_TABLES, f"{name} would survive --reset and RESTRICT the CLIENT delete"

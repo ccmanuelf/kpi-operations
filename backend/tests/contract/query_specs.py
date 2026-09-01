@@ -393,20 +393,20 @@ QUERY_REGISTRY: Dict[str, ParamSpec] = {
         "OVERTIME and a SETUP_REDUCTION plan per client, so the two ids differ in "
         "scenario_type and the comparison is between genuinely different plans.",
     ),
-    "client_id@capacity-variance": ParamSpec(
+    "client_id@capacity-variance": replace(
+        REGISTRY["client_id"],
         key="client_id@capacity-variance",
-        kind=Kind.BLOCKED,
-        table="CAPACITY_KPI_COMMITMENT",
-        reason=(
-            "CAPACITY_KPI_COMMITMENT has zero seeded rows, so KPIIntegrationService."
-            "calculate_variance_detailed returns `[]` for EVERY client -- verified by asking "
-            "with a real seeded client_id, not inferred. The id resolves fine; there is "
-            "nothing for it to find. Recording that `[]` would put an entry with no fields in "
-            "the golden master, where `test_no_route_lost_a_field` would compare it against "
-            "itself forever and `ALLOWLIST` would look ready to be closed from it -- the "
-            "'unblocked into no-entries-found' trap #244 hit. Declared instead, with the "
-            "staleness gate in test_capture_integrity counting this table's rows every run, so "
-            "seeding commitments promotes the route rather than being ignored."
+        note=(
+            "PROMOTED out of Kind.BLOCKED when the seeder began writing "
+            "`capacity_kpi_commitment`. It was declared blocked because that table had zero "
+            "rows, so KPIIntegrationService.calculate_variance_detailed returned `[]` for "
+            "EVERY client and recording that would have put an entry with no fields in the "
+            "golden master -- the 'unblocked into no-entries-found' trap #244 hit. The "
+            "staleness gate in test_capture_integrity counts the table's rows every run, and "
+            "it is what failed the moment commitments were seeded, exactly as designed: "
+            "seeding promotes the route rather than being silently ignored. Reuses "
+            "REGISTRY['client_id']'s own query so a change to how a client id is found "
+            "cannot leave this route resolving a stale one."
         ),
     ),
 }
