@@ -204,18 +204,16 @@ test.describe('Attendance grid — OT split + hour allocation', () => {
     const row = page.locator(`.ag-row[row-index="${rowIndex}"]`)
 
     await expect(async () => {
-      // Find the scroller by MEASURING rather than by class name. AG Grid
-      // renamed its scroll container between v35 and v36
-      // (`.ag-body-viewport` -> the `.ag-grid-*` family), and a hard-coded
-      // class fails silently: `scrollTop` on a non-scrolling element is a
-      // no-op, so the row simply never enters the virtualized window and the
-      // failure reads as "row not found" rather than "wrong selector".
+      // v36 renamed the scroll container `.ag-body-viewport` ->
+      // `.ag-grid-viewport` (verified against the shipped bundle: zero
+      // occurrences of the old name, 58 of the new). Throw rather than
+      // no-op if it is missing: `scrollTop` on a non-existent or
+      // non-scrolling element is silent, which would surface as "row not
+      // found" and send the next reader hunting the wrong bug.
       await page.evaluate((top) => {
-        const candidates = Array.from(document.querySelectorAll<HTMLElement>('[class*="ag-"]'))
-        const scroller = candidates.find(
-          (el) => el.scrollHeight > el.clientHeight + 5 && el.clientHeight > 50,
-        )
-        if (scroller) scroller.scrollTop = top
+        const scroller = document.querySelector<HTMLElement>('.ag-grid-viewport')
+        if (!scroller) throw new Error('.ag-grid-viewport not found - AG Grid DOM changed again')
+        scroller.scrollTop = top
       }, scrollTarget)
       await expect(row).toBeVisible({ timeout: 2000 })
     }).toPass({ timeout: 15000 })

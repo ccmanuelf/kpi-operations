@@ -141,3 +141,37 @@ a scope decision with real cost (each new entry needs resolvable params, and
 some need bodies), and it belongs to whoever decides how far the contract
 should reach. Recorded so the 164 is understood as a choice rather than
 mistaken for coverage.
+
+
+## FINDING: the attendance OT-split e2e test permanently consumes a fixture per run
+
+`frontend/e2e/attendance-labor-allocation.spec.ts` seeds its precondition via
+`seedExistingAttendanceEntry()`, which POSTs a real ATTENDANCE_ENTRY row and
+never removes it -- the spec has a `beforeEach` and no `afterEach`.
+
+The pool it draws from is exactly the logged-in user's own client. Measured on
+the local demo DB: `demo_operator` -> client `DEMO-PIECE` -> 8 eligible active
+employees. The helper needs one with no entry for today + `shifts[0]`, so the
+spec can run at most 8 times per calendar day before setup fails with
+"the logged-in user's own client needs a shift and at least one employee with
+no attendance entry for it today".
+
+WHY CI NEVER SEES IT: CI builds a fresh database per run, so the pool is always
+full. The defect is invisible to the gate and only bites repeated local runs --
+which is precisely when someone is debugging a grid change and needs the spec
+most. It also mimics a product regression: the failure names the setup helper,
+not the exhausted pool, so the first read is "the seeder broke".
+
+NOT a bug in the app and NOT caused by the AG Grid v36 migration -- confirmed
+by mutation-testing the migrated selector (the guard fires with its own message)
+and by the fact that all three touched specs passed 13/13 on the final code
+before the pool ran dry.
+
+FIX WHEN TAKEN UP: give the spec an `afterEach` that deletes the row it created
+(it already holds the created entry's id), making it idempotent. Deferred out of
+the dependency-bump PR deliberately -- it is pre-existing, unrelated to AG Grid,
+and changing shared e2e fixture lifecycle deserves its own review surface.
+
+LOCAL CLEANUP STILL PENDING: 8 rows in ATTENDANCE_ENTRY for today, all
+`entered_by='USR-DEMO-OP'`, are residue from this session's runs. They are
+harmless to CI but will keep the spec failing locally until removed.
