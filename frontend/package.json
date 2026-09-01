@@ -61,7 +61,7 @@
     "@vitest/coverage-v8": "^4.1.9",
     "@vue/test-utils": "^2.4.6",
     "autoprefixer": "^10.5.0",
-    "eslint": "^10.0.0",
+    "eslint": "^10.9.1",
     "eslint-plugin-vue": "^10.10.0",
     "globals": "^17.11.0",
     "happy-dom": "^20.11.6",
