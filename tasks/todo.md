@@ -186,3 +186,26 @@ gate is load-bearing.
 LOCAL CLEANUP DONE: the 8 residue rows (plus 14 orphan-able
 ATTENDANCE_HOUR_ALLOCATION children) were removed after backing the database up;
 entry count went 16648 -> 16640 exactly, with zero orphaned allocations.
+
+
+## OBSERVATION: soft-deleting an attendance entry leaves its hour allocations behind
+
+Surfaced by cross-model review of the e2e teardown above, then measured: 12
+ATTENDANCE_HOUR_ALLOCATION rows currently sit attached to soft-deleted parents.
+
+This is PRODUCT behaviour, not a test defect. `ATTENDANCE_HOUR_ALLOCATION` has
+only `allocation_id`, `attendance_entry_id`, `category`, `hours` -- no
+`is_active`, so it is not a soft-deletable entity and the cascade in
+`db/soft_delete_service.py` cannot reach it. `DELETE /api/attendance/{id}`
+therefore always leaves the children, in production exactly as in tests.
+
+The rows are inert rather than corrupt: the FK still resolves, and the global
+`do_orm_execute` filter hides the parent, so any join through the parent yields
+nothing. Nothing reads them today.
+
+DELIBERATELY NOT "FIXED" IN THE TEST. The teardown calls the product's own
+DELETE endpoint; making it reach past the API into the database to delete more
+than the product does would hide this behaviour rather than record it. If the
+accumulation is judged undesirable, the fix belongs in the delete path -- either
+give the table soft-delete columns so the cascade covers it, or hard-delete the
+children when the parent is soft-deleted -- not in a spec.

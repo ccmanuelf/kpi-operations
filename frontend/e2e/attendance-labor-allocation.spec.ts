@@ -181,10 +181,15 @@ test.describe('Attendance grid — OT split + hour allocation', () => {
     await login(page, 'operator')
   })
 
-  test.afterEach(async ({ page }) => {
+  // Uses the `request` fixture, not page.evaluate: teardown must not depend on
+  // the page still being alive. A test that ends with the page crashed or
+  // navigated away would otherwise skip cleanup and quietly reintroduce the
+  // leak this hook exists to prevent.
+  test.afterEach(async ({ request }) => {
     const entryId = seededEntryId
     seededEntryId = null
     if (!entryId) return
+
     // Two things make this teardown look odd, both deliberate:
     //
     // 1. It authenticates separately. DELETE /api/attendance/{id} requires
@@ -195,22 +200,30 @@ test.describe('Attendance grid — OT split + hour allocation', () => {
     //    read -- including the existence check the seeder uses -- so the
     //    employee really is free again for the next run.
     //
-    // Teardown failure must not fail an otherwise-passing test, hence catch.
-    await page
-      .evaluate(async (id) => {
-        const auth = await fetch('/api/auth/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: 'demo_admin', password: 'DemoSeed#2026' }),
-        })
-        if (!auth.ok) return
-        const { access_token: token } = await auth.json()
-        await fetch(`/api/attendance/${id}`, {
-          method: 'DELETE',
-          headers: { Authorization: `Bearer ${token}` },
-        })
-      }, entryId)
-      .catch(() => {})
+    // A failed teardown must not fail an otherwise-passing test, but it must
+    // not be silent either: silence is precisely how the original leak went
+    // unnoticed. Every failure path warns with the id, so a leaked row can be
+    // traced from the test output.
+    const warn = (why: string) =>
+      console.warn(
+        `[attendance teardown] LEAKED entry ${entryId} (${why}). ` +
+          "The next local run of this spec has one fewer employee available.",
+      )
+    try {
+      const auth = await request.post('/api/auth/login', {
+        // Same seeded demo credentials e2e/helpers.ts already uses to log in;
+        // they exist only in the demo database, not in any real environment.
+        data: { username: 'demo_admin', password: 'DemoSeed#2026' }, // pragma: allowlist secret
+      })
+      if (!auth.ok()) return warn(`admin login returned ${auth.status()}`)
+      const { access_token: token } = await auth.json()
+      const deleted = await request.delete(`/api/attendance/${entryId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!deleted.ok()) warn(`DELETE returned ${deleted.status()}`)
+    } catch (err) {
+      warn(String(err))
+    }
   })
 
   test('OT split (via Save Records) + allocation dialog round-trip through the entry-update path', async ({
