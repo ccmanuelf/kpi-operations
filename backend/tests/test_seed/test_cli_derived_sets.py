@@ -233,7 +233,10 @@ def test_the_reset_sweep_covers_client_scoped_tables_the_seeder_never_writes():
         "CALCULATION_ASSUMPTION",
         "METRIC_CALCULATION_RESULT",
         "PART_OPPORTUNITIES",
-        "capacity_calendar",
+        # capacity_calendar left this list when the seeder began writing it,
+        # exactly as JOB did above. capacity_schedule is the capacity table
+        # still proving the FK cluster reaches the sweep.
+        "capacity_schedule",
     ):
         assert name not in SEEDED, f"{name} is seeded after all -- rewrite this test, it proves nothing"
         assert name in CLIENT_SCOPED_TABLES, f"{name} would survive --reset and RESTRICT the CLIENT delete"

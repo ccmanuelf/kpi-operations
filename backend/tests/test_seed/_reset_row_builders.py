@@ -68,17 +68,23 @@ def _insert_job(conn, client_id):
     )
 
 
-def _insert_capacity_calendar(conn, client_id):
+def _insert_capacity_schedule(conn, client_id):
     """One of the 13 capacity_* tables the retiring seeder swept and the plan
-    dropped."""
+    dropped.
+
+    Was `capacity_calendar` until the seeder began writing it. The case needs a
+    table the seeder does NOT write, or "cleared by the sweep" and "re-seeded
+    immediately after" are indistinguishable -- which is exactly how it failed:
+    59 legitimately re-seeded rows read as 59 rows that survived the sweep.
+    `capacity_schedule` is the same FK cluster and still unseeded."""
     conn.execute(
-        insert(Base.metadata.tables["capacity_calendar"]),
+        insert(Base.metadata.tables["capacity_schedule"]),
         [
             {
                 "client_id": client_id,
-                "calendar_date": date(2026, 8, 3),
-                "is_working_day": True,
-                "shifts_available": 2,
+                "schedule_name": "Reset sweep fixture",
+                "period_start": date(2026, 8, 3),
+                "period_end": date(2026, 8, 31),
                 "created_at": datetime(2026, 8, 1),
                 "updated_at": datetime(2026, 8, 1),
             }
@@ -173,6 +179,6 @@ def _insert_null_tenant_alert_history(conn, client_id):
 
 CHILD_ROW_BUILDERS = {
     "ALERT_CONFIG": (_insert_alert_config, "ALERT_CONFIG", "client_id"),
-    "capacity_calendar": (_insert_capacity_calendar, "capacity_calendar", "client_id"),
+    "capacity_schedule": (_insert_capacity_schedule, "capacity_schedule", "client_id"),
     "ALERT_HISTORY": (_insert_alert_history, "ALERT", "client_id"),
 }

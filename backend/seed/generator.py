@@ -21,6 +21,7 @@ from dataclasses import fields, replace
 from datetime import date, datetime, time, timedelta
 from typing import Any, Callable, Iterable, List, Sequence, Type
 
+from backend.seed.emitters_capacity import emit_capacity
 from backend.seed.emitters_master import emit_setup
 from backend.seed.emitters_operations import emit_shifts, emit_work_orders
 from backend.seed.events import PLATFORM_CLIENT_ID, ClientAccessGranted, Event, UserCreated
@@ -159,5 +160,9 @@ def _generate_client(
     order_key and renumbers seq afterwards.
     """
     setup = emit_setup(emit, scenario, profile, start, as_of)
+    # After setup (it needs the styles and the activity window emit_setup
+    # computes) and before operations, so the workbook's master data exists in
+    # the stream before anything references it.
+    emit_capacity(emit, scenario, profile, setup, as_of)
     received = emit_work_orders(emit, rng, scenario, profile, setup, as_of)
     emit_shifts(emit, rng, scenario, profile, setup, received, as_of)
