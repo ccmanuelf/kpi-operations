@@ -1,5 +1,41 @@
 # Tasks
 
+## RESOLVED (#277, 2026-09-02) — the dual view showed a zero delta on every client and metric
+
+`aggregate_oee_inputs` sums `downtime_hours`, `setup_time_hours` and
+`maintenance_hours` off PRODUCTION_ENTRY, and `units_reworked` off
+QUALITY_ENTRY. The seeder wrote NONE of the four (0 across 4160 / 4088 rows),
+so three of the six assumption rules operated on zeros, standard equalled
+site-adjusted exactly, and OEE read 99.5% for every client.
+
+Seeding the split fixed both at once. Verified on the VM against MariaDB:
+
+    DEMO-PIECE   standard=92.84  site_adjusted=94.68  delta=1.84
+    DEMO-HOURLY  standard=92.60  site_adjusted=94.42  delta=1.82
+
+FPY gained a delta too (98.41 -> 98.73), which follows from `units_reworked`
+making `scrap_classification_rule` live.
+
+Note the seeder writes PRODUCTION_ENTRY.downtime_hours as the shift's recorded
+stoppage PLUS its planned components, while DOWNTIME_ENTRY keeps only the
+unplanned minutes with their root cause. The two tables answer different
+questions; the dual view reads the former exclusively.
+
+
+## OPEN (issue #278) — a catalog assumption that can never take effect
+
+`ideal_cycle_time_source = "demonstrated_best"` is applied only when
+`demonstrated_best_cycle_time_hours` is set, and `aggregate_oee_inputs` never
+sets it on any production path. A site selecting it sees the assumption
+recorded, approved and listed as active while OEE keeps using the engineering
+standard. `rolling_90_day_average` sits behind the same kind of guard and
+should be checked with it.
+
+The seeder deviates `setup_treatment` instead, with the reason recorded beside
+CALCULATION_ASSUMPTIONS so the choice is not reverted. That is a workaround in
+demo data, not a fix.
+
+
 ## NEXT: cross-tenant attendance rows (found 2026-08-30, verified)
 
 `POST /api/attendance/bulk` accepts an employee belonging to a DIFFERENT client
@@ -65,7 +101,21 @@ succeed -- but it changes what a deployed API returns, so it is the user's call
 rather than a silent fix.
 
 
-## NEXT: `DELETE /api/filters/history` is unreachable (route shadowing)
+## RESOLVED — `DELETE /api/filters/history` is unreachable (route shadowing)
+
+Fixed by registration order: `routes/filters.py` now declares `/history`
+(line 172) BEFORE `/{filter_id}` (line 182), so the specific path wins the
+match. Confirmed two ways rather than by reading the diff: the route resolves
+to `clear_user_filter_history`, and the contract golden master records
+`DELETE /api/filters/history` as `["<non-json>"]` -- a real captured 204 --
+where it previously held the shadowing route's 422.
+
+`DELETE /api/filters/{filter_id}` remains `<blocked:filter_id>`, and for an
+unrelated reason: SAVED_FILTER is scoped by `user_id`, so a seeded row 404s
+for every non-owner including an admin. It is the last entry in
+BLOCKED_ROUTES, blocked by the schema rather than by seeder coverage.
+
+### (original finding)
 
 The endpoint exists and can never be called. `routes/filters.py` registers
 
@@ -334,7 +384,15 @@ response model"). That is an API-typing change with its own OpenAPI surface to
 regenerate, and it belongs beside the other five allowlist entries of the same
 shape rather than riding along with a seeding change.
 
-## OBSERVATION: the seeded comparison is structurally real but numerically zero
+## RESOLVED (#265, 2026-09-01) — the seeded comparison is structurally real but numerically zero
+
+Closed by seeding the capacity workbook: all 13 `capacity_*` tables now hold
+data, so the scenarios are applied to a real capacity. Measured after: analysis
+capacity 2674h against demand 2546h, utilisation 95.2%, one bottleneck; the
+OVERTIME plan takes utilisation to 79.3% (+20%, resolves the bottleneck) while
+SETUP_REDUCTION reaches 92.4% (+3%, resolves none). The original text follows.
+
+### (original observation)
 
 The same probe shows every capacity figure is 0: `original_capacity_hours`
 "0.0", `modified_capacity_hours` "0", `capacity_increase_percent` "0".
