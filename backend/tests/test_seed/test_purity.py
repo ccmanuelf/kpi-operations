@@ -53,6 +53,13 @@ EXEMPTED_MODULE_PATHS = {
     # Same write layer again: maps workforce events to rows and needs
     # `Connection` for its PK allocators. emitters_workforce.py is NOT exempt.
     "writers_workforce.py",
+    # Write layer again: assumption and simulation rows, needing `Connection`
+    # for its allocators. emitters_assumptions.py is NOT exempt.
+    "writers_assumptions.py",
+    # Write layer again: equipment and part-opportunity rows, needing
+    # `Connection` for its EQUIPMENT allocator. emitters_equipment.py is
+    # NOT exempt and stays provable without a database.
+    "writers_equipment.py",
     "cli.py",
 }
 

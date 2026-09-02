@@ -273,3 +273,82 @@ SCENARIOS = (
         narrative=(),
     ),
 )
+
+#: The site's calculation assumptions, as VALUES drawn from
+#: `services/calculations/assumption_catalog.V1_CATALOG`.
+#:
+#: Restated here rather than imported: that module imports
+#: `sqlalchemy.orm.Session` at module level, and the purity guard forbids the
+#: seed engine from importing database machinery. Restating risks drift, so
+#: `test_assumption_specs_match_the_catalog` asserts every name exists in the
+#: catalog and every value is one the catalog permits -- the two-sided pattern
+#: this package already uses for enums.
+#:
+#: Two of the six deviate from `default_value` ON PURPOSE. The dual-view
+#: feature exists to show standard-versus-site-adjusted numbers; if every
+#: assumption matched the textbook default, both views would be identical and
+#: the delta column would be zero everywhere.
+#:
+#: WHICH two is not arbitrary. A deviation only moves a number if the rule
+#: behind it reads a column with something in it, and if the service can
+#: actually apply it. `ideal_cycle_time_source="demonstrated_best"` looks like
+#: the obvious choice and is inert: oee_service applies it only when
+#: `demonstrated_best_cycle_time_hours` is set, and `aggregate_oee_inputs`
+#: never sets that field on any production path -- so it deviated while
+#: changing nothing, which is the exact appearance-without-substance this note
+#: exists to prevent. The two that deviate now are the two whose inputs the
+#: seeder writes: scheduled maintenance and setup time.
+#:
+#: The catalog default travels with each row so the change history can say
+#: what the value moved AWAY from. It cannot be imported: assumption_catalog
+#: pulls in sqlalchemy.orm.Session. test_assumption_dataset pins it against
+#: V1_CATALOG, so a drifting default fails rather than seeds a false trail.
+#:
+#: (assumption_name, value, default_value, deviates_from_default, rationale)
+CALCULATION_ASSUMPTIONS = (
+    (
+        "planned_production_time_basis",
+        "exclude_scheduled_maintenance",
+        "include_scheduled_maintenance",
+        True,
+        "Planned maintenance is scheduled outside production windows here, so counting it as "
+        "available time understates availability.",
+    ),
+    (
+        "ideal_cycle_time_source",
+        "engineering_standard",
+        "engineering_standard",
+        False,
+        "Engineering standards are current for this line; no demonstrated-best study has been "
+        "completed, so the standard remains the reference.",
+    ),
+    (
+        "setup_treatment",
+        "exclude_from_availability",
+        "count_as_downtime",
+        True,
+        "Changeovers are planned into the schedule rather than lost to it, so counting them as "
+        "downtime understates what these lines can deliver.",
+    ),
+    (
+        "scrap_classification_rule",
+        "rework_counted_as_good",
+        "rework_counted_as_good",
+        False,
+        "Textbook default retained: reworked units ship and are counted good.",
+    ),
+    (
+        "otd_carrier_buffer_pct",
+        0,
+        0,
+        False,
+        "No carrier buffer negotiated; delivery is judged against the planned date itself.",
+    ),
+    (
+        "yield_baseline_source",
+        "theoretical",
+        "theoretical",
+        False,
+        "Textbook default retained pending a demonstrated baseline study.",
+    ),
+)

@@ -119,7 +119,12 @@ def test_every_non_json_golden_entry_is_explained():
     # tables their ids come from. Like filters/history above, all three were
     # declared NO_CONTENT_204 all along on their annotations; the capture could
     # not confirm it because no id could reach them.
-    assert len(non_json_routes) == 42
+    # 45, up from 42: the equipment, part-opportunities and simulation-scenario
+    # DELETEs answer their own 204 now that the seeder writes the three tables
+    # their ids come from. Same shape as every promotion above -- all three were
+    # declared NO_CONTENT_204 all along on their `-> None` annotations, and the
+    # capture could not confirm it because no id could reach them.
+    assert len(non_json_routes) == 45
 
     unexplained = [route for route in non_json_routes if classify_non_json_route(_route(app, route)) is None]
     assert unexplained == []
@@ -255,6 +260,11 @@ def test_non_json_entries_decompose_into_exactly_three_categories():
         "DELETE /api/defects/{defect_detail_id}",
         "DELETE /api/downtime/{downtime_id}",
         "DELETE /api/employees/{employee_id}",
+        # Joined when the seeder began writing EQUIPMENT, PART_OPPORTUNITIES
+        # and SIMULATION_SCENARIO -- see the two entries below and the last one
+        # in this list. Declared 204 on their annotations all along; the
+        # capture recorded `<blocked:...>` while their tables were empty.
+        "DELETE /api/equipment/{equipment_id}",
         # Joined when the route stopped being shadowed by
         # `DELETE /api/filters/{filter_id}`. It was declared NO_CONTENT_204 all
         # along on its `-> None` annotation; the capture recorded the shadowing
@@ -264,9 +274,14 @@ def test_non_json_entries_decompose_into_exactly_three_categories():
         "DELETE /api/hold-catalogs/reasons/{catalog_id}",
         "DELETE /api/hold-catalogs/statuses/{catalog_id}",
         "DELETE /api/holds/{hold_id}",
+        "DELETE /api/part-opportunities/{part_number}",
         "DELETE /api/production-lines/{line_id}",
         "DELETE /api/production/{entry_id}",
         "DELETE /api/quality/{inspection_id}",
         "DELETE /api/shifts/{shift_id}",
         "DELETE /api/users/{user_id}",
+        # The route the module docstring used to call the one JSON-bodied
+        # exception. Its first real capture says otherwise: `-> None`, 204,
+        # `<non-json>` -- it belongs here with the other 204 DELETEs.
+        "DELETE /api/v2/simulation/scenarios/{scenario_id}",
     ]

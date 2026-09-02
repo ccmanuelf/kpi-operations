@@ -193,9 +193,13 @@ def test_quality_names_the_work_order_it_inspected():
         units_passed=195,
         units_defective=5,
         total_defects_count=7,
+        units_reworked=1,
     )
 
     assert e.work_order_id == "DEMO-PIECE-WO-0001"
+    # scrap_classification_rule is defined entirely in terms of this number,
+    # so the event has to carry it or the rule reads a zero.
+    assert e.units_reworked == 1
 
 
 def test_production_carries_the_columns_the_table_requires():
@@ -213,9 +217,17 @@ def test_production_carries_the_columns_the_table_requires():
         scrap_count=2,
         employees_assigned=4,
         entered_by="demo_supervisor",
+        downtime_hours=0.9,
+        setup_time_hours=0.2,
+        maintenance_hours=0.5,
     )
 
     assert e.run_time_hours == 7.5
+    # The dual view sums these three off PRODUCTION_ENTRY and reads nothing
+    # else for a shift's non-run time. setup and maintenance are COMPONENTS of
+    # downtime, which is the convention oee_service applies when it subtracts
+    # either one from downtime and scheduled hours together.
+    assert e.setup_time_hours + e.maintenance_hours <= e.downtime_hours
     assert e.entered_by == "demo_supervisor"
 
 

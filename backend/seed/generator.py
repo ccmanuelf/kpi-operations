@@ -22,7 +22,9 @@ from datetime import date, datetime, time, timedelta
 from typing import Any, Callable, Iterable, List, Sequence, Type
 
 from backend.seed.emitters_alerts import emit_alerts
+from backend.seed.emitters_assumptions import emit_assumptions
 from backend.seed.emitters_capacity import emit_capacity
+from backend.seed.emitters_equipment import emit_equipment
 from backend.seed.emitters_workforce import emit_workforce
 from backend.seed.emitters_master import emit_setup
 from backend.seed.emitters_operations import emit_shifts, emit_work_orders
@@ -170,6 +172,8 @@ def _generate_client(
     # Deriving "who floats" a second time there is how the roster and the
     # coverage records come to disagree.
     floating_pool = emit_workforce(emit, scenario, profile, setup, as_of)
+    emit_assumptions(emit, scenario, profile, setup, as_of)
+    emit_equipment(emit, scenario, profile, setup, as_of)
     received = emit_work_orders(emit, rng, scenario, profile, setup, as_of)
     emit_shifts(emit, rng, scenario, profile, setup, received, as_of, floating_pool)
     # Last: the OTD alerts reference real work orders, so they cannot be

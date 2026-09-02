@@ -117,6 +117,14 @@ COVERAGE_ENTERED_BY = next(u.user_id for u in USERS if u.role == "supervisor")
 #: How far back coverage records are written, for the same reason the labour
 #: ledger is bounded: a year of daily shift-coverage rows is a load test, not a
 #: demo, and the coverage screen looks at recent operations.
+#: A changeover at the head of each day's first shift, and a weekly preventive
+#: -maintenance slot. Both sit INSIDE the entry's downtime_hours.
+CHANGEOVER_MINUTES = 12
+PM_MINUTES = 30
+
+#: One defective unit in this many is recovered by rework.
+REWORK_DIVISOR = 3
+
 COVERAGE_WINDOW_DAYS = 21
 
 #: How far back the labour ledger is written. Every attendance row COULD carry
@@ -570,6 +578,15 @@ def emit_shifts(
                 produced = rng.randint(180, 260)
                 defect_rate = rng.uniform(0.01, 0.03) * scale["defects"]
                 downtime_minutes = int(rng.randint(5, 40) * scale["downtime"])
+                # Planned non-run time, deterministic rather than drawn: a
+                # changeover at the head of each day's first shift, and a
+                # weekly preventive-maintenance slot. Both are COMPONENTS of
+                # the entry's downtime_hours, per the convention oee_service
+                # documents, and both are what make
+                # setup_treatment / planned_production_time_basis able to move
+                # a number at all.
+                setup_minutes = CHANGEOVER_MINUTES if si == 0 else 0
+                maintenance_minutes = PM_MINUTES if (si == 0 and day.weekday() == 0) else 0
                 root_cause_draw = rng.random()
                 run_time = round(rng.uniform(6.5, 7.8), 2)
                 attendance_draws = [rng.random() for _ in range(profile.employees_per_client)]
@@ -752,6 +769,13 @@ def emit_shifts(
                     scrap_count=scrap,
                     employees_assigned=max(1, present),
                     entered_by=ATTRIBUTION_USER_ID,
+                    # The recorded stoppage plus its planned components. The
+                    # unplanned minutes are the same draw DOWNTIME_ENTRY
+                    # records below, so the two tables describe one shift
+                    # rather than two.
+                    downtime_hours=round((downtime_minutes + setup_minutes + maintenance_minutes) / 60.0, 2),
+                    setup_time_hours=round(setup_minutes / 60.0, 2),
+                    maintenance_hours=round(maintenance_minutes / 60.0, 2),
                 )
 
                 # --- downtime, root cause first: the narrative biases the
@@ -791,6 +815,10 @@ def emit_shifts(
                         units_passed=produced - defective,
                         units_defective=defective,
                         total_defects_count=defective,
+                        # Part of the defective units come back after rework.
+                        # Integer division floors to 0 when defective is 1, so
+                        # the recovery is real rather than universal.
+                        units_reworked=defective // REWORK_DIVISOR,
                     )
                     # Split across defect codes, halving what is left each
                     # time and giving the remainder to the LAST row, so the

@@ -64,12 +64,19 @@ from backend.tests.contract.query_specs import QUERY_REGISTRY
 #: `Kind.BLOCKED` and with it all eight routes it reached -- the six
 #: `GET /api/jobs/{job_id}/*` KPI routes, `DELETE /api/jobs/{job_id}` and
 #: `GET /api/qr/job/{job_id}/image`.
+#: 1, down from 4: seeding EQUIPMENT, PART_OPPORTUNITIES and
+#: SIMULATION_SCENARIO promoted `equipment_id`, `part_number` and
+#: `scenario_id@simulation` out of `Kind.BLOCKED`, and with them the three
+#: DELETE routes they reached.
+#:
+#: The one that remains is the one seeding cannot reach. `SAVED_FILTER` is
+#: scoped by user_id rather than client_id, so a seeded row 404s for every
+#: non-owner INCLUDING an admin; only request chaining (POST a filter as the
+#: capturing identity) would ever unblock it. That makes this set's floor a
+#: property of the schema, not of how much the seeder has covered.
 BLOCKED_ROUTES = frozenset(
     {
-        "DELETE /api/equipment/{equipment_id}",
         "DELETE /api/filters/{filter_id}",
-        "DELETE /api/part-opportunities/{part_number}",
-        "DELETE /api/v2/simulation/scenarios/{scenario_id}",
     }
 )
 
@@ -176,10 +183,12 @@ def test_every_blocked_spec_still_has_zero_rows(harness: _Harness) -> None:
         # it. Counting it here is exactly what turned "seed some commitments
         # and the route becomes capturable" from a note into a failing test --
         # and it did fail, which is how the variance route got promoted.
-        "EQUIPMENT": 0,
-        "PART_OPPORTUNITIES": 0,
+        # EQUIPMENT, PART_OPPORTUNITIES and SIMULATION_SCENARIO left this map
+        # when the seeder began writing them -- their params are Kind.SEEDED_ROW
+        # now, so they are no longer blocked specs to check. SAVED_FILTER is the
+        # only one left, and it is blocked for a reason seeding cannot fix: it
+        # is scoped by user_id, so a row would 404 for every non-owner.
         "SAVED_FILTER": 0,
-        "SIMULATION_SCENARIO": 0,
     }
 
 
@@ -318,7 +327,14 @@ def test_a_2xx_is_proof_the_id_was_right_except_where_declared(
     # /api/floating-pool/{pool_id} reachable. All three DISCRIMINATE on a bogus
     # id, so none needs a NEVER_404 entry -- which is the half of this test that
     # proves the promotion was real and not a route that answers 200 regardless.
-    assert len(succeeded) == 56
+    #
+    # 59, up from 56: seeding EQUIPMENT, PART_OPPORTUNITIES and
+    # SIMULATION_SCENARIO made DELETE /api/equipment/{equipment_id},
+    # DELETE /api/part-opportunities/{part_number} and
+    # DELETE /api/v2/simulation/scenarios/{scenario_id} resolvable. All three
+    # record `<non-json>` -- each is a 204 DELETE -- which is a success, and
+    # all three DISCRIMINATE on a bogus id, so none needs a NEVER_404 entry.
+    assert len(succeeded) == 59
     # Third side, and the one that keeps the other two honest: a route whose
     # probe URL equals its real URL was compared against ITSELF, so it lands in
     # `id_insensitive` for free and its NEVER_404 membership proves nothing.

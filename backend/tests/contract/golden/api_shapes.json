@@ -33,7 +33,7 @@
     "<non-json>"
   ],
   "DELETE /api/equipment/{equipment_id}": [
-    "<blocked:equipment_id>"
+    "<non-json>"
   ],
   "DELETE /api/filters/history": [
     "<non-json>"
@@ -60,7 +60,7 @@
     "message"
   ],
   "DELETE /api/part-opportunities/{part_number}": [
-    "<blocked:part_number>"
+    "<non-json>"
   ],
   "DELETE /api/production-lines/{line_id}": [
     "<non-json>"
@@ -78,7 +78,7 @@
     "<non-json>"
   ],
   "DELETE /api/v2/simulation/scenarios/{scenario_id}": [
-    "<blocked:scenario_id@simulation>"
+    "<non-json>"
   ],
   "DELETE /api/work-orders/{work_order_id}": [
     "<status:409>"

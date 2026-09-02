@@ -20,10 +20,28 @@ def test_every_declared_table_exists_in_the_schema():
         assert name in known, f"{name} is declared but is not a table"
 
 
-def test_not_seeded_holds_exactly_token_blacklist():
-    """Spec section 7. Fabricated revoked tokens would demonstrate nothing and
-    could only mislead."""
-    assert set(NOT_SEEDED) == {"TOKEN_BLACKLIST"}
+def test_not_seeded_holds_exactly_the_three_with_another_owner():
+    """Spec section 7, widened twice as the seeder's reach grew.
+
+    Each entry is excluded because something ELSE owns the rows, not because
+    nobody got round to them:
+      * TOKEN_BLACKLIST -- fabricated revoked tokens would demonstrate nothing
+        and could only mislead;
+      * METRIC_ASSUMPTION_DEPENDENCY -- the BOOT path seeds it from the
+        authoritative assumption catalog (18 rows, verified on the VM), and a
+        table with two owners is a table whose owners can disagree;
+      * METRIC_CALCULATION_RESULT -- calculation output the dual-view
+        scheduler recomputes nightly, so seeded values would be numbers no
+        calculation produced.
+
+    Pinned exactly so a table added here is a deliberate act with a stated
+    owner, rather than a quiet way to stop covering something.
+    """
+    assert set(NOT_SEEDED) == {
+        "TOKEN_BLACKLIST",
+        "METRIC_ASSUMPTION_DEPENDENCY",
+        "METRIC_CALCULATION_RESULT",
+    }
 
 
 def test_every_exclusion_carries_a_reason():
