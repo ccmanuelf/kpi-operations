@@ -1,4 +1,63 @@
 
+## 2026-09-02 — A fixture that only ever builds one profile makes the profile part of the assertion
+
+**Pattern:** seeded assumption review dates straddled a 365-day staleness
+boundary correctly in the FULL profile and were incoherent in SMOKE, which
+produced rows APPROVED BEFORE THEY WERE PROPOSED and a "stale" set only 145
+days old. The cause was mixing anchors: the recent date measured from `as_of`,
+the old one from `activity_start`, and those are 365 days apart in FULL but 14
+in SMOKE. Every dataset test built FULL, so all of them passed.
+
+**Rule:** when seeded data derives from a window whose width is a profile
+setting, anchor every date to the SAME reference, and parameterise the gate
+over every profile:
+
+    @pytest.mark.parametrize("profile", [FULL, SMOKE], ids=["full", "smoke"])
+
+A single-profile fixture silently converts "this data is coherent" into "this
+data is coherent at one particular window width".
+
+
+## 2026-09-02 — Seeding a table proves nothing until the consuming service reads it
+
+**Pattern:** the seeder filled DOWNTIME_ENTRY faithfully, and the dual view
+still reported standard == site_adjusted to the cent on every client and every
+metric. `aggregate_oee_inputs` sums `downtime_hours`, `setup_time_hours` and
+`maintenance_hours` off PRODUCTION_ENTRY and never touches DOWNTIME_ENTRY at
+all. Three of the six assumption rules were operating on columns that were
+zero, so two assumptions deliberately set to deviate from their defaults
+changed nothing, and OEE read 99.5% — a factory that never stops.
+
+Row counts looked healthy throughout. Nothing failed.
+
+**Rule:** for a table seeded to make a FEATURE work, assert through the
+service that feature calls, not through row counts:
+
+    result = OEECalculationService(session, admin).calculate(...)
+    assert result.delta        # not: assert SUM(downtime_hours) > 0
+
+Find the sole consumer first (`grep` the column, not the table) and confirm it
+reads what you are about to write. A related trap in the same family: a
+catalog value can be selectable, recorded and approved while the code applying
+it is gated behind an input nothing populates — see issue #278.
+
+
+## 2026-09-02 — An assertion aggregated across tenants is blind to a per-tenant gap
+
+**Pattern:** the assumption suite compared `SELECT DISTINCT assumption_name`
+against the catalog, and the change history compared a DISTINCT set of names.
+Both passed with all six assumptions seeded for ONE client and none for the
+other three — 9 tests, 9 green. Assumptions are client-scoped and the dual
+view resolves them per tenant, so that is precisely the failure the suite
+existed to catch.
+
+**Rule:** for client-scoped data, take the tenant universe from CLIENT (never
+from the table under test, which cannot show you a tenant it has no rows for),
+loop it, and assert per tenant. Where duplicates would be wrong, GROUP BY and
+assert the count — DISTINCT erases cardinality, so a fabricated second row is
+invisible.
+
+
 ## 2026-08-29 — A `language: system` hook runs whatever is first on PATH, not your toolchain
 
 **Pattern:** `.pre-commit-config.yaml` declared `entry: python -m mypy backend` with
@@ -78,8 +137,13 @@ because verifying it needed that branch's code. After the base PR merged, the
 branch was rebased onto `main`, force-pushed, and THEN retargeted with
 `gh pr edit --base main`. No workflow ran. `ci.yml` and `e2e.yml` both trigger on
 `pull_request: branches: [main]`, and at the moment of the push the PR still
-pointed at the feature branch, so the filter did not match. Retargeting
-afterwards does not replay the push event.
+pointed at the feature branch, so the filter did not match.
+
+The causal half of this was originally written as "retargeting does not replay
+the push event", stated flatly. That is more than the episode establishes --
+what was observed is that no run existed for that head sha after the retarget,
+not a proven mechanism for why. The rule below is the part that held, and it
+holds regardless of the mechanism.
 
 `gh pr checks` printed `no checks reported on the ... branch` and
 `gh pr view` said `mergeable=MERGEABLE state=BLOCKED`. The merge was blocked only
