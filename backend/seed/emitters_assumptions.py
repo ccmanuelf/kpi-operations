@@ -59,8 +59,14 @@ SIM_ROUTE = (
 #: ones left at the textbook default have gone unrevisited. The report calls a
 #: row stale past 365 days, so these straddle it deliberately: a staleness
 #: column where every row is the same colour demonstrates nothing.
+#:
+#: Both are measured from `as_of`, NOT from the activity window. Anchoring the
+#: unreviewed ones to `activity_start` made the split a property of the
+#: profile: FULL opens its window 365 days before as_of and SMOKE only 14, so
+#: the same arithmetic left SMOKE's "stale" rows 145 days old (not stale at
+#: all) and its recent review dated BEFORE the proposal it approves.
 RECENT_REVIEW_DAYS = 45
-UNREVIEWED_DAYS = 130
+STALE_REVIEW_DAYS = 400
 
 #: Daily demand per product in the saved scenarios.
 DAILY_DEMAND_PER_PRODUCT = 180.0
@@ -128,12 +134,13 @@ def emit_assumptions(
         # before this window opened. effective_date is unchanged either way:
         # all six have been in force the whole time, and approved_at is the
         # REVIEW date, which is what the report measures.
-        if deviates:
-            proposed_at = stamp
-            approved_at = datetime.combine(as_of - timedelta(days=RECENT_REVIEW_DAYS), time(11, 0))
-        else:
-            proposed_at = stamp - timedelta(days=UNREVIEWED_DAYS)
-            approved_at = proposed_at + timedelta(hours=2)
+        review_days = RECENT_REVIEW_DAYS if deviates else STALE_REVIEW_DAYS
+        approved_at = datetime.combine(as_of - timedelta(days=review_days), time(11, 0))
+        # A proposal cannot postdate its own approval. `stamp` sits one day
+        # before the activity window, which is earlier than any review date in
+        # FULL but LATER than the recent one in SMOKE -- so the earlier of the
+        # two is the only choice that holds for both profiles.
+        proposed_at = min(stamp, approved_at - timedelta(hours=2))
         declare(
             AssumptionRegistered,
             assumption_key=key,

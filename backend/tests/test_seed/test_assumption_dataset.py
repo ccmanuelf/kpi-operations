@@ -20,7 +20,7 @@ from sqlalchemy import text
 
 from backend.seed.generator import generate
 from backend.seed.materialize import materialize
-from backend.seed.profiles import FULL
+from backend.seed.profiles import FULL, SMOKE
 from backend.seed.scenarios import CALCULATION_ASSUMPTIONS, SCENARIOS
 from backend.services.calculations.assumption_catalog import V1_CATALOG
 from backend.simulation_v2.models import SimulationConfig
@@ -317,3 +317,41 @@ def test_the_variance_report_shows_both_staleness_states(full_db):
     fresh = [r for r in rows if not field(r, "is_stale")]
     assert stale, "nothing is stale, so the staleness column and its badge show one state"
     assert fresh, "everything is stale, which demonstrates the column no better"
+
+
+@pytest.mark.parametrize("profile", [FULL, SMOKE], ids=["full", "smoke"])
+def test_no_assumption_is_approved_before_it_was_proposed(profile):
+    """Checked at the EVENT level and against BOTH profiles, because the bug
+    this catches was a property of the profile rather than of the data.
+
+    The review dates were anchored to the activity window while `as_of` set the
+    recent one. FULL opens its window 365 days before as_of, so the ordering
+    held; SMOKE opens it 14 days before, so the "recent review" landed 30 days
+    BEFORE the proposal it approved. A fixture that only ever built FULL could
+    not see it.
+    """
+    from backend.seed.events import AssumptionRegistered
+
+    events = [e for e in generate(SCENARIOS, profile, seed=1234, as_of=AS_OF) if isinstance(e, AssumptionRegistered)]
+    assert events, f"no assumptions emitted for the {profile.name} profile"
+    backwards = [
+        f"{e.client_id}/{e.assumption_name}: proposed {e.proposed_at} approved {e.approved_at}"
+        for e in events
+        if e.approved_at is not None and e.approved_at < e.proposed_at
+    ]
+    assert not backwards, "approved before proposed:\n  " + "\n  ".join(backwards)
+
+
+@pytest.mark.parametrize("profile", [FULL, SMOKE], ids=["full", "smoke"])
+def test_both_staleness_states_survive_either_profile(profile):
+    """The split has to come from the review dates themselves, not from how
+    wide the profile's activity window happens to be."""
+    from backend.seed.events import AssumptionRegistered
+
+    ages = {
+        (AS_OF - e.approved_at.date()).days
+        for e in generate(SCENARIOS, profile, seed=1234, as_of=AS_OF)
+        if isinstance(e, AssumptionRegistered) and e.approved_at is not None
+    }
+    assert any(age > 365 for age in ages), f"nothing is stale in {profile.name}: ages {sorted(ages)}"
+    assert any(age <= 365 for age in ages), f"nothing is fresh in {profile.name}: ages {sorted(ages)}"

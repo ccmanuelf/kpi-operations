@@ -224,7 +224,17 @@ def _real_return_annotation(route: APIRoute):
         # predicate could not explain. Nothing surfaced it while that route was
         # unreachable: it recorded `<blocked:scenario_id@simulation>`, never
         # `<non-json>`, so it was never a route this function was asked about.
-        resolved = typing.get_type_hints(route.endpoint).get("return", inspect.Signature.empty)
+        try:
+            resolved = typing.get_type_hints(route.endpoint).get("return", inspect.Signature.empty)
+        except NameError:
+            # get_type_hints resolves EVERY annotation on the endpoint, not
+            # just the return one, so a single parameter annotated with a
+            # name that exists only under TYPE_CHECKING would raise here and
+            # take the whole predicate down with it. No route does that today;
+            # the fallback keeps a future one from turning this into a
+            # confusing harness crash, and still answers the only question
+            # this function asks.
+            resolved = None if annotation == "None" else inspect.Signature.empty
         # get_type_hints maps `-> None` to NoneType. Normalise it back so every
         # caller compares against None exactly as it does for a module that
         # does not postpone its annotations.

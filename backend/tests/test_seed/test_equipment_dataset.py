@@ -130,12 +130,46 @@ def test_every_part_a_job_names_has_its_own_opportunity_count(full_db):
 def test_the_seeded_count_is_distinguishable_from_the_fallback(full_db):
     """If the seeded value equalled the default, the table could be empty and
     every DPMO would be identical -- the seeding would demonstrate nothing."""
+    from backend.seed.emitters_equipment import OPPORTUNITIES_PER_UNIT
+
     with Session(bind=full_db) as session:
-        part = session.execute(text("SELECT part_number FROM PART_OPPORTUNITIES LIMIT 1")).scalar_one()
+        # ORDER BY, so the row this checks is the same one every run rather
+        # than whichever the storage engine hands back first.
+        part = session.execute(
+            text("SELECT part_number FROM PART_OPPORTUNITIES ORDER BY part_number LIMIT 1")
+        ).scalar_one()
         seeded = get_opportunities_for_part(session, part)
         fallback = get_opportunities_for_part(session, "NO-SUCH-PART-EXISTS")
-    assert seeded > 0
+    # Pinned to the derivation, not merely "different from the fallback": a
+    # regression to 0 -- or to any other wrong number -- is still unequal to
+    # the default and would have satisfied an inequality on its own.
+    assert seeded == OPPORTUNITIES_PER_UNIT, f"{part} resolves to {seeded}, not the derived {OPPORTUNITIES_PER_UNIT}"
     assert seeded != fallback, (
         f"seeded opportunities ({seeded}) equal the fallback default ({fallback}); "
         "an empty table would produce the same DPMO"
+    )
+
+
+def test_product_codes_are_globally_unique():
+    """PART_OPPORTUNITIES.part_number is the PRIMARY KEY on its own --
+    client_id_fk is an ordinary column, not part of the key. The seeder writes
+    one row per (client, product) and uses the product code as that key, so it
+    silently depends on codes never repeating across clients.
+
+    They do not today (every code carries a client prefix), which is exactly
+    why this needs a gate rather than a reader's trust: a new client reusing a
+    code would not fail here, it would collide on INSERT or overwrite another
+    tenant's opportunity count.
+    """
+    seen: dict = {}
+    clashes = []
+    for scenario in SCENARIOS:
+        for product in scenario.products:
+            owner = seen.setdefault(product.code, scenario.client_id)
+            if owner != scenario.client_id:
+                clashes.append(f"{product.code}: {owner} and {scenario.client_id}")
+    assert (
+        not clashes
+    ), "product codes repeat across clients, and PART_OPPORTUNITIES is keyed on the code alone:\n  " + "\n  ".join(
+        clashes
     )

@@ -325,12 +325,15 @@ REGISTRY: Dict[str, ParamSpec] = {
     "equipment_id": _seeded(
         "equipment_id",
         "EQUIPMENT",
-        "SELECT equipment_id FROM EQUIPMENT WHERE is_active = 1 ORDER BY equipment_id LIMIT 1",
-        note="PROMOTED out of Kind.BLOCKED when the seeder began writing EQUIPMENT. The "
-        "is_active filter is load-bearing rather than decorative: the seed deliberately "
-        "carries one soft-deleted machine so list_equipment's include_inactive parameter has "
-        "something to reveal, and resolving to it would capture a route the default list "
-        "never returns.",
+        "SELECT equipment_id FROM EQUIPMENT"
+        " WHERE is_active = 1 AND is_shared = 0 AND status = 'ACTIVE'"
+        " ORDER BY equipment_id LIMIT 1",
+        note="PROMOTED out of Kind.BLOCKED when the seeder began writing EQUIPMENT. Every "
+        "clause is load-bearing rather than decorative: the seed deliberately carries one "
+        "soft-deleted machine (so include_inactive has something to reveal), one shared "
+        "machine with no line, and two RETIRED ones. Ordering by id happens to reach an "
+        "ordinary active machine first, but only happens to -- the filters say which row "
+        "this capture is meant to represent instead of leaving it to insertion order.",
     ),
     "filter_id": _blocked(
         "filter_id",
