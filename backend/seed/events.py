@@ -231,6 +231,17 @@ class ProductionRecorded(Event):
     scrap_count: int
     employees_assigned: int
     entered_by: str
+    # The shift's non-run time, split into the components the dual view reads.
+    # aggregate_oee_inputs sums these three columns off PRODUCTION_ENTRY and
+    # nothing else -- it never looks at DOWNTIME_ENTRY -- so leaving them unset
+    # gave the dual view a factory with no downtime at all (OEE 99.5% on every
+    # client) and made three of the six assumption rules operate on zeros.
+    # setup and maintenance are COMPONENTS of downtime_hours, which is the
+    # convention oee_service documents: excluding either subtracts it from
+    # downtime and scheduled hours alike.
+    downtime_hours: float
+    setup_time_hours: float
+    maintenance_hours: float
 
 
 @dataclass(frozen=True)
@@ -248,6 +259,10 @@ class QualityInspected(Event):
     units_passed: int
     units_defective: int
     total_defects_count: int
+    #: Defective units recovered by rework. scrap_classification_rule is
+    #: defined entirely in terms of this number, so at zero the rule -- and any
+    #: deviation from it -- cannot move a figure.
+    units_reworked: int
 
 
 @dataclass(frozen=True)
@@ -724,6 +739,13 @@ class AssumptionRegistered(Event):
     # truncated `head` hid it, and the seed only failed at INSERT.
     proposed_by: str
     proposed_at: datetime
+    # Nullable, so omitting these INSERTs cleanly -- but status="active" is
+    # reachable only through AssumptionService.approve(), which always sets
+    # both. Leaving them NULL puts the row in a state the application cannot
+    # produce, and blanks the variance report's approver and staleness
+    # columns (they are computed from approved_at, so is_stale is hard-false).
+    approved_by: Optional[str]
+    approved_at: Optional[datetime]
 
 
 @dataclass(frozen=True)

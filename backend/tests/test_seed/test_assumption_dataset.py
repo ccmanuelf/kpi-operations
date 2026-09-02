@@ -74,14 +74,31 @@ def test_every_saved_scenario_survives_the_domain_validator(full_db):
 
 
 def test_seeded_assumptions_are_exactly_the_catalog(full_db):
-    """Two-sided. An assumption outside the catalog has no metric depending on
-    it; a catalog entry left unseeded shows the screen a blank row."""
+    """Two-sided, and PER CLIENT. An assumption outside the catalog has no
+    metric depending on it; a catalog entry left unseeded shows the screen a
+    blank row.
+
+    Aggregating across clients made this vacuous in the direction that matters:
+    assumptions are client-scoped and the dual view resolves them per tenant,
+    so seeding all six for ONE client and none for the other three satisfied a
+    flat DISTINCT over the whole table.
+    """
     with full_db.begin() as conn:
-        seeded = {n for (n,) in conn.execute(text("SELECT DISTINCT assumption_name FROM CALCULATION_ASSUMPTION"))}
-    assert seeded == set(V1_CATALOG), (
-        f"not in catalog: {sorted(seeded - set(V1_CATALOG))}; "
-        f"catalog entries unseeded: {sorted(set(V1_CATALOG) - seeded)}"
-    )
+        tenants = {c for (c,) in conn.execute(text("SELECT client_id FROM CLIENT"))}
+        rows = list(conn.execute(text("SELECT client_id, assumption_name FROM CALCULATION_ASSUMPTION")))
+    assert tenants, "no clients seeded"
+    per_client: dict = {}
+    for client_id, name in rows:
+        per_client.setdefault(client_id, set()).add(name)
+    wrong = []
+    for client_id in sorted(tenants):
+        seeded = per_client.get(client_id, set())
+        if seeded != set(V1_CATALOG):
+            wrong.append(
+                f"{client_id}: not in catalog={sorted(seeded - set(V1_CATALOG))} "
+                f"unseeded={sorted(set(V1_CATALOG) - seeded)}"
+            )
+    assert not wrong, "clients whose assumption set is not the catalog:\n  " + "\n  ".join(wrong)
 
 
 def test_every_assumption_value_is_one_the_catalog_allows(full_db):
@@ -128,18 +145,33 @@ def test_the_deviates_flag_agrees_with_the_catalog_default():
 def test_change_history_covers_exactly_the_assumptions_that_deviate(full_db):
     """An unchanged assumption with a change row is a fabricated audit trail."""
     with full_db.begin() as conn:
-        changed = {
-            n
-            for (n,) in conn.execute(
+        rows = list(
+            conn.execute(
                 text(
-                    "SELECT DISTINCT a.assumption_name"
+                    "SELECT a.client_id, a.assumption_name, COUNT(*)"
                     "  FROM ASSUMPTION_CHANGE c"
                     "  JOIN CALCULATION_ASSUMPTION a ON a.assumption_id = c.assumption_id"
+                    " GROUP BY a.client_id, a.assumption_name"
                 )
             )
-        }
+        )
+        tenants = {c for (c,) in conn.execute(text("SELECT client_id FROM CLIENT"))}
     expected = {n for n, _v, _d, dev, _r in CALCULATION_ASSUMPTIONS if dev}
-    assert changed == expected, f"changed={sorted(changed)} expected={sorted(expected)}"
+    # Per client AND with cardinality. A DISTINCT set comparison could see
+    # neither a second, fabricated change row against the same assumption nor
+    # a whole client whose history was never written.
+    by_client: dict = {}
+    for client_id, name, count in rows:
+        by_client.setdefault(client_id, {})[name] = count
+    wrong = []
+    for client_id in sorted(tenants):
+        got = by_client.get(client_id, {})
+        if set(got) != expected:
+            wrong.append(f"{client_id}: changed={sorted(got)} expected={sorted(expected)}")
+        duplicated = {n: c for n, c in got.items() if c != 1}
+        if duplicated:
+            wrong.append(f"{client_id}: more than one change row for {duplicated}")
+    assert not wrong, "assumption history does not match the deviations:\n  " + "\n  ".join(wrong)
 
 
 def test_a_changes_previous_value_is_the_catalog_default(full_db):
@@ -183,3 +215,105 @@ def test_only_the_run_scenario_carries_results(full_db):
     assert len(with_results) < len({n for n, _, _ in rows}), "every scenario carries results"
     mismatched = [n for n, summary, at in rows if absent(summary) != (at is None)]
     assert not mismatched, f"last_run_summary and last_run_at disagree for: {mismatched}"
+
+
+def test_production_entries_carry_the_time_split_the_dual_view_reads(full_db):
+    """aggregate_oee_inputs sums downtime, setup and maintenance off
+    PRODUCTION_ENTRY and reads nothing else for non-run time -- it never
+    touches DOWNTIME_ENTRY. All three columns were unwritten, so the dual view
+    saw a factory that never stopped (OEE 99.5% on every client) and three of
+    the six assumption rules operated on zeros.
+
+    setup and maintenance are COMPONENTS of downtime, not additions to it:
+    oee_service subtracts either one from downtime and scheduled hours
+    together, so a setup larger than the downtime it sits inside would drive
+    downtime negative and be clamped to zero.
+    """
+    with full_db.begin() as conn:
+        totals = conn.execute(
+            text(
+                "SELECT SUM(downtime_hours), SUM(setup_time_hours), SUM(maintenance_hours), COUNT(*)"
+                "  FROM PRODUCTION_ENTRY"
+            )
+        ).first()
+        overrun = conn.execute(
+            text(
+                "SELECT COUNT(*) FROM PRODUCTION_ENTRY"
+                " WHERE COALESCE(setup_time_hours, 0) + COALESCE(maintenance_hours, 0)"
+                "     > COALESCE(downtime_hours, 0)"
+            )
+        ).scalar_one()
+        reworked = conn.execute(text("SELECT SUM(units_reworked) FROM QUALITY_ENTRY")).scalar_one()
+
+    downtime, setup, maintenance, rows = totals
+    assert rows > 0, "no production entries seeded"
+    assert downtime and downtime > 0, "the dual view sees a factory that never stopped"
+    assert setup and setup > 0, "setup_treatment can only move a number when setup time exists"
+    assert maintenance and maintenance > 0, "planned_production_time_basis needs maintenance hours"
+    assert overrun == 0, f"{overrun} entries where setup + maintenance exceed the downtime they sit in"
+    assert reworked and reworked > 0, "scrap_classification_rule is defined in terms of units_reworked"
+
+
+def test_the_deviating_assumptions_actually_move_the_dual_view(full_db):
+    """The point of deviating from the catalog default is that the two views
+    differ. Both deviations were previously inert -- one read a column the
+    seeder never wrote, the other a field aggregate_oee_inputs never populates
+    -- so standard and site-adjusted agreed to the cent on every client and
+    the delta column, which is the whole feature, was 0.00 everywhere.
+
+    Asserted through the real service rather than by re-deriving the
+    arithmetic: a test that recomputed the delta itself would agree with a
+    seeder that had stopped moving it.
+    """
+    from datetime import date as _date
+
+    from backend.orm.user import User
+    from backend.services.dual_view.aggregators import aggregate_oee_inputs
+    from backend.services.dual_view.oee_service import OEECalculationService
+    from sqlalchemy.orm import Session
+
+    start, end = _date(2026, 5, 1), AS_OF
+    flat = []
+    with Session(bind=full_db) as session:
+        admin = session.query(User).filter(User.role == "admin").first()
+        assert admin is not None, "no admin seeded to attribute the calculation to"
+        service = OEECalculationService(session, admin)
+        clients = [c for (c,) in session.execute(text("SELECT DISTINCT client_id FROM PRODUCTION_ENTRY"))]
+        assert clients, "no clients with production to calculate"
+        for client_id in clients:
+            raw = aggregate_oee_inputs(session, client_id, start, end)
+            result = service.calculate(client_id, start, end, raw, persist=False)
+            if not result.delta:
+                flat.append(f"{client_id}: standard == site_adjusted == {result.standard_value}")
+    assert not flat, "clients whose dual view shows no delta at all:\n  " + "\n  ".join(flat)
+
+
+def test_the_variance_report_shows_both_staleness_states(full_db):
+    """`days_since_review` counts from approved_at and the report calls a row
+    stale past its threshold. Approving all six on one day put every row at the
+    same age -- and exactly ON the 365-day boundary, so the column showed one
+    state and every row would flip together the day after the seed was taken.
+
+    Asserted through the real service: the report is what the screen renders,
+    and re-deriving the arithmetic here would agree with a seeder that had
+    stopped straddling the boundary.
+    """
+    from backend.orm.user import User
+    from backend.services.assumption_service import AssumptionService
+    from sqlalchemy.orm import Session
+
+    with Session(bind=full_db) as session:
+        admin = session.query(User).filter(User.role == "admin").first()
+        assert admin is not None
+        rows = AssumptionService(session, admin).get_variance_report()
+
+    def field(row, key):
+        return row.get(key) if isinstance(row, dict) else getattr(row, key, None)
+
+    assert rows, "the variance report is empty"
+    unapproved = [r for r in rows if not field(r, "approved_by")]
+    assert not unapproved, f"{len(unapproved)} rows are active with no approver"
+    stale = [r for r in rows if field(r, "is_stale")]
+    fresh = [r for r in rows if not field(r, "is_stale")]
+    assert stale, "nothing is stale, so the staleness column and its badge show one state"
+    assert fresh, "everything is stale, which demonstrates the column no better"

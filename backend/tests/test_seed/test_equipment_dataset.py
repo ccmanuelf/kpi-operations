@@ -59,7 +59,10 @@ def test_every_client_owns_a_shared_machine_and_it_hangs_off_no_line(full_db):
         per_client = dict(
             conn.execute(text("SELECT client_id, COUNT(*) FROM EQUIPMENT WHERE is_shared = 1 GROUP BY client_id")).all()
         )
-        clients = {c for (c,) in conn.execute(text("SELECT DISTINCT client_id FROM EQUIPMENT"))}
+        # From CLIENT, not from EQUIPMENT. Taking the universe from the table
+        # under test made a client with NO equipment at all invisible here --
+        # the one case where /equipment/shared certainly returns [].
+        clients = {c for (c,) in conn.execute(text("SELECT client_id FROM CLIENT"))}
         attached = conn.execute(
             text("SELECT COUNT(*) FROM EQUIPMENT WHERE is_shared = 1 AND line_id IS NOT NULL")
         ).scalar_one()

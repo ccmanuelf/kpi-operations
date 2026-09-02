@@ -289,6 +289,16 @@ SCENARIOS = (
 #: assumption matched the textbook default, both views would be identical and
 #: the delta column would be zero everywhere.
 #:
+#: WHICH two is not arbitrary. A deviation only moves a number if the rule
+#: behind it reads a column with something in it, and if the service can
+#: actually apply it. `ideal_cycle_time_source="demonstrated_best"` looks like
+#: the obvious choice and is inert: oee_service applies it only when
+#: `demonstrated_best_cycle_time_hours` is set, and `aggregate_oee_inputs`
+#: never sets that field on any production path -- so it deviated while
+#: changing nothing, which is the exact appearance-without-substance this note
+#: exists to prevent. The two that deviate now are the two whose inputs the
+#: seeder writes: scheduled maintenance and setup time.
+#:
 #: The catalog default travels with each row so the change history can say
 #: what the value moved AWAY from. It cannot be imported: assumption_catalog
 #: pulls in sqlalchemy.orm.Session. test_assumption_dataset pins it against
@@ -306,18 +316,19 @@ CALCULATION_ASSUMPTIONS = (
     ),
     (
         "ideal_cycle_time_source",
-        "demonstrated_best",
         "engineering_standard",
-        True,
-        "Engineering standards predate the current line layout; the demonstrated best cycle is "
-        "the honest reference for this site.",
+        "engineering_standard",
+        False,
+        "Engineering standards are current for this line; no demonstrated-best study has been "
+        "completed, so the standard remains the reference.",
     ),
     (
         "setup_treatment",
+        "exclude_from_availability",
         "count_as_downtime",
-        "count_as_downtime",
-        False,
-        "Textbook default retained: setup is genuinely lost availability on these lines.",
+        True,
+        "Changeovers are planned into the schedule rather than lost to it, so counting them as "
+        "downtime understates what these lines can deliver.",
     ),
     (
         "scrap_classification_rule",

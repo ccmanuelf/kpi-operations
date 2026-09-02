@@ -53,6 +53,8 @@ def _assumption_registered(
             "status": e.status,
             "proposed_by": e.proposed_by,
             "proposed_at": e.proposed_at,
+            "approved_by": e.approved_by,
+            "approved_at": e.approved_at,
             "is_active": True,
             "created_at": e.at,
             "updated_at": e.at,

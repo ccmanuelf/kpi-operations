@@ -45,6 +45,58 @@ APPROVED_BY = next(u.user_id for u in USERS if u.role == "admin")
 # any field rather than just this one.
 SIM_HORIZON_DAYS = 7
 
+#: The route every saved simulation plans, mirroring the three-operation route
+#: the capacity workbook is built from (emitters_capacity.OPERATIONS). Not
+#: imported from there: that tuple carries capacity-side columns (setup
+#: minutes, the machine/manual split) the simulation schema has no field for.
+SIM_ROUTE = (
+    ("Cut and bundle", "Cutter", 2.5, 2),
+    ("Assemble", "Sewing line", 8.75, 8),
+    ("Press, inspect and pack", "Finishing table", 2.25, 3),
+)
+
+#: When the site last reviewed the assumptions it adjusted, and how long the
+#: ones left at the textbook default have gone unrevisited. The report calls a
+#: row stale past 365 days, so these straddle it deliberately: a staleness
+#: column where every row is the same colour demonstrates nothing.
+RECENT_REVIEW_DAYS = 45
+UNREVIEWED_DAYS = 130
+
+#: Daily demand per product in the saved scenarios.
+DAILY_DEMAND_PER_PRODUCT = 180.0
+
+#: How much of demand the baseline run met. Below 1.0 on purpose: a scenario
+#: that met demand exactly gives the planner nothing to act on.
+BASELINE_COVERAGE = 0.941
+
+
+def last_run_summary(product_count: int) -> dict:
+    """The summary a REAL run leaves behind, key for key.
+
+    POST /api/v2/simulation/scenarios/{id}/run persists exactly these six keys
+    (routes/simulation_scenarios.py), and the scenario list renders
+    `last_run_summary.daily_throughput_pcs` and `.daily_coverage_pct`. A
+    summary with any other keys renders a run date beside two em-dashes --
+    which reads as a run that failed to record its results, and is worse than
+    the unrun row it is meant to contrast with. The previous shape
+    ({horizon_days, fulfilled_pct, bottleneck}) shared no key with it; nothing
+    in the repo wrote or read `fulfilled_pct` at all.
+
+    Derived rather than typed, so coverage cannot contradict the throughput
+    and demand printed beside it.
+    """
+    demand = DAILY_DEMAND_PER_PRODUCT * product_count
+    throughput = round(demand * BASELINE_COVERAGE, 1)
+    total_sam = sum(op[2] for op in SIM_ROUTE)
+    return {
+        "daily_throughput_pcs": throughput,
+        "daily_demand_pcs": demand,
+        "daily_coverage_pct": round(throughput / demand * 100, 1),
+        "avg_cycle_time_min": total_sam,
+        "avg_wip_pcs": round(throughput / len(SIM_ROUTE), 1),
+        "duration_seconds": 2.4,
+    }
+
 
 def emit_assumptions(
     emit: Callable[..., None],
@@ -65,6 +117,23 @@ def emit_assumptions(
     for name, value, default_value, deviates, rationale in CALCULATION_ASSUMPTIONS:
         key = f"{cid}-ASSUMP-{name}"
         value_json = json.dumps(value)
+        # `days_since_review` counts from approved_at, and the variance report
+        # calls a row stale past STALE_AFTER_DAYS. Approving all six on one day
+        # put every row at the same age, so the staleness column showed one
+        # state -- and, sitting exactly ON the boundary, all of them would flip
+        # together the day after the seed was taken.
+        #
+        # The two the site adjusted were reviewed when it adjusted them; the
+        # four left at the textbook default have not been revisited since
+        # before this window opened. effective_date is unchanged either way:
+        # all six have been in force the whole time, and approved_at is the
+        # REVIEW date, which is what the report measures.
+        if deviates:
+            proposed_at = stamp
+            approved_at = datetime.combine(as_of - timedelta(days=RECENT_REVIEW_DAYS), time(11, 0))
+        else:
+            proposed_at = stamp - timedelta(days=UNREVIEWED_DAYS)
+            approved_at = proposed_at + timedelta(hours=2)
         declare(
             AssumptionRegistered,
             assumption_key=key,
@@ -76,7 +145,13 @@ def emit_assumptions(
             # The lifecycle the status enum describes: a poweruser proposes,
             # an admin approves. Both are ForeignKeys to USER.user_id.
             proposed_by=PROPOSED_BY,
-            proposed_at=stamp,
+            proposed_at=proposed_at,
+            # status is "active", and approve() is the only way a row reaches
+            # it. The admin who approves is already named for the change row
+            # below; recording it only there left every assumption ACTIVE with
+            # no approver.
+            approved_by=APPROVED_BY,
+            approved_at=approved_at,
         )
         # Only the deviating ones carry a change row. An assumption left at the
         # catalog default was never edited, and inventing an approval for it
@@ -101,24 +176,24 @@ def emit_assumptions(
 
     # --- saved simulations -------------------------------------------------
     styles = [p.style for p in scenario.products]
+    # Every product gets the WHOLE route. Indexing the product by the operation
+    # (`styles[i % len(styles)]` across the three steps) handed each product a
+    # different SINGLE step -- one product was cut and never sewn, another's
+    # route began at step 2 -- and the step numbers only looked sequential
+    # because they were counting operations rather than each product's route.
     operations = [
         {
-            "product": styles[i % len(styles)],
-            "step": i + 1,
+            "product": style,
+            "step": step,
             "operation": op_name,
             "machine_tool": machine,
             "sam_min": sam,
             "operators": operators,
         }
-        for i, (op_name, machine, sam, operators) in enumerate(
-            (
-                ("Cut and bundle", "Cutter", 2.5, 2),
-                ("Assemble", "Sewing line", 8.75, 8),
-                ("Press, inspect and pack", "Finishing table", 2.25, 3),
-            )
-        )
+        for style in styles
+        for step, (op_name, machine, sam, operators) in enumerate(SIM_ROUTE, start=1)
     ]
-    demands = [{"product": style, "daily_demand": 180.0, "bundle_size": 20} for style in styles]
+    demands = [{"product": style, "daily_demand": DAILY_DEMAND_PER_PRODUCT, "bundle_size": 20} for style in styles]
     schedule = {
         "shifts_enabled": 2,
         "shift1_hours": 8.0,
@@ -139,8 +214,8 @@ def emit_assumptions(
             ),
             (
                 "With weekday overtime",
-                "Two hours of weekday overtime added, to see whether the demand horizon "
-                "closes without a second shift.",
+                "Two hours of weekday overtime on top of the two shifts already running, "
+                "to see whether the demand horizon closes without adding a third.",
                 True,
                 False,
             ),
@@ -161,8 +236,6 @@ def emit_assumptions(
             # Only the baseline has been run. A list where every scenario
             # carries results shows no difference between saved and executed,
             # which is the distinction the run button exists for.
-            last_run_summary=(
-                {"horizon_days": SIM_HORIZON_DAYS, "fulfilled_pct": 92.4, "bottleneck": "Assemble"} if ran else None
-            ),
+            last_run_summary=dict(last_run_summary(len(styles))) if ran else None,
             last_run_at=datetime.combine(as_of - timedelta(days=3), time(9, 15)) if ran else None,
         )
