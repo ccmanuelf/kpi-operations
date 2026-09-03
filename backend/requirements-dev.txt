@@ -13,7 +13,7 @@ httpx==0.28.1
 bandit==1.9.4
 black==26.5.1          # CVE-2026-32274 fix (was 25.1.0)
 flake8==7.3.0
-mypy==2.1.0
+mypy==2.3.1
 
 # Security gates (Run 7 T2.1/T2.2) — CI fails on new secrets / known CVEs
 detect-secrets==1.5.0
