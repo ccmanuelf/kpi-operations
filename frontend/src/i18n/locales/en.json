@@ -2101,7 +2101,7 @@
     "rowError": "Row {row}: {error}",
     "upload": "Upload",
     "uploadPartOpportunities": "Upload Part Opportunities CSV",
-    "partOpportunitiesInfo": "Upload a CSV file with part_number and opportunities_per_unit columns to bulk configure part opportunities.",
+    "partOpportunitiesInfo": "Columns: part_number, opportunities_per_unit, part_description, part_category, notes. A part number that already exists is updated; new ones are created.",
     "replaceExisting": "Replace existing entries",
     "replaceExistingHint": "If checked, existing entries for matching part numbers will be updated",
     "importTitle": "CSV Import - {type}",
@@ -2149,7 +2149,10 @@
     "stepPreview": "Preview",
     "stepConfirm": "Confirm",
     "downloadSuccess": "CSV downloaded successfully",
-    "exportFailed": "Export failed: {message}"
+    "exportFailed": "Export failed: {message}",
+    "selectClientFirst": "Select a client before importing — every part is scoped to one.",
+    "noValidRows": "No importable rows: each needs a part_number and a whole-number opportunities_per_unit.",
+    "partialSuccess": "Imported {count}, rejected {failed}."
   },
   "validation": {
     "required": "This field is required",

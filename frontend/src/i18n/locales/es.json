@@ -2101,7 +2101,7 @@
     "rowError": "Fila {row}: {error}",
     "upload": "Subir",
     "uploadPartOpportunities": "Subir CSV de Oportunidades por Parte",
-    "partOpportunitiesInfo": "Sube un archivo CSV con columnas part_number y opportunities_per_unit para configurar oportunidades de parte en lote.",
+    "partOpportunitiesInfo": "Columnas: part_number, opportunities_per_unit, part_description, part_category, notes. Un número de parte existente se actualiza; los nuevos se crean.",
     "replaceExisting": "Reemplazar registros existentes",
     "replaceExistingHint": "Si está marcado, los registros existentes para números de parte coincidentes serán actualizados",
     "importTitle": "Importación CSV - {type}",
@@ -2149,7 +2149,10 @@
     "stepPreview": "Vista Previa",
     "stepConfirm": "Confirmar",
     "downloadSuccess": "CSV descargado exitosamente",
-    "exportFailed": "Error de exportación: {message}"
+    "exportFailed": "Error de exportación: {message}",
+    "selectClientFirst": "Seleccione un cliente antes de importar — cada parte pertenece a uno.",
+    "noValidRows": "No hay filas importables: cada una necesita part_number y un opportunities_per_unit entero.",
+    "partialSuccess": "Importadas {count}, rechazadas {failed}."
   },
   "validation": {
     "required": "Este campo es requerido",

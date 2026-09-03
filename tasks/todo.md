@@ -19,6 +19,18 @@
 
 ## OBSERVATION: `kpi-detail-views.spec.ts` flakes about 1 run in 15
 
+UPDATE 2026-09-03, second sighting — and it rules something out. The first was
+during the vite 8 work, which made vite 8 a candidate cause. This one happened
+on a branch containing no vite change at all (the part-opportunities import
+fix), so the bundler is not implicated. Still ~1 in 15, still passes in
+isolation, and still not reproducible on demand: six consecutive full runs
+after the failure were all green, so the assertion error remains uncaptured.
+
+Next step unchanged and now more clearly worth doing, since the repo states
+zero tolerance for flaky tests: make it reproducible first (repeat the file
+under `--sequence.shuffle`, or bisect by running it after each other spec file
+in turn to find the one that leaves state behind) before changing anything.
+
 Seen while validating the vite 8 bump: `KPI detail views — smoke mount >
 Efficiency.vue mounts without errors` failed once, then passed 14 consecutive
 full-suite runs and 3 of 3 in isolation. I could not reproduce it again to

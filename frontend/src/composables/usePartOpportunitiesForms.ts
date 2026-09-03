@@ -5,6 +5,7 @@
  */
 import { ref, type Ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import * as Papa from 'papaparse'
 import api from '@/services/api'
 
 export interface PartOpportunityFormData {
@@ -70,7 +71,6 @@ export function usePartOpportunitiesForms(
   const formData = ref<PartOpportunityFormData>(DEFAULT_FORM_DATA())
 
   const uploadFile = ref<File | null>(null)
-  const replaceExisting = ref(false)
 
   const complexityOptions: string[] = ['Simple', 'Standard', 'Complex', 'Very Complex']
 
@@ -153,7 +153,6 @@ export function usePartOpportunitiesForms(
 
   const openUploadDialog = (): void => {
     uploadFile.value = null
-    replaceExisting.value = false
     uploadDialog.value = true
   }
 
@@ -165,19 +164,57 @@ export function usePartOpportunitiesForms(
   const uploadCSV = async (): Promise<void> => {
     if (!uploadFile.value) return
 
+    // POST /api/part-opportunities/bulk-import takes JSON — a
+    // { opportunities: PartOpportunityCreate[] } body — not multipart. This
+    // used to post a file to `/part-opportunities/upload`, a path with no
+    // server route, so every upload 404'd and surfaced as the generic
+    // t('csv.error') toast with nothing to act on. There is no file-upload
+    // endpoint for this resource; the CSV is parsed here and sent as rows.
+    if (!selectedClient.value) {
+      showSnackbar(t('csv.selectClientFirst'), 'error')
+      return
+    }
+
     uploading.value = true
     try {
-      const formDataUpload = new FormData()
-      formDataUpload.append('file', uploadFile.value)
-      formDataUpload.append('replace_existing', String(replaceExisting.value))
-      if (selectedClient.value) {
-        formDataUpload.append('client_id', String(selectedClient.value))
+      const text = await uploadFile.value.text()
+      const parsed = Papa.parse<Record<string, string>>(text, {
+        header: true,
+        skipEmptyLines: true,
+      })
+
+      const opportunities = parsed.data
+        .map((row) => ({
+          part_number: (row.part_number ?? '').trim(),
+          client_id_fk: String(selectedClient.value),
+          // Required and must be > 0 server-side; NaN would be rejected row by
+          // row with a less obvious message than the count below.
+          opportunities_per_unit: Number.parseInt(row.opportunities_per_unit ?? '', 10),
+          part_description: row.part_description?.trim() || null,
+          // `complexity` is what older templates emitted for this column.
+          part_category: (row.part_category ?? row.complexity)?.trim() || null,
+          notes: row.notes?.trim() || null,
+        }))
+        .filter((o) => o.part_number && Number.isFinite(o.opportunities_per_unit))
+
+      if (opportunities.length === 0) {
+        showSnackbar(t('csv.noValidRows'), 'error')
+        return
       }
 
-      const res = await api.post('/part-opportunities/upload', formDataUpload, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      })
-      showSnackbar(t('csv.success', { count: res.data.created || 0 }), 'success')
+      const res = await api.post('/part-opportunities/bulk-import', { opportunities })
+      const { success_count: created = 0, failure_count: failed = 0, errors = [] } = res.data ?? {}
+
+      if (failed > 0) {
+        // Report the partial outcome rather than a bare success: the endpoint
+        // imports row by row and returns what it could not take.
+        showSnackbar(
+          t('csv.partialSuccess', { count: created, failed }) + (errors[0] ? ` — ${errors[0]}` : ''),
+          'warning'
+        )
+      } else {
+        showSnackbar(t('csv.success', { count: created }), 'success')
+      }
       closeUploadDialog()
       await loadPartOpportunities()
     } catch (error) {
@@ -189,11 +226,13 @@ export function usePartOpportunitiesForms(
   }
 
   const downloadTemplate = (): void => {
+    // `part_category`, not `complexity`: the schema has no complexity field,
+    // so the old template taught a column the import silently dropped.
     const csvHeaders = [
       'part_number',
       'opportunities_per_unit',
       'part_description',
-      'complexity',
+      'part_category',
       'notes',
     ]
     const example = ['PART-001', '15', 'Standard T-Shirt', 'Standard', 'Basic garment']
@@ -223,7 +262,6 @@ export function usePartOpportunitiesForms(
     formValid,
     formData,
     uploadFile,
-    replaceExisting,
     complexityOptions,
     rules,
     openCreateDialog,
