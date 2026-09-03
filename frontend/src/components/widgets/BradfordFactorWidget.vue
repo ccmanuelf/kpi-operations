@@ -148,6 +148,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { bradfordBand, bradfordAlertLevel, bradfordChipColor } from '@/composables/useBradfordRisk'
 import api from '@/services/api'
 
 const { t } = useI18n()
@@ -166,6 +167,7 @@ defineEmits(['viewEmployees'])
 // State
 const loading = ref(false)
 const error = ref<string | null>(null)
+const apiInterpretation = ref<string | null>(null)
 const score = ref(0)
 const spells = ref(0)
 const totalDays = ref(0)
@@ -177,25 +179,15 @@ const scorePercentage = computed(() => {
 })
 
 const riskLevel = computed(() => {
-  if (score.value <= 50) return t('widgets.bradfordFactor.lowRisk')
-  if (score.value <= 200) return t('widgets.bradfordFactor.monitor')
-  if (score.value <= 400) return t('widgets.bradfordFactor.actionRequired')
-  return t('widgets.bradfordFactor.critical')
+  // The server's own wording when we have it; the shared bands below only
+  // classify the locally computed fallback score.
+  if (apiInterpretation.value) return apiInterpretation.value
+  return t(`widgets.bradfordFactor.${bradfordBand(score.value)}`)
 })
 
-const alertLevel = computed(() => {
-  if (score.value <= 50) return 'normal'
-  if (score.value <= 200) return 'warning'
-  if (score.value <= 400) return 'orange'
-  return 'error'
-})
+const alertLevel = computed(() => bradfordAlertLevel(score.value))
 
-const chipColor = computed(() => {
-  if (score.value <= 50) return 'success'
-  if (score.value <= 200) return 'warning'
-  if (score.value <= 400) return 'orange'
-  return 'error'
-})
+const chipColor = computed(() => bradfordChipColor(score.value))
 
 const progressColor = computed(() => {
   if (score.value <= 50) return 'success'
@@ -258,16 +250,22 @@ const fetchData = async () => {
 
   try {
     // Try to fetch Bradford Factor from API
-    const response = await api.get('/kpi/bradford-factor', {
-      params: {
-        employee_id: props.employeeId,
-        start_date: props.startDate,
-        end_date: props.endDate
-      }
-    })
+    // `/attendance/kpi/bradford-factor/{employee_id}` — employee_id is a PATH
+    // segment. This used to post to `/kpi/bradford-factor` with employee_id as
+    // a query param: no such route exists (the only /api/kpi routers serve
+    // availability and wip-aging), so every call 404'd into the catch below
+    // and the widget silently showed a locally recomputed score instead of the
+    // server's.
+    const response = await api.get(
+      `/attendance/kpi/bradford-factor/${props.employeeId}`,
+      { params: { start_date: props.startDate, end_date: props.endDate } }
+    )
 
     if (response.data) {
       score.value = response.data.bradford_score || response.data.score || 0
+      // The server also classifies the score. Prefer its wording over the
+      // local thresholds below, which are only a fallback for the offline path.
+      apiInterpretation.value = response.data.interpretation ?? null
       spells.value = response.data.spells || response.data.absence_spells || 0
       totalDays.value = response.data.total_days || response.data.absence_days || 0
     }
