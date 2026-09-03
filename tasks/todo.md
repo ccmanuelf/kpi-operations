@@ -1,5 +1,22 @@
 # Tasks
 
+## WORKING ORDER (agreed 2026-09-03)
+
+1. ~~cross-tenant attendance fix~~ — DONE, see below
+2. full e2e browser validation
+3. `_get_calendar_data` divides by the shift count twice
+4. custom-reports capability — propose from the structure and features the
+   system ACTUALLY has. Explicitly NOT an attempt to reproduce the legacy
+   Excel, which no longer relates to what the product does.
+5. issue #278 — a catalog assumption that can never take effect
+6. the lower-value findings below
+7. unauthenticated SMTP — **DEFERRED BY DECISION**, not an open task. There is
+   no authorization to enable email notifications, so the connection attempt
+   is unreachable in practice. Revisit only if email is ever turned on; the
+   finding stays recorded below so the deferral is a choice on record rather
+   than an oversight.
+
+
 ## OBSERVATION: `kpi-detail-views.spec.ts` flakes about 1 run in 15
 
 Seen while validating the vite 8 bump: `KPI detail views — smoke mount >
@@ -62,6 +79,34 @@ The seeder deviates `setup_treatment` instead, with the reason recorded beside
 CALCULATION_ASSUMPTIONS so the choice is not reverted. That is a workaround in
 demo data, not a fix.
 
+
+## RESOLVED (2026-09-03) — cross-tenant attendance rows
+
+The guard shipped between the finding and this review: both write paths call
+`_require_employee_belongs_to_client` (crud/attendance.py:181 single, :472
+bulk), and six unit tests in
+tests/test_crud/test_attendance_rejects_cross_tenant_employees.py cover the
+rejection, a same-client employee still being accepted, a MULTI-client
+employee accepted for each of their clients (the comma-split case a `==`
+would have broken), a floating-pool employee not being locked out, and a
+missing employee refused the same way as someone else's.
+
+Two things closed here rather than assumed:
+
+  * `mark_all_present`, the third write path, is clean BY CONSTRUCTION -- it
+    queries employees assigned to the client instead of taking ids from the
+    caller, so it cannot express a cross-tenant row. That was the plan's
+    "check the sibling write paths" bullet.
+  * the defect was originally found over HTTP, and every existing test called
+    the CRUD function directly -- so all of them would still pass if the route
+    stopped going through it. Added
+    `test_bulk_create_refuses_another_clients_employee_over_http`, which
+    asserts the row FAILS and that nothing reaches the table. The endpoint
+    answers 201 whatever its rows did, so the status alone proves nothing.
+    Mutation-proofed: removing the guard makes it report
+    `successful: 1` with a created id, reproducing the original finding.
+
+### (original finding)
 
 ## NEXT: cross-tenant attendance rows (found 2026-08-30, verified)
 

@@ -12,6 +12,7 @@ from fastapi import FastAPI
 
 from backend.database import get_db
 from backend.orm import ClientType
+from backend.orm.attendance_entry import AttendanceEntry
 from backend.routes.attendance import router as attendance_router
 from backend.tests.fixtures.factories import TestDataFactory
 from backend.tests.fixtures.auth_fixtures import create_test_token
@@ -133,6 +134,59 @@ class TestBulkCreateAttendanceRoute:
         assert data["total"] == 3
         assert data["successful"] == 3
         assert data["failed"] == 0
+
+    def test_bulk_create_refuses_another_clients_employee_over_http(self, bulk_setup):
+        """The tenancy guard, asserted where the defect was actually found.
+
+        The original reproduction was an HTTP one: a body naming one client
+        with an employee assigned to another returned 201 and wrote the row.
+        `verify_client_access` passed because it asks whether the CALLER may
+        write for that client, and an admin may write for every client; the
+        foreign keys passed because the mismatch is COMPOSITE -- both ids
+        exist and simply do not belong together.
+
+        The guard itself is unit-tested in
+        tests/test_crud/test_attendance_rejects_cross_tenant_employees.py.
+        This one exists because those tests call the CRUD function directly:
+        they would all still pass if the route stopped going through it. The
+        bug was observed at this layer, so the regression belongs at this
+        layer too.
+        """
+        s = bulk_setup
+        other = TestDataFactory.create_client(
+            db=s["db"],
+            client_id="BULK-RT-OTHER",
+            client_name="Bulk Route Other",
+            client_type=ClientType.HOURLY_RATE,
+        )
+        s["db"].commit()
+        foreign_employee = s["employees"][0]  # assigned to BULK-RT-TEST, not to `other`
+
+        before = s["db"].query(AttendanceEntry).count()
+        response = s["test_client"].post(
+            "/api/attendance/bulk",
+            json=[
+                {
+                    "client_id": other.client_id,
+                    "employee_id": foreign_employee.employee_id,
+                    "shift_date": date.today().isoformat(),
+                    "shift_id": s["shift"].shift_id,
+                    "scheduled_hours": "8.0",
+                    "actual_hours": "8.0",
+                    "is_absent": 0,
+                }
+            ],
+            headers=s["admin_headers"],
+        )
+
+        # The endpoint answers 201 whatever its rows did -- it is per-row, not
+        # all-or-nothing -- so the status alone proves nothing here. What
+        # matters is that the row FAILED and that nothing was written.
+        assert response.status_code == 201
+        data = response.json()
+        assert data["successful"] == 0, f"a cross-tenant row was accepted: {data}"
+        assert data["failed"] == 1, data
+        assert s["db"].query(AttendanceEntry).count() == before, "a cross-tenant row reached the table"
 
     def test_bulk_create_auth_required(self, bulk_setup):
         """Test that 401 is returned without authentication."""
