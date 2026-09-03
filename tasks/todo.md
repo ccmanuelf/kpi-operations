@@ -1,5 +1,32 @@
 # Tasks
 
+## OBSERVATION: `kpi-detail-views.spec.ts` flakes about 1 run in 15
+
+Seen while validating the vite 8 bump: `KPI detail views — smoke mount >
+Efficiency.vue mounts without errors` failed once, then passed 14 consecutive
+full-suite runs and 3 of 3 in isolation. I could not reproduce it again to
+capture the assertion error, so the cause is NOT established and nothing has
+been changed.
+
+What is known:
+
+  * the Efficiency case is the only one in that file asserting more than
+    `wrapper.exists()` -- it also checks `.v-container` exists;
+  * `<v-container>` is Efficiency.vue's unconditional root element (line 2),
+    so the obvious "render has not settled yet" explanation does NOT hold;
+  * `smokeMount` awaits the dynamic import but never awaits a tick after
+    `shallowMount`, and `onMounted(() => initialize())` starts async work --
+    a plausible but UNCONFIRMED source of cross-test interference;
+  * the mechanism is bundler-independent, so attributing it to vite 8 is not
+    supported. It was not shown to be pre-existing either: that would need
+    ~15+ full runs on the previous vite to compare fairly, which was not done.
+
+Worth pinning down because docs/CONTRIBUTING.md states zero tolerance for
+flaky tests. The cheap first step is to make the failure reproducible --
+run the file repeatedly under `--sequence.shuffle` or with a fixed seed --
+before changing anything.
+
+
 ## RESOLVED (#277, 2026-09-02) — the dual view showed a zero delta on every client and metric
 
 `aggregate_oee_inputs` sums `downtime_hours`, `setup_time_hours` and
