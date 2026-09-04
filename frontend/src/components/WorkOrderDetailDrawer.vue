@@ -234,7 +234,37 @@
             <div v-if="workOrder.qc_approved && workOrder.qc_approved_date" class="text-caption mt-1">
               {{ t('workOrderDrawer.approvedOn', { date: formatDate(workOrder.qc_approved_date) }) }}
             </div>
+            <div v-if="workOrder.qc_approved && workOrder.qc_approved_by" class="text-caption">
+              {{ t('workOrderDrawer.approvedBy', { user: workOrder.qc_approved_by }) }}
+            </div>
           </v-alert>
+
+          <!-- The gate itself. Without this the panel showed "Pending QC
+               Approval" with nothing to click, and the workflow engine refuses
+               SHIPPED without qc_approved — so SHIPPED was unreachable for
+               every work order in the product. -->
+          <v-btn
+            v-if="canApproveQc"
+            class="mt-3"
+            color="success"
+            variant="flat"
+            size="small"
+            :loading="approvingQc"
+            data-testid="approve-qc"
+            @click="approveQc"
+          >
+            <v-icon start>mdi-check-decagram</v-icon>
+            {{ t('workOrderDrawer.approveQc') }}
+          </v-btn>
+          <!-- Say WHY when it cannot be approved, rather than showing nothing
+               and leaving the user to guess. -->
+          <div
+            v-else-if="!workOrder.qc_approved && qcBlockedReason"
+            class="text-caption mt-2 text-medium-emphasis"
+            data-testid="approve-qc-blocked"
+          >
+            {{ qcBlockedReason }}
+          </div>
 
           <v-alert
             v-if="workOrder.status === 'REJECTED'"
@@ -425,6 +455,52 @@ const reasonOptions = computed(() =>
     value: code,
   })),
 )
+
+// --- QC approval -----------------------------------------------------------
+//
+// POST /api/work-orders/{id}/approve-qc had no caller anywhere in the app, and
+// the workflow engine gates SHIPPED on qc_approved, so no work order could
+// ever reach SHIPPED. The panel above displayed the state and offered nothing.
+
+/** Statuses the endpoint refuses outright (routes/work_orders.py). */
+const QC_CLOSED_STATUSES = ['SHIPPED', 'CLOSED', 'CANCELLED', 'REJECTED']
+
+const approvingQc = ref(false)
+
+const canApproveQc = computed(() => {
+  const wo = props.workOrder
+  if (!wo || wo.qc_approved) return false
+  if (QC_CLOSED_STATUSES.includes(wo.status)) return false
+  // Mirror the server guard (get_current_active_supervisor) so the button is
+  // not offered to someone it would 403.
+  return authStore.isSupervisoryTier
+})
+
+const qcBlockedReason = computed(() => {
+  const wo = props.workOrder
+  if (!wo || wo.qc_approved) return ''
+  if (QC_CLOSED_STATUSES.includes(wo.status)) {
+    return t('workOrderDrawer.qcNotAvailableInStatus', { status: wo.status })
+  }
+  if (!authStore.isSupervisoryTier) return t('workOrderDrawer.qcNeedsAuthority')
+  return ''
+})
+
+const approveQc = async () => {
+  if (!props.workOrder) return
+  approvingQc.value = true
+  try {
+    await api.post(`/work-orders/${props.workOrder.work_order_id}/approve-qc`, {})
+    notificationStore.showSuccess(t('workOrderDrawer.qcApprovedToast'))
+    // The parent reloads and re-passes the work order, which is what flips the
+    // panel and unblocks the SHIPPED transition.
+    emit('update')
+  } catch (error) {
+    notificationStore.showError(error.response?.data?.detail || t('errors.general'))
+  } finally {
+    approvingQc.value = false
+  }
+}
 
 const saveDelayClassification = async () => {
   if (!props.workOrder) return

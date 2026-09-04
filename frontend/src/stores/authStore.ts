@@ -101,8 +101,25 @@ export const useAuthStore = defineStore('auth', {
     isAuthenticated: (state): boolean => !!state.token,
     currentUser: (state): AuthUser | null => state.user,
     isAdmin: (state): boolean => state.user?.role === 'admin',
+    /**
+     * The literal supervisor role, or admin. NARROWER than the backend's
+     * supervisory TIER — see isSupervisoryTier below, which is what guards
+     * like get_current_active_supervisor actually admit. Kept as-is because
+     * its meaning is "is this person a supervisor"; use the tier getter for
+     * "may this person do supervisory things".
+     */
     isSupervisor: (state): boolean =>
       ['admin', 'supervisor'].includes(state.user?.role ?? ''),
+
+    /**
+     * The backend's SUPERVISORY_ROLES (backend/orm/user.py):
+     * admin, poweruser, leader, supervisor — everyone except operator and
+     * viewer. This is the set `get_current_active_supervisor` allows, so a UI
+     * control gated on anything narrower hides an action the server would
+     * have permitted, and anything wider offers one it will refuse with 403.
+     */
+    isSupervisoryTier: (state): boolean =>
+      ['admin', 'poweruser', 'leader', 'supervisor'].includes(state.user?.role ?? ''),
   },
 
   actions: {

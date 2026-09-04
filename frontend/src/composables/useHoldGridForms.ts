@@ -475,6 +475,9 @@ export function useHoldGridForms({
   }
 
   return {
+    // Exposed so the grid can hand the SAME client to the hold-reason
+    // catalog fetch that this composable uses when writing hold rows.
+    activeClientId,
     showConfirmDialog,
     pendingData,
     pendingRows,

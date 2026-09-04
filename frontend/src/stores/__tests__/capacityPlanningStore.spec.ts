@@ -121,6 +121,69 @@ describe('Capacity Planning Store', () => {
   // =========================================================================
   // 1. State Initialization
   // =========================================================================
+  describe('loadKPIActuals — the Load Actuals button', () => {
+    // This action was a no-op stub, so the button opened its period dialog,
+    // called it, and nothing happened: Actual, Variance and Status stayed
+    // empty and the four summary cards stayed at 0. `getKPIVariance` was
+    // written but had no caller anywhere in the app.
+    it('merges the variance report onto the matching tracking rows', async () => {
+      const store = useCapacityPlanningStore()
+      store.clientId = 'DEMO-PIECE'
+      store.worksheets.kpiTracking.data = [
+        { _id: 1, kpi_key: 'efficiency', kpi_name: 'Efficiency', target_value: 85 },
+        { _id: 2, kpi_key: 'oee', kpi_name: 'OEE', target_value: 80 },
+      ]
+      vi.mocked(capacityApi.getKPIVariance).mockResolvedValue([
+        {
+          kpi_key: 'efficiency',
+          kpi_name: 'Efficiency',
+          actual_value: 78,
+          variance_percent: -8.2,
+          is_on_target: false,
+          alert_level: 'warning',
+        },
+      ])
+
+      await store.loadKPIActuals('2026-09')
+
+      const [eff, oee] = store.worksheets.kpiTracking.data
+      expect(eff.actual_value).toBe(78)
+      expect(eff.variance_percent).toBe(-8.2)
+      expect(eff.status).toBe('warning')
+      // A KPI the report did not cover keeps its committed target untouched
+      // rather than being blanked.
+      expect(oee.actual_value).toBeUndefined()
+      expect(oee.target_value).toBe(80)
+    })
+
+    it('matches on kpi_key, not on the display name', async () => {
+      // Names are shown to users and localised; matching on them would break
+      // the first time a KPI is renamed.
+      const store = useCapacityPlanningStore()
+      store.clientId = 'DEMO-PIECE'
+      store.worksheets.kpiTracking.data = [
+        { _id: 1, kpi_key: 'efficiency', kpi_name: 'Renamed In The Grid', target_value: 85 },
+      ]
+      vi.mocked(capacityApi.getKPIVariance).mockResolvedValue([
+        { kpi_key: 'efficiency', kpi_name: 'Efficiency', actual_value: 91, variance_percent: 7, is_on_target: true },
+      ])
+
+      await store.loadKPIActuals()
+
+      expect(store.worksheets.kpiTracking.data[0].actual_value).toBe(91)
+      expect(store.worksheets.kpiTracking.data[0].status).toBe('ON_TARGET')
+    })
+
+    it('does not call the endpoint without a client', async () => {
+      const store = useCapacityPlanningStore()
+      store.clientId = null
+      vi.mocked(capacityApi.getKPIVariance).mockClear()
+
+      expect(await store.loadKPIActuals('2026-09')).toBeNull()
+      expect(capacityApi.getKPIVariance).not.toHaveBeenCalled()
+    })
+  })
+
   describe('State Initialization', () => {
     it('has null clientId on init', () => {
       expect(store.clientId).toBeNull()

@@ -40,4 +40,15 @@ export const createHoldEntry = (data: Payload) => api.post('/holds', data)
 export const updateHoldEntry = (id: Id, data: Payload) => api.put(`/holds/${id}`, data)
 export const deleteHoldEntry = (id: Id) => api.delete(`/holds/${id}`)
 export const getHoldEntries = (params?: Params) => api.get('/holds', { params })
+
+/**
+ * The client's ACTIVE hold reasons.
+ *
+ * Hold creation is gated on this server-side: routes/holds.py rejects any
+ * reason not active in the client's catalog with 422 "Reason X not found in
+ * client catalog". The grid used to offer a hardcoded list instead, which
+ * both omitted real catalog entries and could offer ones a given tenant had
+ * disabled.
+ */
+export { listHoldReasons as getHoldReasonCatalog } from './holdCatalogs'
 export const getActiveHolds = (params?: Params) => api.get('/holds/active', { params })

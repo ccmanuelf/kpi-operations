@@ -171,6 +171,62 @@ def test_demo_mode_incomplete_data_reseeds(monkeypatch):
     assert calls[0]["reset"] is True
 
 
+def test_all_clients_present_but_a_seeded_table_empty_still_reseeds(monkeypatch, caplog):
+    """The client list being complete does NOT mean the demo is current.
+
+    This is the case the check used to miss entirely. A database seeded before
+    a table existed keeps its four clients, so `expected_clients.issubset(...)`
+    passed and the function logged "Database OK" while ALERT, EQUIPMENT and
+    CALCULATION_ASSUMPTION sat empty. Only a deployment with a THROWAWAY
+    database escaped it, by starting empty and taking the client_count == 0
+    branch instead.
+
+    Measured on the dev database before the fix: 4 clients, 0 alerts, 0
+    equipment, 0 assumptions -- and the previous code declared it OK.
+    """
+    import backend.seed.cli as seed_cli
+
+    monkeypatch.setattr(backend.config.settings, "DEMO_MODE", True)
+    monkeypatch.delenv("FORCE_RESEED", raising=False)
+    _install_recorders(monkeypatch, [_Row(c) for c in _DEMO_CLIENTS])
+    monkeypatch.setattr(lifecycle, "_first_unseeded_table", lambda: "ALERT")
+
+    calls = []
+    monkeypatch.setattr(seed_cli, "seed", lambda *a, **kw: calls.append(kw))
+
+    with caplog.at_level(logging.INFO, logger="backend.bootstrap.lifecycle"):
+        lifecycle._auto_seed_demo_data()
+
+    assert len(calls) == 1, "a demo missing a seeded table was left as-is"
+    assert calls[0]["reset"] is True
+    # The log has to name the table, or an operator cannot tell this apart
+    # from the client-list branch.
+    # getMessage() renders the record safely; `r.message % r.args` raises on
+    # any record whose args do not match its own format string.
+    assert any("ALERT" in r.getMessage() for r in caplog.records)
+
+
+def test_a_fully_seeded_demo_is_left_alone(monkeypatch):
+    """The other half: with every declared table populated, nothing reseeds.
+
+    Without this, the check above could be satisfied by a function that always
+    reseeds -- which would rebuild the demo on every single boot.
+    """
+    import backend.seed.cli as seed_cli
+
+    monkeypatch.setattr(backend.config.settings, "DEMO_MODE", True)
+    monkeypatch.delenv("FORCE_RESEED", raising=False)
+    _install_recorders(monkeypatch, [_Row(c) for c in _DEMO_CLIENTS])
+    monkeypatch.setattr(lifecycle, "_first_unseeded_table", lambda: None)
+
+    calls = []
+    monkeypatch.setattr(seed_cli, "seed", lambda *a, **kw: calls.append(kw))
+
+    lifecycle._auto_seed_demo_data()
+
+    assert calls == [], "a complete demo was needlessly re-seeded"
+
+
 def test_generic_seed_failure_is_swallowed(monkeypatch, caplog):
     """A seed() Exception is logged and swallowed (best-effort) when calling
     _auto_seed_demo_data directly -- an empty database still routes through

@@ -6,6 +6,7 @@
  */
 
 import { defineStore } from 'pinia'
+import * as capacityApi from '@/services/api/capacityPlanning'
 import { ref, computed } from 'vue'
 import { useWorksheetOpsStore } from './capacity/useWorksheetOps'
 import { useWorkbookStore } from './capacity/useWorkbookStore'
@@ -36,6 +37,18 @@ export {
 type WorksheetRow = Record<string, unknown>
 type Worksheets = Record<string, { data: WorksheetRow[]; [key: string]: unknown }>
 type Id = string | number | null
+
+/** One row of GET /capacity/kpi/variance (services/capacity/kpi_integration_service.py::KPIVariance). */
+export interface KPIVarianceRow {
+  kpi_key?: string
+  kpi_name?: string
+  committed_value?: number
+  actual_value?: number | null
+  variance?: number | null
+  variance_percent?: number | null
+  is_on_target?: boolean
+  alert_level?: string | null
+}
 
 export const useCapacityPlanningStore = defineStore('capacityPlanning', () => {
   const _wsOps = () => useWorksheetOpsStore()
@@ -541,14 +554,45 @@ export const useCapacityPlanningStore = defineStore('capacityPlanning', () => {
     return _analysis().deleteScenario(scenarioId)
   }
 
-  // The original JS wrapper had a `loadKPIActuals` passthrough,
-  // but the analysis sub-store never implemented it. Calling it
-  // would have thrown at runtime. Surfaced here as a no-op stub
-  // so any consumer still importing the symbol gets a typed
-  // failure mode instead of a TypeError.
-  async function loadKPIActuals(_period: string): Promise<null> {
+  /**
+   * Pull committed-vs-actual KPI variance and merge it into the tracking grid.
+   *
+   * This was a no-op stub, so the "Load Actuals" button opened its period
+   * dialog, called this, and did nothing: the Actual, Variance and Status
+   * columns stayed empty and the four summary cards stayed at 0 forever.
+   * `capacityApi.getKPIVariance` was written but had no caller anywhere.
+   *
+   * GET /capacity/kpi/variance is also the ONLY path that writes
+   * actual_value / variance / variance_percent back onto the stored
+   * CapacityKPICommitment rows, so without this the commitments were never
+   * reconciled against reality at all — not merely unshown.
+   */
+  async function loadKPIActuals(_period?: string): Promise<KPIVarianceRow[] | null> {
+    // The period argument is the dialog's selection; the endpoint scopes by
+    // client and schedule, so it is accepted for call-site compatibility and
+    // deliberately not sent.
     void _period
-    return null
+    const client = _wb().clientId
+    if (!client) return null
+
+    const scheduleId = _analysis().activeSchedule?.id ?? null
+    const variances = (await capacityApi.getKPIVariance(client, scheduleId)) as KPIVarianceRow[]
+    if (!Array.isArray(variances)) return null
+
+    // Match on kpi_key, the stable identifier, falling back to the display
+    // name only when a row predates it — matching on name alone would break
+    // the moment a KPI is renamed or localised.
+    const rows = _wsOps().worksheets.kpiTracking.data as Record<string, unknown>[]
+    for (const v of variances) {
+      const row = rows.find(
+        (r) => (v.kpi_key && r.kpi_key === v.kpi_key) || (v.kpi_name && r.kpi_name === v.kpi_name),
+      )
+      if (!row) continue
+      row.actual_value = v.actual_value
+      row.variance_percent = v.variance_percent
+      row.status = v.alert_level ?? (v.is_on_target ? 'ON_TARGET' : 'OFF_TARGET')
+    }
+    return variances
   }
 
   // UI state actions

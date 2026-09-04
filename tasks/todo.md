@@ -17,7 +17,45 @@
    than an oversight.
 
 
-## OBSERVATION: `kpi-detail-views.spec.ts` flakes about 1 run in 15
+## RESOLVED: `kpi-detail-views.spec.ts` flake — root-caused and fixed 2026-09-04
+
+UPDATE 2026-09-03, second sighting — and it rules something out. The first was
+during the vite 8 work, which made vite 8 a candidate cause. This one happened
+on a branch containing no vite change at all (the part-opportunities import
+fix), so the bundler is not implicated. Still ~1 in 15, still passes in
+isolation, and still not reproducible on demand: six consecutive full runs
+after the failure were all green, so the assertion error remains uncaptured.
+
+RESOLUTION 2026-09-04, fourth and fifth sightings. The rate rose to ~1 run in
+2, which made it measurable at last. It was never state left behind by another
+spec — it was a timeout, and the earlier "assertion error" reading was wrong.
+
+Evidence. Running the full suite with `--testTimeout=30000 --reporter=verbose`
+timed each test in the file:
+
+    Efficiency.vue    7727ms   <-- first dynamic import in the file
+    Performance.vue    406ms
+    Quality.vue        153ms
+    Availability.vue    77ms   (the rest, 77-252ms)
+
+Every view test did `await smokeMount(() => import('@/views/kpi/X.vue'))`, so
+the FIRST one paid the cold transform of the entire dependency graph all 8 KPI
+views share, inside the default 5s per-test timeout. Under full-suite
+contention that exceeds 5s; on an idle machine it squeaks under. That is why it
+never reproduced in isolation — an isolated run has no contention — and why it
+was always Efficiency.vue, the first one.
+
+Fix: static imports, which are hoisted to module load and are NOT billed against
+the per-test timeout. This required also wrapping `apiMock` in `vi.hoisted`,
+since the hoisted `vi.mock` factory closes over it and static imports would
+otherwise evaluate first and hit the TDZ. That is precisely why the file used
+dynamic imports in the first place, and it is what `admin-views.spec.ts` — same
+shape, never flaked — already does.
+
+Result: Efficiency.vue 7727ms -> 124ms under identical full-suite load, now 40x
+inside the timeout rather than 1.5x over it. Four consecutive full runs green,
+against roughly one failure in two beforehand. The race is removed at the
+source, not widened.
 
 Seen while validating the vite 8 bump: `KPI detail views — smoke mount >
 Efficiency.vue mounts without errors` failed once, then passed 14 consecutive

@@ -145,13 +145,6 @@
             variant="outlined"
             show-size
           />
-          <v-checkbox
-            v-model="replaceExisting"
-            :label="$t('csv.replaceExisting')"
-            :hint="$t('csv.replaceExistingHint')"
-            persistent-hint
-            color="warning"
-          />
         </v-card-text>
         <v-card-actions>
           <v-spacer />
@@ -252,7 +245,6 @@ const {
   uploading,
   deleting,
   uploadFile,
-  replaceExisting,
   confirmDelete,
   deletePartOpportunity,
   openUploadDialog,

@@ -1,25 +1,25 @@
 <template>
-  <div class="alert-dashboard">
+  <div class="alert-dashboard" data-testid="alert-dashboard">
     <!-- Summary Header -->
     <div class="alert-summary-header">
       <div class="summary-stats">
-        <div class="stat urgent" v-if="summary.urgent_count > 0">
+        <div class="stat urgent" data-testid="alert-stat-urgent" v-if="summary.urgent_count > 0">
           <span class="count">{{ summary.urgent_count }}</span>
           <span class="label">{{ t('alerts.urgent') }}</span>
         </div>
-        <div class="stat critical" v-if="summary.critical_count > 0">
+        <div class="stat critical" data-testid="alert-stat-critical" v-if="summary.critical_count > 0">
           <span class="count">{{ summary.critical_count }}</span>
           <span class="label">{{ t('alerts.critical') }}</span>
         </div>
-        <div class="stat warning" v-if="summary.by_severity?.warning > 0">
+        <div class="stat warning" data-testid="alert-stat-warning" v-if="summary.by_severity?.warning > 0">
           <span class="count">{{ summary.by_severity.warning }}</span>
           <span class="label">{{ t('alerts.warning') }}</span>
         </div>
-        <div class="stat info" v-if="summary.by_severity?.info > 0">
+        <div class="stat info" data-testid="alert-stat-info" v-if="summary.by_severity?.info > 0">
           <span class="count">{{ summary.by_severity.info }}</span>
           <span class="label">{{ t('alerts.info') }}</span>
         </div>
-        <div class="stat total">
+        <div class="stat total" data-testid="alert-stat-total">
           <span class="count">{{ summary.total_active }}</span>
           <span class="label">{{ t('alerts.totalActive') }}</span>
         </div>
@@ -37,7 +37,7 @@
 
     <!-- Filters -->
     <div class="alert-filters">
-      <select v-model="filters.category" @change="loadAlerts">
+      <select v-model="filters.category" @change="loadAlerts" data-testid="alert-filter-category">
         <option value="">{{ t('alerts.allCategories') }}</option>
         <option value="otd">{{ t('alerts.categoryOtd') }}</option>
         <option value="quality">{{ t('alerts.categoryQuality') }}</option>
@@ -46,14 +46,14 @@
         <option value="attendance">{{ t('alerts.categoryAttendance') }}</option>
         <option value="hold">{{ t('alerts.categoryHold') }}</option>
       </select>
-      <select v-model="filters.severity" @change="loadAlerts">
+      <select v-model="filters.severity" @change="loadAlerts" data-testid="alert-filter-severity">
         <option value="">{{ t('alerts.allSeverities') }}</option>
         <option value="urgent">{{ t('alerts.urgent') }}</option>
         <option value="critical">{{ t('alerts.critical') }}</option>
         <option value="warning">{{ t('alerts.warning') }}</option>
         <option value="info">{{ t('alerts.info') }}</option>
       </select>
-      <select v-model="filters.status" @change="loadAlerts">
+      <select v-model="filters.status" @change="loadAlerts" data-testid="alert-filter-status">
         <option value="active">{{ t('alerts.active') }}</option>
         <option value="acknowledged">{{ t('alerts.acknowledged') }}</option>
         <option value="resolved">{{ t('alerts.resolved') }}</option>
@@ -92,10 +92,10 @@
     </div>
 
     <!-- All Alerts -->
-    <div class="alert-section all-alerts">
+    <div class="alert-section all-alerts" data-testid="alert-section-all">
       <h3>{{ t('alerts.allAlerts') }} ({{ alerts.length }})</h3>
       <div v-if="loading" class="loading">{{ t('alerts.loadingAlerts') }}</div>
-      <div v-else-if="alerts.length === 0" class="no-alerts">
+      <div v-else-if="alerts.length === 0" class="no-alerts" data-testid="alert-empty">
         {{ t('alerts.noAlertsMatching') }}
       </div>
       <div v-else class="alert-list">

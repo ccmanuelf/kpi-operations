@@ -157,7 +157,8 @@
     "reportsExport": "Reports & Export",
     "toggleDarkMode": "Toggle dark mode",
     "darkMode": "Dark mode",
-    "lightMode": "Light mode"
+    "lightMode": "Light mode",
+    "holdCatalogs": "Hold Catalogs"
   },
   "operationsHealth": {
     "productionToday": "Production Today",
@@ -848,7 +849,12 @@
       "onHold": "On Hold",
       "cancelled": "Cancelled",
       "active": "Active",
-      "rejected": "Rejected"
+      "rejected": "Rejected",
+      "received": "Received",
+      "released": "Released",
+      "demoted": "Demoted",
+      "shipped": "Shipped",
+      "closed": "Closed"
     },
     "inProgress": "In Progress",
     "completed": "Completed",
@@ -881,6 +887,14 @@
       "normal": "Normal",
       "medium": "Medium",
       "low": "Low"
+    },
+    "bulk": {
+      "selected": "{count} selected",
+      "moveTo": "Move to status",
+      "apply": "Apply to selected",
+      "done": "Moved {count} work orders.",
+      "partial": "Moved {count}, rejected {failed}.",
+      "failed": "Bulk transition failed."
     }
   },
   "reports": {
@@ -2077,7 +2091,55 @@
         "applyTemplate": "Failed to apply template"
       }
     },
-    "fillRequiredFields": "Fill required fields first"
+    "fillRequiredFields": "Fill required fields first",
+    "holdCatalogs": {
+      "title": "Hold Catalogs",
+      "subtitle": "Per-client hold statuses and reasons. Holds can only use entries that are active here.",
+      "statusesHeading": "Hold Statuses",
+      "reasonsHeading": "Hold Reasons",
+      "addStatus": "Add Status",
+      "addReason": "Add Reason",
+      "statusCode": "Status Code",
+      "reasonCode": "Reason Code",
+      "displayName": "Display Name",
+      "sortOrder": "Sort Order",
+      "seeded": "Seeded",
+      "seedDefaults": "Seed Defaults",
+      "seedResult": "Seeded {statuses} statuses and {reasons} reasons ({skipped} already existed).",
+      "emptyCatalogWarning": "This client has no hold catalog, so every attempt to place a hold will be rejected. Use Seed Defaults to install the standard statuses and reasons.",
+      "configuredCounts": "{statuses} statuses, {reasons} reasons configured",
+      "selectClientToView": "Select a client to view its hold catalogs",
+      "selectClientFirst": "Select a client first",
+      "fillRequiredFields": "Enter a code and a display name before saving",
+      "entryCreated": "Catalog entry created",
+      "entryUpdated": "Catalog entry updated",
+      "entryDeleted": "Catalog entry deleted",
+      "confirmDeleteTitle": "Delete catalog entry",
+      "confirmDeleteBody": "Delete “{code}”? Holds already recorded with it are unaffected, but it can no longer be selected."
+    },
+    "shifts": {
+      "title": "Shifts",
+      "subtitle": "Shift master data. Every production, downtime, attendance, quality and hold entry is stamped with a shift.",
+      "addShift": "Add Shift",
+      "shiftName": "Shift Name",
+      "startTime": "Start Time",
+      "endTime": "End Time",
+      "selectClientFirst": "Select a client first",
+      "selectClientToAdd": "Select a client to add a shift",
+      "fillRequiredFields": "Enter a name and valid start/end times (HH:MM) before saving",
+      "invalidTime": "Times must be HH:MM or HH:MM:SS",
+      "shiftCreated": "Shift created",
+      "shiftUpdated": "Shift updated",
+      "shiftDeleted": "Shift deactivated",
+      "noShiftsWarning": "No shifts are configured. Shift dropdowns on every data-entry screen will be empty until you add one.",
+      "overlapTitle": "This shift overlaps an existing one",
+      "overlapBody": "Overlapping shifts are allowed, but usually indicate a mistake. The proposed times overlap:",
+      "saveAnyway": "Save Anyway",
+      "confirmDeleteTitle": "Deactivate shift",
+      "confirmDeleteBody": "Deactivate “{name}”? Entries already recorded against it are unaffected, but it can no longer be selected — and it will no longer appear on this screen.",
+      "timeRange": "{start} – {end}",
+      "showInactive": "Show inactive"
+    }
   },
   "csv": {
     "importCsv": "Import CSV",
@@ -2101,7 +2163,7 @@
     "rowError": "Row {row}: {error}",
     "upload": "Upload",
     "uploadPartOpportunities": "Upload Part Opportunities CSV",
-    "partOpportunitiesInfo": "Upload a CSV file with part_number and opportunities_per_unit columns to bulk configure part opportunities.",
+    "partOpportunitiesInfo": "Columns: part_number, opportunities_per_unit, part_description, part_category, notes. A part number that already exists is updated; new ones are created.",
     "replaceExisting": "Replace existing entries",
     "replaceExistingHint": "If checked, existing entries for matching part numbers will be updated",
     "importTitle": "CSV Import - {type}",
@@ -2149,7 +2211,11 @@
     "stepPreview": "Preview",
     "stepConfirm": "Confirm",
     "downloadSuccess": "CSV downloaded successfully",
-    "exportFailed": "Export failed: {message}"
+    "exportFailed": "Export failed: {message}",
+    "selectClientFirst": "Select a client before importing — every part is scoped to one.",
+    "noValidRows": "No importable rows: each needs a part_number and a whole-number opportunities_per_unit.",
+    "partialSuccess": "Imported {count}, rejected {failed}.",
+    "skippedInvalidRows": "{skipped} row(s) were skipped as invalid."
   },
   "validation": {
     "required": "This field is required",
@@ -3861,9 +3927,9 @@
       "actionRequired": "Action Required",
       "critical": "Critical",
       "lowRiskRange": "0-50: Low Risk",
-      "monitorRange": "51-200: Monitor",
-      "actionRange": "201-400: Action Required",
-      "criticalRange": "400+: Critical",
+      "monitorRange": "51-125: Monitor",
+      "actionRange": "126-250: Action Required",
+      "criticalRange": "250+: Critical",
       "lowThreshold": "Low <50",
       "medThreshold": "Med 50-200",
       "highThreshold": "High >200",
@@ -3993,7 +4059,12 @@
     "putOnHold": "Put On Hold",
     "resume": "Resume",
     "markComplete": "Mark Complete",
-    "noWorkOrderSelected": "No work order selected"
+    "noWorkOrderSelected": "No work order selected",
+    "approveQc": "Approve QC",
+    "approvedBy": "Approved by {user}",
+    "qcApprovedToast": "QC approved. This work order can now be shipped.",
+    "qcNotAvailableInStatus": "QC cannot be approved while the order is {status}.",
+    "qcNeedsAuthority": "QC approval requires a supervisory role."
   },
   "attendanceKpis": {
     "phaseTitle": "Phase 3: Attendance KPIs",

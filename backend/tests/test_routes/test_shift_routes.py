@@ -189,6 +189,71 @@ class TestShiftListEndpoint:
 # ============================================================================
 # TestShiftListEndpointScopeMatrix (ISSUE-002/013)
 # ============================================================================
+class TestShiftListIncludeInactive:
+    """DELETE is a soft delete, so without include_inactive the admin screen
+    could switch a shift off and never see it again to switch it back on --
+    a one-way toggle that looks reversible, since PUT accepts is_active."""
+
+    def test_deactivated_shift_is_hidden_by_default(self, supervisor_client):
+        client, db = supervisor_client
+        shift = _create_shift(db, "Retired")
+        client.delete(f"/api/shifts/{shift.shift_id}")
+
+        response = client.get("/api/shifts/", params={"client_id": CLIENT_ID})
+
+        assert response.status_code == 200
+        assert [s["shift_name"] for s in response.json()] == []
+
+    def test_include_inactive_returns_the_deactivated_shift(self, supervisor_client):
+        client, db = supervisor_client
+        shift = _create_shift(db, "Retired")
+        client.delete(f"/api/shifts/{shift.shift_id}")
+
+        response = client.get(
+            "/api/shifts/",
+            params={"client_id": CLIENT_ID, "include_inactive": True},
+        )
+
+        assert response.status_code == 200
+        rows = response.json()
+        assert [s["shift_name"] for s in rows] == ["Retired"]
+        assert rows[0]["is_active"] is False
+
+    def test_a_deactivated_shift_can_then_be_reactivated(self, supervisor_client):
+        """The whole point of the flag: the row is reachable again, and PUT
+        turns it back on."""
+        client, db = supervisor_client
+        shift = _create_shift(db, "Retired")
+        client.delete(f"/api/shifts/{shift.shift_id}")
+
+        listed = client.get(
+            "/api/shifts/",
+            params={"client_id": CLIENT_ID, "include_inactive": True},
+        ).json()
+        response = client.put(
+            f"/api/shifts/{listed[0]['shift_id']}",
+            json={"is_active": True},
+        )
+
+        assert response.status_code == 200
+        assert response.json()["data"]["is_active"] is True
+        # And it is back in the default, active-only listing.
+        active = client.get("/api/shifts/", params={"client_id": CLIENT_ID}).json()
+        assert [s["shift_name"] for s in active] == ["Retired"]
+
+    def test_include_inactive_still_returns_active_shifts(self, supervisor_client):
+        client, db = supervisor_client
+        _create_shift(db, "Working")
+
+        response = client.get(
+            "/api/shifts/",
+            params={"client_id": CLIENT_ID, "include_inactive": True},
+        )
+
+        assert response.status_code == 200
+        assert [s["shift_name"] for s in response.json()] == ["Working"]
+
+
 class TestShiftListEndpointScopeMatrix:
     """Per-role client-scope matrix for GET /api/shifts/.
 

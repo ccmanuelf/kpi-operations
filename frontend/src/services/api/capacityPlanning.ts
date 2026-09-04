@@ -1,6 +1,10 @@
 import api from './client'
 
-type Id = number
+// Client ids are STRINGS ('DEMO-PIECE'); schedule/scenario ids are numbers.
+// This alias covered both and was declared number-only, so every clientId
+// parameter in this module was mistyped — 56 of them — and callers passing a
+// real client id had to cast around it.
+type Id = string | number
 type Payload = Record<string, unknown>
 type Params = Record<string, unknown>
 
