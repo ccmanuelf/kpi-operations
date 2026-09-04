@@ -4009,7 +4009,12 @@
     "putOnHold": "Poner en Espera",
     "resume": "Reanudar",
     "markComplete": "Marcar Completa",
-    "noWorkOrderSelected": "Sin orden de trabajo seleccionada"
+    "noWorkOrderSelected": "Sin orden de trabajo seleccionada",
+    "approveQc": "Aprobar CC",
+    "approvedBy": "Aprobado por {user}",
+    "qcApprovedToast": "CC aprobado. Esta orden ya puede enviarse.",
+    "qcNotAvailableInStatus": "No se puede aprobar CC mientras la orden está {status}.",
+    "qcNeedsAuthority": "La aprobación de CC requiere un rol supervisor."
   },
   "attendanceKpis": {
     "phaseTitle": "Fase 3: KPIs de Asistencia",

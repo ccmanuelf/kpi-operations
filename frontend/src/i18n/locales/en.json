@@ -4009,7 +4009,12 @@
     "putOnHold": "Put On Hold",
     "resume": "Resume",
     "markComplete": "Mark Complete",
-    "noWorkOrderSelected": "No work order selected"
+    "noWorkOrderSelected": "No work order selected",
+    "approveQc": "Approve QC",
+    "approvedBy": "Approved by {user}",
+    "qcApprovedToast": "QC approved. This work order can now be shipped.",
+    "qcNotAvailableInStatus": "QC cannot be approved while the order is {status}.",
+    "qcNeedsAuthority": "QC approval requires a supervisory role."
   },
   "attendanceKpis": {
     "phaseTitle": "Phase 3: Attendance KPIs",
