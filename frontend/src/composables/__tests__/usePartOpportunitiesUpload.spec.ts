@@ -1,5 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import * as Papa from 'papaparse'
+import {
+  csvRowsToOpportunities,
+  parsePositiveInt,
+} from '../usePartOpportunitiesForms'
 
 /**
  * The CSV import path for part opportunities.
@@ -16,19 +20,14 @@ const post = vi.fn()
 vi.mock('@/services/api', () => ({ default: { post: (...a: unknown[]) => post(...a) } }))
 vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (k: string) => k }) }))
 
-/** The mapping under test, mirroring the composable's parse step. */
+/**
+ * Drives the SHIPPED mapping. This helper used to re-implement it and assert
+ * against its own copy — which could not catch a change in the composable, and
+ * had in fact drifted from it.
+ */
 function rowsFromCsv(text: string, clientId: string) {
   const parsed = Papa.parse<Record<string, string>>(text, { header: true, skipEmptyLines: true })
-  return parsed.data
-    .map((row) => ({
-      part_number: (row.part_number ?? '').trim(),
-      client_id_fk: clientId,
-      opportunities_per_unit: Number.parseInt(row.opportunities_per_unit ?? '', 10),
-      part_description: row.part_description?.trim() || null,
-      part_category: (row.part_category ?? row.complexity)?.trim() || null,
-      notes: row.notes?.trim() || null,
-    }))
-    .filter((o) => o.part_number && Number.isFinite(o.opportunities_per_unit))
+  return csvRowsToOpportunities(parsed.data, clientId)
 }
 
 describe('part-opportunities CSV → bulk-import rows', () => {
@@ -76,5 +75,34 @@ describe('part-opportunities CSV → bulk-import rows', () => {
     const [row] = rowsFromCsv(csv, 'C')
     expect(row.part_description).toBeNull()
     expect(row.notes).toBeNull()
+  })
+})
+
+// Found by the adversarial cross-model review: the mapping used
+// Number.parseInt, which does not reject — it truncates and coerces.
+describe('parsePositiveInt rejects rather than coerces', () => {
+  it.each([
+    ['5.9', 'truncating to 5 would import a different number than the file says'],
+    ['12abc', 'parseInt stops at the letters and yields 12'],
+    ['1e2', 'parseInt yields 1, not 100'],
+    ['0', 'the column requires > 0'],
+    ['-3', 'negative counts are not opportunities'],
+    ['', 'blank'],
+    ['  ', 'whitespace'],
+  ])('rejects %s (%s)', (input) => {
+    expect(parsePositiveInt(input)).toBeNull()
+  })
+
+  it.each([
+    ['15', 15],
+    [' 7 ', 7],
+    ['100', 100],
+  ])('accepts %s as %i', (input, expected) => {
+    expect(parsePositiveInt(input)).toBe(expected)
+  })
+
+  it('drops a fractional count instead of silently importing its floor', () => {
+    const csv = 'part_number,opportunities_per_unit\nP-9,5.9'
+    expect(rowsFromCsv(csv, 'C')).toEqual([])
   })
 })

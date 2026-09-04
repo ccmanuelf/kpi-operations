@@ -2213,7 +2213,8 @@
     "exportFailed": "Error de exportación: {message}",
     "selectClientFirst": "Seleccione un cliente antes de importar — cada parte pertenece a uno.",
     "noValidRows": "No hay filas importables: cada una necesita part_number y un opportunities_per_unit entero.",
-    "partialSuccess": "Importadas {count}, rechazadas {failed}."
+    "partialSuccess": "Importadas {count}, rechazadas {failed}.",
+    "skippedInvalidRows": "Se omitieron {skipped} fila(s) inválidas."
   },
   "validation": {
     "required": "Este campo es requerido",

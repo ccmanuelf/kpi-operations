@@ -41,6 +41,62 @@ export function bradfordAlertLevel(score: number): 'normal' | 'warning' | 'orang
   return 'error'
 }
 
+/** Text colour class for a band. */
+export function bradfordTextClass(
+  score: number,
+): 'text-success' | 'text-warning' | 'text-orange' | 'text-error' {
+  const band = bradfordBand(score)
+  if (band === 'lowRisk') return 'text-success'
+  if (band === 'monitor') return 'text-warning'
+  if (band === 'actionRequired') return 'text-orange'
+  return 'text-error'
+}
+
+/**
+ * Card tint, or undefined below the action threshold.
+ *
+ * Only the two escalated bands tint the card — matching the original
+ * intent, which drew nothing for low risk and monitor.
+ */
+export function bradfordCardBackground(score: number): string | undefined {
+  const band = bradfordBand(score)
+  if (band === 'critical') return 'error-lighten-5'
+  if (band === 'actionRequired') return 'orange-lighten-5'
+  return undefined
+}
+
+/**
+ * The escalation banner's tri-state.
+ *
+ * The banner collapses the four bands into three: critical, high (the
+ * action-required band), and elevated (everything below). Its type, icon,
+ * title and message all key off this one function so they cannot drift.
+ */
+export type BradfordEscalation = 'critical' | 'high' | 'elevated'
+
+export function bradfordEscalation(score: number): BradfordEscalation {
+  const band = bradfordBand(score)
+  if (band === 'critical') return 'critical'
+  if (band === 'actionRequired') return 'high'
+  return 'elevated'
+}
+
+/** v-alert type for the escalation banner. */
+export function bradfordAlertType(score: number): 'info' | 'warning' | 'error' {
+  const level = bradfordEscalation(score)
+  if (level === 'critical') return 'error'
+  if (level === 'high') return 'warning'
+  return 'info'
+}
+
+/** Icon for the escalation banner. */
+export function bradfordAlertIcon(score: number): string {
+  const level = bradfordEscalation(score)
+  if (level === 'critical') return 'mdi-alert-octagon'
+  if (level === 'high') return 'mdi-alert'
+  return 'mdi-information'
+}
+
 /** Chip colour for a band. */
 export function bradfordChipColor(score: number): 'success' | 'warning' | 'orange' | 'error' {
   const band = bradfordBand(score)

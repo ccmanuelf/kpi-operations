@@ -49,6 +49,54 @@ const DEFAULT_FORM_DATA = (): PartOpportunityFormData => ({
   is_active: true,
 })
 
+/**
+ * A whole positive integer, or null.
+ *
+ * NOT `Number.parseInt`, which silently truncates and coerces: it turns "5.9"
+ * into 5, "12abc" into 12 and "1e2" into 1 — corrupting an import that then
+ * SUCCEEDS. It also yields 0 and -3, which pass `Number.isFinite` and only
+ * fail server-side, where the column requires > 0.
+ */
+export const parsePositiveInt = (raw: string | undefined): number | null => {
+  const text = (raw ?? '').trim()
+  if (!/^\d+$/.test(text)) return null
+  const value = Number(text)
+  return value > 0 ? value : null
+}
+
+export interface BulkImportRow {
+  part_number: string
+  client_id_fk: string
+  opportunities_per_unit: number
+  part_description: string | null
+  part_category: string | null
+  notes: string | null
+}
+
+/**
+ * Parsed CSV rows -> the bulk-import payload, keeping only rows the endpoint
+ * would accept.
+ *
+ * Exported so its tests exercise THIS function. The spec used to re-implement
+ * the mapping and assert against its own copy, which cannot catch a change
+ * here — and had already drifted from it.
+ */
+export const csvRowsToOpportunities = (
+  rows: Record<string, string>[],
+  clientId: string,
+): BulkImportRow[] =>
+  rows
+    .map((row) => ({
+      part_number: (row.part_number ?? '').trim(),
+      client_id_fk: clientId,
+      opportunities_per_unit: parsePositiveInt(row.opportunities_per_unit),
+      part_description: row.part_description?.trim() || null,
+      // `complexity` is what older templates emitted for this column.
+      part_category: (row.part_category ?? row.complexity)?.trim() || null,
+      notes: row.notes?.trim() || null,
+    }))
+    .filter((o): o is BulkImportRow => Boolean(o.part_number) && o.opportunities_per_unit !== null)
+
 export function usePartOpportunitiesForms(
   selectedClient: Ref<string | number | null>,
   loadPartOpportunities: () => Promise<void>,
@@ -183,19 +231,12 @@ export function usePartOpportunitiesForms(
         skipEmptyLines: true,
       })
 
-      const opportunities = parsed.data
-        .map((row) => ({
-          part_number: (row.part_number ?? '').trim(),
-          client_id_fk: String(selectedClient.value),
-          // Required and must be > 0 server-side; NaN would be rejected row by
-          // row with a less obvious message than the count below.
-          opportunities_per_unit: Number.parseInt(row.opportunities_per_unit ?? '', 10),
-          part_description: row.part_description?.trim() || null,
-          // `complexity` is what older templates emitted for this column.
-          part_category: (row.part_category ?? row.complexity)?.trim() || null,
-          notes: row.notes?.trim() || null,
-        }))
-        .filter((o) => o.part_number && Number.isFinite(o.opportunities_per_unit))
+      const opportunities = csvRowsToOpportunities(parsed.data, String(selectedClient.value))
+
+      // Rows dropped here never reach the server, so they are absent from its
+      // failure_count. Reporting only what the server saw would tell the user
+      // "70 imported" about a 100-row file and never mention the other 30.
+      const skipped = parsed.data.length - opportunities.length
 
       if (opportunities.length === 0) {
         showSnackbar(t('csv.noValidRows'), 'error')
@@ -205,11 +246,16 @@ export function usePartOpportunitiesForms(
       const res = await api.post('/part-opportunities/bulk-import', { opportunities })
       const { success_count: created = 0, failure_count: failed = 0, errors = [] } = res.data ?? {}
 
-      if (failed > 0) {
+      const skippedNote = skipped > 0 ? ` ${t('csv.skippedInvalidRows', { skipped })}` : ''
+
+      if (failed > 0 || skipped > 0) {
         // Report the partial outcome rather than a bare success: the endpoint
-        // imports row by row and returns what it could not take.
+        // imports row by row and returns what it could not take, and rows we
+        // rejected locally never reached it at all.
         showSnackbar(
-          t('csv.partialSuccess', { count: created, failed }) + (errors[0] ? ` — ${errors[0]}` : ''),
+          t('csv.partialSuccess', { count: created, failed }) +
+            skippedNote +
+            (errors[0] ? ` — ${errors[0]}` : ''),
           'warning'
         )
       } else {

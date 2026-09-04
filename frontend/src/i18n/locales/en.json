@@ -2213,7 +2213,8 @@
     "exportFailed": "Export failed: {message}",
     "selectClientFirst": "Select a client before importing — every part is scoped to one.",
     "noValidRows": "No importable rows: each needs a part_number and a whole-number opportunities_per_unit.",
-    "partialSuccess": "Imported {count}, rejected {failed}."
+    "partialSuccess": "Imported {count}, rejected {failed}.",
+    "skippedInvalidRows": "{skipped} row(s) were skipped as invalid."
   },
   "validation": {
     "required": "This field is required",

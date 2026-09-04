@@ -5,6 +5,11 @@ import {
   bradfordBand,
   bradfordAlertLevel,
   bradfordChipColor,
+  bradfordTextClass,
+  bradfordCardBackground,
+  bradfordAlertType,
+  bradfordAlertIcon,
+  bradfordEscalation,
   MEDIUM_RISK_ABOVE,
   HIGH_RISK_ABOVE,
   CRITICAL_ABOVE,
@@ -57,5 +62,46 @@ describe('Bradford Factor risk banding', () => {
     expect(bands).toContain(`if score > ${CRITICAL_ABOVE}:`)
     expect(bands).toContain(`elif score > ${HIGH_RISK_ABOVE}:`)
     expect(bands).toContain(`elif score > ${MEDIUM_RISK_ABOVE}:`)
+  })
+})
+
+// Found by the adversarial cross-model review: three computeds moved to the
+// server's bands and four did not, so one score was coloured two ways in the
+// same widget — 150 was an orange chip on a warning bar, 300 an error chip on
+// an orange bar. Both disagreements under-reported, the costly direction.
+describe('every band-derived helper uses the SAME boundaries', () => {
+  const helpers = [
+    bradfordAlertLevel,
+    bradfordChipColor,
+    bradfordTextClass,
+    bradfordAlertType,
+    bradfordAlertIcon,
+    bradfordEscalation,
+  ]
+
+  // Two-sided: each helper must give the SAME answer everywhere inside a band
+  // and a DIFFERENT one across the boundary. The scores are picked to sit in
+  // the gap between the server's bands and the stale 50/200/400 copy, so a
+  // helper left on the old numbers groups 150 with 100, or 300 with 200, and
+  // fails the second assertion.
+  it.each([
+    [150, 200, 100, 'actionRequired', 'above HIGH_RISK_ABOVE, below the old 200'],
+    [300, 500, 200, 'critical', 'above CRITICAL_ABOVE, below the old 400'],
+  ])('classifies %i consistently (%s)', (score, sameBand, otherBand, expectedBand) => {
+    expect(bradfordBand(score)).toBe(expectedBand)
+    expect(bradfordBand(sameBand)).toBe(expectedBand)
+    expect(bradfordBand(otherBand)).not.toBe(expectedBand)
+
+    for (const fn of helpers) {
+      expect(fn(score), `${fn.name} disagrees within the band`).toBe(fn(sameBand))
+      expect(fn(score), `${fn.name} does not separate the bands`).not.toBe(fn(otherBand))
+    }
+  })
+
+  it('tints the card only from the action band up', () => {
+    expect(bradfordCardBackground(10)).toBeUndefined()
+    expect(bradfordCardBackground(100)).toBeUndefined()
+    expect(bradfordCardBackground(150)).toBe('orange-lighten-5')
+    expect(bradfordCardBackground(300)).toBe('error-lighten-5')
   })
 })

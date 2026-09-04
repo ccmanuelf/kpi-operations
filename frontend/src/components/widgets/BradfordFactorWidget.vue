@@ -148,7 +148,16 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { bradfordBand, bradfordAlertLevel, bradfordChipColor } from '@/composables/useBradfordRisk'
+import {
+  bradfordBand,
+  bradfordAlertLevel,
+  bradfordChipColor,
+  bradfordTextClass,
+  bradfordCardBackground,
+  bradfordAlertType,
+  bradfordAlertIcon,
+  bradfordEscalation,
+} from '@/composables/useBradfordRisk'
 import api from '@/services/api'
 
 const { t } = useI18n()
@@ -189,53 +198,25 @@ const alertLevel = computed(() => bradfordAlertLevel(score.value))
 
 const chipColor = computed(() => bradfordChipColor(score.value))
 
-const progressColor = computed(() => {
-  if (score.value <= 50) return 'success'
-  if (score.value <= 200) return 'warning'
-  if (score.value <= 400) return 'orange'
-  return 'error'
-})
+const progressColor = computed(() => bradfordChipColor(score.value))
 
-const scoreTextColor = computed(() => {
-  if (score.value <= 50) return 'text-success'
-  if (score.value <= 200) return 'text-warning'
-  if (score.value <= 400) return 'text-orange'
-  return 'text-error'
-})
+const scoreTextColor = computed(() => bradfordTextClass(score.value))
 
-const cardBackgroundColor = computed(() => {
-  if (score.value > 400) return 'error-lighten-5'
-  if (score.value > 200) return 'orange-lighten-5'
-  return undefined
-})
+const cardBackgroundColor = computed(() => bradfordCardBackground(score.value))
 
-const alertType = computed((): 'warning' | 'error' | 'info' => {
-  if (score.value > 400) return 'error'
-  if (score.value > 200) return 'warning'
-  return 'info'
-})
+const alertType = computed((): 'warning' | 'error' | 'info' => bradfordAlertType(score.value))
 
-const alertIcon = computed(() => {
-  if (score.value > 400) return 'mdi-alert-octagon'
-  if (score.value > 200) return 'mdi-alert'
-  return 'mdi-information'
-})
+const alertIcon = computed(() => bradfordAlertIcon(score.value))
 
-const alertTitle = computed(() => {
-  if (score.value > 400) return t('widgets.bradfordFactor.criticalTitle')
-  if (score.value > 200) return t('widgets.bradfordFactor.highTitle')
-  return t('widgets.bradfordFactor.elevatedTitle')
-})
+// `criticalTitle` / `highTitle` / `elevatedTitle` and the matching *Message
+// keys are named for the escalation levels, so the level indexes them directly.
+const alertTitle = computed(() =>
+  t(`widgets.bradfordFactor.${bradfordEscalation(score.value)}Title`),
+)
 
-const alertMessage = computed(() => {
-  if (score.value > 400) {
-    return t('widgets.bradfordFactor.criticalMessage')
-  }
-  if (score.value > 200) {
-    return t('widgets.bradfordFactor.highMessage')
-  }
-  return t('widgets.bradfordFactor.elevatedMessage')
-})
+const alertMessage = computed(() =>
+  t(`widgets.bradfordFactor.${bradfordEscalation(score.value)}Message`),
+)
 
 const dateRangeLabel = computed(() => {
   if (props.dateRange) return t('widgets.bradfordFactor.lastMonths', { range: props.dateRange })
