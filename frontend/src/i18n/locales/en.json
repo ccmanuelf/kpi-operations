@@ -157,7 +157,8 @@
     "reportsExport": "Reports & Export",
     "toggleDarkMode": "Toggle dark mode",
     "darkMode": "Dark mode",
-    "lightMode": "Light mode"
+    "lightMode": "Light mode",
+    "holdCatalogs": "Hold Catalogs"
   },
   "operationsHealth": {
     "productionToday": "Production Today",
@@ -2090,7 +2091,32 @@
         "applyTemplate": "Failed to apply template"
       }
     },
-    "fillRequiredFields": "Fill required fields first"
+    "fillRequiredFields": "Fill required fields first",
+    "holdCatalogs": {
+      "title": "Hold Catalogs",
+      "subtitle": "Per-client hold statuses and reasons. Holds can only use entries that are active here.",
+      "statusesHeading": "Hold Statuses",
+      "reasonsHeading": "Hold Reasons",
+      "addStatus": "Add Status",
+      "addReason": "Add Reason",
+      "statusCode": "Status Code",
+      "reasonCode": "Reason Code",
+      "displayName": "Display Name",
+      "sortOrder": "Sort Order",
+      "seeded": "Seeded",
+      "seedDefaults": "Seed Defaults",
+      "seedResult": "Seeded {statuses} statuses and {reasons} reasons ({skipped} already existed).",
+      "emptyCatalogWarning": "This client has no hold catalog, so every attempt to place a hold will be rejected. Use Seed Defaults to install the standard statuses and reasons.",
+      "configuredCounts": "{statuses} statuses, {reasons} reasons configured",
+      "selectClientToView": "Select a client to view its hold catalogs",
+      "selectClientFirst": "Select a client first",
+      "fillRequiredFields": "Enter a code and a display name before saving",
+      "entryCreated": "Catalog entry created",
+      "entryUpdated": "Catalog entry updated",
+      "entryDeleted": "Catalog entry deleted",
+      "confirmDeleteTitle": "Delete catalog entry",
+      "confirmDeleteBody": "Delete “{code}”? Holds already recorded with it are unaffected, but it can no longer be selected."
+    }
   },
   "csv": {
     "importCsv": "Import CSV",

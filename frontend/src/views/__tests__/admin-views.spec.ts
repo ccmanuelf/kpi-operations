@@ -277,6 +277,20 @@ vi.mock('@/composables/useWorkflowConfigForms', () => ({
 }))
 
 // Child components used by admin views — minimal stubs.
+vi.mock('@/services/api/holdCatalogs', () => ({
+  listHoldStatuses: vi.fn(() => Promise.resolve({ data: [] })),
+  listHoldReasons: vi.fn(() => Promise.resolve({ data: [] })),
+  createHoldStatus: vi.fn(() => Promise.resolve({ data: {} })),
+  createHoldReason: vi.fn(() => Promise.resolve({ data: {} })),
+  updateHoldStatus: vi.fn(() => Promise.resolve({ data: {} })),
+  updateHoldReason: vi.fn(() => Promise.resolve({ data: {} })),
+  deleteHoldStatus: vi.fn(() => Promise.resolve({ data: {} })),
+  deleteHoldReason: vi.fn(() => Promise.resolve({ data: {} })),
+  seedHoldCatalogDefaults: vi.fn(() =>
+    Promise.resolve({ data: { statuses_created: 7, reasons_created: 11, skipped: 0 } }),
+  ),
+}))
+
 vi.mock('@/components/grids/AGGridBase.vue', () => ({
   default: { template: '<div class="ag-grid-base-stub"><slot /></div>' },
 }))
@@ -450,6 +464,7 @@ import ClientConfigView from '@/views/admin/ClientConfigView.vue'
 import WorkflowConfigView from '@/views/admin/WorkflowConfigView.vue'
 import WorkflowDesignerView from '@/views/admin/WorkflowDesignerView.vue'
 import DatabaseConfigView from '@/views/admin/DatabaseConfigView.vue'
+import HoldCatalogs from '@/views/admin/HoldCatalogs.vue'
 
 function smokeMount(component: unknown) {
   setActivePinia(createPinia())
@@ -507,6 +522,10 @@ describe('Admin views — smoke mount', () => {
 
   it('WorkflowDesignerView.vue mounts without errors', () => {
     expect(smokeMount(WorkflowDesignerView).exists()).toBe(true)
+  })
+
+  it('HoldCatalogs.vue mounts without errors', () => {
+    expect(smokeMount(HoldCatalogs).exists()).toBe(true)
   })
 
   it('DatabaseConfigView.vue mounts without errors, renders the title, and fetches status', () => {

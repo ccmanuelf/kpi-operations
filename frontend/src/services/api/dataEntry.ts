@@ -50,6 +50,5 @@ export const getHoldEntries = (params?: Params) => api.get('/holds', { params })
  * both omitted real catalog entries and could offer ones a given tenant had
  * disabled.
  */
-export const getHoldReasonCatalog = (clientId: string | number) =>
-  api.get('/hold-catalogs/reasons', { params: { client_id: clientId } })
+export { listHoldReasons as getHoldReasonCatalog } from './holdCatalogs'
 export const getActiveHolds = (params?: Params) => api.get('/holds/active', { params })

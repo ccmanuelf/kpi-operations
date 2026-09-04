@@ -157,7 +157,8 @@
     "reportsExport": "Reportes y Exportación",
     "toggleDarkMode": "Alternar modo oscuro",
     "darkMode": "Modo oscuro",
-    "lightMode": "Modo claro"
+    "lightMode": "Modo claro",
+    "holdCatalogs": "Catálogos de Retención"
   },
   "operationsHealth": {
     "productionToday": "Producción Hoy",
@@ -2090,7 +2091,32 @@
         "applyTemplate": "Error al aplicar plantilla"
       }
     },
-    "fillRequiredFields": "Complete primero los campos requeridos"
+    "fillRequiredFields": "Complete primero los campos requeridos",
+    "holdCatalogs": {
+      "title": "Catálogos de Retención",
+      "subtitle": "Estados y motivos de retención por cliente. Las retenciones solo pueden usar entradas activas aquí.",
+      "statusesHeading": "Estados de Retención",
+      "reasonsHeading": "Motivos de Retención",
+      "addStatus": "Agregar Estado",
+      "addReason": "Agregar Motivo",
+      "statusCode": "Código de Estado",
+      "reasonCode": "Código de Motivo",
+      "displayName": "Nombre Visible",
+      "sortOrder": "Orden",
+      "seeded": "Predeterminado",
+      "seedDefaults": "Cargar Predeterminados",
+      "seedResult": "Se cargaron {statuses} estados y {reasons} motivos ({skipped} ya existían).",
+      "emptyCatalogWarning": "Este cliente no tiene catálogo de retención, por lo que todo intento de registrar una retención será rechazado. Use Cargar Predeterminados para instalar los estados y motivos estándar.",
+      "configuredCounts": "{statuses} estados, {reasons} motivos configurados",
+      "selectClientToView": "Seleccione un cliente para ver sus catálogos de retención",
+      "selectClientFirst": "Seleccione un cliente primero",
+      "fillRequiredFields": "Ingrese un código y un nombre visible antes de guardar",
+      "entryCreated": "Entrada de catálogo creada",
+      "entryUpdated": "Entrada de catálogo actualizada",
+      "entryDeleted": "Entrada de catálogo eliminada",
+      "confirmDeleteTitle": "Eliminar entrada de catálogo",
+      "confirmDeleteBody": "¿Eliminar “{code}”? Las retenciones ya registradas con ella no se ven afectadas, pero dejará de poder seleccionarse."
+    }
   },
   "csv": {
     "importCsv": "Importar CSV",
