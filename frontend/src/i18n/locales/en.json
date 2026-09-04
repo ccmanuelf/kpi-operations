@@ -848,7 +848,12 @@
       "onHold": "On Hold",
       "cancelled": "Cancelled",
       "active": "Active",
-      "rejected": "Rejected"
+      "rejected": "Rejected",
+      "received": "Received",
+      "released": "Released",
+      "demoted": "Demoted",
+      "shipped": "Shipped",
+      "closed": "Closed"
     },
     "inProgress": "In Progress",
     "completed": "Completed",
@@ -881,6 +886,14 @@
       "normal": "Normal",
       "medium": "Medium",
       "low": "Low"
+    },
+    "bulk": {
+      "selected": "{count} selected",
+      "moveTo": "Move to status",
+      "apply": "Apply to selected",
+      "done": "Moved {count} work orders.",
+      "partial": "Moved {count}, rejected {failed}.",
+      "failed": "Bulk transition failed."
     }
   },
   "reports": {

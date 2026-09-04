@@ -848,7 +848,12 @@
       "onHold": "En Espera",
       "cancelled": "Cancelado",
       "active": "Activo",
-      "rejected": "Rechazado"
+      "rejected": "Rechazado",
+      "received": "Recibida",
+      "released": "Liberada",
+      "demoted": "Degradada",
+      "shipped": "Enviada",
+      "closed": "Cerrada"
     },
     "inProgress": "En Progreso",
     "completed": "Completado",
@@ -881,6 +886,14 @@
       "normal": "Normal",
       "medium": "Medio",
       "low": "Bajo"
+    },
+    "bulk": {
+      "selected": "{count} seleccionadas",
+      "moveTo": "Mover a estado",
+      "apply": "Aplicar a seleccionadas",
+      "done": "Se movieron {count} órdenes.",
+      "partial": "Se movieron {count}, rechazadas {failed}.",
+      "failed": "La transición masiva falló."
     }
   },
   "reports": {
