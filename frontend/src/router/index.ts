@@ -244,6 +244,14 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true, requiresAdmin: true },
   },
   {
+    path: '/admin/shifts',
+    name: 'admin-shifts',
+    // Supervisory, matching get_current_active_supervisor on the shift
+    // POST/PUT/DELETE routes.
+    component: () => import('@/views/admin/ShiftsAdmin.vue'),
+    meta: { requiresAuth: true, requiresSupervisory: true },
+  },
+  {
     path: '/admin/hold-catalogs',
     name: 'admin-hold-catalogs',
     component: () => import('@/views/admin/HoldCatalogs.vue'),

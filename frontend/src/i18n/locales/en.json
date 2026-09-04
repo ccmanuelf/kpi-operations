@@ -2116,6 +2116,28 @@
       "entryDeleted": "Catalog entry deleted",
       "confirmDeleteTitle": "Delete catalog entry",
       "confirmDeleteBody": "Delete “{code}”? Holds already recorded with it are unaffected, but it can no longer be selected."
+    },
+    "shifts": {
+      "title": "Shifts",
+      "subtitle": "Shift master data. Every production, downtime, attendance, quality and hold entry is stamped with a shift.",
+      "addShift": "Add Shift",
+      "shiftName": "Shift Name",
+      "startTime": "Start Time",
+      "endTime": "End Time",
+      "selectClientFirst": "Select a client first",
+      "selectClientToAdd": "Select a client to add a shift",
+      "fillRequiredFields": "Enter a name and valid start/end times (HH:MM) before saving",
+      "invalidTime": "Times must be HH:MM or HH:MM:SS",
+      "shiftCreated": "Shift created",
+      "shiftUpdated": "Shift updated",
+      "shiftDeleted": "Shift deactivated",
+      "noShiftsWarning": "No shifts are configured. Shift dropdowns on every data-entry screen will be empty until you add one.",
+      "overlapTitle": "This shift overlaps an existing one",
+      "overlapBody": "Overlapping shifts are allowed, but usually indicate a mistake. The proposed times overlap:",
+      "saveAnyway": "Save Anyway",
+      "confirmDeleteTitle": "Deactivate shift",
+      "confirmDeleteBody": "Deactivate “{name}”? Entries already recorded against it are unaffected, but it can no longer be selected — and it will no longer appear on this screen.",
+      "timeRange": "{start} – {end}"
     }
   },
   "csv": {

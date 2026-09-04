@@ -277,6 +277,16 @@ vi.mock('@/composables/useWorkflowConfigForms', () => ({
 }))
 
 // Child components used by admin views — minimal stubs.
+vi.mock('@/services/api/shifts', () => ({
+  listShifts: vi.fn(() => Promise.resolve({ data: [] })),
+  createShift: vi.fn(() => Promise.resolve({ data: { data: {}, warnings: [] } })),
+  updateShift: vi.fn(() => Promise.resolve({ data: { data: {}, warnings: [] } })),
+  deleteShift: vi.fn(() => Promise.resolve({ data: {} })),
+  checkShiftOverlap: vi.fn(() =>
+    Promise.resolve({ data: { has_overlaps: false, overlaps: [] } }),
+  ),
+}))
+
 vi.mock('@/services/api/holdCatalogs', () => ({
   listHoldStatuses: vi.fn(() => Promise.resolve({ data: [] })),
   listHoldReasons: vi.fn(() => Promise.resolve({ data: [] })),
@@ -465,6 +475,7 @@ import WorkflowConfigView from '@/views/admin/WorkflowConfigView.vue'
 import WorkflowDesignerView from '@/views/admin/WorkflowDesignerView.vue'
 import DatabaseConfigView from '@/views/admin/DatabaseConfigView.vue'
 import HoldCatalogs from '@/views/admin/HoldCatalogs.vue'
+import ShiftsAdmin from '@/views/admin/ShiftsAdmin.vue'
 
 function smokeMount(component: unknown) {
   setActivePinia(createPinia())
@@ -522,6 +533,10 @@ describe('Admin views — smoke mount', () => {
 
   it('WorkflowDesignerView.vue mounts without errors', () => {
     expect(smokeMount(WorkflowDesignerView).exists()).toBe(true)
+  })
+
+  it('ShiftsAdmin.vue mounts without errors', () => {
+    expect(smokeMount(ShiftsAdmin).exists()).toBe(true)
   })
 
   it('HoldCatalogs.vue mounts without errors', () => {

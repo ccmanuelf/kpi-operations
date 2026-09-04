@@ -2116,6 +2116,28 @@
       "entryDeleted": "Entrada de catálogo eliminada",
       "confirmDeleteTitle": "Eliminar entrada de catálogo",
       "confirmDeleteBody": "¿Eliminar “{code}”? Las retenciones ya registradas con ella no se ven afectadas, pero dejará de poder seleccionarse."
+    },
+    "shifts": {
+      "title": "Turnos",
+      "subtitle": "Datos maestros de turnos. Cada registro de producción, paro, asistencia, calidad y retención lleva un turno.",
+      "addShift": "Agregar Turno",
+      "shiftName": "Nombre del Turno",
+      "startTime": "Hora de Inicio",
+      "endTime": "Hora de Fin",
+      "selectClientFirst": "Seleccione un cliente primero",
+      "selectClientToAdd": "Seleccione un cliente para agregar un turno",
+      "fillRequiredFields": "Ingrese un nombre y horas de inicio/fin válidas (HH:MM) antes de guardar",
+      "invalidTime": "Las horas deben tener formato HH:MM o HH:MM:SS",
+      "shiftCreated": "Turno creado",
+      "shiftUpdated": "Turno actualizado",
+      "shiftDeleted": "Turno desactivado",
+      "noShiftsWarning": "No hay turnos configurados. Las listas de turno en todas las pantallas de captura estarán vacías hasta que agregue uno.",
+      "overlapTitle": "Este turno se traslapa con uno existente",
+      "overlapBody": "Los turnos traslapados están permitidos, pero suelen indicar un error. Las horas propuestas se traslapan con:",
+      "saveAnyway": "Guardar de Todos Modos",
+      "confirmDeleteTitle": "Desactivar turno",
+      "confirmDeleteBody": "¿Desactivar “{name}”? Los registros ya capturados con él no se ven afectados, pero dejará de poder seleccionarse y ya no aparecerá en esta pantalla.",
+      "timeRange": "{start} – {end}"
     }
   },
   "csv": {

@@ -52,6 +52,35 @@ IMPACT: supervisor/admin-gated CRUD (get_current_active_supervisor on POST/PUT/D
 
 </details>
 
+### PRODUCT master data has no write path AT ALL — a different and worse class than the rest of this document
+
+**Slice:** masters-admin
+
+**Status:** NEW, found 2026-09-04 while fixing the shift onboarding step. Not a
+"backend can, UI cannot" gap — here NEITHER can, so it does not belong to this
+document's main class and cannot be closed by frontend work alone.
+
+**What exists:** reads only. `backend/routes/reference.py:28` GET /products
+(ProductListEntry) and `backend/routes/export.py:486` GET /export/products.
+`grep -rn "Product(" backend/routes backend/endpoints` finds no constructor —
+there is no POST/PUT/DELETE, no CSV importer, and no products router registered
+in `backend/bootstrap/routers.py`. PRODUCT rows come from the seeder or from
+direct DB access, full stop.
+
+**Why it matters:** `frontend/src/composables/useOnboarding.ts` makes
+`products_added` the SECOND onboarding step, and `backend/routes/onboarding.py:86`
+really computes it (`db.query(Product).filter(...).count() > 0`). So, exactly
+like `shifts_configured` before it was fixed, a new admin is told to add
+products and the product offers no way to do it — except that for shifts the
+backend capability existed and only the screen was missing, whereas here the
+capability itself is absent. The step also pointed (and still points) at
+/admin/settings, which has no product UI.
+
+**Not fixed here, deliberately.** Closing it means designing and building
+PRODUCT CRUD on the backend first — schemas, CRUD layer, role-guarded routes,
+tenancy — which is a product decision, not a UI wiring fix. Flagged for that
+decision rather than silently scaffolded.
+
 ### Operational production line CRUD — create, update, delete lines in the PRODUCTION_LINE table
 
 **Slice:** masters-admin
