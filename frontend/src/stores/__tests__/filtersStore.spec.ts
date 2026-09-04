@@ -21,6 +21,8 @@ vi.mock('@/services/api', () => ({
     applyFilter: vi.fn(),
     setDefaultFilter: vi.fn(),
     clearFilterHistory: vi.fn(),
+    getFilterHistory: vi.fn(),
+    addFilterToHistory: vi.fn(),
     duplicateFilter: vi.fn()
   }
 }))
@@ -331,6 +333,58 @@ describe('Filters Store', () => {
       await store.clearHistory()
 
       expect(store.filterHistory).toEqual([])
+    })
+
+    // Filter history used to live in localStorage only, so it did not follow
+    // the user across sessions or devices even though the server had been
+    // recording it -- and "Clear Filter History" deleted that unseen server
+    // copy, appearing to work while acting on invisible data.
+    it('hydrates history from the server, not just localStorage', async () => {
+      api.getSavedFilters.mockResolvedValue({ data: [] })
+      api.getFilterHistory.mockResolvedValue({
+        data: [{ filter_config: { client_id: 'FROM-SERVER' }, applied_at: '2026-09-04T00:00:00Z' }],
+      })
+
+      const store = useFiltersStore()
+      await store.initializeFilters()
+
+      expect(api.getFilterHistory).toHaveBeenCalled()
+      expect(store.filterHistory).toEqual([
+        { filter_config: { client_id: 'FROM-SERVER' }, applied_at: '2026-09-04T00:00:00Z' },
+      ])
+    })
+
+    it('keeps the local history when the server read FAILS', async () => {
+      api.getFilterHistory.mockRejectedValue(new Error('network down'))
+
+      const store = useFiltersStore()
+      store.filterHistory = [{ filter_config: { client_id: 'LOCAL' } }]
+
+      expect(await store.loadHistoryFromAPI()).toBe(false)
+      expect(store.filterHistory).toEqual([{ filter_config: { client_id: 'LOCAL' } }])
+    })
+
+    // POST /filters/history is documented "use this endpoint when applying
+    // ad-hoc filters that are not saved" and had no caller, so even the
+    // server's copy was incomplete.
+    it('records an applied ad-hoc filter server-side', async () => {
+      api.addFilterToHistory.mockResolvedValue({})
+
+      const store = useFiltersStore()
+      store.addToHistory({ client_id: 'ADHOC' })
+      await Promise.resolve()
+
+      expect(api.addFilterToHistory).toHaveBeenCalledWith({ client_id: 'ADHOC' })
+    })
+
+    it('still records locally even if the server call rejects', async () => {
+      api.addFilterToHistory.mockRejectedValue(new Error('nope'))
+
+      const store = useFiltersStore()
+      store.addToHistory({ client_id: 'ADHOC' })
+      await Promise.resolve()
+
+      expect(store.filterHistory[0].filter_config).toEqual({ client_id: 'ADHOC' })
     })
   })
 

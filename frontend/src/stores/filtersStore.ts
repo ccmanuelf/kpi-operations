@@ -177,10 +177,39 @@ export const useFiltersStore = defineStore('filters', () => {
     return false
   }
 
+  /**
+   * Pull filter history from the server.
+   *
+   * The store used to keep history in localStorage only, so it did not follow
+   * the user across sessions or devices even though the server had been
+   * recording it all along — and the "Clear Filter History" button deleted
+   * that unseen server copy, appearing to work while acting on invisible data.
+   * On failure the localStorage copy is left in place rather than blanked; a
+   * failed read is not evidence of an empty history.
+   */
+  const loadHistoryFromAPI = async (): Promise<boolean> => {
+    if (!authStore.isAuthenticated) return false
+    try {
+      const response = await api.getFilterHistory()
+      if (Array.isArray(response.data)) {
+        filterHistory.value = (response.data as FilterHistoryEntry[]).map((entry) => ({
+          filter_config: entry.filter_config,
+          applied_at: entry.applied_at,
+        }))
+        saveToLocalStorage()
+        return true
+      }
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to load filter history from API:', e)
+    }
+    return false
+  }
+
   const initializeFilters = async (): Promise<void> => {
     loadFromLocalStorage()
     if (authStore.isAuthenticated) {
-      await loadFromAPI()
+      await Promise.all([loadFromAPI(), loadHistoryFromAPI()])
     }
   }
 
@@ -252,6 +281,15 @@ export const useFiltersStore = defineStore('filters', () => {
     }
   }
 
+  const recordHistoryOnServer = async (filterConfig: FilterConfig): Promise<void> => {
+    try {
+      await api.addFilterToHistory(filterConfig)
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to record filter history on API:', e)
+    }
+  }
+
   const addToHistory = (filterConfig: FilterConfig): void => {
     const configString = JSON.stringify(filterConfig)
     filterHistory.value = filterHistory.value.filter(
@@ -268,6 +306,14 @@ export const useFiltersStore = defineStore('filters', () => {
     }
 
     saveToLocalStorage()
+
+    // Best-effort mirror to the server so history survives a browser clear and
+    // follows the user to another machine. Deliberately not awaited: applying
+    // a filter must stay instant, and the local entry above is already the
+    // source of truth for this session. The server trims to 50 itself.
+    if (authStore.isAuthenticated) {
+      void recordHistoryOnServer(filterConfig)
+    }
   }
 
   const applyFilter = async (filter: SavedFilter): Promise<FilterConfig> => {
@@ -435,6 +481,7 @@ export const useFiltersStore = defineStore('filters', () => {
     activeFilter,
     isLoading,
     isSynced,
+    loadHistoryFromAPI,
     filtersByType,
     filterTypeLabels,
     defaultFilters,
