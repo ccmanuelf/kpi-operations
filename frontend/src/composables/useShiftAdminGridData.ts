@@ -124,6 +124,9 @@ export default function useShiftAdminGridData(options: UseShiftAdminGridDataOpti
 
   const saveNewRow = async (row: ShiftRow): Promise<void> => {
     if (!selectedClient.value) return
+    // Re-entrancy guard: the Save button stays clickable through the overlap
+    // dialog and the POST, so a double click would create the shift twice.
+    if (row._isSaving) return
     const start = normalizeTime(row.start_time)
     const end = normalizeTime(row.end_time)
     if (!row.shift_name || !start || !end) {
@@ -150,6 +153,8 @@ export default function useShiftAdminGridData(options: UseShiftAdminGridDataOpti
       reportWarnings(data.warnings)
       invalidateReferenceType('shifts')
       notify.showSuccess(t('admin.shifts.shiftCreated'))
+      // Drop the local draft before reloading; the server copy replaces it.
+      removeNewRow(row)
       await loadShifts()
     } catch (error) {
       notify.showError(errorDetail(error, t('errors.general')))
@@ -161,7 +166,14 @@ export default function useShiftAdminGridData(options: UseShiftAdminGridDataOpti
   const onCellValueChanged = async (event: { data: ShiftRow }): Promise<void> => {
     if (event.data._isNew) return
     if (!event.data.shift_id) return
+    if (event.data._isSaving) return
 
+    // shift_name is min_length=1 server-side; clearing the cell would 422.
+    if (!event.data.shift_name) {
+      notify.showError(t('admin.shifts.fillRequiredFields'))
+      await loadShifts()
+      return
+    }
     const start = normalizeTime(event.data.start_time)
     const end = normalizeTime(event.data.end_time)
     if (!start || !end) {

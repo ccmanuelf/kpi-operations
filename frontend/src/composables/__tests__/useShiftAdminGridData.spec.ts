@@ -201,6 +201,53 @@ describe('write guards', () => {
   })
 })
 
+// Found by the adversarial cross-model review of this branch.
+describe('concurrent-edit safety', () => {
+  it('ignores a second Save while the first is still in flight', async () => {
+    const { grid } = makeGrid()
+    await grid.saveNewRow({ ...validRow(), _isSaving: true })
+    expect(mockShifts.checkShiftOverlap).not.toHaveBeenCalled()
+    expect(mockShifts.createShift).not.toHaveBeenCalled()
+  })
+
+  it('ignores a cell change while that row is already saving', async () => {
+    const { grid } = makeGrid()
+    await grid.onCellValueChanged({
+      data: { shift_id: 1, shift_name: 'A', start_time: '06:00', end_time: '14:00', _isSaving: true },
+    })
+    expect(mockShifts.updateShift).not.toHaveBeenCalled()
+  })
+
+  it('refuses to PUT an emptied shift_name — the column is min_length=1', async () => {
+    const { grid } = makeGrid()
+    await grid.onCellValueChanged({
+      data: { shift_id: 1, shift_name: '', start_time: '06:00', end_time: '14:00' },
+    })
+    expect(mockShifts.updateShift).not.toHaveBeenCalled()
+    expect(notify.showError).toHaveBeenCalled()
+  })
+})
+
+describe('unsaved drafts survive the reload a write triggers', () => {
+  it('keeps other draft rows when the server list is re-read', async () => {
+    mockShifts.listShifts.mockResolvedValue({ data: [{ shift_id: 1, shift_name: 'SAVED' }] })
+    const admin = useShiftAdmin()
+    admin.shifts.value = [{ _isNew: true, shift_name: 'STILL_TYPING' }]
+
+    await admin.loadShifts()
+
+    expect(admin.shifts.value.map((r) => r.shift_name)).toEqual(['STILL_TYPING', 'SAVED'])
+  })
+
+  it('drops the just-saved draft so it is not duplicated by its server copy', async () => {
+    const { grid, shifts } = makeGrid()
+    const row = validRow()
+    shifts.value = [row]
+    await grid.saveNewRow(row)
+    expect(shifts.value).not.toContain(row)
+  })
+})
+
 describe('useShiftAdmin.noShiftsConfigured', () => {
   it('is false after a FAILED read — the onboarding step reports on this state', async () => {
     mockShifts.listShifts.mockRejectedValue(new Error('network down'))

@@ -53,7 +53,10 @@ export function useShiftAdmin() {
     loading.value = true
     try {
       const { data } = await listShifts(selectedClient.value)
-      shifts.value = (data as ShiftRow[]) ?? []
+      // Preserve rows the user is still typing into — every write reloads the
+      // list, and replacing it wholesale would discard other unsaved drafts.
+      const drafts = shifts.value.filter((r) => r._isNew)
+      shifts.value = [...drafts, ...((data as ShiftRow[]) ?? [])]
       loaded.value = true
     } catch (error) {
       shifts.value = []

@@ -100,6 +100,9 @@ export default function useHoldCatalogGridData(
 
   const saveNewRow = async (row: HoldCatalogRow): Promise<void> => {
     if (!selectedClient.value) return
+    // Re-entrancy guard: the Save button stays clickable while the POST is in
+    // flight, and a double click would otherwise create the entry twice.
+    if (row._isSaving) return
     const code = row[field]
     if (!code || !row.display_name) {
       notify.showError(t('admin.holdCatalogs.fillRequiredFields'))
@@ -118,6 +121,9 @@ export default function useHoldCatalogGridData(
         await createHoldReason({ ...payload, reason_code: code })
       }
       notify.showSuccess(t('admin.holdCatalogs.entryCreated'))
+      // Drop the local draft before reloading: the server's copy is about to
+      // replace it, and leaving it would duplicate the row on screen.
+      removeNewRow(row)
       await loadCatalogs()
     } catch (error) {
       notify.showError(errorDetail(error, t('errors.general')))
@@ -130,6 +136,13 @@ export default function useHoldCatalogGridData(
     // New rows: do NOT autosave; the operator clicks Save explicitly.
     if (event.data._isNew) return
     if (!event.data.catalog_id) return
+    if (event.data._isSaving) return
+    // display_name is min_length=1 server-side; clearing the cell would 422.
+    if (!event.data.display_name) {
+      notify.showError(t('admin.holdCatalogs.fillRequiredFields'))
+      await loadCatalogs()
+      return
+    }
 
     event.data._isSaving = true
     try {

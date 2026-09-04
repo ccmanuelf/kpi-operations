@@ -178,6 +178,10 @@ const confirmDelete = (row) => {
 }
 
 const confirmOverlap = (overlaps) => {
+  // Two rows can be saved concurrently. Without this, the second prompt would
+  // overwrite the first's resolver, leaving that save awaiting a promise that
+  // never settles — stuck mid-save with its row flagged saving forever.
+  overlapResolver?.(false)
   overlapList.value = overlaps
   overlapDialog.value = true
   return new Promise((resolve) => {

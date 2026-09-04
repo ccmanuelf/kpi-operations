@@ -10,7 +10,7 @@
  * all. `catalogIsEmpty` exists to drive the empty state that offers
  * `seedDefaults` as the only way out of that dead end.
  */
-import { ref, computed } from 'vue'
+import { ref, computed, type Ref } from 'vue'
 import api from '@/services/api'
 import {
   listHoldStatuses,
@@ -70,6 +70,9 @@ export function useHoldCatalogAdmin() {
     () => loaded.value && statuses.value.length === 0 && reasons.value.length === 0,
   )
 
+  const pendingDrafts = (list: Ref<HoldCatalogRow[]>): HoldCatalogRow[] =>
+    list.value.filter((r) => r._isNew)
+
   const loadClients = async (): Promise<void> => {
     const res = await api.getClients()
     clients.value = (res.data as ClientOption[]) || []
@@ -88,8 +91,11 @@ export function useHoldCatalogAdmin() {
         listHoldStatuses(selectedClient.value),
         listHoldReasons(selectedClient.value),
       ])
-      statuses.value = (statusRes.data as HoldCatalogRow[]) ?? []
-      reasons.value = (reasonRes.data as HoldCatalogRow[]) ?? []
+      // Preserve rows the user is still typing into. Every write reloads the
+      // list, so replacing it wholesale would silently discard any OTHER
+      // unsaved draft rows they had added.
+      statuses.value = [...pendingDrafts(statuses), ...((statusRes.data as HoldCatalogRow[]) ?? [])]
+      reasons.value = [...pendingDrafts(reasons), ...((reasonRes.data as HoldCatalogRow[]) ?? [])]
       loaded.value = true
     } catch (error) {
       statuses.value = []

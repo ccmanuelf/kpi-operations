@@ -145,6 +145,46 @@ describe('useHoldCatalogGridData writes', () => {
   })
 })
 
+// Found by the adversarial cross-model review of this branch.
+describe('concurrent-edit safety', () => {
+  it('ignores a second Save while the first is still in flight', async () => {
+    const { grid } = makeGrid('status')
+    const row: HoldCatalogRow = { _isNew: true, status_code: 'X', display_name: 'X', _isSaving: true }
+    await grid.saveNewRow(row)
+    expect(mockService.createHoldStatus).not.toHaveBeenCalled()
+  })
+
+  it('ignores a cell change while that row is already saving', async () => {
+    const { grid } = makeGrid('status')
+    await grid.onCellValueChanged({
+      data: { catalog_id: 1, display_name: 'X', _isSaving: true },
+    })
+    expect(mockService.updateHoldStatus).not.toHaveBeenCalled()
+  })
+
+  it('refuses to PUT an emptied display_name — the column is min_length=1', async () => {
+    const { grid } = makeGrid('reason')
+    await grid.onCellValueChanged({ data: { catalog_id: 1, display_name: '' } })
+    expect(mockService.updateHoldReason).not.toHaveBeenCalled()
+    expect(notify.showError).toHaveBeenCalled()
+  })
+})
+
+describe('unsaved drafts survive the reload a write triggers', () => {
+  it('keeps other draft rows when the server list is re-read', async () => {
+    mockService.listHoldStatuses.mockResolvedValue({ data: [{ catalog_id: 1, status_code: 'SAVED' }] })
+    mockService.listHoldReasons.mockResolvedValue({ data: [] })
+
+    const admin = useHoldCatalogAdmin()
+    admin.selectedClient.value = 'DEMO-PIECE'
+    admin.statuses.value = [{ _isNew: true, status_code: 'STILL_TYPING' }]
+
+    await admin.loadCatalogs()
+
+    expect(admin.statuses.value.map((r) => r.status_code)).toEqual(['STILL_TYPING', 'SAVED'])
+  })
+})
+
 describe('useHoldCatalogAdmin.catalogIsEmpty', () => {
   it('is false after a FAILED read — a blank screen is not proof of an empty catalog', async () => {
     mockService.listHoldStatuses.mockRejectedValue(new Error('network down'))
