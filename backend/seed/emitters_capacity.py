@@ -249,23 +249,17 @@ def emit_capacity(
     line_count = max(1, profile.lines_per_client)
     total_sam_minutes = sum(float(op[3]) for op in OPERATIONS)
 
-    # Sized against the arithmetic CapacityAnalysisService actually performs,
-    # not against the arithmetic one would expect -- the two differ, and
-    # guessing put utilisation at 15% instead of the intended 78%.
+    # Sized against the capacity the calendar actually declares.
     #
-    # The service derives hours-per-shift as
-    #   avg_hours       = total_hours / total_shifts     (already per shift)
-    #   hours_per_shift = avg_hours / avg_shifts         (per shift AGAIN)
-    # so it divides by the shift count twice and a two-shift day contributes
-    # 3 hours where the calendar declares 12. That halving is mirrored here
-    # deliberately: the seeded schedule has to land at a sensible utilisation
-    # against the number the APP REPORTS. Recorded as a finding in
-    # tasks/todo.md -- correcting the service is a product change that moves
-    # every capacity figure and belongs in its own PR, and this constant is
-    # where the seed would need revisiting when that lands.
+    # This block used to mirror a bug: CapacityAnalysisService divided by the
+    # shift count twice, so a two-shift day contributed 3 hours where the
+    # calendar declared 12, and the seed halved its own arithmetic to match
+    # what the app reported. The service now reconstructs the declared hours
+    # exactly, so the mirror is gone and hours-per-shift is just the declared
+    # day divided by its shifts.
     shifts_per_day = 2
     declared_hours_per_day = 8.0 + 4.0
-    effective_hours_per_shift = (declared_hours_per_day / shifts_per_day) / shifts_per_day
+    effective_hours_per_shift = declared_hours_per_day / shifts_per_day
     operators_per_line = 12
     capacity_hours_per_line_day = shifts_per_day * effective_hours_per_shift * 0.85 * 0.95 * operators_per_line
     units_per_line_day = int(capacity_hours_per_line_day * TARGET_UTILIZATION * 60.0 / total_sam_minutes)

@@ -192,3 +192,66 @@ def test_the_plant_runs_hot_with_a_bottleneck_an_overtime_plan_can_clear(full_db
         # twice and there is nothing to choose between.
         setup_reduction = by_type["SETUP_REDUCTION"]
         assert overtime.capacity_increase_percent != setup_reduction.capacity_increase_percent
+
+
+def test_reported_capacity_equals_the_hours_the_calendar_declares(full_db):
+    """Capacity must reconstruct the calendar, not a fraction of it.
+
+    CapacityAnalysisService divided by the shift count twice, so a two-shift
+    day contributed 3 hours where the calendar declared 12 -- every capacity
+    figure understated by a factor of shifts_per_day for any multi-shift
+    client. Measured on this dataset: 58.1 h per line-day where the calendar
+    declares 116.3.
+
+    Nothing caught it because the existing assertions were `gross_hours > 0`,
+    which a halved figure satisfies. This asserts the exact identity instead,
+    and derives the expectation from the DB rather than from copied constants:
+
+        capacity = declared_hours * efficiency * (1 - absenteeism) * operators
+
+    The seed sized its demand from the same calendar, so a drift here is also
+    what would silently push the demo's utilisation off its intended mark.
+    """
+    from decimal import Decimal
+
+    from sqlalchemy.orm import Session
+
+    from backend.services.capacity.analysis_service import CapacityAnalysisService
+
+    with full_db.begin() as conn:
+        client_id, period_start, period_end = conn.execute(
+            text(
+                "SELECT client_id, MIN(scheduled_date), MAX(scheduled_date) "
+                "FROM capacity_schedule_detail GROUP BY client_id "
+                "ORDER BY COUNT(*) DESC LIMIT 1"
+            )
+        ).one()
+        if isinstance(period_start, str):
+            period_start = date.fromisoformat(period_start)
+            period_end = date.fromisoformat(period_end)
+
+        declared_hours = Decimal(
+            str(
+                conn.execute(
+                    text(
+                        "SELECT COALESCE(SUM(shift1_hours + shift2_hours + shift3_hours), 0) "
+                        "FROM capacity_calendar WHERE client_id = :c "
+                        "AND calendar_date BETWEEN :s AND :e AND is_working_day = 1"
+                    ),
+                    {"c": client_id, "s": period_start, "e": period_end},
+                ).scalar_one()
+            )
+        )
+
+    assert declared_hours > 0, "no declared calendar hours — the assertion would be vacuous"
+
+    with Session(bind=full_db) as db:
+        result = CapacityAnalysisService(db).analyze_capacity(client_id, period_start, period_end)
+
+    assert result.lines_analyzed > 0
+
+    for line in result.lines:
+        # Gross hours are the calendar's hours, full stop.
+        assert Decimal(str(line.gross_hours)) == declared_hours, (
+            f"line {line.line_name}: gross {line.gross_hours} h against " f"{declared_hours} h declared by the calendar"
+        )

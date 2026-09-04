@@ -342,12 +342,31 @@ class CapacityAnalysisService:
         total_hours = sum(Decimal(str(c.total_hours())) for c in calendars)
 
         avg_shifts = Decimal(str(total_shifts)) / Decimal(str(working_days)) if working_days > 0 else Decimal("1")
-        avg_hours = total_hours / Decimal(str(total_shifts)) if total_shifts > 0 else Decimal("8.0")
+
+        # At least one shift slot per working day. `round` is banker's, so a
+        # calendar averaging half a shift a day -- one day with a shift, one
+        # marked working but carrying none -- rounded to 0 and reported ZERO
+        # capacity for a period that really does declare hours.
+        shifts_per_day = max(1, int(round(avg_shifts)))
+
+        # Hours per shift SLOT, derived from the rounded slot count rather than
+        # from total_shifts, so the consumer's
+        #     working_days * shifts_per_day * hours_per_shift
+        # reconstructs the declared hours exactly for ANY calendar.
+        #
+        # Dividing by total_shifts instead is right only when shifts-per-day is
+        # a whole number: a period of one 1-shift day and one 2-shift day
+        # declaring 24h returned 8h against a rounded 2 slots and reported 32.
+        # It also used to divide by avg_shifts on top of that, halving a
+        # two-shift day and understating every capacity figure by a factor of
+        # shifts_per_day.
+        shift_slots = Decimal(str(working_days * shifts_per_day))
+        hours_per_shift = total_hours / shift_slots if shift_slots > 0 else Decimal("8.0")
 
         return {
             "working_days": working_days,
-            "shifts_per_day": int(round(avg_shifts)),
-            "hours_per_shift": avg_hours / avg_shifts if avg_shifts > 0 else Decimal("8.0"),
+            "shifts_per_day": shifts_per_day,
+            "hours_per_shift": hours_per_shift,
         }
 
     def _get_demand_by_line(
