@@ -484,7 +484,7 @@ line-capacity tables seeded -- a materially bigger scope than this change, and
 its own decision about how much of the capacity module the demo should model.
 
 
-## FINDING: capacity analysis divides by the shift count twice
+## RESOLVED 2026-09-04: capacity analysis divided by the shift count twice
 
 `CapacityAnalysisService._get_calendar_data` derives hours-per-shift as:
 
@@ -505,11 +505,35 @@ of `shifts_per_day` for any client running more than one shift. A single-shift
 calendar is unaffected (dividing by 1 twice is still 1), which is presumably
 why it has not been noticed.
 
-NOT FIXED HERE. Correcting it moves every capacity number, every utilisation
-percentage and every scenario comparison, so it needs its own before/after
-measurement and its own review -- shipping it inside a seeding change would
-mean an unmeasured change to the numbers a planner reads. The seeder
-deliberately MIRRORS the current arithmetic when sizing the demo schedule
-(`emitters_capacity.py`, the block above `units_per_line_day`) so utilisation
-lands where intended against what the app actually reports; that constant is
-where the seed needs revisiting when the service is corrected.
+FIXED. `hours_per_shift` is now `total_hours / total_shifts` and nothing more,
+so the consumer's `working_days * shifts_per_day * hours_per_shift`
+reconstructs the calendar's declared hours exactly. The seeder's deliberate
+mirror in `emitters_capacity.py` is removed in the same change -- leaving it
+would have doubled the demo's demand against a doubled capacity for no reason,
+and the two must agree.
+
+BEFORE / AFTER, measured on the FULL seeded dataset (DEMO-HOURLY, 54 working
+days, 2 shifts of 8h + 4h):
+
+                       before      after
+    hours_per_shift       3.0        6.0
+    per line-day         58.1 h    116.3 h
+    capacity_hours     6279.1    12558.2
+    demand_hours       5977.8    11992.0
+    utilisation          95.2%      95.5%
+
+The 58.1 h reproduces the original measurement exactly. Capacity and demand
+both double and utilisation is unchanged -- which is the point: the demo's
+story is preserved while the absolute hours become truthful. The residual
+0.3pp is integer rounding in `units_per_line_day`.
+
+Guards added, each mutation-tested: `hours_per_shift` is 8 for a 2x8h day;
+gross hours equal the calendar's declared hours (the existing assertions were
+`gross_hours > 0`, which a halved figure satisfies); a single-shift calendar is
+unchanged, since dividing by 1 twice is still 1 and those clients must not
+move. With the seeder mirror gone, the pre-existing bottleneck test also
+catches the regression.
+
+SWEEP: `_get_calendar_data` was the only instance. Every other `total_hours()`
+consumer uses it as day-hours directly, and `scenario_service` takes
+`hours_per_shift` as an explicit scenario parameter rather than deriving it.

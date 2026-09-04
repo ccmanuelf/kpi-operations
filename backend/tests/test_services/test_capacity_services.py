@@ -638,6 +638,86 @@ class TestCapacityAnalysisService:
             # capacity = net * operators
             assert line_result.capacity_hours >= line_result.net_hours
 
+    def test_calendar_hours_per_shift_is_not_divided_twice(self, cap_db):
+        """`hours_per_shift` must be hours PER SHIFT, not per shift per shift.
+
+        _get_calendar_data derived it as
+
+            avg_hours       = total_hours / total_shifts   # already per shift
+            hours_per_shift = avg_hours / avg_shifts       # per shift AGAIN
+
+        so the fixture's 2x8h day yielded 4 rather than 8, and every capacity
+        figure the app reports understated by a factor of shifts_per_day. Only
+        single-shift clients were unaffected, which is why it went unnoticed.
+        """
+        _seed_full_capacity_data(cap_db)
+
+        svc = CapacityAnalysisService(cap_db)
+        data = svc._get_calendar_data(CLIENT_ID, PERIOD_START, PERIOD_END)
+
+        assert data["shifts_per_day"] == 2
+        assert Decimal(str(data["hours_per_shift"])) == Decimal("8")
+
+    def test_gross_hours_reconstruct_the_declared_calendar_hours(self, cap_db):
+        """The identity that makes the arithmetic self-checking.
+
+            working_days * shifts_per_day * hours_per_shift
+              == working_days * (total_shifts/working_days) * (total_hours/total_shifts)
+              == total_hours
+
+        Gross hours must equal what the calendar actually declares. Asserting
+        the product rather than the factor is what pins the bug down: the
+        existing tests only checked gross_hours > 0, which a halved figure
+        satisfies just as well.
+        """
+        _seed_full_capacity_data(cap_db)
+
+        declared_hours = sum(
+            Decimal(str(c.total_hours()))
+            for c in cap_db.query(CapacityCalendar)
+            .filter(
+                CapacityCalendar.client_id == CLIENT_ID,
+                CapacityCalendar.calendar_date >= PERIOD_START,
+                CapacityCalendar.calendar_date <= PERIOD_END,
+                CapacityCalendar.is_working_day.is_(True),
+            )
+            .all()
+        )
+
+        svc = CapacityAnalysisService(cap_db)
+        result = svc.analyze_capacity(CLIENT_ID, PERIOD_START, PERIOD_END)
+
+        assert declared_hours > 0
+        for line_result in result.lines:
+            assert Decimal(str(line_result.gross_hours)) == declared_hours
+
+    def test_single_shift_calendar_is_unchanged(self, cap_db):
+        """The bug was invisible on single-shift clients -- dividing by 1 twice
+        is still 1 -- so the fix must not move their numbers either."""
+        _create_client(cap_db)
+        _seed_production_lines(cap_db)
+        for i in range(7):
+            cal_date = TODAY + timedelta(days=i)
+            working = cal_date.weekday() < 5
+            cap_db.add(
+                CapacityCalendar(
+                    client_id=CLIENT_ID,
+                    calendar_date=cal_date,
+                    is_working_day=working,
+                    shifts_available=1 if working else 0,
+                    shift1_hours=8.0 if working else 0,
+                    shift2_hours=0,
+                    shift3_hours=0,
+                )
+            )
+        cap_db.commit()
+
+        svc = CapacityAnalysisService(cap_db)
+        data = svc._get_calendar_data(CLIENT_ID, TODAY, TODAY + timedelta(days=6))
+
+        assert data["shifts_per_day"] == 1
+        assert Decimal(str(data["hours_per_shift"])) == Decimal("8")
+
     def test_analyze_capacity_stores_results(self, cap_db):
         """Analysis should persist CapacityAnalysis records in the DB."""
         _seed_full_capacity_data(cap_db)

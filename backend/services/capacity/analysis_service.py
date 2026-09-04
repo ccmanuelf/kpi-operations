@@ -342,12 +342,18 @@ class CapacityAnalysisService:
         total_hours = sum(Decimal(str(c.total_hours())) for c in calendars)
 
         avg_shifts = Decimal(str(total_shifts)) / Decimal(str(working_days)) if working_days > 0 else Decimal("1")
+        # Hours PER SHIFT. total_hours is every shift's hours summed, so
+        # dividing by total_shifts already gives the per-shift figure -- this
+        # used to divide by avg_shifts as well, halving a two-shift day and
+        # understating every capacity figure by a factor of shifts_per_day.
+        # The consumer multiplies working_days * shifts_per_day * this, which
+        # now reconstructs total_hours exactly.
         avg_hours = total_hours / Decimal(str(total_shifts)) if total_shifts > 0 else Decimal("8.0")
 
         return {
             "working_days": working_days,
             "shifts_per_day": int(round(avg_shifts)),
-            "hours_per_shift": avg_hours / avg_shifts if avg_shifts > 0 else Decimal("8.0"),
+            "hours_per_shift": avg_hours,
         }
 
     def _get_demand_by_line(
