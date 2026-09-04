@@ -104,6 +104,48 @@ unplanned minutes with their root cause. The two tables answer different
 questions; the dual view reads the former exclusively.
 
 
+## FOUND while fixing #278, NOT fixed there — three separate issues
+
+Surfaced by a parallel scout over the assumption machinery. Each is real,
+evidenced, and outside the causal cluster #278 sits in.
+
+1. **The variance report ignores effective/expiration dates.**
+   `AssumptionService.get_variance_report` filters on `status == ACTIVE AND
+   is_active == 1` only, while `get_effective_set` — the one the CALCULATIONS
+   use — also requires `effective_date <= as_of <= expiration_date`. So an
+   assumption whose window has closed still appears in the variance report as
+   active, while every calculation correctly ignores it. The report is less
+   strict than the thing it reports on.
+   Evidence: `backend/services/assumption_service.py:173-176` vs `:108-120`.
+
+2. **The variance report's "impact" never touches production data.**
+   `deviates_from_default` / `deviation_magnitude` compare a stored value to a
+   catalog default; categorical assumptions yield 0.0 or 1.0. Nothing consults
+   METRIC_CALCULATION_RESULT, so an assumption that deviates but moves no
+   number is indistinguishable from one that moves OEE by 12 points. That is
+   the same appearance-without-substance as #278, one layer up, and it is why
+   #278 survived: the report said the assumption was active and deviating, and
+   was right on both counts while the number never moved.
+   Evidence: `assumption_service.py:191-192`, `services/calculations/assumption_catalog.py:149-170`.
+
+3. **No seeded PRODUCTION_ENTRY or PRODUCT row carries `ideal_cycle_time`.**
+   0 of 4160 and 0 of 12. `_resolve_ideal_cycle_time` therefore falls through
+   to the observed rate, which makes standard-mode Performance exactly 100.00%
+   for every client and every period — so the demo's Performance factor
+   carries no information, and OEE is effectively Availability x Quality.
+   Deciding whether the seeder should write a real engineering standard is a
+   product call, not a bug fix.
+   Evidence: measured over the FULL profile; `services/dual_view/aggregators.py:76-107`.
+
+Also measured, and the reason `ideal_cycle_time_source` is still seeded at
+`engineering_standard` after #278: on this dataset `demonstrated_best` moves
+OEE from ~94 to ~80 (a defensible -12 points, no clamp artifacts), while
+`rolling_90_day_average` moves it by ~0 because the seeded run rate is
+stationary — a trailing window sits within ~1% of any period, and three of four
+clients come out at exactly 0.00 delta once Performance is clamped at 100.
+Switching the demo to demonstrated_best is a product decision about headline
+numbers, not a consequence of the fix.
+
 ## OPEN (issue #278) — a catalog assumption that can never take effect
 
 `ideal_cycle_time_source = "demonstrated_best"` is applied only when

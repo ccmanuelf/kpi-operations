@@ -75,20 +75,27 @@ class FPYCalculationService:
         rec = active.get("scrap_classification_rule")
         if rec is not None:
             value = json.loads(rec.value_json)
-            applied.append(
-                AssumptionApplied(
-                    name=rec.assumption_name,
-                    value=value,
-                    rationale=rec.rationale,
-                    approved_by=rec.approved_by,
-                    approved_at=rec.approved_at,
-                )
-            )
             if value == "rework_counted_as_good":
                 adjusted_passed = raw_inputs.units_passed_first_time + raw_inputs.units_reworked
             elif value == "rework_counted_as_partial":
                 adjusted_passed = raw_inputs.units_passed_first_time + (raw_inputs.units_reworked // 2)
             # "rework_counted_as_bad" → no-op; same as textbook standard.
+
+            # Report it as applied only when it moved the number. The append
+            # used to happen before the branch above, so `rework_counted_as_bad`
+            # -- and any value at all when units_reworked is 0 -- was reported
+            # as applied while FPY was untouched. Same defect as the OEE
+            # service; see record_if_changed there.
+            if adjusted_passed != raw_inputs.units_passed_first_time:
+                applied.append(
+                    AssumptionApplied(
+                        name=rec.assumption_name,
+                        value=value,
+                        rationale=rec.rationale,
+                        approved_by=rec.approved_by,
+                        approved_at=rec.approved_at,
+                    )
+                )
 
         adjusted = calculate_fpy(
             FPYInputs(

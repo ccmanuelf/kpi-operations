@@ -133,6 +133,78 @@ class TestSiteAdjustedDivergesWithAssumptions:
         # Higher quality → higher OEE
         assert result.site_adjusted_value > result.standard_value
 
+    def test_ideal_cycle_time_source_demonstrated_best(self, transactional_db):
+        """The branch issue #278 is about.
+
+        A faster ideal cycle LOWERS Performance -- the plant is measured
+        against what it has proven it can do rather than against the
+        engineering figure -- so site-adjusted OEE must come out BELOW
+        standard here. Asserting the direction matters: an inert assumption
+        would leave the two equal, which a `>=` would have accepted.
+        """
+        client, admin, poweruser = _make_users(transactional_db)
+        _approve(transactional_db, poweruser, admin, client.client_id, "ideal_cycle_time_source", "demonstrated_best")
+
+        svc = OEECalculationService(transactional_db, admin)
+        result = svc.calculate(
+            client_id=client.client_id,
+            period_start=PERIOD_START,
+            period_end=PERIOD_END,
+            raw_inputs=_baseline_inputs(),
+            persist=False,
+        )
+        # Standard performance: (0.076 x 900) / 72 = 95%
+        # Adjusted: cycle 0.072 -> (0.072 x 900) / 72 = 90% -> lower OEE
+        assert result.site_adjusted_value < result.standard_value
+        assert any(a.name == "ideal_cycle_time_source" for a in result.assumptions_applied)
+
+    def test_an_assumption_with_no_basis_is_not_reported_as_applied(self, transactional_db):
+        """`applied` must mean applied.
+
+        Every block in _apply_assumptions used to append BEFORE the guard that
+        decides whether anything changes, so selecting demonstrated_best with
+        no demonstrated-best figure available was reported as applied while
+        OEE was untouched -- and the KPI tile badges itself "site-adjusted"
+        off the length of this list. That is the appearance-without-substance
+        this issue is about, one layer up from the inert input.
+        """
+        client, admin, poweruser = _make_users(transactional_db)
+        _approve(transactional_db, poweruser, admin, client.client_id, "ideal_cycle_time_source", "demonstrated_best")
+
+        inputs = _baseline_inputs().model_copy(update={"demonstrated_best_cycle_time_hours": None})
+        svc = OEECalculationService(transactional_db, admin)
+        result = svc.calculate(
+            client_id=client.client_id,
+            period_start=PERIOD_START,
+            period_end=PERIOD_END,
+            raw_inputs=inputs,
+            persist=False,
+        )
+
+        assert result.standard_value == result.site_adjusted_value
+        assert result.delta == 0
+        assert result.assumptions_applied == []
+
+    def test_an_assumption_held_at_its_default_is_not_reported_as_applied(self, transactional_db):
+        """Same defect, reached the other way: the value is the catalog
+        default, so the branch below it is a documented no-op."""
+        client, admin, poweruser = _make_users(transactional_db)
+        _approve(
+            transactional_db, poweruser, admin, client.client_id, "ideal_cycle_time_source", "engineering_standard"
+        )
+
+        svc = OEECalculationService(transactional_db, admin)
+        result = svc.calculate(
+            client_id=client.client_id,
+            period_start=PERIOD_START,
+            period_end=PERIOD_END,
+            raw_inputs=_baseline_inputs(),
+            persist=False,
+        )
+
+        assert result.delta == 0
+        assert result.assumptions_applied == []
+
     def test_ideal_cycle_time_source_rolling(self, transactional_db):
         client, admin, poweruser = _make_users(transactional_db)
         _approve(
@@ -177,6 +249,30 @@ class TestSiteAdjustedDivergesWithAssumptions:
 
 
 class TestSnapshotPersistence:
+    def test_snapshot_excludes_assumptions_oee_never_reads(self, transactional_db):
+        """An OEE lineage row must not cite an assumption OEE never consults.
+
+        The snapshot was every active assumption for the client, unfiltered,
+        so an OEE result listed `otd_carrier_buffer_pct` among the assumptions
+        behind its number. The FPY and OTD services already filter their own
+        snapshots; OEE did not.
+        """
+        client, admin, poweruser = _make_users(transactional_db)
+        _approve(transactional_db, poweruser, admin, client.client_id, "setup_treatment", "exclude_from_availability")
+        _approve(transactional_db, poweruser, admin, client.client_id, "otd_carrier_buffer_pct", 15)
+
+        svc = OEECalculationService(transactional_db, admin)
+        result = svc.calculate(
+            client_id=client.client_id,
+            period_start=PERIOD_START,
+            period_end=PERIOD_END,
+            raw_inputs=_baseline_inputs(),
+            persist=False,
+        )
+
+        assert "setup_treatment" in result.assumptions_snapshot
+        assert "otd_carrier_buffer_pct" not in result.assumptions_snapshot
+
     def test_snapshot_matches_active_assumptions(self, transactional_db):
         client, admin, poweruser = _make_users(transactional_db)
         approved = _approve(

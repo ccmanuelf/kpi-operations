@@ -214,6 +214,24 @@ class OEECalculationService:
         # Pydantic v2 model_copy preserves validation; mutate via dict.
         data = inputs.model_dump()
 
+        def record_if_changed(rec: CalculationAssumption, value: Any, before: dict[str, Any]) -> None:
+            """Report an assumption as applied only when it moved a number.
+
+            Every block below used to append unconditionally, before the guard
+            that decides whether anything changes -- so an assumption held at
+            its catalog default, or one whose input was absent, was reported
+            as applied while the calculation was untouched. That is the same
+            appearance-without-substance as the inert cycle-time sources: the
+            KPI tile flags itself "site-adjusted" off the length of this list,
+            so a tile with a zero delta carried the badge.
+
+            Comparing the input dict before and after keeps this honest
+            without restating each rule's condition -- a second copy of the
+            logic that could drift from the branch it describes.
+            """
+            if data != before:
+                applied.append(_to_applied(rec, value))
+
         # planned_production_time_basis
         # Convention: scheduled_maintenance_hours is part of downtime_hours
         # (i.e. maintenance is a downtime reason). Excluding it shrinks BOTH
@@ -222,17 +240,18 @@ class OEECalculationService:
         rec = active.get("planned_production_time_basis")
         if rec is not None:
             value = json.loads(rec.value_json)
-            applied.append(_to_applied(rec, value))
+            before = dict(data)
             if value == "exclude_scheduled_maintenance":
                 pm_hours = data["scheduled_maintenance_hours"]
                 data["scheduled_hours"] = max(Decimal("0"), data["scheduled_hours"] - pm_hours)
                 data["downtime_hours"] = max(Decimal("0"), data["downtime_hours"] - pm_hours)
+            record_if_changed(rec, value, before)
 
         # setup_treatment
         rec = active.get("setup_treatment")
         if rec is not None:
             value = json.loads(rec.value_json)
-            applied.append(_to_applied(rec, value))
+            before = dict(data)
             if value == "exclude_from_availability":
                 # Move setup minutes out of downtime AND out of scheduled hours.
                 # In the default (count_as_downtime), setup_minutes is already
@@ -240,30 +259,33 @@ class OEECalculationService:
                 setup_hours = data["setup_minutes"] / Decimal("60")
                 data["scheduled_hours"] = max(Decimal("0"), data["scheduled_hours"] - setup_hours)
                 data["downtime_hours"] = max(Decimal("0"), data["downtime_hours"] - setup_hours)
+            record_if_changed(rec, value, before)
 
         # ideal_cycle_time_source
         rec = active.get("ideal_cycle_time_source")
         if rec is not None:
             value = json.loads(rec.value_json)
-            applied.append(_to_applied(rec, value))
+            before = dict(data)
             if value == "rolling_90_day_average" and inputs.rolling_90_day_cycle_time_hours is not None:
                 data["ideal_cycle_time_hours"] = inputs.rolling_90_day_cycle_time_hours
             elif value == "demonstrated_best" and inputs.demonstrated_best_cycle_time_hours is not None:
                 data["ideal_cycle_time_hours"] = inputs.demonstrated_best_cycle_time_hours
             # "engineering_standard" → no-op; ideal_cycle_time_hours already
             # comes from the product master per default.
+            record_if_changed(rec, value, before)
 
         # scrap_classification_rule
         rec = active.get("scrap_classification_rule")
         if rec is not None:
             value = json.loads(rec.value_json)
-            applied.append(_to_applied(rec, value))
+            before = dict(data)
             if value == "rework_counted_as_good":
                 # Reworked units recovered → don't count them as defects.
                 data["defect_count"] = max(0, data["defect_count"] - data["units_reworked"])
             elif value == "rework_counted_as_partial":
                 data["defect_count"] = max(0, data["defect_count"] - (data["units_reworked"] // 2))
             # "rework_counted_as_bad" → no-op; rework still in defect_count.
+            record_if_changed(rec, value, before)
 
         return OEERawInputs(**data), applied
 
@@ -320,9 +342,25 @@ def _to_applied(rec: CalculationAssumption, value: Any) -> AssumptionApplied:
     )
 
 
-def _build_snapshot(active: dict[str, CalculationAssumption]) -> dict[str, Any]:
+#: The only assumptions this service reads. The snapshot is filtered to them
+#: because an OEE lineage row listing `otd_carrier_buffer_pct` as an assumption
+#: behind its number is simply untrue -- OEE never consults it. The FPY and OTD
+#: services already filter their own snapshots this way; OEE did not.
+OEE_ASSUMPTION_NAMES = (
+    "planned_production_time_basis",
+    "setup_treatment",
+    "ideal_cycle_time_source",
+    "scrap_classification_rule",
+)
+
+
+def _build_snapshot(
+    active: dict[str, CalculationAssumption],
+    only: tuple[str, ...] = OEE_ASSUMPTION_NAMES,
+) -> dict[str, Any]:
     """Compact snapshot for METRIC_CALCULATION_RESULT.assumptions_snapshot."""
 
+    active = {name: rec for name, rec in active.items() if name in only}
     return {
         name: {
             "value": json.loads(rec.value_json),
