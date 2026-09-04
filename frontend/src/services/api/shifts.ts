@@ -39,15 +39,22 @@ export interface OverlapCheckResponse {
 }
 
 /**
- * Returns ACTIVE shifts only, scoped to the caller's authorized clients.
+ * Scoped to the caller's authorized clients. Active-only unless
+ * `includeInactive`, since DELETE is a soft delete.
  *
  * The trailing slash is required: the backend route is `/` under prefix
  * `/api/shifts`, and without it FastAPI 307s — axios drops Authorization on
  * the cross-origin redirect the Vite proxy produces, which 401s and logs the
  * user out. Same reason `reference.ts` spells it `/shifts/`.
  */
-export const listShifts = (clientId?: string | number | null) =>
-  api.get<Shift[]>('/shifts/', clientId ? { params: { client_id: clientId } } : undefined)
+export const listShifts = (clientId?: string | number | null, includeInactive = false) => {
+  const params: Record<string, unknown> = {}
+  if (clientId) params.client_id = clientId
+  // Without this the admin screen can deactivate a shift and never see it
+  // again to reactivate it, even though PUT accepts is_active.
+  if (includeInactive) params.include_inactive = true
+  return api.get<Shift[]>('/shifts/', Object.keys(params).length ? { params } : undefined)
+}
 
 export const createShift = (data: {
   client_id: string

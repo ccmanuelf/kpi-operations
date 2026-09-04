@@ -70,8 +70,15 @@ export function useHoldCatalogAdmin() {
     () => loaded.value && statuses.value.length === 0 && reasons.value.length === 0,
   )
 
-  const pendingDrafts = (list: Ref<HoldCatalogRow[]>): HoldCatalogRow[] =>
-    list.value.filter((r) => r._isNew)
+  /**
+   * Drafts for the CURRENTLY selected client only. createEntry stamps a row
+   * with whatever client is selected at save time, so a draft carried across a
+   * client switch would be filed under the wrong tenant.
+   */
+  const pendingDrafts = (list: Ref<HoldCatalogRow[]>): HoldCatalogRow[] => {
+    const current = selectedClient.value === null ? null : String(selectedClient.value)
+    return list.value.filter((r) => r._isNew && r.client_id === current)
+  }
 
   const loadClients = async (): Promise<void> => {
     const res = await api.getClients()

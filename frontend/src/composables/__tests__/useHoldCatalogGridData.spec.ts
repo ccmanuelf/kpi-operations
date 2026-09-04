@@ -171,13 +171,29 @@ describe('concurrent-edit safety', () => {
 })
 
 describe('unsaved drafts survive the reload a write triggers', () => {
+  it('does not carry a draft across a client switch', async () => {
+    mockService.listHoldStatuses.mockResolvedValue({ data: [] })
+    mockService.listHoldReasons.mockResolvedValue({ data: [] })
+
+    const admin = useHoldCatalogAdmin()
+    admin.selectedClient.value = 'CLIENT-A'
+    admin.statuses.value = [{ _isNew: true, status_code: 'FOR_A', client_id: 'CLIENT-A' }]
+
+    admin.selectedClient.value = 'CLIENT-B'
+    await admin.loadCatalogs()
+
+    expect(admin.statuses.value).toEqual([])
+  })
+
   it('keeps other draft rows when the server list is re-read', async () => {
     mockService.listHoldStatuses.mockResolvedValue({ data: [{ catalog_id: 1, status_code: 'SAVED' }] })
     mockService.listHoldReasons.mockResolvedValue({ data: [] })
 
     const admin = useHoldCatalogAdmin()
     admin.selectedClient.value = 'DEMO-PIECE'
-    admin.statuses.value = [{ _isNew: true, status_code: 'STILL_TYPING' }]
+    admin.statuses.value = [
+      { _isNew: true, status_code: 'STILL_TYPING', client_id: 'DEMO-PIECE' },
+    ]
 
     await admin.loadCatalogs()
 

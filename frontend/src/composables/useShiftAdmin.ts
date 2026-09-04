@@ -32,6 +32,9 @@ export function useShiftAdmin() {
   const shifts = ref<ShiftRow[]>([])
   const loading = ref(false)
   const loaded = ref(false)
+  /** Deactivated shifts are hidden by default; showing them is what makes the
+   *  is_active column a two-way switch rather than a one-way one. */
+  const includeInactive = ref(false)
 
   const selectedClientInfo = computed<ClientOption | null>(
     () => clients.value.find((c) => c.client_id === selectedClient.value) ?? null,
@@ -52,10 +55,15 @@ export function useShiftAdmin() {
   const loadShifts = async (): Promise<void> => {
     loading.value = true
     try {
-      const { data } = await listShifts(selectedClient.value)
+      const { data } = await listShifts(selectedClient.value, includeInactive.value)
       // Preserve rows the user is still typing into — every write reloads the
       // list, and replacing it wholesale would discard other unsaved drafts.
-      const drafts = shifts.value.filter((r) => r._isNew)
+      //
+      // Scoped to the CURRENT client: saveNewRow stamps a draft with whatever
+      // client is selected when it is saved, so carrying a draft across a
+      // client switch would file it under the wrong tenant.
+      const current = selectedClient.value === null ? null : String(selectedClient.value)
+      const drafts = shifts.value.filter((r) => r._isNew && r.client_id === current)
       shifts.value = [...drafts, ...((data as ShiftRow[]) ?? [])]
       loaded.value = true
     } catch (error) {
@@ -80,6 +88,7 @@ export function useShiftAdmin() {
     shifts,
     loading,
     loaded,
+    includeInactive,
     selectedClientInfo,
     noShiftsConfigured,
     loadClients,

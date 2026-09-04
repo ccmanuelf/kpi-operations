@@ -33,6 +33,16 @@
         <span v-if="!selectedClient" class="text-caption text-grey">
           {{ t('admin.shifts.selectClientToAdd') }}
         </span>
+        <v-spacer />
+        <v-switch
+          v-model="includeInactive"
+          :label="t('admin.shifts.showInactive')"
+          density="compact"
+          hide-details
+          color="primary"
+          data-testid="show-inactive"
+          @update:model-value="reload"
+        />
       </v-col>
     </v-row>
 
@@ -144,6 +154,7 @@ const {
   clients,
   selectedClient,
   shifts,
+  includeInactive,
   noShiftsConfigured,
   loadClients,
   loadShifts,

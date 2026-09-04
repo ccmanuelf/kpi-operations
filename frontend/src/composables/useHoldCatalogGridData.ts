@@ -85,6 +85,9 @@ export default function useHoldCatalogGridData(
     }
     const newRow: HoldCatalogRow = {
       _isNew: true,
+      // Stamped so a draft cannot survive a client switch and be saved under
+      // the wrong tenant — loadCatalogs keeps only drafts for the current one.
+      client_id: String(selectedClient.value),
       [field]: '',
       display_name: '',
       sort_order: rows.value.length + 1,

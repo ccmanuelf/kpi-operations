@@ -2137,7 +2137,8 @@
       "saveAnyway": "Guardar de Todos Modos",
       "confirmDeleteTitle": "Desactivar turno",
       "confirmDeleteBody": "¿Desactivar “{name}”? Los registros ya capturados con él no se ven afectados, pero dejará de poder seleccionarse y ya no aparecerá en esta pantalla.",
-      "timeRange": "{start} – {end}"
+      "timeRange": "{start} – {end}",
+      "showInactive": "Mostrar inactivos"
     }
   },
   "csv": {

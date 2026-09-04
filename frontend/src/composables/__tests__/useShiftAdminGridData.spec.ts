@@ -232,11 +232,42 @@ describe('unsaved drafts survive the reload a write triggers', () => {
   it('keeps other draft rows when the server list is re-read', async () => {
     mockShifts.listShifts.mockResolvedValue({ data: [{ shift_id: 1, shift_name: 'SAVED' }] })
     const admin = useShiftAdmin()
-    admin.shifts.value = [{ _isNew: true, shift_name: 'STILL_TYPING' }]
+    // addRow always stamps the draft with the selected client, so a realistic
+    // draft carries one; the scoping filter below relies on it.
+    admin.selectedClient.value = 'DEMO-PIECE'
+    admin.shifts.value = [
+      { _isNew: true, shift_name: 'STILL_TYPING', client_id: 'DEMO-PIECE' },
+    ]
 
     await admin.loadShifts()
 
     expect(admin.shifts.value.map((r) => r.shift_name)).toEqual(['STILL_TYPING', 'SAVED'])
+  })
+
+  // Found by the adversarial review: the draft-preservation fix above kept
+  // EVERY draft, so one started under client A survived a switch to client B
+  // and would then be saved against B.
+  it('does not carry a draft across a client switch', async () => {
+    mockShifts.listShifts.mockResolvedValue({ data: [] })
+    const admin = useShiftAdmin()
+    admin.selectedClient.value = 'CLIENT-A'
+    admin.shifts.value = [{ _isNew: true, shift_name: 'FOR-A', client_id: 'CLIENT-A' }]
+
+    admin.selectedClient.value = 'CLIENT-B'
+    await admin.loadShifts()
+
+    expect(admin.shifts.value).toEqual([])
+  })
+
+  it('keeps a draft that belongs to the client still selected', async () => {
+    mockShifts.listShifts.mockResolvedValue({ data: [] })
+    const admin = useShiftAdmin()
+    admin.selectedClient.value = 'CLIENT-A'
+    admin.shifts.value = [{ _isNew: true, shift_name: 'FOR-A', client_id: 'CLIENT-A' }]
+
+    await admin.loadShifts()
+
+    expect(admin.shifts.value.map((r) => r.shift_name)).toEqual(['FOR-A'])
   })
 
   it('drops the just-saved draft so it is not duplicated by its server copy', async () => {
@@ -261,5 +292,22 @@ describe('useShiftAdmin.noShiftsConfigured', () => {
     const admin = useShiftAdmin()
     await admin.loadShifts()
     expect(admin.noShiftsConfigured.value).toBe(true)
+  })
+})
+
+describe('reactivating a deactivated shift', () => {
+  it('asks the server for inactive rows when the toggle is on', async () => {
+    mockShifts.listShifts.mockResolvedValue({ data: [] })
+    const admin = useShiftAdmin()
+    admin.selectedClient.value = 'DEMO-PIECE'
+
+    await admin.loadShifts()
+    expect(mockShifts.listShifts).toHaveBeenLastCalledWith('DEMO-PIECE', false)
+
+    // Without this, DELETE (a soft delete) hides the row for good and the
+    // editable is_active column is a one-way switch that looks reversible.
+    admin.includeInactive.value = true
+    await admin.loadShifts()
+    expect(mockShifts.listShifts).toHaveBeenLastCalledWith('DEMO-PIECE', true)
   })
 })
