@@ -143,12 +143,20 @@ def _apply_workorder_filters(q: Query, *, work_order_id: Optional[str]) -> Query
 
 
 ROLLING_WINDOW_DAYS = 90
-"""Window for both alternative cycle times.
+"""The benchmark window: the 90 days immediately BEFORE the scored period.
 
-`demonstrated_best` means the best the plant has recently PROVEN it can do.
-Bounding it to the same trailing window as the rolling average keeps the
-benchmark current -- an all-time minimum would anchor OEE to a single good day
-that may be years old and no longer representative.
+Ending it at `period_start` rather than `period_end` is the whole point. A
+window anchored to the end overlaps the rows being scored, and for a period of
+90 days or more it contains exactly them -- so the "rolling average" came back
+as the period's own cycle time, bit for bit, and Performance was 100% by
+construction. That is the same inertness this module was fixed for, arriving
+by a different route: the assumption would have taken effect and still moved
+nothing on any quarterly report.
+
+Both figures are therefore a PRIOR baseline: what the plant averaged, and the
+best day it managed, in the 90 days leading up to the period being scored.
+Bounded rather than all-time so a good day from years ago cannot anchor OEE
+forever.
 """
 
 DEMONSTRATED_BEST_MIN_UNITS_FRACTION = Decimal("0.5")
@@ -227,7 +235,7 @@ def _median(values: list[int]) -> Decimal:
 def alternative_cycle_times(
     db: Session,
     client_id: str,
-    period_end: datetime,
+    period_start: datetime,
     *,
     line_id: Optional[int] = None,
     shift_id: Optional[int] = None,
@@ -245,15 +253,19 @@ def alternative_cycle_times(
     standards: the assumption exists to let a site benchmark against its own
     demonstrated rate instead of an engineering figure.
 
-    Returns None for either when the window holds no qualifying production, so
-    the caller can tell "no basis to compute this" from a real zero.
+    The window is the ROLLING_WINDOW_DAYS before `period_start`, so neither
+    figure is computed from the rows it will be used to score.
+
+    Returns None for either when the window holds no qualifying production --
+    a client with no history before its first period gets no benchmark, which
+    the caller can tell from a real zero.
     """
-    window_start = period_end - timedelta(days=ROLLING_WINDOW_DAYS)
+    window_start = period_start - timedelta(days=ROLLING_WINDOW_DAYS)
     per_day = _per_day_cycle_times(
         db,
         client_id,
         window_start,
-        period_end,
+        period_start,
         line_id=line_id,
         shift_id=shift_id,
         product_id=product_id,
@@ -358,7 +370,7 @@ def aggregate_oee_inputs(
     rolling_cycle, best_cycle = alternative_cycle_times(
         db,
         client_id,
-        period_end,
+        period_start,
         line_id=line_id,
         shift_id=shift_id,
         product_id=product_id,

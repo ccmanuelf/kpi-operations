@@ -2156,7 +2156,9 @@ def test_alternative_cycle_times_agree_with_sqlite_on_mariadb(mariadb_schema):
             )
         session.commit()
 
-        rolling, best = alternative_cycle_times(session, "MDB-CYCLE", datetime(2026, 4, 30, tzinfo=timezone.utc))
+        # Third argument is the SCORED period's start; the benchmark window is
+        # the 90 days before it, so the April rows above fall inside it.
+        rolling, best = alternative_cycle_times(session, "MDB-CYCLE", datetime(2026, 5, 1, tzinfo=timezone.utc))
 
         # Exact, not approximate: quantisation to Numeric(10, 2) would give
         # 0.07 here, and grouping that failed to combine the two day-11 shifts
