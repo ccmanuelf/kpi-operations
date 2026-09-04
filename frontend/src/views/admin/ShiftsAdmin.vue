@@ -6,7 +6,7 @@
           <v-icon class="mr-2">mdi-clock-outline</v-icon>
           {{ t('admin.shifts.title') }}
         </h1>
-        <p class="text-subtitle-1 text-grey">
+        <p class="text-subtitle-1 text-medium-emphasis">
           {{ t('admin.shifts.subtitle') }}
         </p>
       </v-col>
@@ -30,7 +30,7 @@
         <v-btn color="primary" prepend-icon="mdi-plus" :disabled="!selectedClient" @click="addRow">
           {{ t('admin.shifts.addShift') }}
         </v-btn>
-        <span v-if="!selectedClient" class="text-caption text-grey">
+        <span v-if="!selectedClient" class="text-caption text-medium-emphasis">
           {{ t('admin.shifts.selectClientToAdd') }}
         </span>
         <v-spacer />

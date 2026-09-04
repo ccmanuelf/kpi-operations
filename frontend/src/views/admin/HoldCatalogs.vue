@@ -6,7 +6,7 @@
           <v-icon class="mr-2">mdi-playlist-edit</v-icon>
           {{ t('admin.holdCatalogs.title') }}
         </h1>
-        <p class="text-subtitle-1 text-grey">
+        <p class="text-subtitle-1 text-medium-emphasis">
           {{ t('admin.holdCatalogs.subtitle') }}
         </p>
       </v-col>
@@ -120,7 +120,7 @@
     <v-row v-else class="mt-4">
       <v-col cols="12">
         <v-card>
-          <v-card-text class="text-center pa-8 text-grey">
+          <v-card-text class="text-center pa-8 text-medium-emphasis">
             <v-icon size="48" color="grey">mdi-playlist-edit</v-icon>
             <p class="mt-2">{{ t('admin.holdCatalogs.selectClientToView') }}</p>
           </v-card-text>
