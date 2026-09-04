@@ -718,6 +718,72 @@ class TestCapacityAnalysisService:
         assert data["shifts_per_day"] == 1
         assert Decimal(str(data["hours_per_shift"])) == Decimal("8")
 
+    def test_gross_hours_are_exact_on_a_non_uniform_calendar(self, cap_db):
+        """Found by the adversarial cross-model review of the first fix.
+
+        shifts_per_day is `round(total_shifts / working_days)`, so deriving
+        hours-per-shift from total_shifts is right only when that average is a
+        whole number. One 1-shift day and one 2-shift day declaring 24h in
+        total returned 8h against a rounded 2 slots, and the consumer reported
+        32 -- overstating by a third. Deriving from the rounded slot count
+        makes the product exact for any calendar.
+        """
+        _create_client(cap_db)
+        _seed_production_lines(cap_db)
+        for i, (shifts, h1, h2) in enumerate([(1, 8.0, 0.0), (2, 8.0, 8.0)]):
+            cap_db.add(
+                CapacityCalendar(
+                    client_id=CLIENT_ID,
+                    calendar_date=TODAY + timedelta(days=i),
+                    is_working_day=True,
+                    shifts_available=shifts,
+                    shift1_hours=h1,
+                    shift2_hours=h2,
+                    shift3_hours=0,
+                )
+            )
+        cap_db.commit()
+
+        svc = CapacityAnalysisService(cap_db)
+        result = svc.analyze_capacity(CLIENT_ID, TODAY, TODAY + timedelta(days=1))
+
+        assert result.lines_analyzed > 0
+        for line in result.lines:
+            assert Decimal(str(line.gross_hours)) == Decimal("24")
+
+    def test_a_working_day_with_no_shifts_does_not_zero_the_capacity(self, cap_db):
+        """Also from that review, and worse than the bug it followed.
+
+        `round` is banker's, so a calendar averaging half a shift a day --
+        one day with a shift, one marked working but carrying none -- rounded
+        shifts_per_day to 0 and reported ZERO capacity for a period that
+        really does declare 8 hours.
+        """
+        _create_client(cap_db)
+        _seed_production_lines(cap_db)
+        for i, shifts in enumerate([1, 0]):
+            cap_db.add(
+                CapacityCalendar(
+                    client_id=CLIENT_ID,
+                    calendar_date=TODAY + timedelta(days=i),
+                    is_working_day=True,
+                    shifts_available=shifts,
+                    shift1_hours=8.0 if shifts else 0.0,
+                    shift2_hours=0,
+                    shift3_hours=0,
+                )
+            )
+        cap_db.commit()
+
+        svc = CapacityAnalysisService(cap_db)
+        data = svc._get_calendar_data(CLIENT_ID, TODAY, TODAY + timedelta(days=1))
+        result = svc.analyze_capacity(CLIENT_ID, TODAY, TODAY + timedelta(days=1))
+
+        assert data["shifts_per_day"] >= 1
+        for line in result.lines:
+            assert Decimal(str(line.gross_hours)) == Decimal("8")
+            assert line.capacity_hours > 0
+
     def test_analyze_capacity_stores_results(self, cap_db):
         """Analysis should persist CapacityAnalysis records in the DB."""
         _seed_full_capacity_data(cap_db)

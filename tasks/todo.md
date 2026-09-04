@@ -537,3 +537,24 @@ catches the regression.
 SWEEP: `_get_calendar_data` was the only instance. Every other `total_hours()`
 consumer uses it as day-hours directly, and `scenario_service` takes
 `hours_per_shift` as an explicit scenario parameter rather than deriving it.
+
+TWO FURTHER DEFECTS, found by the adversarial review of the first fix and
+fixed with it. Both predate this work; the first fix simply did not address
+them, and the code comment claiming exact reconstruction was wrong until they
+were.
+
+  * `shifts_per_day` is `round(total_shifts / working_days)`, so deriving
+    hours-per-shift from `total_shifts` is exact only when that average is a
+    whole number. A period of one 1-shift day and one 2-shift day declaring
+    24h returned 8h against 2 rounded slots and reported 32 -- overstating by
+    a third.
+  * `round` is banker's, so a calendar averaging half a shift a day -- one day
+    with a shift, one marked working but carrying none -- rounded
+    `shifts_per_day` to **0** and reported ZERO capacity for a period that
+    really declares 8 hours. Worse than the halving it followed.
+
+Both are resolved by construction rather than by special-casing: hours per
+shift is now `total_hours / (working_days * shifts_per_day)`, using the
+ROUNDED slot count, and `shifts_per_day` has a floor of 1. The product is then
+exactly the declared hours for any calendar, and the uniform case -- every
+real one -- is numerically unchanged.
