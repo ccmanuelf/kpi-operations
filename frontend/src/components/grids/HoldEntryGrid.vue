@@ -244,7 +244,8 @@ const {
   avgDaysOnHold,
   columnDefs,
   applyFilters,
-  showSnackbar
+  showSnackbar,
+  loadHoldReasonCatalog,
 } = useHoldGridData()
 
 // --- Forms composable: CRUD, dialogs, approval workflow ---
@@ -270,7 +271,8 @@ const {
   onCancelSave,
   onRowsPasted,
   onPasteConfirm,
-  onPasteCancel
+  onPasteCancel,
+  activeClientId,
 } = useHoldGridForms({
   gridRef,
   unsavedChanges,
@@ -366,6 +368,9 @@ onMounted(async () => {
   await runInitialLoad(
     () => kpiStore.fetchReferenceData(),
     () => kpiStore.fetchHoldEntries(),
+    // The hold-reason dropdown is per client and server-enforced, so it is
+    // loaded with the rest rather than left on the hardcoded fallback.
+    () => loadHoldReasonCatalog(activeClientId()),
   )
   applyFilters()
 })

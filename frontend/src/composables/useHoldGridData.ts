@@ -14,6 +14,7 @@ import { useI18n } from 'vue-i18n'
 import { useProductionDataStore } from '@/stores/productionDataStore'
 import { differenceInDays } from 'date-fns'
 import { formatLocaleDate } from '@/utils/localeDate'
+import { getHoldReasonCatalog } from '@/services/api/dataEntry'
 
 export type HoldStatus =
   | 'PENDING_HOLD_APPROVAL'
@@ -73,8 +74,15 @@ interface ColumnDef {
   sort?: 'asc' | 'desc'
 }
 
-// Canonical HOLD_REASON_CATALOG codes (mirrors backend/schemas/hold.py:56-71).
-// The set is enforced server-side per-client via validate_hold_reason_for_client.
+// FALLBACK ONLY — the real list is per-client and comes from
+// GET /hold-catalogs/reasons (see holdReasonCodes below).
+//
+// This array used to BE the dropdown, and it disagreed with the catalog in
+// both directions: it omitted MATERIAL_SHORTAGE, ENGINEERING_CHANGE and
+// PENDING_APPROVAL, which crud/hold_catalog.py seeds for every client and
+// which were therefore unpickable, and it could offer a reason a particular
+// tenant had deactivated — which hold creation then rejects with 422.
+// Kept so the grid still edits if the catalog request fails.
 export const HOLD_REASON_CODES: string[] = [
   'QUALITY_ISSUE',
   'MATERIAL_INSPECTION',
@@ -191,6 +199,35 @@ export function useHoldGridData() {
     snackbar.value = { show: true, message, color }
   }
 
+  // The client's own catalog, fetched once per client. columnDefs is a
+  // computed that reads this ref, so the dropdown updates when it arrives.
+  const holdReasonCodes = ref<string[]>([...HOLD_REASON_CODES])
+
+  /**
+   * @param clientId resolved by the CALLER, deliberately. useHoldGridForms
+   * already derives it (operators from auth, everyone else from the KPI
+   * selection) when it builds the hold payload, and resolving it a second
+   * time here would risk fetching one client's catalog while writing rows
+   * against another's. Taking it as an argument also keeps the auth store —
+   * and its localStorage access — out of this data-only composable.
+   */
+  const loadHoldReasonCatalog = async (clientId: string | number | null): Promise<void> => {
+    if (!clientId) return
+    try {
+      const { data } = await getHoldReasonCatalog(clientId)
+      const codes = (Array.isArray(data) ? data : [])
+        .filter((r: { is_active?: boolean }) => r.is_active !== false)
+        .map((r: { reason_code: string }) => r.reason_code)
+        .filter(Boolean)
+      // An empty catalog means the client was never seeded; keep the fallback
+      // rather than presenting an empty dropdown with no explanation.
+      if (codes.length) holdReasonCodes.value = codes
+    } catch {
+      // Leave the fallback in place — an unreachable catalog should not make
+      // the reason column uneditable.
+    }
+  }
+
   const columnDefs = computed<ColumnDef[]>(() => [
     {
       headerName: t('grids.columns.holdDate'),
@@ -223,7 +260,7 @@ export function useHoldGridData() {
       field: 'hold_reason',
       editable: true,
       cellEditor: 'agSelectCellEditor',
-      cellEditorParams: { values: HOLD_REASON_CODES },
+      cellEditorParams: { values: holdReasonCodes.value },
       width: 200,
     },
     {
@@ -358,6 +395,8 @@ export function useHoldGridData() {
     pendingApprovalsCount,
     avgDaysOnHold,
     columnDefs,
+    holdReasonCodes,
+    loadHoldReasonCatalog,
     applyFilters,
     showSnackbar,
   }
