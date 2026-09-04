@@ -502,7 +502,13 @@ def approve_qc(
     work_order_id: str,
     approval_data: Optional[Dict[str, Any]] = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    # Supervisory tier (admin / poweruser / leader / supervisor), NOT any
+    # authenticated user. The docstring below has always promised "Verifies
+    # user has QC authority (based on role)" and documented a 403, and no such
+    # check existed: the dependency was get_current_user, so an operator or a
+    # viewer could clear the final quality gate before SHIPPED. The sibling
+    # mutation on this same router already gates this way.
+    current_user: User = Depends(get_current_active_supervisor),
 ) -> Dict[str, Any]:
     """
     Approve QC for a work order.

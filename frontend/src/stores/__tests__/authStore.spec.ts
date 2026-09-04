@@ -143,6 +143,24 @@ describe('Auth Store', () => {
       expect(store.isSupervisor).toBe(true)
     })
 
+    it('isSupervisoryTier matches the backend SUPERVISORY_ROLES exactly', () => {
+      // backend/orm/user.py: SUPERVISORY_ROLES = PLANNER_ROLES + [LEADER,
+      // SUPERVISOR] = admin, poweruser, leader, supervisor. This is the set
+      // get_current_active_supervisor admits, so a control gated on anything
+      // narrower hides an action the server would allow — `isSupervisor` is
+      // admin+supervisor only, which would have hidden QC approval from
+      // powerusers and leaders.
+      const store = useAuthStore()
+      for (const role of ['admin', 'poweruser', 'leader', 'supervisor']) {
+        store.user = { role } as never
+        expect(store.isSupervisoryTier, `${role} should be supervisory`).toBe(true)
+      }
+      for (const role of ['operator', 'viewer']) {
+        store.user = { role } as never
+        expect(store.isSupervisoryTier, `${role} must not be supervisory`).toBe(false)
+      }
+    })
+
     it('isSupervisor returns false for operator users', () => {
       const store = useAuthStore()
       store.user = { role: 'operator' }

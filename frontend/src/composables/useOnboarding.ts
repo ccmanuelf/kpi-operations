@@ -34,7 +34,10 @@ const STEP_DEFINITIONS: OnboardingStepDefinition[] = [
     key: 'shifts_configured',
     i18nKey: 'onboarding.steps.shifts',
     icon: 'mdi-clock-outline',
-    route: '/admin/settings',
+    // Was '/admin/settings', which has no shift UI at all — so this step, the
+    // FIRST thing a new admin is told to do, could never be completed through
+    // the product. /admin/shifts is the screen that actually creates shifts.
+    route: '/admin/shifts',
     color: 'blue',
   },
   {

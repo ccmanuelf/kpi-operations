@@ -19,8 +19,22 @@ const { storeState } = vi.hoisted(() => ({
   },
 }))
 
-vi.mock('vue-i18n', () => ({
-  useI18n: () => ({ t: (key: string) => key, locale: { value: 'en' } }),
+// createI18n is re-exported because the composable now imports the API client
+// (for the per-client hold-reason catalog), and services/api/structuredErrors
+// calls createI18n at module scope. Mocking vue-i18n wholesale without it
+// breaks that import chain rather than this composable.
+vi.mock('vue-i18n', async () => {
+  const actual = await vi.importActual<typeof import('vue-i18n')>('vue-i18n')
+  return {
+    ...actual,
+    useI18n: () => ({ t: (key: string) => key, locale: { value: 'en' } }),
+  }
+})
+
+// The catalog request itself is not under test here; the column definitions
+// are. Stubbed so the composable falls back to HOLD_REASON_CODES.
+vi.mock('@/services/api/dataEntry', () => ({
+  getHoldReasonCatalog: vi.fn(() => Promise.resolve({ data: [] })),
 }))
 
 vi.mock('@/stores/productionDataStore', () => ({

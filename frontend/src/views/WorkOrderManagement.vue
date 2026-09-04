@@ -151,6 +151,39 @@
         </v-card-text>
       </v-card>
       <v-card>
+        <!-- Bulk actions. Shown only with a selection so the toolbar does not
+             advertise an action that would do nothing. -->
+        <v-toolbar v-if="selectedRows.length" density="compact" color="surface-variant" class="px-2">
+          <span class="text-body-2 mr-4" data-testid="bulk-selection-count">
+            {{ t('workOrders.bulk.selected', { count: selectedRows.length }) }}
+          </span>
+          <v-select
+            v-model="bulkTargetStatus"
+            :items="statusOptions"
+            :label="t('workOrders.bulk.moveTo')"
+            variant="outlined"
+            density="compact"
+            hide-details
+            style="max-width: 240px"
+            data-testid="bulk-status-select"
+          />
+          <v-btn
+            class="ml-3"
+            color="primary"
+            variant="flat"
+            size="small"
+            :disabled="!bulkTargetStatus || bulkApplying"
+            :loading="bulkApplying"
+            data-testid="bulk-apply"
+            @click="applyBulkTransition"
+          >
+            {{ t('workOrders.bulk.apply') }}
+          </v-btn>
+          <v-spacer />
+          <v-btn variant="text" size="small" @click="clearSelection">
+            {{ t('common.clear') }}
+          </v-btn>
+        </v-toolbar>
         <AGGridBase
           :columnDefs="columnDefs"
           :rowData="workOrders"
@@ -158,7 +191,9 @@
           :pagination="true"
           :paginationPageSize="25"
           :enableExcelPaste="false"
+          :rowSelection="bulkSelectionConfig"
           entry-type="production"
+          @grid-ready="onGridReady"
           @cell-value-changed="onCellValueChanged"
         />
       </v-card>
@@ -202,7 +237,7 @@
  * dialogs — both qualify under the spec's permitted exceptions
  * (read-only inspector + destructive confirmation).
  */
-import { onMounted } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AGGridBase from '@/components/grids/AGGridBase.vue'
 import WorkOrderDetailDrawer from '@/components/WorkOrderDetailDrawer.vue'
@@ -211,6 +246,7 @@ import { useNotificationStore } from '@/stores/notificationStore'
 import { useWorkOrderData } from '@/composables/useWorkOrderData'
 import { useWorkOrderForms } from '@/composables/useWorkOrderForms'
 import useWorkOrderGridData from '@/composables/useWorkOrderGridData'
+import * as workflowApi from '@/services/api/workflow'
 
 const { t } = useI18n()
 const notificationStore = useNotificationStore()
@@ -227,6 +263,72 @@ const {
   deleteDialog, workOrderToDelete, deleting, deleteBlockers,
   confirmDelete, deleteWorkOrder,
 } = useWorkOrderForms(loadWorkOrders, formatStatus)
+
+// --- bulk status transition -------------------------------------------------
+//
+// POST /api/workflow/bulk-transition and its client wrapper
+// (services/api/workflow.ts::bulkTransition) were both written and had ZERO
+// callers: the screen offered no multi-select, so moving 50 released orders to
+// IN_PROGRESS meant opening the drawer 50 times.
+//
+// Checkboxes rather than click-selection, because a click already opens the
+// detail drawer on this screen.
+const bulkSelectionConfig = {
+  mode: 'multiRow',
+  checkboxes: true,
+  headerCheckbox: true,
+  enableClickSelection: false,
+}
+
+const gridApi = ref(null)
+const selectedRows = ref([])
+const bulkTargetStatus = ref(null)
+const bulkApplying = ref(false)
+
+const onGridReady = (params) => {
+  gridApi.value = params.api
+  params.api?.addEventListener?.('selectionChanged', () => {
+    selectedRows.value = params.api?.getSelectedRows?.() ?? []
+  })
+}
+
+const clearSelection = () => {
+  gridApi.value?.deselectAll()
+  selectedRows.value = []
+  bulkTargetStatus.value = null
+}
+
+const applyBulkTransition = async () => {
+  if (!bulkTargetStatus.value || selectedRows.value.length === 0) return
+  bulkApplying.value = true
+  try {
+    const ids = selectedRows.value.map((r) => r.work_order_id).filter(Boolean)
+    const { data } = await workflowApi.bulkTransition(
+      ids,
+      bulkTargetStatus.value,
+      selectedClient.value,
+    )
+    // The endpoint validates per order, so a partial outcome is normal and
+    // must be reported as one rather than as blanket success.
+    const succeeded = data?.successful ?? data?.success_count ?? 0
+    const failed = data?.failed ?? data?.failure_count ?? 0
+    if (failed > 0) {
+      notificationStore.showWarning(
+        t('workOrders.bulk.partial', { count: succeeded, failed }),
+      )
+    } else {
+      notificationStore.showSuccess(t('workOrders.bulk.done', { count: succeeded }))
+    }
+    clearSelection()
+    await loadWorkOrders()
+  } catch (error) {
+    notificationStore.showError(
+      error?.response?.data?.detail || t('workOrders.bulk.failed'),
+    )
+  } finally {
+    bulkApplying.value = false
+  }
+}
 
 const { columnDefs, addRow, onCellValueChanged } = useWorkOrderGridData({
   workOrders,

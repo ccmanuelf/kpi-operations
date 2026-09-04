@@ -1,5 +1,11 @@
 <template>
-  <div class="alert-card" :class="[`severity-${alert.severity}`, `status-${alert.status}`]">
+  <div
+    class="alert-card"
+    data-testid="alert-card"
+    :data-severity="alert.severity"
+    :data-status="alert.status"
+    :class="[`severity-${alert.severity}`, `status-${alert.status}`]"
+  >
     <div class="alert-header">
       <div class="severity-badge" :class="alert.severity">
         {{ severityIcon }}

@@ -1,4 +1,9 @@
-import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router'
+import {
+  createRouter,
+  createWebHistory,
+  RouteRecordRaw,
+  NavigationGuardWithThis,
+} from 'vue-router'
 
 // vue-router module augmentation. Must live in a `.ts` file (NOT a
 // `.d.ts`) so it merges with vue-router's own type exports rather
@@ -13,12 +18,22 @@ declare module 'vue-router' {
   interface RouteMeta {
     requiresAuth?: boolean
     requiresAdmin?: boolean
+    requiresSupervisory?: boolean
   }
 }
 
 interface StoredUser {
   role?: string
 }
+
+/**
+ * Mirrors backend SUPERVISORY_ROLES (backend/orm/user.py) exactly.
+ *
+ * Kept in step by `supervisoryGuard.spec.ts`, which parses the Python. A role
+ * listed here that the API rejects hands the user a screen whose every save
+ * 403s; one missing here hides a screen the API would have served.
+ */
+export const SUPERVISORY_ROLES: string[] = ['admin', 'poweruser', 'leader', 'supervisor']
 
 const routes: RouteRecordRaw[] = [
   {
@@ -229,6 +244,23 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true, requiresAdmin: true },
   },
   {
+    path: '/admin/shifts',
+    name: 'admin-shifts',
+    // Supervisory, matching get_current_active_supervisor on the shift
+    // POST/PUT/DELETE routes.
+    component: () => import('@/views/admin/ShiftsAdmin.vue'),
+    meta: { requiresAuth: true, requiresSupervisory: true },
+  },
+  {
+    path: '/admin/hold-catalogs',
+    name: 'admin-hold-catalogs',
+    component: () => import('@/views/admin/HoldCatalogs.vue'),
+    // Not `requiresAdmin`: the API lets the whole supervisory tier manage
+    // these catalogs, and gating the screen tighter than the endpoint would
+    // recreate the very "backend can, UI cannot" gap this screen closes.
+    meta: { requiresAuth: true, requiresSupervisory: true },
+  },
+  {
     path: '/admin/variance-report',
     name: 'admin-variance-report',
     component: () => import('@/views/admin/AssumptionVarianceReport.vue'),
@@ -264,7 +296,7 @@ const readStoredUser = (): StoredUser | null => {
   }
 }
 
-router.beforeEach((to, _from, next) => {
+export const navigationGuard: NavigationGuardWithThis<undefined> = (to, _from, next) => {
   const token = localStorage.getItem('access_token')
   const isAuthenticated = !!token
 
@@ -277,6 +309,15 @@ router.beforeEach((to, _from, next) => {
     const user = readStoredUser()
     const isAdmin = user?.role === 'admin' || user?.role === 'ADMIN'
     if (!isAdmin) {
+      next('/')
+      return
+    }
+  }
+
+  if (to.meta.requiresSupervisory && isAuthenticated) {
+    const user = readStoredUser()
+    const role = (user?.role ?? '').toLowerCase()
+    if (!SUPERVISORY_ROLES.includes(role)) {
       next('/')
       return
     }
@@ -296,6 +337,8 @@ router.beforeEach((to, _from, next) => {
   }
 
   next()
-})
+}
+
+router.beforeEach(navigationGuard)
 
 export default router

@@ -38,6 +38,7 @@ router = APIRouter(prefix="/api/shifts", tags=["Shifts"])
 
 @router.get("/", response_model=List[ShiftResponse])
 def list_shifts_endpoint(
+    include_inactive: bool = False,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     scope: ClientScope = Depends(resolve_client_scope),
@@ -50,16 +51,20 @@ def list_shifts_endpoint(
     explicit client_id narrows the result, subject to the same
     scope-authorization behavior as the other resolve_client_scope endpoints.
 
-    Returns all active shifts ordered by shift_name. The response is
+    `include_inactive=true` also returns deactivated shifts. DELETE is a soft
+    delete, and PUT accepts is_active, so without this the admin screen could
+    switch a shift off and never see it again to switch it back on — a
+    one-way toggle that looks reversible.
+
+    Returns shifts ordered by shift_name. The response is
     serialised through ShiftResponse via FastAPI's response_model — the
     function itself returns the ORM rows, so the annotation reflects
     that rather than lying about the post-serialisation type.
     """
     logger.info("Listing shifts for scope=%s by user=%s", scope.client_ids, current_user.user_id)
-    query = db.query(Shift).filter(
-        scope.filter(Shift.client_id),
-        Shift.is_active.is_(True),
-    )
+    query = db.query(Shift).filter(scope.filter(Shift.client_id))
+    if not include_inactive:
+        query = query.filter(Shift.is_active.is_(True))
     return query.order_by(Shift.shift_name).all()
 
 

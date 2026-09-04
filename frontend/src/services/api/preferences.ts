@@ -36,4 +36,15 @@ export const duplicateFilter = (filterId: string | number, newName: string) =>
 
 export const getFilterHistory = () => api.get('/filters/history/recent')
 
+/**
+ * Record an applied filter server-side.
+ *
+ * The backend documents this as "use this endpoint when applying ad-hoc
+ * filters that are not saved"; it had no caller, so the server's history only
+ * ever contained filters applied via POST /filters/{id}/apply. Trimmed to 50
+ * entries per user server-side.
+ */
+export const addFilterToHistory = (filterConfig: unknown) =>
+  api.post('/filters/history', filterConfig)
+
 export const clearFilterHistory = () => api.delete('/filters/history')

@@ -137,6 +137,8 @@
           <v-list-item prepend-icon="mdi-tune-variant" :title="$t('navigation.clientConfig')" value="client-config" to="/admin/client-config" />
           <v-list-item prepend-icon="mdi-chart-scatter-plot" :title="$t('navigation.partOpportunities')" value="part-opportunities" to="/admin/part-opportunities" />
           <v-list-item prepend-icon="mdi-account-switch" :title="$t('navigation.floatingPool')" value="floating-pool" to="/admin/floating-pool" />
+          <v-list-item prepend-icon="mdi-clock-outline" :title="$t('navigation.shifts')" value="shifts" to="/admin/shifts" />
+          <v-list-item prepend-icon="mdi-playlist-edit" :title="$t('navigation.holdCatalogs')" value="hold-catalogs" to="/admin/hold-catalogs" />
           <v-list-item prepend-icon="mdi-sitemap" :title="$t('navigation.workflowConfig')" value="workflow-config" to="/admin/workflow-config" />
           <v-list-item prepend-icon="mdi-database-cog" :title="$t('navigation.databaseConfig')" value="database-config" to="/admin/database" />
           <v-list-item prepend-icon="mdi-chart-bell-curve-cumulative" :title="$t('navigation.varianceReport')" value="variance-report" to="/admin/variance-report" />

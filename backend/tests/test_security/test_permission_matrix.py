@@ -125,6 +125,12 @@ MATRIX = [
     # a supervisory-gated route — is covered at the CRUD layer by
     # test_work_order_delay_classification.py; this row pins the route guard.)
     ("PUT", "/api/work-orders/1", ["operator", "viewer"], "supervisor", 404),
+    # QC approval — the final gate before SHIPPED. Its docstring has always
+    # promised "Verifies user has QC authority (based on role)" and documented
+    # a 403, while the dependency was get_current_user: an operator or a
+    # VIEWER could clear the gate. Same 404 shape as the row above — the guard
+    # passes for the allowed role and the lookup misses in an empty DB.
+    ("POST", "/api/work-orders/1/approve-qc", ["operator", "viewer"], "supervisor", 404),
     # Audit trail reads (Phase A2), admin-only. Read endpoints rather than
     # writes, so they sit outside the write-tier rows above, but they belong
     # here for the reason this file exists: every other audit authz test

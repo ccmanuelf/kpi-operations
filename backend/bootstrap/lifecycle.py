@@ -145,6 +145,40 @@ def _expected_clients() -> set:
     return set(ALLOWLIST)
 
 
+def _first_unseeded_table() -> "str | None":
+    """The first table the seeder claims to write that holds no rows, if any.
+
+    Returns None when every declared table is populated. Used to tell a
+    CURRENT demo database from one that merely has the right client list --
+    the distinction the client-count check alone cannot make.
+
+    Deliberately an existence probe (`LIMIT 1`) per table rather than a count,
+    and it stops at the first empty one, so the common case costs one cheap
+    query. Ordered for determinism so the log names the same table every time
+    rather than whichever the set iteration happened to yield.
+    """
+    from sqlalchemy import literal, select
+
+    from backend.database import Base, SessionLocal
+    from backend.seed.coverage import SEEDED
+
+    db = SessionLocal()
+    try:
+        for name in sorted(SEEDED):
+            table = Base.metadata.tables.get(name)
+            if table is None:
+                # Declared but absent from the metadata: a coverage/ORM
+                # disagreement is a real problem, but it is not this
+                # function's to raise, and the two-sided gate in
+                # tests/test_seed/test_coverage.py already fails on it.
+                continue
+            if db.execute(select(literal(1)).select_from(table).limit(1)).first() is None:
+                return name
+        return None
+    finally:
+        db.close()
+
+
 def _check_and_seed_demo_data() -> None:
     """The smart-detect + (re)seed body; runs under the named lock on MariaDB.
 
@@ -184,7 +218,28 @@ def _check_and_seed_demo_data() -> None:
             )
             need_seed = True
         else:
-            need_seed = False
+            # The clients being present does NOT mean the demo is current.
+            # This check used to stop at the client list, so a database seeded
+            # before a table existed kept its four clients, passed, and never
+            # picked the table up -- alerts, equipment and the calculation
+            # assumptions were all empty on a database this function had just
+            # declared OK. Only a deployment with a THROWAWAY database was
+            # saved, by starting empty and taking the client_count == 0 branch.
+            #
+            # `coverage.SEEDED` is the seeder's own declaration of what it
+            # writes, and the boot seed runs the FULL profile over the whole
+            # allowlist, so every one of those tables must have rows. An
+            # existence probe rather than a count, short-circuiting on the
+            # first empty table.
+            stale_table = _first_unseeded_table()
+            if stale_table is not None:
+                logger.info(
+                    "Demo data predates the current seeder (%s is empty) — re-seeding...",
+                    stale_table,
+                )
+                need_seed = True
+            else:
+                need_seed = False
 
         if need_seed:
             from datetime import date

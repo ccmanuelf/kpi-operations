@@ -157,7 +157,8 @@
     "reportsExport": "Reportes y Exportación",
     "toggleDarkMode": "Alternar modo oscuro",
     "darkMode": "Modo oscuro",
-    "lightMode": "Modo claro"
+    "lightMode": "Modo claro",
+    "holdCatalogs": "Catálogos de Retención"
   },
   "operationsHealth": {
     "productionToday": "Producción Hoy",
@@ -848,7 +849,12 @@
       "onHold": "En Espera",
       "cancelled": "Cancelado",
       "active": "Activo",
-      "rejected": "Rechazado"
+      "rejected": "Rechazado",
+      "received": "Recibida",
+      "released": "Liberada",
+      "demoted": "Degradada",
+      "shipped": "Enviada",
+      "closed": "Cerrada"
     },
     "inProgress": "En Progreso",
     "completed": "Completado",
@@ -881,6 +887,14 @@
       "normal": "Normal",
       "medium": "Medio",
       "low": "Bajo"
+    },
+    "bulk": {
+      "selected": "{count} seleccionadas",
+      "moveTo": "Mover a estado",
+      "apply": "Aplicar a seleccionadas",
+      "done": "Se movieron {count} órdenes.",
+      "partial": "Se movieron {count}, rechazadas {failed}.",
+      "failed": "La transición masiva falló."
     }
   },
   "reports": {
@@ -2077,7 +2091,55 @@
         "applyTemplate": "Error al aplicar plantilla"
       }
     },
-    "fillRequiredFields": "Complete primero los campos requeridos"
+    "fillRequiredFields": "Complete primero los campos requeridos",
+    "holdCatalogs": {
+      "title": "Catálogos de Retención",
+      "subtitle": "Estados y motivos de retención por cliente. Las retenciones solo pueden usar entradas activas aquí.",
+      "statusesHeading": "Estados de Retención",
+      "reasonsHeading": "Motivos de Retención",
+      "addStatus": "Agregar Estado",
+      "addReason": "Agregar Motivo",
+      "statusCode": "Código de Estado",
+      "reasonCode": "Código de Motivo",
+      "displayName": "Nombre Visible",
+      "sortOrder": "Orden",
+      "seeded": "Predeterminado",
+      "seedDefaults": "Cargar Predeterminados",
+      "seedResult": "Se cargaron {statuses} estados y {reasons} motivos ({skipped} ya existían).",
+      "emptyCatalogWarning": "Este cliente no tiene catálogo de retención, por lo que todo intento de registrar una retención será rechazado. Use Cargar Predeterminados para instalar los estados y motivos estándar.",
+      "configuredCounts": "{statuses} estados, {reasons} motivos configurados",
+      "selectClientToView": "Seleccione un cliente para ver sus catálogos de retención",
+      "selectClientFirst": "Seleccione un cliente primero",
+      "fillRequiredFields": "Ingrese un código y un nombre visible antes de guardar",
+      "entryCreated": "Entrada de catálogo creada",
+      "entryUpdated": "Entrada de catálogo actualizada",
+      "entryDeleted": "Entrada de catálogo eliminada",
+      "confirmDeleteTitle": "Eliminar entrada de catálogo",
+      "confirmDeleteBody": "¿Eliminar “{code}”? Las retenciones ya registradas con ella no se ven afectadas, pero dejará de poder seleccionarse."
+    },
+    "shifts": {
+      "title": "Turnos",
+      "subtitle": "Datos maestros de turnos. Cada registro de producción, paro, asistencia, calidad y retención lleva un turno.",
+      "addShift": "Agregar Turno",
+      "shiftName": "Nombre del Turno",
+      "startTime": "Hora de Inicio",
+      "endTime": "Hora de Fin",
+      "selectClientFirst": "Seleccione un cliente primero",
+      "selectClientToAdd": "Seleccione un cliente para agregar un turno",
+      "fillRequiredFields": "Ingrese un nombre y horas de inicio/fin válidas (HH:MM) antes de guardar",
+      "invalidTime": "Las horas deben tener formato HH:MM o HH:MM:SS",
+      "shiftCreated": "Turno creado",
+      "shiftUpdated": "Turno actualizado",
+      "shiftDeleted": "Turno desactivado",
+      "noShiftsWarning": "No hay turnos configurados. Las listas de turno en todas las pantallas de captura estarán vacías hasta que agregue uno.",
+      "overlapTitle": "Este turno se traslapa con uno existente",
+      "overlapBody": "Los turnos traslapados están permitidos, pero suelen indicar un error. Las horas propuestas se traslapan con:",
+      "saveAnyway": "Guardar de Todos Modos",
+      "confirmDeleteTitle": "Desactivar turno",
+      "confirmDeleteBody": "¿Desactivar “{name}”? Los registros ya capturados con él no se ven afectados, pero dejará de poder seleccionarse y ya no aparecerá en esta pantalla.",
+      "timeRange": "{start} – {end}",
+      "showInactive": "Mostrar inactivos"
+    }
   },
   "csv": {
     "importCsv": "Importar CSV",
@@ -2101,7 +2163,7 @@
     "rowError": "Fila {row}: {error}",
     "upload": "Subir",
     "uploadPartOpportunities": "Subir CSV de Oportunidades por Parte",
-    "partOpportunitiesInfo": "Sube un archivo CSV con columnas part_number y opportunities_per_unit para configurar oportunidades de parte en lote.",
+    "partOpportunitiesInfo": "Columnas: part_number, opportunities_per_unit, part_description, part_category, notes. Un número de parte existente se actualiza; los nuevos se crean.",
     "replaceExisting": "Reemplazar registros existentes",
     "replaceExistingHint": "Si está marcado, los registros existentes para números de parte coincidentes serán actualizados",
     "importTitle": "Importación CSV - {type}",
@@ -2149,7 +2211,11 @@
     "stepPreview": "Vista Previa",
     "stepConfirm": "Confirmar",
     "downloadSuccess": "CSV descargado exitosamente",
-    "exportFailed": "Error de exportación: {message}"
+    "exportFailed": "Error de exportación: {message}",
+    "selectClientFirst": "Seleccione un cliente antes de importar — cada parte pertenece a uno.",
+    "noValidRows": "No hay filas importables: cada una necesita part_number y un opportunities_per_unit entero.",
+    "partialSuccess": "Importadas {count}, rechazadas {failed}.",
+    "skippedInvalidRows": "Se omitieron {skipped} fila(s) inválidas."
   },
   "validation": {
     "required": "Este campo es requerido",
@@ -3861,9 +3927,9 @@
       "actionRequired": "Acción Requerida",
       "critical": "Crítico",
       "lowRiskRange": "0-50: Riesgo Bajo",
-      "monitorRange": "51-200: Monitorear",
-      "actionRange": "201-400: Acción Requerida",
-      "criticalRange": "400+: Crítico",
+      "monitorRange": "51-125: Monitorear",
+      "actionRange": "126-250: Acción Requerida",
+      "criticalRange": "250+: Crítico",
       "lowThreshold": "Bajo <50",
       "medThreshold": "Med 50-200",
       "highThreshold": "Alto >200",
@@ -3993,7 +4059,12 @@
     "putOnHold": "Poner en Espera",
     "resume": "Reanudar",
     "markComplete": "Marcar Completa",
-    "noWorkOrderSelected": "Sin orden de trabajo seleccionada"
+    "noWorkOrderSelected": "Sin orden de trabajo seleccionada",
+    "approveQc": "Aprobar CC",
+    "approvedBy": "Aprobado por {user}",
+    "qcApprovedToast": "CC aprobado. Esta orden ya puede enviarse.",
+    "qcNotAvailableInStatus": "No se puede aprobar CC mientras la orden está {status}.",
+    "qcNeedsAuthority": "La aprobación de CC requiere un rol supervisor."
   },
   "attendanceKpis": {
     "phaseTitle": "Fase 3: KPIs de Asistencia",

@@ -16,6 +16,11 @@ export const SCREENS: { name: string; path: string }[] = [
   { name: 'admin-users', path: '/admin/users' },
   { name: 'admin-defect-types', path: '/admin/defect-types' },
   { name: 'admin-employees', path: '/admin/employees' },
+  // Both new admin grids pass enableExcelPaste="false", the same opt-out that
+  // lets work-orders pass — see the note below on the paste toolbar's
+  // dark-theme contrast.
+  { name: 'admin-shifts', path: '/admin/shifts' },
+  { name: 'admin-hold-catalogs', path: '/admin/hold-catalogs' },
 ]
 
 // NOT added: '/data-entry/attendance'. AGGridBase's "Paste from Excel"
