@@ -54,7 +54,7 @@ contract is `RawInputs in → CalculationResult out`.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Optional
 
@@ -142,6 +142,137 @@ def _apply_workorder_filters(q: Query, *, work_order_id: Optional[str]) -> Query
 # ------------------------------------------------------------------ OEE
 
 
+ROLLING_WINDOW_DAYS = 90
+"""Window for both alternative cycle times.
+
+`demonstrated_best` means the best the plant has recently PROVEN it can do.
+Bounding it to the same trailing window as the rolling average keeps the
+benchmark current -- an all-time minimum would anchor OEE to a single good day
+that may be years old and no longer representative.
+"""
+
+DEMONSTRATED_BEST_MIN_UNITS_FRACTION = Decimal("0.5")
+"""A day must produce at least this fraction of the window's MEDIAN daily
+output to be eligible as the demonstrated best.
+
+Without a floor the benchmark is set by whichever day happened to run
+shortest: Performance is (ideal_cycle * units) / run_time, so a FASTER ideal
+cycle lowers Performance, and a part-day that made 12 units in a brisk hour
+would define an unreachable standard and depress OEE for the whole period.
+Half the median is deliberately generous -- it excludes partial and
+interrupted days without discarding a genuinely good short week.
+"""
+
+
+def _per_day_cycle_times(
+    db: Session,
+    client_id: str,
+    window_start: datetime,
+    window_end: datetime,
+    *,
+    line_id: Optional[int],
+    shift_id: Optional[int],
+    product_id: Optional[int],
+    work_order_id: Optional[str],
+) -> list[tuple[Decimal, int]]:
+    """Per-day (run_hours, units) over the window, days with output only.
+
+    The SUMs are done in SQL and the division in Python, deliberately. Dividing
+    inside the query inherits `run_time_hours`' Numeric(10, 2) type, and
+    SQLAlchemy's SQLite result processor then quantises the answer to two
+    decimals -- a cycle time of 0.044642 comes back as 0.04 -- while MariaDB
+    has native decimal support, runs no processor, and returns the full scale.
+    The same query would yield different numbers per dialect, and the SQLite
+    suite would report green. Summing and dividing in Python is also what the
+    weighted cycle time above already does.
+    """
+    day = func.date(ProductionEntry.shift_date).label("day")
+    q = db.query(
+        day,
+        func.coalesce(func.sum(ProductionEntry.run_time_hours), 0).label("run_hours"),
+        func.coalesce(func.sum(ProductionEntry.units_produced), 0).label("units"),
+    ).filter(
+        and_(
+            ProductionEntry.client_id == client_id,
+            ProductionEntry.shift_date >= window_start,
+            ProductionEntry.shift_date <= window_end,
+        )
+    )
+    q = _apply_production_filters(
+        q,
+        line_id=line_id,
+        shift_id=shift_id,
+        product_id=product_id,
+        work_order_id=work_order_id,
+    )
+    # Grouping by the same expression that is selected keeps MariaDB's
+    # ONLY_FULL_GROUP_BY satisfied; the filtering by output happens in Python.
+    rows = q.group_by(day).all()
+
+    return [
+        (Decimal(str(r.run_hours)), int(r.units))
+        for r in rows
+        if r.units and int(r.units) > 0 and Decimal(str(r.run_hours)) > 0
+    ]
+
+
+def _median(values: list[int]) -> Decimal:
+    ordered = sorted(values)
+    mid = len(ordered) // 2
+    if len(ordered) % 2:
+        return Decimal(ordered[mid])
+    return (Decimal(ordered[mid - 1]) + Decimal(ordered[mid])) / Decimal("2")
+
+
+def alternative_cycle_times(
+    db: Session,
+    client_id: str,
+    period_end: datetime,
+    *,
+    line_id: Optional[int] = None,
+    shift_id: Optional[int] = None,
+    product_id: Optional[int] = None,
+    work_order_id: Optional[str] = None,
+) -> tuple[Optional[Decimal], Optional[Decimal]]:
+    """`(rolling_90_day, demonstrated_best)` observed cycle times, or None.
+
+    These back the `ideal_cycle_time_source` assumption. Nothing populated them
+    before, so selecting `rolling_90_day_average` or `demonstrated_best`
+    recorded an assumption that changed no number on any production path --
+    the appearance of a decision without its substance.
+
+    Both are ACHIEVED cycle times (run time over units), not published
+    standards: the assumption exists to let a site benchmark against its own
+    demonstrated rate instead of an engineering figure.
+
+    Returns None for either when the window holds no qualifying production, so
+    the caller can tell "no basis to compute this" from a real zero.
+    """
+    window_start = period_end - timedelta(days=ROLLING_WINDOW_DAYS)
+    per_day = _per_day_cycle_times(
+        db,
+        client_id,
+        window_start,
+        period_end,
+        line_id=line_id,
+        shift_id=shift_id,
+        product_id=product_id,
+        work_order_id=work_order_id,
+    )
+    if not per_day:
+        return None, None
+
+    total_hours = sum((h for h, _ in per_day), Decimal("0"))
+    total_units = sum(u for _, u in per_day)
+    rolling = total_hours / Decimal(total_units) if total_units > 0 else None
+
+    floor = _median([u for _, u in per_day]) * DEMONSTRATED_BEST_MIN_UNITS_FRACTION
+    eligible = [(h / Decimal(u)) for h, u in per_day if Decimal(u) >= floor]
+    best = min(eligible) if eligible else None
+
+    return rolling, best
+
+
 def aggregate_oee_inputs(
     db: Session,
     client_id: str,
@@ -220,6 +351,20 @@ def aggregate_oee_inputs(
     rework_q = _apply_quality_filters(rework_q, work_order_id=work_order_id)
     rework = rework_q.scalar() or 0
 
+    # The two alternative cycle times the `ideal_cycle_time_source` assumption
+    # selects between. Nothing populated these before, so choosing
+    # `rolling_90_day_average` or `demonstrated_best` was recorded, approved
+    # and reported as active while changing no number at all.
+    rolling_cycle, best_cycle = alternative_cycle_times(
+        db,
+        client_id,
+        period_end,
+        line_id=line_id,
+        shift_id=shift_id,
+        product_id=product_id,
+        work_order_id=work_order_id,
+    )
+
     return OEERawInputs(
         scheduled_hours=scheduled,
         downtime_hours=downtime,
@@ -228,6 +373,8 @@ def aggregate_oee_inputs(
         units_produced=int(p.units_produced or 0),
         run_time_hours=run_time,
         ideal_cycle_time_hours=cycle_time,
+        rolling_90_day_cycle_time_hours=rolling_cycle,
+        demonstrated_best_cycle_time_hours=best_cycle,
         defect_count=int(p.defect_count or 0),
         scrap_count=int(p.scrap_count or 0),
         units_reworked=int(rework),

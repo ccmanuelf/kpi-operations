@@ -2075,3 +2075,93 @@ def test_client_token_clause_agrees_with_python_on_mariadb(wanted, expected):
         session.query(Employee).filter(Employee.employee_id >= 9000).delete(synchronize_session=False)
         session.commit()
         session.close()
+
+
+@requires_mariadb
+def test_alternative_cycle_times_agree_with_sqlite_on_mariadb(mariadb_schema):
+    """The cycle-time aggregation behind `ideal_cycle_time_source`, on MariaDB.
+
+    This job had NO ProductionEntry aggregation coverage, so the query would
+    have shipped untested on the only dialect production runs.
+
+    Two dialect traps are live here, and both are silent:
+
+      * Dividing SUM(run_time_hours) by SUM(units_produced) IN SQL inherits
+        run_time_hours' Numeric(10, 2), and SQLAlchemy's SQLite result
+        processor quantises the answer to two decimals -- 0.044642 comes back
+        as 0.04 -- while MariaDB has native decimal support, runs no
+        processor, and returns the full scale. The implementation therefore
+        sums in SQL and divides in Python; this asserts the exact value that
+        choice produces, so pushing the division back into the query fails
+        here rather than silently disagreeing per dialect.
+      * func.date() returns a str on SQLite and a datetime.date on MariaDB.
+        The grouping must not care, and the assertion below proves it does not.
+    """
+    from datetime import datetime, time, timezone
+    from decimal import Decimal
+
+    from backend.orm.client import Client
+    from backend.orm.product import Product
+    from backend.orm.production_entry import ProductionEntry
+    from backend.orm.shift import Shift
+    from backend.services.dual_view.aggregators import alternative_cycle_times
+
+    session = SessionLocal()
+    try:
+        # product_id, shift_id and entered_by are all NOT NULL foreign keys.
+        session.add(Client(client_id="MDB-CYCLE", client_name="MariaDB cycle probe"))
+        session.flush()
+        session.add(
+            User(
+                user_id="mdb-cycle-user",
+                username="mdb-cycle-user",
+                email="mdb-cycle@example.com",
+                client_id_assigned="MDB-CYCLE",
+            )
+        )
+        product = Product(client_id="MDB-CYCLE", product_code="MDB-P1", product_name="Probe")
+        shift = Shift(
+            client_id="MDB-CYCLE",
+            shift_name="Probe shift",
+            start_time=time(6, 0),
+            end_time=time(14, 0),
+        )
+        session.add_all([product, shift])
+        session.flush()
+
+        # Two days: 100 units in 10h (0.10) and, on the next day, two shifts
+        # combining to 200 units in 12h (0.06). The best DAY is 0.06 and the
+        # window average is 22h / 300 units.
+        rows = [
+            (datetime(2026, 4, 10, tzinfo=timezone.utc), 100, "10.00"),
+            (datetime(2026, 4, 11, tzinfo=timezone.utc), 100, "2.00"),
+            (datetime(2026, 4, 11, tzinfo=timezone.utc), 100, "10.00"),
+        ]
+        for i, (day, units, hours) in enumerate(rows):
+            session.add(
+                ProductionEntry(
+                    production_entry_id=f"MDB-PE-{i}",
+                    client_id="MDB-CYCLE",
+                    product_id=product.product_id,
+                    shift_id=shift.shift_id,
+                    production_date=day,
+                    shift_date=day,
+                    units_produced=units,
+                    run_time_hours=Decimal(hours),
+                    employees_assigned=5,
+                    defect_count=0,
+                    scrap_count=0,
+                    entered_by="mdb-cycle-user",
+                )
+            )
+        session.commit()
+
+        rolling, best = alternative_cycle_times(session, "MDB-CYCLE", datetime(2026, 4, 30, tzinfo=timezone.utc))
+
+        # Exact, not approximate: quantisation to Numeric(10, 2) would give
+        # 0.07 here, and grouping that failed to combine the two day-11 shifts
+        # would give 0.02.
+        assert best == Decimal("0.06")
+        assert rolling == Decimal("22") / Decimal("300")
+    finally:
+        session.close()

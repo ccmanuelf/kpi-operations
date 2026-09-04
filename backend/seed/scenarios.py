@@ -291,13 +291,24 @@ SCENARIOS = (
 #:
 #: WHICH two is not arbitrary. A deviation only moves a number if the rule
 #: behind it reads a column with something in it, and if the service can
-#: actually apply it. `ideal_cycle_time_source="demonstrated_best"` looks like
-#: the obvious choice and is inert: oee_service applies it only when
+#: actually apply it. The two that deviate are the two whose inputs the seeder
+#: writes: scheduled maintenance and setup time.
+#:
+#: `ideal_cycle_time_source="demonstrated_best"` was rejected here because it
+#: was INERT -- oee_service applies it only when
 #: `demonstrated_best_cycle_time_hours` is set, and `aggregate_oee_inputs`
-#: never sets that field on any production path -- so it deviated while
-#: changing nothing, which is the exact appearance-without-substance this note
-#: exists to prevent. The two that deviate now are the two whose inputs the
-#: seeder writes: scheduled maintenance and setup time.
+#: never set that field on any production path, so it would have deviated
+#: while changing nothing. That is fixed (issue #278): the aggregator now
+#: computes both alternative cycle times, and on this dataset a
+#: demonstrated-best cycle is ~12% faster than the period standard, which
+#: moves OEE by roughly -12 points.
+#:
+#: It is still NOT the assumption seeded here, deliberately. Switching to it
+#: would drop the demo's headline OEE from ~94 to ~80 -- an honest number, but
+#: a different demo, and that is a product decision rather than a consequence
+#: of fixing the bug. `rolling_90_day_average` is a worse candidate again: the
+#: seeded run rate is stationary, so a trailing window sits within ~1% of any
+#: period and the delta rounds to nothing.
 #:
 #: The catalog default travels with each row so the change history can say
 #: what the value moved AWAY from. It cannot be imported: assumption_catalog
