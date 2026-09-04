@@ -23,22 +23,28 @@ vi.mock('vue-router', () => ({
   useRoute: () => ({ params: {}, query: {} }),
 }))
 
-const apiMock = {
-  getClients: vi.fn(() => Promise.resolve({ data: [] })),
-  getPrediction: vi.fn(() => Promise.resolve({ data: null })),
-  get: vi.fn(() => Promise.resolve({ data: [] })),
-  getKPITrends: vi.fn(() => Promise.resolve({ data: {} })),
-  getOEEHistory: vi.fn(() => Promise.resolve({ data: [] })),
-  getAvailabilityHistory: vi.fn(() => Promise.resolve({ data: [] })),
-  getAbsenteeismHistory: vi.fn(() => Promise.resolve({ data: [] })),
-  getOnTimeDeliveryHistory: vi.fn(() => Promise.resolve({ data: [] })),
-  getWIPAgingHistory: vi.fn(() => Promise.resolve({ data: [] })),
-  getAttendanceEntries: vi.fn(() => Promise.resolve({ data: [] })),
-  getHoldEntries: vi.fn(() => Promise.resolve({ data: [] })),
-  getProductionEntries: vi.fn(() => Promise.resolve({ data: [] })),
-  getDowntimeEntries: vi.fn(() => Promise.resolve({ data: [] })),
-  getQualityEntries: vi.fn(() => Promise.resolve({ data: [] })),
-}
+// Wrapped in vi.hoisted so it initialises BEFORE the hoisted vi.mock factory
+// that closes over it. A plain top-level const only worked while every view was
+// imported dynamically from inside a test; the static imports below evaluate at
+// module load, which would hit the TDZ. (Same shape as admin-views.spec.ts.)
+const { apiMock } = vi.hoisted(() => ({
+  apiMock: {
+    getClients: vi.fn(() => Promise.resolve({ data: [] })),
+    getPrediction: vi.fn(() => Promise.resolve({ data: null })),
+    get: vi.fn(() => Promise.resolve({ data: [] })),
+    getKPITrends: vi.fn(() => Promise.resolve({ data: {} })),
+    getOEEHistory: vi.fn(() => Promise.resolve({ data: [] })),
+    getAvailabilityHistory: vi.fn(() => Promise.resolve({ data: [] })),
+    getAbsenteeismHistory: vi.fn(() => Promise.resolve({ data: [] })),
+    getOnTimeDeliveryHistory: vi.fn(() => Promise.resolve({ data: [] })),
+    getWIPAgingHistory: vi.fn(() => Promise.resolve({ data: [] })),
+    getAttendanceEntries: vi.fn(() => Promise.resolve({ data: [] })),
+    getHoldEntries: vi.fn(() => Promise.resolve({ data: [] })),
+    getProductionEntries: vi.fn(() => Promise.resolve({ data: [] })),
+    getDowntimeEntries: vi.fn(() => Promise.resolve({ data: [] })),
+    getQualityEntries: vi.fn(() => Promise.resolve({ data: [] })),
+  },
+}))
 vi.mock('@/services/api', () => ({ default: apiMock }))
 
 vi.mock('@/stores/kpi', () => ({
@@ -163,11 +169,34 @@ const globalStubs = {
   'v-alert': { template: '<div class="v-alert"><slot /></div>', props: ['type', 'variant', 'density'] },
 }
 
+
+// Static imports — see the note in smokeMount on why these are not dynamic.
+import Efficiency from '@/views/kpi/Efficiency.vue'
+import Performance from '@/views/kpi/Performance.vue'
+import Quality from '@/views/kpi/Quality.vue'
+import Availability from '@/views/kpi/Availability.vue'
+import OEE from '@/views/kpi/OEE.vue'
+import Absenteeism from '@/views/kpi/Absenteeism.vue'
+import OnTimeDelivery from '@/views/kpi/OnTimeDelivery.vue'
+import WIPAging from '@/views/kpi/WIPAging.vue'
+
 // ---------- helpers ----------
-async function smokeMount(loader: () => Promise<unknown>) {
+/**
+ * Takes an already-imported component on purpose.
+ *
+ * These were `await smokeMount(() => import(...))`. The first such test paid
+ * the cold transform of the whole dependency graph the 8 KPI views share
+ * INSIDE the 5s per-test timeout — measured at 7727ms under full-suite load
+ * against 77-406ms for every later one, which is exactly the ~1-in-15
+ * "Efficiency.vue timed out" flake, never reproducible in isolation because
+ * an isolated run has no contention. Static imports are hoisted to module
+ * load, which vitest does not bill against the per-test timeout, so the race
+ * is gone rather than merely widened. `vi.mock` is hoisted above them and
+ * still applies. Matches admin-views.spec.ts, which has never flaked.
+ */
+function smokeMount(component: unknown) {
   setActivePinia(createPinia())
-  const mod = (await loader()) as { default: unknown }
-  const wrapper = shallowMount(mod.default as never, {
+  const wrapper = shallowMount(component as never, {
     global: {
       stubs: globalStubs,
       // KPI views use template-side $t directly (vs `t()` from useI18n),
@@ -186,44 +215,44 @@ describe('KPI detail views — smoke mount', () => {
     })
   })
 
-  it('Efficiency.vue mounts without errors', async () => {
-    const wrapper = await smokeMount(() => import('@/views/kpi/Efficiency.vue'))
+  it('Efficiency.vue mounts without errors', () => {
+    const wrapper = smokeMount(Efficiency)
     expect(wrapper.exists()).toBe(true)
     expect(wrapper.find('.v-container').exists()).toBe(true)
   })
 
-  it('Performance.vue mounts without errors', async () => {
-    const wrapper = await smokeMount(() => import('@/views/kpi/Performance.vue'))
+  it('Performance.vue mounts without errors', () => {
+    const wrapper = smokeMount(Performance)
     expect(wrapper.exists()).toBe(true)
   })
 
-  it('Quality.vue mounts without errors', async () => {
-    const wrapper = await smokeMount(() => import('@/views/kpi/Quality.vue'))
+  it('Quality.vue mounts without errors', () => {
+    const wrapper = smokeMount(Quality)
     expect(wrapper.exists()).toBe(true)
   })
 
-  it('Availability.vue mounts without errors', async () => {
-    const wrapper = await smokeMount(() => import('@/views/kpi/Availability.vue'))
+  it('Availability.vue mounts without errors', () => {
+    const wrapper = smokeMount(Availability)
     expect(wrapper.exists()).toBe(true)
   })
 
-  it('OEE.vue mounts without errors', async () => {
-    const wrapper = await smokeMount(() => import('@/views/kpi/OEE.vue'))
+  it('OEE.vue mounts without errors', () => {
+    const wrapper = smokeMount(OEE)
     expect(wrapper.exists()).toBe(true)
   })
 
-  it('Absenteeism.vue mounts without errors', async () => {
-    const wrapper = await smokeMount(() => import('@/views/kpi/Absenteeism.vue'))
+  it('Absenteeism.vue mounts without errors', () => {
+    const wrapper = smokeMount(Absenteeism)
     expect(wrapper.exists()).toBe(true)
   })
 
-  it('OnTimeDelivery.vue mounts without errors', async () => {
-    const wrapper = await smokeMount(() => import('@/views/kpi/OnTimeDelivery.vue'))
+  it('OnTimeDelivery.vue mounts without errors', () => {
+    const wrapper = smokeMount(OnTimeDelivery)
     expect(wrapper.exists()).toBe(true)
   })
 
-  it('WIPAging.vue mounts without errors', async () => {
-    const wrapper = await smokeMount(() => import('@/views/kpi/WIPAging.vue'))
+  it('WIPAging.vue mounts without errors', () => {
+    const wrapper = smokeMount(WIPAging)
     expect(wrapper.exists()).toBe(true)
   })
 })
