@@ -203,7 +203,12 @@ def _per_day_cycle_times(
         and_(
             ProductionEntry.client_id == client_id,
             ProductionEntry.shift_date >= window_start,
-            ProductionEntry.shift_date <= window_end,
+            # EXCLUSIVE. The scored period starts at window_end and includes
+            # it, so `<=` would put a row sitting exactly on the boundary into
+            # both the benchmark and the rows it is used to score -- the same
+            # self-reference this window was moved to avoid, in miniature, and
+            # the whole benchmark for a client whose only history is that day.
+            ProductionEntry.shift_date < window_end,
         )
     )
     q = _apply_production_filters(

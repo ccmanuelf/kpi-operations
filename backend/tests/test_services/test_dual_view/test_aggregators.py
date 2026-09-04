@@ -485,6 +485,29 @@ class TestAlternativeCycleTimes:
         assert rolling == Decimal("0.10")
         assert best == Decimal("0.10")
 
+    def test_a_row_on_the_period_boundary_belongs_to_the_period(self, transactional_db):
+        """The benchmark window's end is EXCLUSIVE.
+
+        The scored period starts at that instant and includes it, so an
+        inclusive bound would put a row sitting exactly on the boundary into
+        both the benchmark and the rows it is used to score -- and would BE
+        the whole benchmark for a client whose only history is that day.
+        """
+        client, _ = _client_user(transactional_db)
+        _make_production_entry(
+            transactional_db,
+            client_id=client.client_id,
+            shift_date=SCORED_FROM,
+            production_date=SCORED_FROM,
+            units_produced=100,
+            run_time_hours=Decimal("2.0"),
+        )
+
+        rolling, best = alternative_cycle_times(transactional_db, client.client_id, SCORED_FROM)
+
+        assert rolling is None
+        assert best is None
+
     def test_no_production_yields_None_not_zero(self, transactional_db):
         """None means "no basis to compute this"; zero would be a cycle time
         of nothing, which the assumption would then apply."""
