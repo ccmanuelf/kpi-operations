@@ -279,3 +279,89 @@ describe('a failed refresh is not a failed write', () => {
     expect(reg.staleAfterWrite.value).toBe(false)
   })
 })
+
+// Found by checking the previous fix rather than waiting to be told: guarding
+// on the CLIENT is not enough, because two reads of the same client are
+// indistinguishable by name.
+describe('two reads of the SAME client', () => {
+  it('does not let an older response for a client overwrite a newer one', async () => {
+    // A -> B -> A. The first request matches "A" again when it lands, so a
+    // client-identity guard would accept it and roll the list back.
+    let releaseFirst: (_v: unknown) => void = () => {}
+    mockAssumptions.listAssumptions
+      .mockImplementationOnce(() => new Promise((r) => { releaseFirst = r }))
+      .mockResolvedValueOnce({ data: [row({ assumption_id: 2 })] })
+      .mockResolvedValueOnce({ data: [row({ assumption_id: 3 })] })
+
+    const reg = useAssumptionRegistry()
+    reg.selectedClient.value = 'A'
+    const stale = reg.load()
+
+    reg.selectedClient.value = 'B'
+    await reg.load()
+    reg.selectedClient.value = 'A'
+    await reg.load()
+    expect(reg.assumptions.value.map((r) => r.assumption_id)).toEqual([3])
+
+    releaseFirst({ data: [row({ assumption_id: 1 })] })
+    await stale
+
+    expect(reg.assumptions.value.map((r) => r.assumption_id)).toEqual([3])
+  })
+
+  it('does not leave the spinner stuck when a read is superseded', async () => {
+    let releaseFirst: (_v: unknown) => void = () => {}
+    mockAssumptions.listAssumptions
+      .mockImplementationOnce(() => new Promise((r) => { releaseFirst = r }))
+      .mockResolvedValueOnce({ data: [] })
+
+    const reg = useAssumptionRegistry()
+    reg.selectedClient.value = 'A'
+    const stale = reg.load()
+    reg.selectedClient.value = 'B'
+    await reg.load()
+
+    releaseFirst({ data: [] })
+    await stale
+
+    expect(reg.loading.value).toBe(false)
+  })
+
+  it('clears a stale-write warning once any read succeeds', async () => {
+    // Otherwise the banner keeps claiming the list is out of date long after
+    // a later read refreshed it.
+    mockAssumptions.listAssumptions.mockRejectedValueOnce(new Error('down'))
+    const reg = useAssumptionRegistry()
+    reg.selectedClient.value = 'C'
+    await reg.approve(1)
+    expect(reg.staleAfterWrite.value).toBe(true)
+
+    mockAssumptions.listAssumptions.mockResolvedValue({ data: [] })
+    await reg.load()
+    expect(reg.staleAfterWrite.value).toBe(false)
+  })
+})
+
+describe('clearing the client selection', () => {
+  it('supersedes a read still in flight rather than letting it repopulate', async () => {
+    let releaseFirst: (_v: unknown) => void = () => {}
+    mockAssumptions.listAssumptions.mockImplementationOnce(
+      () => new Promise((r) => { releaseFirst = r }),
+    )
+
+    const reg = useAssumptionRegistry()
+    reg.selectedClient.value = 'A'
+    const inflight = reg.load()
+
+    reg.selectedClient.value = null
+    await reg.load()
+    expect(reg.assumptions.value).toEqual([])
+
+    releaseFirst({ data: [row({ assumption_id: 1 })] })
+    await inflight
+
+    // The table must stay empty: nothing is selected to show rows FOR.
+    expect(reg.assumptions.value).toEqual([])
+    expect(reg.loading.value).toBe(false)
+  })
+})

@@ -128,6 +128,8 @@ export function useAssumptionRegistry() {
   const history = ref<AssumptionChangeRow[]>([])
   const loading = ref(false)
   const loaded = ref(false)
+  /** Set when a write committed but the follow-up read failed. */
+  const staleAfterWrite = ref(false)
   /** Retired records are history, so they are hidden until asked for. */
   const includeRetired = ref(false)
 
@@ -172,16 +174,26 @@ export function useAssumptionRegistry() {
     catalog.value = (data as CatalogEntry[]) ?? []
   }
 
+  //: Identifies the most recent read. Comparing the CLIENT was not enough:
+  //: switching A -> B -> A lets the first request match again on arrival and
+  //: overwrite the third request's newer rows with its own older ones. A
+  //: monotonic token is the only thing that distinguishes two reads of the
+  //: same client.
+  let readToken = 0
+
   const load = async (): Promise<void> => {
     if (!selectedClient.value) {
+      // Bump the token here too. Clearing the selection must SUPERSEDE any
+      // read still in flight -- without this it keeps `token === readToken`,
+      // lands, and repopulates the table for a client that is no longer
+      // selected.
+      readToken += 1
       assumptions.value = []
       loaded.value = false
+      loading.value = false
       return
     }
-    // Pin the client this request is FOR. Switching clients while a read is
-    // in flight would otherwise let the slower response overwrite the newer
-    // one -- showing one tenant's assumptions under another's name, with the
-    // approve and retire buttons acting on the rows displayed.
+    const token = ++readToken
     const requestedFor = String(selectedClient.value)
     loading.value = true
     try {
@@ -191,17 +203,23 @@ export function useAssumptionRegistry() {
         client_id: requestedFor,
         include_inactive: true,
       })
-      if (String(selectedClient.value) !== requestedFor) return
+      // Superseded: a newer read is in flight or has already landed. Applying
+      // this one would show a tenant's rows under another's name, or roll the
+      // list back to a state from before the newest read.
+      if (token !== readToken) return
       assumptions.value = (data as AssumptionResponse[]) ?? []
       loaded.value = true
+      // A read that succeeded is the freshest state there is, so any earlier
+      // "could not refresh" warning no longer describes what is on screen.
+      staleAfterWrite.value = false
     } catch (error) {
-      // A stale failure must not clear the newer client's rows either.
-      if (String(selectedClient.value) !== requestedFor) return
+      // A superseded failure must not clear the newer rows either.
+      if (token !== readToken) return
       assumptions.value = []
       loaded.value = false
       throw error
     } finally {
-      if (String(selectedClient.value) === requestedFor) loading.value = false
+      if (token === readToken) loading.value = false
     }
   }
 
@@ -221,8 +239,6 @@ export function useAssumptionRegistry() {
    * we get here; the worst a failed reload can do is leave the list stale, and
    * `staleAfterWrite` says so.
    */
-  const staleAfterWrite = ref(false)
-
   const refreshAfterWrite = async (): Promise<void> => {
     try {
       await load()
