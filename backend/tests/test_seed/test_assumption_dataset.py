@@ -21,6 +21,7 @@ from sqlalchemy import text
 from backend.seed.generator import generate
 from backend.seed.materialize import materialize
 from backend.seed.profiles import FULL, SMOKE
+from backend.seed.emitters_assumptions import PENDING_PROPOSAL_CLIENT, PENDING_PROPOSAL_NAME
 from backend.seed.scenarios import CALCULATION_ASSUMPTIONS, SCENARIOS
 from backend.services.calculations.assumption_catalog import V1_CATALOG
 from backend.simulation_v2.models import SimulationConfig
@@ -157,6 +158,13 @@ def test_change_history_covers_exactly_the_assumptions_that_deviate(full_db):
         )
         tenants = {c for (c,) in conn.execute(text("SELECT client_id FROM CLIENT"))}
     expected = {n for n, _v, _d, dev, _r in CALCULATION_ASSUMPTIONS if dev}
+    # The pending proposal carries its own change row -- propose() writes one,
+    # with no previous value and no previous status -- so the client holding
+    # it expects one more name than the others. Kept per-client rather than
+    # folded into `expected` for everyone, or a proposal seeded for nobody
+    # would still satisfy the gate.
+    expected_for = {c: set(expected) for c in tenants}
+    expected_for.setdefault(PENDING_PROPOSAL_CLIENT, set(expected)).add(PENDING_PROPOSAL_NAME)
     # Per client AND with cardinality. A DISTINCT set comparison could see
     # neither a second, fabricated change row against the same assumption nor
     # a whole client whose history was never written.
@@ -166,8 +174,9 @@ def test_change_history_covers_exactly_the_assumptions_that_deviate(full_db):
     wrong = []
     for client_id in sorted(tenants):
         got = by_client.get(client_id, {})
-        if set(got) != expected:
-            wrong.append(f"{client_id}: changed={sorted(got)} expected={sorted(expected)}")
+        want = expected_for[client_id]
+        if set(got) != want:
+            wrong.append(f"{client_id}: changed={sorted(got)} expected={sorted(want)}")
         duplicated = {n: c for n, c in got.items() if c != 1}
         if duplicated:
             wrong.append(f"{client_id}: more than one change row for {duplicated}")
@@ -181,19 +190,34 @@ def test_a_changes_previous_value_is_the_catalog_default(full_db):
         rows = list(
             conn.execute(
                 text(
-                    "SELECT a.assumption_name, c.previous_value_json, c.new_value_json"
+                    "SELECT a.assumption_name, c.previous_value_json, c.new_value_json,"
+                    "       c.previous_status"
                     "  FROM ASSUMPTION_CHANGE c"
                     "  JOIN CALCULATION_ASSUMPTION a ON a.assumption_id = c.assumption_id"
                 )
             )
         )
     assert rows, "no change rows seeded"
+    # A row with previous_status IS NULL is an initial PROPOSAL, not a value
+    # change: the ORM documents previous_value=None as the proposal shape, and
+    # there is no earlier value to name. Judging it against the catalog default
+    # would demand it misstate its own history.
+    edits = [(n, prev, new) for n, prev, new, prev_status in rows if prev_status is not None]
+    proposals = [(n, prev, new) for n, prev, new, prev_status in rows if prev_status is None]
+
+    assert edits, "no value-change rows seeded"
     bad = [
         f"{n}: from={prev} to={new}"
-        for n, prev, new in rows
+        for n, prev, new in edits
         if json.loads(prev) != V1_CATALOG[n]["default_value"] or json.loads(new) == json.loads(prev)
     ]
     assert not bad, f"change rows that misstate the move: {bad}"
+
+    # Two-sided: a proposal must carry no previous value, and must still say
+    # what it is proposing.
+    assert proposals, "no proposal rows seeded — the approve action has nothing to act on"
+    malformed = [f"{n}: from={prev} to={new}" for n, prev, new in proposals if prev is not None or new is None]
+    assert not malformed, f"proposal rows with a previous value: {malformed}"
 
 
 def test_only_the_run_scenario_carries_results(full_db):

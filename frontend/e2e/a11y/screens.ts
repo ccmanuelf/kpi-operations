@@ -21,6 +21,10 @@ export const SCREENS: { name: string; path: string }[] = [
   // dark-theme contrast.
   { name: 'admin-shifts', path: '/admin/shifts' },
   { name: 'admin-hold-catalogs', path: '/admin/hold-catalogs' },
+  { name: 'admin-assumptions', path: '/admin/assumptions' },
+  // Shipped with no WCAG-AA coverage until now; it is the read-only lens the
+  // registry above acts on, so the two belong in the gate together.
+  { name: 'admin-variance-report', path: '/admin/variance-report' },
 ]
 
 // NOT added: '/data-entry/attendance'. AGGridBase's "Paste from Excel"

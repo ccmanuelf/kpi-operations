@@ -120,6 +120,19 @@ export const useAuthStore = defineStore('auth', {
      */
     isSupervisoryTier: (state): boolean =>
       ['admin', 'poweruser', 'leader', 'supervisor'].includes(state.user?.role ?? ''),
+
+    /**
+     * The backend's PLANNER_ROLES (backend/orm/user.py): admin + poweruser.
+     *
+     * Narrower than the supervisory tier. Proposing a calculation assumption
+     * needs exactly this set -- AssumptionService._PROPOSER_ROLES -- even
+     * though the ROUTE declares the wider supervisory dependency, so a leader
+     * clears the endpoint guard and is then refused by the service.
+     *
+     * Approving is narrower still and is NOT this getter: _APPROVER_ROLES is
+     * admin alone, so approve/retire gate on isAdmin.
+     */
+    isPlanner: (state): boolean => ['admin', 'poweruser'].includes(state.user?.role ?? ''),
   },
 
   actions: {

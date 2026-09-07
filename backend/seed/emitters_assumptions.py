@@ -35,6 +35,25 @@ from backend.seed.scenarios import CALCULATION_ASSUMPTIONS, USERS, ClientScenari
 PROPOSED_BY = next(u.user_id for u in USERS if u.role == "poweruser")
 APPROVED_BY = next(u.user_id for u in USERS if u.role == "admin")
 
+#: One client carries a proposal awaiting a decision, so the registry screen's
+#: headline action has something to act on. Without it every seeded assumption
+#: is ACTIVE and the approve button is unreachable in the demo -- the same
+#: capability-with-no-way-to-exercise-it this seed exists to avoid.
+#:
+#: WHICH proposal is deliberate. `ideal_cycle_time_source="demonstrated_best"`
+#: was inert until #278 and now moves OEE by roughly -9 points on this data,
+#: so approving it during a demo shows the governance workflow AND the
+#: dual-view capability in one action. Seeding it PROPOSED rather than ACTIVE
+#: also leaves the headline OEE where it is: the demo opts in to the change.
+PENDING_PROPOSAL_CLIENT = "DEMO-HOURLY"
+PENDING_PROPOSAL_NAME = "ideal_cycle_time_source"
+PENDING_PROPOSAL_VALUE = "demonstrated_best"
+PENDING_PROPOSAL_RATIONALE = (
+    "Engineering standards predate the current line layout. Proposing we "
+    "benchmark against our own demonstrated best day while the standards are "
+    "restudied."
+)
+
 #: A simulation the operator can open and run. Sized from the same styles the
 #: rest of the seed builds, so the scenario plans real products.
 # The engine caps this at MAX_HORIZON_DAYS = 7 (simulation_v2/constants.py).
@@ -180,6 +199,42 @@ def emit_assumptions(
                 new_status="active",
                 change_reason=rationale,
             )
+
+    # A proposal awaiting an approver, for one client only. Two rows for the
+    # same (client, assumption_name) is exactly what the service produces
+    # while a change is pending -- approve() auto-retires the incumbent -- so
+    # this is a real state, not a contrived one.
+    if cid == PENDING_PROPOSAL_CLIENT:
+        pending_key = f"{cid}-ASSUMP-{PENDING_PROPOSAL_NAME}-PENDING"
+        pending_value_json = json.dumps(PENDING_PROPOSAL_VALUE)
+        proposed_at = datetime.combine(as_of - timedelta(days=3), time(9, 30))
+        declare(
+            AssumptionRegistered,
+            assumption_key=pending_key,
+            assumption_name=PENDING_PROPOSAL_NAME,
+            value_json=pending_value_json,
+            rationale=PENDING_PROPOSAL_RATIONALE,
+            effective_date=datetime.combine(setup.activity_start, time(0, 0)),
+            status="proposed",
+            proposed_by=PROPOSED_BY,
+            proposed_at=proposed_at,
+            # Nobody has decided yet, which is the whole point of the row.
+            approved_by=None,
+            approved_at=None,
+        )
+        # propose() writes a change row too, with no previous value and no
+        # previous status. Omitting it would leave a proposal that appears to
+        # have existed forever with nobody having raised it.
+        declare(
+            AssumptionChanged,
+            assumption_key=pending_key,
+            changed_by=PROPOSED_BY,
+            previous_value_json=None,
+            new_value_json=pending_value_json,
+            previous_status=None,
+            new_status="proposed",
+            change_reason=PENDING_PROPOSAL_RATIONALE,
+        )
 
     # --- saved simulations -------------------------------------------------
     styles = [p.style for p in scenario.products]

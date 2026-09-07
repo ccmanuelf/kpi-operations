@@ -158,7 +158,8 @@
     "toggleDarkMode": "Alternar modo oscuro",
     "darkMode": "Modo oscuro",
     "lightMode": "Modo claro",
-    "holdCatalogs": "Catálogos de Retención"
+    "holdCatalogs": "Catálogos de Retención",
+    "assumptionRegistry": "Registro de Supuestos"
   },
   "operationsHealth": {
     "productionToday": "Producción Hoy",
@@ -2139,6 +2140,47 @@
       "confirmDeleteBody": "¿Desactivar “{name}”? Los registros ya capturados con él no se ven afectados, pero dejará de poder seleccionarse y ya no aparecerá en esta pantalla.",
       "timeRange": "{start} – {end}",
       "showInactive": "Mostrar inactivos"
+    },
+    "assumptions": {
+      "title": "Registro de Supuestos de Cálculo",
+      "subtitle": "Proponga, apruebe y retire los supuestos que impulsan la vista ajustada al sitio, con el historial completo de cambios.",
+      "propose": "Proponer",
+      "proposeTitle": "Proponer un supuesto",
+      "editTitle": "Editar propuesta",
+      "edit": "Editar",
+      "approve": "Aprobar",
+      "approveTitle": "Aprobar esta propuesta",
+      "retire": "Retirar",
+      "retireTitle": "Retirar este supuesto",
+      "name": "Supuesto",
+      "value": "Valor",
+      "statusHeader": "Estado",
+      "rationale": "Justificación",
+      "rationaleHint": "Por qué este sitio se desvía del estándar. Se registra permanentemente en el historial.",
+      "noRationale": "sin registrar",
+      "proposedBy": "Propuesto por",
+      "changeReason": "Motivo de esta decisión",
+      "changeReasonHint": "Se registra en el historial junto a su nombre.",
+      "showRetired": "Mostrar retirados",
+      "needsPlanner": "Proponer requiere el rol admin o poweruser",
+      "pendingBanner": "{count} propuesta(s) esperando decisión.",
+      "noneForClient": "No hay supuestos registrados para este cliente",
+      "decisionBody": "{name} = {value}",
+      "selfApprovalWarning": "Usted propuso este supuesto. Aprobarlo usted mismo registra ambos nombres como suyos, sin un segundo revisor.",
+      "retireWarning": "El retiro surte efecto de inmediato y para todos los periodos anteriores — los resultados ya calculados conservan la instantánea con la que se calcularon, pero cualquier recálculo usará el nuevo estado.",
+      "viewHistory": "Historial de cambios",
+      "historyTitle": "Historial de cambios — {name}",
+      "historyBy": "por {who} el {when}",
+      "noHistory": "Aún no hay cambios registrados.",
+      "proposalCreated": "Propuesta registrada",
+      "proposalUpdated": "Propuesta actualizada",
+      "approved": "Supuesto aprobado y ahora activo",
+      "retired": "Supuesto retirado",
+      "status": {
+        "proposed": "Propuesto",
+        "active": "Activo",
+        "retired": "Retirado"
+      }
     }
   },
   "csv": {
