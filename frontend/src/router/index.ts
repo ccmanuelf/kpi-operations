@@ -261,6 +261,15 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true, requiresSupervisory: true },
   },
   {
+    path: '/admin/assumptions',
+    name: 'admin-assumptions',
+    component: () => import('@/views/admin/AssumptionRegistry.vue'),
+    // Supervisory reaches the screen; the write actions gate themselves more
+    // narrowly (propose admin+poweruser, approve/retire admin) because the
+    // SERVICE is narrower than the routes that expose it.
+    meta: { requiresAuth: true, requiresSupervisory: true },
+  },
+  {
     path: '/admin/variance-report',
     name: 'admin-variance-report',
     component: () => import('@/views/admin/AssumptionVarianceReport.vue'),

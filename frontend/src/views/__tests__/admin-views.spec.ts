@@ -277,6 +277,17 @@ vi.mock('@/composables/useWorkflowConfigForms', () => ({
 }))
 
 // Child components used by admin views — minimal stubs.
+vi.mock('@/services/api/calculationAssumptions', () => ({
+  listAssumptions: vi.fn(() => Promise.resolve({ data: [] })),
+  getCatalog: vi.fn(() => Promise.resolve({ data: [] })),
+  getVarianceReport: vi.fn(() => Promise.resolve({ data: [] })),
+  getAssumptionHistory: vi.fn(() => Promise.resolve({ data: [] })),
+  proposeAssumption: vi.fn(() => Promise.resolve({ data: {} })),
+  updateProposal: vi.fn(() => Promise.resolve({ data: {} })),
+  approveAssumption: vi.fn(() => Promise.resolve({ data: {} })),
+  retireAssumption: vi.fn(() => Promise.resolve({ data: {} })),
+}))
+
 vi.mock('@/services/api/shifts', () => ({
   listShifts: vi.fn(() => Promise.resolve({ data: [] })),
   createShift: vi.fn(() => Promise.resolve({ data: { data: {}, warnings: [] } })),
@@ -476,6 +487,7 @@ import WorkflowDesignerView from '@/views/admin/WorkflowDesignerView.vue'
 import DatabaseConfigView from '@/views/admin/DatabaseConfigView.vue'
 import HoldCatalogs from '@/views/admin/HoldCatalogs.vue'
 import ShiftsAdmin from '@/views/admin/ShiftsAdmin.vue'
+import AssumptionRegistry from '@/views/admin/AssumptionRegistry.vue'
 
 function smokeMount(component: unknown) {
   setActivePinia(createPinia())
@@ -533,6 +545,10 @@ describe('Admin views — smoke mount', () => {
 
   it('WorkflowDesignerView.vue mounts without errors', () => {
     expect(smokeMount(WorkflowDesignerView).exists()).toBe(true)
+  })
+
+  it('AssumptionRegistry.vue mounts without errors', () => {
+    expect(smokeMount(AssumptionRegistry).exists()).toBe(true)
   })
 
   it('ShiftsAdmin.vue mounts without errors', () => {

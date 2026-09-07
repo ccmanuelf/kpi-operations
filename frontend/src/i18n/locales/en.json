@@ -158,7 +158,8 @@
     "toggleDarkMode": "Toggle dark mode",
     "darkMode": "Dark mode",
     "lightMode": "Light mode",
-    "holdCatalogs": "Hold Catalogs"
+    "holdCatalogs": "Hold Catalogs",
+    "assumptionRegistry": "Assumption Registry"
   },
   "operationsHealth": {
     "productionToday": "Production Today",
@@ -2139,6 +2140,50 @@
       "confirmDeleteBody": "Deactivate “{name}”? Entries already recorded against it are unaffected, but it can no longer be selected — and it will no longer appear on this screen.",
       "timeRange": "{start} – {end}",
       "showInactive": "Show inactive"
+    },
+    "assumptions": {
+      "title": "Calculation Assumption Registry",
+      "subtitle": "Propose, approve and retire the assumptions that drive the site-adjusted view, with the full change history.",
+      "propose": "Propose",
+      "proposeTitle": "Propose an assumption",
+      "editTitle": "Edit proposal",
+      "edit": "Edit",
+      "approve": "Approve",
+      "approveTitle": "Approve this proposal",
+      "retire": "Retire",
+      "retireTitle": "Retire this assumption",
+      "name": "Assumption",
+      "value": "Value",
+      "statusHeader": "Status",
+      "rationale": "Rationale",
+      "rationaleHint": "Why this site deviates from the standard. Recorded permanently in the change log.",
+      "noRationale": "none recorded",
+      "proposedBy": "Proposed by",
+      "changeReason": "Reason for this decision",
+      "changeReasonHint": "Recorded in the change log beside your name.",
+      "showRetired": "Show retired",
+      "needsPlanner": "Proposing requires the admin or poweruser role",
+      "pendingBanner": "{count} proposal(s) awaiting a decision.",
+      "noneForClient": "No assumptions recorded for this client",
+      "decisionBody": "{name} = {value}",
+      "selfApprovalWarning": "You proposed this assumption. Approving it yourself records both names as you, with no second reviewer.",
+      "retireWarning": "Retiring takes effect immediately and for all past periods — results already calculated keep the snapshot they were computed with, but any recalculation will use the new state.",
+      "viewHistory": "Change history",
+      "historyTitle": "Change history — {name}",
+      "historyBy": "by {who} on {when}",
+      "noHistory": "No changes recorded yet.",
+      "proposalCreated": "Proposal recorded",
+      "proposalUpdated": "Proposal updated",
+      "approved": "Assumption approved and now active",
+      "retired": "Assumption retired",
+      "status": {
+        "proposed": "Proposed",
+        "active": "Active",
+        "retired": "Retired"
+      },
+      "valueTypeError": "That value does not match the type this assumption expects (the standard is {standard}).",
+      "catalogStandard": "Catalog standard: {standard}",
+      "staleAfterWrite": "Your change was saved, but the list below could not be refreshed. Reload to see the current state."
     }
   },
   "csv": {

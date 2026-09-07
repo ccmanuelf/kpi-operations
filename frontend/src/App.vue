@@ -141,6 +141,7 @@
           <v-list-item prepend-icon="mdi-playlist-edit" :title="$t('navigation.holdCatalogs')" value="hold-catalogs" to="/admin/hold-catalogs" />
           <v-list-item prepend-icon="mdi-sitemap" :title="$t('navigation.workflowConfig')" value="workflow-config" to="/admin/workflow-config" />
           <v-list-item prepend-icon="mdi-database-cog" :title="$t('navigation.databaseConfig')" value="database-config" to="/admin/database" />
+          <v-list-item prepend-icon="mdi-scale-balance" :title="$t('navigation.assumptionRegistry')" value="assumptions" to="/admin/assumptions" />
           <v-list-item prepend-icon="mdi-chart-bell-curve-cumulative" :title="$t('navigation.varianceReport')" value="variance-report" to="/admin/variance-report" />
         </v-list-group>
       </v-list>
