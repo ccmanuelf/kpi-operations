@@ -42,19 +42,18 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     conn = op.get_bind()
-    op.add_column("shift_coverage", sa.Column("active_marker", sa.Integer(), nullable=True))
 
-    # Derive from the existing soft-delete state BEFORE the constraint exists,
-    # so the index is built over meaningful values.
-    op.execute("UPDATE shift_coverage SET active_marker = CASE WHEN is_active THEN 1 ELSE NULL END")
-
-    # batch_alter_table, because SQLite cannot ALTER a table to add a
-    # constraint -- it needs the copy-and-move strategy. On MariaDB this
-    # compiles to a plain ALTER, so one code path serves both dialects.
-    # Fail with the rows named, not with a bare 1062 halfway through a deploy.
+    # BEFORE any DDL, and deliberately so. MariaDB commits DDL implicitly, so a
+    # refusal raised after add_column would leave the column behind with the
+    # revision unrecorded -- and the re-run, once the duplicates were resolved,
+    # would fail on "duplicate column name" instead of doing the work. Nothing
+    # has been mutated at this point, so refusing here leaves the database
+    # exactly as it was found.
+    #
+    # Failing with the rows NAMED beats a bare 1062 partway through a deploy.
     # The constraint cannot be added over contradictory data, and picking a
-    # winner is not a migration's decision to make -- whoever entered them has
-    # to say which is right.
+    # winner between two coverage records is not a migration's decision to
+    # make -- whoever entered them has to say which one is right.
     duplicates = (
         conn.execute(
             sa.text(
@@ -77,6 +76,15 @@ def upgrade() -> None:
             f"First: {listed}"
         )
 
+    op.add_column("shift_coverage", sa.Column("active_marker", sa.Integer(), nullable=True))
+
+    # Derive from the existing soft-delete state BEFORE the constraint exists,
+    # so the index is built over meaningful values.
+    op.execute("UPDATE shift_coverage SET active_marker = CASE WHEN is_active THEN 1 ELSE NULL END")
+
+    # batch_alter_table, because SQLite cannot ALTER a table to add a
+    # constraint -- it needs the copy-and-move strategy. On MariaDB this
+    # compiles to a plain ALTER, so one code path serves both dialects.
     with op.batch_alter_table("shift_coverage") as batch:
         batch.create_unique_constraint(
             "uq_shift_coverage_active",

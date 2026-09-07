@@ -2239,3 +2239,92 @@ def test_coverage_percentage_survives_a_full_shift_on_mariadb(mariadb_schema):
         assert Decimal(str(stored)) == MAX_COVERAGE_PERCENTAGE
     finally:
         session.close()
+
+
+@requires_mariadb
+def test_coverage_uniqueness_survives_the_delete_cycle_on_mariadb(mariadb_schema):
+    """The whole `active_marker` scheme, on the dialect that runs in production.
+
+    The SQLite suite proves the invariant holds there, which is exactly the
+    proof this repo has been burned by before: `uq_shift_coverage_active`
+    depends on NULLs not colliding in a unique index, and
+    `ck_shift_coverage_active_marker` depends on a CHECK rejecting FALSE while
+    passing NULL. Both are documented SQL behaviour and both are implemented
+    per-dialect, so neither is proven by SQLite agreeing.
+
+    `test_mariadb_soft_delete.py` does not touch this table, so without this
+    the delete path -- where the marker goes to NULL and the CHECK fires -- is
+    never exercised on MariaDB at all.
+
+    Walks the full cycle: create, duplicate refused, soft delete, marker
+    cleared, same key accepted again, and the old row still present underneath.
+    """
+    from datetime import date, time
+
+    from fastapi import HTTPException
+
+    from backend.crud.coverage import create_shift_coverage, delete_shift_coverage
+    from backend.orm.client import Client
+    from backend.orm.shift import Shift
+    from backend.schemas.coverage import ShiftCoverageCreate
+
+    session = SessionLocal()
+    try:
+        session.add(Client(client_id="MDB-UNQ", client_name="MariaDB uniqueness probe"))
+        session.add(
+            User(
+                user_id="mdb-unq-user",
+                username="mdb-unq-user",
+                email="mdb-unq@example.com",
+                role="admin",
+            )
+        )
+        session.flush()
+        shift = Shift(
+            client_id="MDB-UNQ",
+            shift_name="Probe",
+            start_time=time(6, 0),
+            end_time=time(14, 0),
+        )
+        session.add(shift)
+        session.flush()
+        actor = session.get(User, "mdb-unq-user")
+
+        def _payload(actual):
+            return ShiftCoverageCreate(
+                client_id="MDB-UNQ",
+                shift_id=shift.shift_id,
+                coverage_date=date(2026, 5, 12),
+                required_employees=8,
+                actual_employees=actual,
+            )
+
+        first = create_shift_coverage(session, _payload(8), actor)
+
+        # A second live row for the same key is refused.
+        with pytest.raises(HTTPException) as refused:
+            create_shift_coverage(session, _payload(4), actor)
+        assert refused.value.status_code == 409
+
+        # Soft delete must clear the marker, or the slot stays held forever.
+        assert delete_shift_coverage(session, first.coverage_id, actor) is True
+        marker = session.execute(
+            text("SELECT active_marker FROM shift_coverage WHERE coverage_id = :i"),
+            {"i": first.coverage_id},
+        ).scalar()
+        assert marker is None, "soft delete left the marker set; the key stays occupied"
+
+        # And the same key is now free -- the reason the constraint carries the
+        # marker instead of binding the three business columns alone.
+        second = create_shift_coverage(session, _payload(6), actor)
+        assert second.coverage_id != first.coverage_id
+
+        rows = session.execute(
+            text(
+                "SELECT is_active, active_marker FROM shift_coverage "
+                "WHERE client_id = 'MDB-UNQ' ORDER BY coverage_id"
+            )
+        ).all()
+        assert [(int(a), m) for a, m in rows] == [(0, None), (1, 1)]
+    finally:
+        session.close()
