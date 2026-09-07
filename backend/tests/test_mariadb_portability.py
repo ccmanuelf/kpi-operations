@@ -2262,6 +2262,7 @@ def test_coverage_uniqueness_survives_the_delete_cycle_on_mariadb(mariadb_schema
     from datetime import date, time
 
     from fastapi import HTTPException
+    from sqlalchemy.exc import DatabaseError, IntegrityError
 
     from backend.crud.coverage import create_shift_coverage, delete_shift_coverage
     from backend.orm.client import Client
@@ -2301,10 +2302,50 @@ def test_coverage_uniqueness_survives_the_delete_cycle_on_mariadb(mariadb_schema
 
         first = create_shift_coverage(session, _payload(8), actor)
 
-        # A second live row for the same key is refused.
+        # A second live row for the same key is refused by the APPLICATION.
         with pytest.raises(HTTPException) as refused:
             create_shift_coverage(session, _payload(4), actor)
         assert refused.value.status_code == 409
+
+        # ...and, separately, by the DATABASE. That distinction is the whole
+        # point of this test: the assertion above passes with
+        # `uq_shift_coverage_active` absent entirely, because the pre-check
+        # rejects the row before any INSERT is attempted. Only a write that
+        # goes around the pre-check can show the constraint exists on MariaDB,
+        # where it rests on NULLs not colliding in a unique index.
+        with pytest.raises(IntegrityError):
+            session.execute(
+                text(
+                    "INSERT INTO shift_coverage (client_id, shift_id, coverage_date, "
+                    "required_employees, actual_employees, coverage_percentage, "
+                    "entered_by, is_active, active_marker) VALUES "
+                    "('MDB-UNQ', :shift, '2026-05-12', 8, 4, 50, 'mdb-unq-user', 1, 1)"
+                ),
+                {"shift": shift.shift_id},
+            )
+        session.rollback()
+
+        # The CHECK, too: an active row with no marker would be invisible to
+        # that index, since NULLs do not collide -- the duplicate it exists to
+        # forbid, admitted through its own escape hatch.
+        #
+        # DatabaseError, not IntegrityError, and that is the finding rather
+        # than a convenience: MariaDB reports a CHECK violation as
+        # OperationalError 4025 while SQLite reports it as IntegrityError. Only
+        # the UNIQUE violation above is IntegrityError on both. Any handler
+        # that means to catch a CHECK failure has to know that; catching
+        # IntegrityError alone would let it through on the production dialect.
+        with pytest.raises(DatabaseError):
+            session.execute(
+                text(
+                    "INSERT INTO shift_coverage (client_id, shift_id, coverage_date, "
+                    "required_employees, actual_employees, coverage_percentage, "
+                    "entered_by, is_active, active_marker) VALUES "
+                    "('MDB-UNQ', :shift, '2026-05-12', 8, 4, 50, 'mdb-unq-user', 1, NULL)"
+                ),
+                {"shift": shift.shift_id},
+            )
+        session.rollback()
 
         # Soft delete must clear the marker, or the slot stays held forever.
         assert delete_shift_coverage(session, first.coverage_id, actor) is True
@@ -2327,4 +2368,15 @@ def test_coverage_uniqueness_survives_the_delete_cycle_on_mariadb(mariadb_schema
         ).all()
         assert [(int(a), m) for a, m in rows] == [(0, None), (1, 1)]
     finally:
+        # `mariadb_schema` is module-scoped, so anything committed here outlives
+        # the test and is visible to every later one in the file.
+        session.rollback()
+        for stmt in (
+            "DELETE FROM shift_coverage WHERE client_id = 'MDB-UNQ'",
+            "DELETE FROM SHIFT WHERE client_id = 'MDB-UNQ'",
+            "DELETE FROM CLIENT WHERE client_id = 'MDB-UNQ'",
+            "DELETE FROM USER WHERE user_id = 'mdb-unq-user'",
+        ):
+            session.execute(text(stmt))
+        session.commit()
         session.close()

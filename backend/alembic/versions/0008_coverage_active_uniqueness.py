@@ -58,7 +58,12 @@ def upgrade() -> None:
         conn.execute(
             sa.text(
                 "SELECT client_id, coverage_date, shift_id, COUNT(*) AS n "
-                "FROM shift_coverage WHERE is_active = 1 "
+                # `WHERE is_active`, not `is_active = 1`: it has to agree with the
+                # backfill below, which marks rows by the same truthiness. A
+                # predicate that disagreed would let a row the backfill treats as
+                # active go uncounted here, and the constraint would then fail on
+                # data this check had already passed.
+                "FROM shift_coverage WHERE is_active "
                 "GROUP BY client_id, coverage_date, shift_id HAVING COUNT(*) > 1"
             )
         )
