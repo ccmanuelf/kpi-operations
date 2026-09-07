@@ -269,6 +269,7 @@ CASES = [
         ShiftCoverageResponse,
         dict(
             coverage_id=1,
+            client_id="C1",
             shift_id=1,
             coverage_date=_TODAY,
             required_employees=5,

@@ -5,9 +5,21 @@ PHASE 3: Shift coverage tracking
 
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Optional
+from typing import Any, Optional
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, Numeric, String, Text
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    Date,
+    DateTime,
+    ForeignKey,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
+    event,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
 
@@ -18,7 +30,51 @@ class ShiftCoverage(Base):
     """Shift coverage table"""
 
     __tablename__ = "shift_coverage"
-    __table_args__ = {"extend_existing": True}
+    __table_args__ = (
+        # One ACTIVE coverage record per client, date and shift.
+        #
+        # `active_marker` is 1 while the row is live and NULL once it is soft
+        # deleted, and both SQLite and MariaDB exclude NULLs from uniqueness --
+        # verified on MariaDB 11.4, not assumed. That gives "unique among
+        # active rows" on both dialects without a partial index, which MariaDB
+        # does not support:
+        #
+        #   second live row for the same key   -> rejected (1062)
+        #   delete, then enter it again        -> allowed
+        #   many deleted rows sharing a key    -> allowed
+        #
+        # An application-level check alone could not close this: it is
+        # SELECT-then-INSERT, so two creates racing inside the same
+        # millisecond both pass it. The database is the only place the
+        # invariant can actually hold.
+        UniqueConstraint(
+            "client_id",
+            "coverage_date",
+            "shift_id",
+            "active_marker",
+            name="uq_shift_coverage_active",
+        ),
+        # The marker is only USEFUL while it agrees with `is_active`, and the
+        # mapper event below can only guarantee that for ORM writes. Without
+        # this, an INSERT of (is_active=1, active_marker=NULL) is an active row
+        # that the unique index above does not see at all -- NULLs do not
+        # collide -- so raw SQL could create the exact duplicate the constraint
+        # exists to forbid. The pairing is therefore enforced by the database
+        # rather than trusted from the application.
+        # The `IS NOT NULL` is load-bearing, not redundant: a CHECK passes when
+        # its expression is NULL, not only when TRUE. Written as the obvious
+        # `active_marker = 1`, the (is_active=1, active_marker=NULL) row
+        # evaluates to NULL and is ACCEPTED -- which is precisely the row this
+        # constraint exists to reject.
+        CheckConstraint(
+            (
+                "(is_active = 1 AND active_marker IS NOT NULL AND active_marker = 1)"
+                " OR (is_active = 0 AND active_marker IS NULL)"
+            ),
+            name="ck_shift_coverage_active_marker",
+        ),
+        {"extend_existing": True},
+    )
 
     coverage_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
@@ -32,6 +88,18 @@ class ShiftCoverage(Base):
     coverage_percentage: Mapped[Optional[Decimal]] = mapped_column(Numeric(5, 2))  # Calculated field
     notes: Mapped[Optional[str]] = mapped_column(Text)
     entered_by: Mapped[str] = mapped_column(String(50), ForeignKey("USER.user_id"), nullable=False)
+    #: Mirrors `is_active` for the uniqueness constraint above: 1 when live,
+    #: NULL when soft deleted. Derived by the mapper event at the bottom of
+    #: this module rather than by any one CRUD function, so every ORM write
+    #: path maintains it -- including `soft_delete_record`, which no caller
+    #: has to know about this column to use.
+    #:
+    #: A bulk UPDATE would bypass it, as bulk writes bypass all mapper events.
+    #: None exists on this table today (checked), and one that flipped
+    #: `is_active` without setting this column would leave a deleted row still
+    #: holding its slot. Anything added here must write both.
+    active_marker: Mapped[Optional[int]] = mapped_column(Integer, default=1)
+
     # Soft delete (S1): DELETE endpoints set this False instead of removing the row.
     # Filtering is automatic — see backend/db/soft_delete_filter.py, declared in
     # backend/db/soft_delete_registry.py. Do NOT hand-filter on it.
@@ -51,3 +119,18 @@ class ShiftCoverage(Base):
     updated_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), onupdate=func.now(), server_default=func.now()
     )
+
+
+def _sync_active_marker(mapper: Any, connection: Any, target: "ShiftCoverage") -> None:  # noqa: ARG001
+    """Keep `active_marker` in step with `is_active`, on every write path.
+
+    Coverage is soft deleted through the generic `soft_delete_record`, and a
+    future bulk update could flip `is_active` without going near this module.
+    Deriving the marker at flush time means the uniqueness invariant cannot be
+    broken by a caller that simply did not know about it.
+    """
+    target.active_marker = 1 if target.is_active else None
+
+
+event.listen(ShiftCoverage, "before_insert", _sync_active_marker)
+event.listen(ShiftCoverage, "before_update", _sync_active_marker)

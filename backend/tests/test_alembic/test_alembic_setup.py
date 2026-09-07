@@ -246,8 +246,8 @@ class TestAlembicCLI:
         result = _run_alembic("heads")
         assert result.returncode == 0, f"alembic heads failed: {result.stderr}"
         assert (
-            "0007_transaction_soft_delete" in result.stdout
-        ), f"0007_transaction_soft_delete not in heads output: {result.stdout}"
+            "0008_coverage_active_uniqueness" in result.stdout
+        ), f"0008_coverage_active_uniqueness not in heads output: {result.stdout}"
 
     def test_alembic_history(self):
         """``alembic history`` should contain the baseline entry."""
@@ -284,5 +284,5 @@ class TestAlembicCLI:
         result = _run_alembic("current", db_url=url)
         assert result.returncode == 0, f"alembic current failed: {result.stderr}"
         assert (
-            "0007_transaction_soft_delete" in result.stdout
-        ), f"Expected 0007_transaction_soft_delete in current output: {result.stdout}"
+            "0008_coverage_active_uniqueness" in result.stdout
+        ), f"Expected 0008_coverage_active_uniqueness in current output: {result.stdout}"

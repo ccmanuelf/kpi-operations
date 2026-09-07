@@ -200,6 +200,29 @@ class TestPermissionMatrix:
             response = client.request(method, path, json={})
             assert response.status_code != 403, f"operator wrongly denied on {method} {path}"
 
+    def test_coverage_edit_is_contributor_but_delete_is_supervisory(self, as_role):
+        """Shift coverage splits its own write tier and only POST was pinned.
+
+        PUT is contributor and DELETE is supervisory, so an operator may
+        correct a coverage row all day and must not be able to remove one. A
+        UI that gated both on the same tier would either hide a legal edit or
+        offer a delete that 403s.
+        """
+        operator = as_role("operator")
+        # 404 or 422 both mean the guard was passed; only 403 is a denial.
+        assert operator.put("/api/coverage/999999", json={}).status_code != 403
+        assert operator.delete("/api/coverage/999999").status_code == 403
+
+        for role in ("supervisor", "leader", "admin"):
+            assert (
+                as_role(role).delete("/api/coverage/999999").status_code != 403
+            ), f"{role} wrongly denied coverage delete"
+
+    def test_viewer_cannot_edit_coverage_either(self, as_role):
+        """Two-sided: the read-only tier is denied on the edit path as well as
+        the create path."""
+        assert as_role("viewer").put("/api/coverage/999999", json={}).status_code == 403
+
     def test_workflow_transition_no_longer_bypasses_wo_gate(self, as_role):
         """workflow.py's transition endpoint sidestepped the Run-6 work-order
         write gate with bare authentication — operators must now get 403."""

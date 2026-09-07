@@ -2167,3 +2167,216 @@ def test_alternative_cycle_times_agree_with_sqlite_on_mariadb(mariadb_schema):
         assert rolling == Decimal("22") / Decimal("300")
     finally:
         session.close()
+
+
+@requires_mariadb
+def test_coverage_percentage_survives_a_full_shift_on_mariadb(mariadb_schema):
+    """`shift_coverage.coverage_percentage` is DECIMAL(5, 2) on this dialect.
+
+    The ratio is not otherwise bounded -- required_employees only has to be
+    > 0 -- so one required and fifty present computes 5000.00, which SQLite
+    stores silently and MariaDB rejects in strict mode. The whole suite would
+    stay green while the write 500'd in production, which is the exact shape
+    of the dialect-split class this repo keeps re-hitting.
+
+    Asserts the clamp holds against the real column, and that the value comes
+    back through ShiftCoverageResponse as a JSON number rather than a string
+    (the SUM-Integer -> Decimal class).
+    """
+    from datetime import date, time
+    from decimal import Decimal
+
+    from backend.crud.coverage import MAX_COVERAGE_PERCENTAGE, create_shift_coverage
+    from backend.orm.client import Client
+    from backend.orm.shift import Shift
+    from backend.schemas.coverage import ShiftCoverageCreate
+
+    session = SessionLocal()
+    try:
+        session.add(Client(client_id="MDB-COV", client_name="MariaDB coverage probe"))
+        session.add(
+            User(
+                user_id="mdb-cov-user",
+                username="mdb-cov-user",
+                email="mdb-cov@example.com",
+                role="admin",
+            )
+        )
+        session.flush()
+        shift = Shift(
+            client_id="MDB-COV",
+            shift_name="Probe",
+            start_time=time(6, 0),
+            end_time=time(14, 0),
+        )
+        session.add(shift)
+        session.flush()
+
+        actor = session.get(User, "mdb-cov-user")
+        created = create_shift_coverage(
+            session,
+            ShiftCoverageCreate(
+                client_id="MDB-COV",
+                shift_id=shift.shift_id,
+                coverage_date=date(2026, 5, 12),
+                required_employees=1,
+                actual_employees=50,
+            ),
+            actor,
+        )
+
+        # Without the clamp this INSERT raises on MariaDB rather than reaching
+        # the assertion at all.
+        assert created.coverage_percentage == float(MAX_COVERAGE_PERCENTAGE)
+        assert isinstance(created.coverage_percentage, float)
+        assert created.client_id == "MDB-COV"
+
+        # And the stored column agrees, so the clamp happened before the write
+        # rather than only in the response model.
+        stored = session.execute(
+            text("SELECT coverage_percentage FROM shift_coverage WHERE client_id = 'MDB-COV'")
+        ).scalar_one()
+        assert Decimal(str(stored)) == MAX_COVERAGE_PERCENTAGE
+    finally:
+        session.close()
+
+
+@requires_mariadb
+def test_coverage_uniqueness_survives_the_delete_cycle_on_mariadb(mariadb_schema):
+    """The whole `active_marker` scheme, on the dialect that runs in production.
+
+    The SQLite suite proves the invariant holds there, which is exactly the
+    proof this repo has been burned by before: `uq_shift_coverage_active`
+    depends on NULLs not colliding in a unique index, and
+    `ck_shift_coverage_active_marker` depends on a CHECK rejecting FALSE while
+    passing NULL. Both are documented SQL behaviour and both are implemented
+    per-dialect, so neither is proven by SQLite agreeing.
+
+    `test_mariadb_soft_delete.py` does not touch this table, so without this
+    the delete path -- where the marker goes to NULL and the CHECK fires -- is
+    never exercised on MariaDB at all.
+
+    Walks the full cycle: create, duplicate refused, soft delete, marker
+    cleared, same key accepted again, and the old row still present underneath.
+    """
+    from datetime import date, time
+
+    from fastapi import HTTPException
+    from sqlalchemy.exc import DatabaseError, IntegrityError
+
+    from backend.crud.coverage import create_shift_coverage, delete_shift_coverage
+    from backend.orm.client import Client
+    from backend.orm.shift import Shift
+    from backend.schemas.coverage import ShiftCoverageCreate
+
+    session = SessionLocal()
+    try:
+        session.add(Client(client_id="MDB-UNQ", client_name="MariaDB uniqueness probe"))
+        session.add(
+            User(
+                user_id="mdb-unq-user",
+                username="mdb-unq-user",
+                email="mdb-unq@example.com",
+                role="admin",
+            )
+        )
+        session.flush()
+        shift = Shift(
+            client_id="MDB-UNQ",
+            shift_name="Probe",
+            start_time=time(6, 0),
+            end_time=time(14, 0),
+        )
+        session.add(shift)
+        session.flush()
+        actor = session.get(User, "mdb-unq-user")
+
+        def _payload(actual):
+            return ShiftCoverageCreate(
+                client_id="MDB-UNQ",
+                shift_id=shift.shift_id,
+                coverage_date=date(2026, 5, 12),
+                required_employees=8,
+                actual_employees=actual,
+            )
+
+        first = create_shift_coverage(session, _payload(8), actor)
+
+        # A second live row for the same key is refused by the APPLICATION.
+        with pytest.raises(HTTPException) as refused:
+            create_shift_coverage(session, _payload(4), actor)
+        assert refused.value.status_code == 409
+
+        # ...and, separately, by the DATABASE. That distinction is the whole
+        # point of this test: the assertion above passes with
+        # `uq_shift_coverage_active` absent entirely, because the pre-check
+        # rejects the row before any INSERT is attempted. Only a write that
+        # goes around the pre-check can show the constraint exists on MariaDB,
+        # where it rests on NULLs not colliding in a unique index.
+        with pytest.raises(IntegrityError):
+            session.execute(
+                text(
+                    "INSERT INTO shift_coverage (client_id, shift_id, coverage_date, "
+                    "required_employees, actual_employees, coverage_percentage, "
+                    "entered_by, is_active, active_marker) VALUES "
+                    "('MDB-UNQ', :shift, '2026-05-12', 8, 4, 50, 'mdb-unq-user', 1, 1)"
+                ),
+                {"shift": shift.shift_id},
+            )
+        session.rollback()
+
+        # The CHECK, too: an active row with no marker would be invisible to
+        # that index, since NULLs do not collide -- the duplicate it exists to
+        # forbid, admitted through its own escape hatch.
+        #
+        # DatabaseError, not IntegrityError, and that is the finding rather
+        # than a convenience: MariaDB reports a CHECK violation as
+        # OperationalError 4025 while SQLite reports it as IntegrityError. Only
+        # the UNIQUE violation above is IntegrityError on both. Any handler
+        # that means to catch a CHECK failure has to know that; catching
+        # IntegrityError alone would let it through on the production dialect.
+        with pytest.raises(DatabaseError):
+            session.execute(
+                text(
+                    "INSERT INTO shift_coverage (client_id, shift_id, coverage_date, "
+                    "required_employees, actual_employees, coverage_percentage, "
+                    "entered_by, is_active, active_marker) VALUES "
+                    "('MDB-UNQ', :shift, '2026-05-12', 8, 4, 50, 'mdb-unq-user', 1, NULL)"
+                ),
+                {"shift": shift.shift_id},
+            )
+        session.rollback()
+
+        # Soft delete must clear the marker, or the slot stays held forever.
+        assert delete_shift_coverage(session, first.coverage_id, actor) is True
+        marker = session.execute(
+            text("SELECT active_marker FROM shift_coverage WHERE coverage_id = :i"),
+            {"i": first.coverage_id},
+        ).scalar()
+        assert marker is None, "soft delete left the marker set; the key stays occupied"
+
+        # And the same key is now free -- the reason the constraint carries the
+        # marker instead of binding the three business columns alone.
+        second = create_shift_coverage(session, _payload(6), actor)
+        assert second.coverage_id != first.coverage_id
+
+        rows = session.execute(
+            text(
+                "SELECT is_active, active_marker FROM shift_coverage "
+                "WHERE client_id = 'MDB-UNQ' ORDER BY coverage_id"
+            )
+        ).all()
+        assert [(int(a), m) for a, m in rows] == [(0, None), (1, 1)]
+    finally:
+        # `mariadb_schema` is module-scoped, so anything committed here outlives
+        # the test and is visible to every later one in the file.
+        session.rollback()
+        for stmt in (
+            "DELETE FROM shift_coverage WHERE client_id = 'MDB-UNQ'",
+            "DELETE FROM SHIFT WHERE client_id = 'MDB-UNQ'",
+            "DELETE FROM CLIENT WHERE client_id = 'MDB-UNQ'",
+            "DELETE FROM USER WHERE user_id = 'mdb-unq-user'",
+        ):
+            session.execute(text(stmt))
+        session.commit()
+        session.close()
