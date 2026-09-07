@@ -35,6 +35,8 @@ export interface CatalogEntry {
   name: string
   description: string
   allowed_values: unknown[] | null
+  /** The catalog standard, and the value's TYPE — see coerceToCatalogType. */
+  default_value?: unknown
 }
 
 // ------------------------------------------------------------- Phase 5

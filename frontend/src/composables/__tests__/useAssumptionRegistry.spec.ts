@@ -35,6 +35,7 @@ import {
   isSelfApproval,
   PROPOSER_ROLES,
   APPROVER_ROLES,
+  coerceToCatalogType,
 } from '../useAssumptionRegistry'
 
 const row = (over: Record<string, unknown> = {}) => ({
@@ -172,5 +173,109 @@ describe('useAssumptionRegistry', () => {
 
     await expect(reg.load()).rejects.toThrow('network down')
     expect(reg.loaded.value).toBe(false)
+  })
+})
+
+// All three found by the adversarial cross-model review (the first
+// independently, while checking the value round-trip).
+describe('coerceToCatalogType', () => {
+  const numeric = { default_value: 0 }
+  const enumerated = { default_value: 'count_as_downtime' }
+
+  it('sends a NUMBER for a numeric assumption, not the text field’s string', () => {
+    // otd_carrier_buffer_pct is an int with no allowed_values, so it renders
+    // as free text. Sending "15" stores the JSON string "15" where the column
+    // should hold 15 — contradicting the catalog entry it came from.
+    expect(coerceToCatalogType('15', numeric)).toBe(15)
+    expect(coerceToCatalogType('0', numeric)).toBe(0)
+    expect(coerceToCatalogType('-3', numeric)).toBe(-3)
+    expect(coerceToCatalogType('2.5', numeric)).toBe(2.5)
+  })
+
+  it('REFUSES text that cannot be the declared type', () => {
+    // That assumption has no allowed_values, so the backend validates
+    // nothing: "abc" would be stored and only fail later, inside the OTD
+    // calculation, as a Decimal error far from the screen that caused it.
+    for (const bad of ['abc', '', '  ', '12abc', '1e3']) {
+      expect(coerceToCatalogType(bad, numeric)).toBeNull()
+    }
+  })
+
+  it('passes enumerated string values through untouched', () => {
+    expect(coerceToCatalogType('count_as_downtime', enumerated)).toBe('count_as_downtime')
+  })
+
+  it('passes through when the catalog entry is unknown', () => {
+    expect(coerceToCatalogType('anything', undefined)).toBe('anything')
+  })
+})
+
+describe('a client switch mid-flight', () => {
+  it('does not let a slower response overwrite the newer client’s rows', async () => {
+    // Otherwise one tenant's assumptions render under another's name, with
+    // approve and retire acting on the rows displayed.
+    let releaseFirst: (_v: unknown) => void = () => {}
+    mockAssumptions.listAssumptions
+      .mockImplementationOnce(() => new Promise((r) => { releaseFirst = r }))
+      .mockResolvedValueOnce({ data: [row({ assumption_id: 99, client_id: 'B' })] })
+
+    const reg = useAssumptionRegistry()
+    reg.selectedClient.value = 'A'
+    const slow = reg.load()
+
+    reg.selectedClient.value = 'B'
+    await reg.load()
+    expect(reg.assumptions.value.map((r) => r.assumption_id)).toEqual([99])
+
+    releaseFirst({ data: [row({ assumption_id: 1, client_id: 'A' })] })
+    await slow
+
+    expect(reg.assumptions.value.map((r) => r.assumption_id)).toEqual([99])
+  })
+
+  it('does not let a stale FAILURE clear the newer client’s rows', async () => {
+    let rejectFirst: (_e: unknown) => void = () => {}
+    mockAssumptions.listAssumptions
+      .mockImplementationOnce(() => new Promise((_r, j) => { rejectFirst = j }))
+      .mockResolvedValueOnce({ data: [row({ assumption_id: 99 })] })
+
+    const reg = useAssumptionRegistry()
+    reg.selectedClient.value = 'A'
+    const slow = reg.load()
+
+    reg.selectedClient.value = 'B'
+    await reg.load()
+
+    rejectFirst(new Error('stale failure'))
+    await slow
+
+    expect(reg.assumptions.value.map((r) => r.assumption_id)).toEqual([99])
+    expect(reg.loaded.value).toBe(true)
+  })
+})
+
+describe('a failed refresh is not a failed write', () => {
+  it('does not report a committed write as failed when the reload fails', async () => {
+    // `await write(); await load()` in one try block makes the operator retry
+    // a proposal that already exists, and collect a duplicate or a 409.
+    mockAssumptions.listAssumptions.mockRejectedValue(new Error('network down'))
+    const reg = useAssumptionRegistry()
+    reg.selectedClient.value = 'C'
+
+    await expect(reg.propose({ client_id: 'C', assumption_name: 'x', value: 'y' })).resolves.toBeUndefined()
+    expect(mockAssumptions.proposeAssumption).toHaveBeenCalled()
+    expect(reg.staleAfterWrite.value).toBe(true)
+  })
+
+  it('clears the stale flag once a refresh succeeds', async () => {
+    mockAssumptions.listAssumptions.mockRejectedValueOnce(new Error('down'))
+    const reg = useAssumptionRegistry()
+    reg.selectedClient.value = 'C'
+    await reg.approve(1)
+    expect(reg.staleAfterWrite.value).toBe(true)
+
+    mockAssumptions.listAssumptions.mockResolvedValue({ data: [] })
+    await reg.approve(1)
+    expect(reg.staleAfterWrite.value).toBe(false)
   })
 })

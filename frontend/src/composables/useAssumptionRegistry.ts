@@ -80,6 +80,46 @@ export const isSelfApproval = (
   userId: string | undefined | null,
 ): boolean => Boolean(userId) && row.proposed_by === userId
 
+/**
+ * Coerce a form value to the type the catalog declares.
+ *
+ * The form is text, so every value arrives as a string. Five of the six
+ * assumptions are enumerated strings and round-trip cleanly, but
+ * `otd_carrier_buffer_pct` is an integer with no allowed_values -- it renders
+ * as a free-text field, and sending it verbatim stores the JSON string "15"
+ * where the column should hold the number 15. Nothing raises today, because
+ * both the variance report and the OTD service coerce with `str()` on the way
+ * back out, but the stored value contradicts its own catalog entry and would
+ * break the first consumer that does arithmetic without coercing.
+ *
+ * Worse, that assumption has NO allowed_values, so the backend validates
+ * nothing: "abc" would be accepted here and only fail later, inside the OTD
+ * calculation, as a Decimal conversion error far from the screen that caused
+ * it.
+ *
+ * Returns `null` when the text cannot be the declared type, so the caller can
+ * refuse rather than send it.
+ */
+export const coerceToCatalogType = (
+  raw: unknown,
+  entry: Pick<CatalogEntry, 'default_value'> | undefined,
+): unknown | null => {
+  const standard = entry?.default_value
+  if (typeof standard === 'number') {
+    const text = String(raw ?? '').trim()
+    if (!/^-?\d+(\.\d+)?$/.test(text)) return null
+    const value = Number(text)
+    return Number.isFinite(value) ? value : null
+  }
+  if (typeof standard === 'boolean') {
+    const text = String(raw ?? '').trim().toLowerCase()
+    if (text === 'true') return true
+    if (text === 'false') return false
+    return null
+  }
+  return raw
+}
+
 export function useAssumptionRegistry() {
   const clients = ref<ClientOption[]>([])
   const selectedClient = ref<string | number | null>(null)
@@ -138,22 +178,30 @@ export function useAssumptionRegistry() {
       loaded.value = false
       return
     }
+    // Pin the client this request is FOR. Switching clients while a read is
+    // in flight would otherwise let the slower response overwrite the newer
+    // one -- showing one tenant's assumptions under another's name, with the
+    // approve and retire buttons acting on the rows displayed.
+    const requestedFor = String(selectedClient.value)
     loading.value = true
     try {
       // include_inactive so retired records are available to show; the
       // `visible` computed decides whether they are on screen.
       const { data } = await listAssumptions({
-        client_id: String(selectedClient.value),
+        client_id: requestedFor,
         include_inactive: true,
       })
+      if (String(selectedClient.value) !== requestedFor) return
       assumptions.value = (data as AssumptionResponse[]) ?? []
       loaded.value = true
     } catch (error) {
+      // A stale failure must not clear the newer client's rows either.
+      if (String(selectedClient.value) !== requestedFor) return
       assumptions.value = []
       loaded.value = false
       throw error
     } finally {
-      loading.value = false
+      if (String(selectedClient.value) === requestedFor) loading.value = false
     }
   }
 
@@ -163,24 +211,45 @@ export function useAssumptionRegistry() {
     return history.value
   }
 
+  /**
+   * Refresh after a successful write, WITHOUT letting a failed refresh look
+   * like a failed write.
+   *
+   * `await write(); await load()` in one try block reports a read error as if
+   * the mutation had failed -- so the operator retries a proposal that already
+   * exists, and gets a duplicate or a 409. The write has committed by the time
+   * we get here; the worst a failed reload can do is leave the list stale, and
+   * `staleAfterWrite` says so.
+   */
+  const staleAfterWrite = ref(false)
+
+  const refreshAfterWrite = async (): Promise<void> => {
+    try {
+      await load()
+      staleAfterWrite.value = false
+    } catch {
+      staleAfterWrite.value = true
+    }
+  }
+
   const propose = async (payload: ProposalPayload): Promise<void> => {
     await proposeAssumption(payload)
-    await load()
+    await refreshAfterWrite()
   }
 
   const edit = async (assumptionId: number, patch: ProposalPatch): Promise<void> => {
     await updateProposal(assumptionId, patch)
-    await load()
+    await refreshAfterWrite()
   }
 
   const approve = async (assumptionId: number, changeReason?: string | null): Promise<void> => {
     await approveAssumption(assumptionId, changeReason)
-    await load()
+    await refreshAfterWrite()
   }
 
   const retire = async (assumptionId: number, changeReason?: string | null): Promise<void> => {
     await retireAssumption(assumptionId, changeReason)
-    await load()
+    await refreshAfterWrite()
   }
 
   return {
@@ -191,6 +260,7 @@ export function useAssumptionRegistry() {
     history,
     loading,
     loaded,
+    staleAfterWrite,
     includeRetired,
     selectedClientInfo,
     visible,

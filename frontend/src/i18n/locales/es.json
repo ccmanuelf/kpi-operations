@@ -2180,7 +2180,10 @@
         "proposed": "Propuesto",
         "active": "Activo",
         "retired": "Retirado"
-      }
+      },
+      "valueTypeError": "Ese valor no coincide con el tipo que espera este supuesto (el estándar es {standard}).",
+      "catalogStandard": "Estándar del catálogo: {standard}",
+      "staleAfterWrite": "Su cambio se guardó, pero no se pudo actualizar la lista. Recargue para ver el estado actual."
     }
   },
   "csv": {

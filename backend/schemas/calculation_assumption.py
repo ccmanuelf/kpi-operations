@@ -129,3 +129,11 @@ class CatalogEntry(BaseModel):
     name: str
     description: str
     allowed_values: Optional[list[Any]]
+    #: The catalog standard this assumption deviates from. Carried so a client
+    #: can both SHOW what the standard is -- which is what "deviates from
+    #: default" means and the registry screen has no other way to know -- and
+    #: infer the value's TYPE. Without it a free-form assumption like
+    #: otd_carrier_buffer_pct (an int with no allowed_values) round-trips
+    #: through a text field and is stored as the JSON string "15" rather than
+    #: the number 15.
+    default_value: Any = None

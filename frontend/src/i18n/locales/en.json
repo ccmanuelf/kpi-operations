@@ -2180,7 +2180,10 @@
         "proposed": "Proposed",
         "active": "Active",
         "retired": "Retired"
-      }
+      },
+      "valueTypeError": "That value does not match the type this assumption expects (the standard is {standard}).",
+      "catalogStandard": "Catalog standard: {standard}",
+      "staleAfterWrite": "Your change was saved, but the list below could not be refreshed. Reload to see the current state."
     }
   },
   "csv": {

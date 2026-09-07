@@ -98,6 +98,7 @@ def get_catalog(current_user: User = Depends(get_current_user)) -> List[CatalogE
             name=name,
             description=entry["description"],
             allowed_values=entry.get("allowed_values"),
+            default_value=entry.get("default_value"),
         )
         for name, entry in catalog.items()
     ]

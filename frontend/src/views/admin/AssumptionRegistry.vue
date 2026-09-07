@@ -50,6 +50,14 @@
       </v-col>
     </v-row>
 
+    <v-row v-if="staleAfterWrite" class="mt-2">
+      <v-col cols="12">
+        <v-alert type="warning" variant="tonal" density="compact">
+          {{ t('admin.assumptions.staleAfterWrite') }}
+        </v-alert>
+      </v-col>
+    </v-row>
+
     <!-- The call to action: proposals waiting on a decision. -->
     <v-row v-if="pending.length" class="mt-2">
       <v-col cols="12">
@@ -146,6 +154,10 @@
           />
           <p v-if="selectedCatalogEntry" class="text-caption text-medium-emphasis mb-3">
             {{ selectedCatalogEntry.description }}
+            <br />
+            <strong>{{ t('admin.assumptions.catalogStandard', {
+              standard: formatValue(selectedCatalogEntry.default_value),
+            }) }}</strong>
           </p>
           <v-select
             v-if="allowedValues.length"
@@ -314,6 +326,7 @@ import {
   canApprove,
   canEdit,
   isSelfApproval,
+  coerceToCatalogType,
 } from '@/composables/useAssumptionRegistry'
 import { formatLocaleDate } from '@/utils/localeDate'
 
@@ -327,6 +340,7 @@ const {
   catalog,
   history,
   loading,
+  staleAfterWrite,
   includeRetired,
   visible,
   pending,
@@ -435,9 +449,23 @@ const openHistory = async (row) => {
 const submitForm = async () => {
   saving.value = true
   try {
+    // The form is text; the catalog says what type the value must be. Sending
+    // the raw string stores "15" where the column should hold 15, and for the
+    // one assumption with no allowed_values the backend validates nothing --
+    // so "abc" would be accepted here and only fail later inside the OTD
+    // calculation, far from the screen that caused it.
+    const typed = coerceToCatalogType(form.value.value, selectedCatalogEntry.value)
+    if (typed === null) {
+      notify.showError(
+        t('admin.assumptions.valueTypeError', {
+          standard: formatValue(selectedCatalogEntry.value?.default_value),
+        }),
+      )
+      return
+    }
     if (editing.value) {
       await edit(editing.value.assumption_id, {
-        value: form.value.value,
+        value: typed,
         rationale: form.value.rationale || null,
       })
       notify.showSuccess(t('admin.assumptions.proposalUpdated'))
@@ -445,7 +473,7 @@ const submitForm = async () => {
       await propose({
         client_id: String(selectedClient.value),
         assumption_name: form.value.assumption_name,
-        value: form.value.value,
+        value: typed,
         rationale: form.value.rationale || null,
       })
       notify.showSuccess(t('admin.assumptions.proposalCreated'))
