@@ -7,7 +7,19 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Any, Optional
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint, event
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    Date,
+    DateTime,
+    ForeignKey,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
+    event,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
 
@@ -42,6 +54,25 @@ class ShiftCoverage(Base):
             "active_marker",
             name="uq_shift_coverage_active",
         ),
+        # The marker is only USEFUL while it agrees with `is_active`, and the
+        # mapper event below can only guarantee that for ORM writes. Without
+        # this, an INSERT of (is_active=1, active_marker=NULL) is an active row
+        # that the unique index above does not see at all -- NULLs do not
+        # collide -- so raw SQL could create the exact duplicate the constraint
+        # exists to forbid. The pairing is therefore enforced by the database
+        # rather than trusted from the application.
+        # The `IS NOT NULL` is load-bearing, not redundant: a CHECK passes when
+        # its expression is NULL, not only when TRUE. Written as the obvious
+        # `active_marker = 1`, the (is_active=1, active_marker=NULL) row
+        # evaluates to NULL and is ACCEPTED -- which is precisely the row this
+        # constraint exists to reject.
+        CheckConstraint(
+            (
+                "(is_active = 1 AND active_marker IS NOT NULL AND active_marker = 1)"
+                " OR (is_active = 0 AND active_marker IS NULL)"
+            ),
+            name="ck_shift_coverage_active_marker",
+        ),
         {"extend_existing": True},
     )
 
@@ -58,9 +89,15 @@ class ShiftCoverage(Base):
     notes: Mapped[Optional[str]] = mapped_column(Text)
     entered_by: Mapped[str] = mapped_column(String(50), ForeignKey("USER.user_id"), nullable=False)
     #: Mirrors `is_active` for the uniqueness constraint above: 1 when live,
-    #: NULL when soft deleted. Maintained by the mapper event at the bottom of
-    #: this module rather than by any one CRUD function, so no code path that
-    #: flips `is_active` can leave a deleted row still holding its slot.
+    #: NULL when soft deleted. Derived by the mapper event at the bottom of
+    #: this module rather than by any one CRUD function, so every ORM write
+    #: path maintains it -- including `soft_delete_record`, which no caller
+    #: has to know about this column to use.
+    #:
+    #: A bulk UPDATE would bypass it, as bulk writes bypass all mapper events.
+    #: None exists on this table today (checked), and one that flipped
+    #: `is_active` without setting this column would leave a deleted row still
+    #: holding its slot. Anything added here must write both.
     active_marker: Mapped[Optional[int]] = mapped_column(Integer, default=1)
 
     # Soft delete (S1): DELETE endpoints set this False instead of removing the row.

@@ -13,10 +13,13 @@ test. These pin the four defects that survived that gap:
 """
 
 from datetime import date, timedelta
+from types import SimpleNamespace
 
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
 
 from backend.auth.jwt import get_current_active_supervisor, get_current_contributor, get_current_user
@@ -143,8 +146,6 @@ class TestCreate:
         the ORM the way a concurrent request would after winning the race --
         and asserts the constraint stops it.
         """
-        from sqlalchemy.exc import IntegrityError
-
         from backend.orm.coverage import ShiftCoverage
 
         db = setup["db"]
@@ -178,6 +179,76 @@ class TestCreate:
         second = client.post("/api/coverage", json=_body(setup))
         assert second.status_code == 409
 
+    def test_losing_the_race_returns_409_not_500(self, setup, monkeypatch):
+        """The handler that turns the constraint violation into a 409.
+
+        `test_losing_the_race_reads_as_a_conflict_not_a_crash` only reaches the
+        PRE-CHECK; the winner of a real race gets past that and is stopped by
+        the database instead. Neutering the pre-check is how a test reaches the
+        handler at all.
+
+        This is the test that catches deciding the question by matching the
+        driver's message: SQLite names the COLUMNS in a unique violation and
+        MariaDB names the CONSTRAINT, so a string match on the constraint name
+        passes on MariaDB and 500s here.
+        """
+        import backend.crud.coverage as crud_coverage
+
+        client = _client_for(setup["db"], setup["admin"])
+        assert client.post("/api/coverage", json=_body(setup)).status_code == 201
+
+        monkeypatch.setattr(crud_coverage, "_assert_not_duplicate", lambda *a, **k: None)
+        raced = client.post("/api/coverage", json=_body(setup, actual_employees=3))
+        assert raced.status_code == 409
+        assert "already exists" in raced.json()["detail"]
+
+    def test_a_non_duplicate_integrity_error_is_not_reported_as_a_duplicate(self, setup, monkeypatch):
+        """A blanket `except IntegrityError` would send whoever hit a foreign-key
+        or not-null failure looking for a duplicate that does not exist.
+
+        Raised by the adversarial review. Forces a NOT NULL violation on
+        `entered_by` past the pre-checks and asserts it does NOT come back as a
+        409. NOT NULL rather than a foreign key because SQLite only enforces
+        foreign keys under `PRAGMA foreign_keys=ON` -- an FK version of this
+        test passes for the wrong reason, by never raising at all.
+        """
+        import backend.crud.coverage as crud_coverage
+
+        # A DETACHED stand-in, not the session's own admin row: mutating the
+        # persistent User makes the next autoflush fail on THAT row instead,
+        # and the test then passes without the handler ever running.
+        actor = SimpleNamespace(user_id=None, username="cov_admin", role="admin", client_id=None, is_active=True)
+        client = _client_for(setup["db"], actor)
+        monkeypatch.setattr(crud_coverage, "_assert_not_duplicate", lambda *a, **k: None)
+
+        with pytest.raises(IntegrityError):
+            client.post("/api/coverage", json=_body(setup))
+
+    def test_an_edit_cannot_move_a_row_to_another_tenant(self, setup):
+        """The ownership and duplicate checks live on create, not on update.
+
+        That is only safe while `ShiftCoverageUpdate` cannot reach client_id,
+        shift_id or coverage_date -- widening it would route around both checks
+        and let an edit produce the cross-tenant row the create path refuses.
+        Pinned here so the schema cannot quietly grow those fields.
+        """
+        client = _client_for(setup["db"], setup["admin"])
+        created = client.post("/api/coverage", json=_body(setup)).json()
+
+        r = client.put(
+            f"/api/coverage/{created['coverage_id']}",
+            json={
+                "client_id": setup["client_b"].client_id,
+                "shift_id": setup["shift_b"].shift_id,
+                "coverage_date": (COVERAGE_DATE + timedelta(days=3)).isoformat(),
+            },
+        )
+        assert r.status_code == 200
+        body = r.json()
+        assert body["client_id"] == setup["client_a"].client_id
+        assert body["shift_id"] == setup["shift_a"].shift_id
+        assert body["coverage_date"] == COVERAGE_DATE.isoformat()
+
     def test_a_deleted_record_can_be_entered_again(self, setup):
         """Raised by the adversarial review as a possible bypass; it is the
         intended behaviour and pinned here so it is not "fixed" later.
@@ -185,8 +256,8 @@ class TestCreate:
         A soft-deleted row is deleted as far as its author is concerned.
         Treating it as a tombstone for its key would make a
         mistakenly-entered-then-removed record impossible to re-enter, which
-        is the whole reason this is an application check rather than a UNIQUE
-        constraint.
+        is why the constraint carries `active_marker` instead of binding the
+        three business columns alone.
         """
         client = _client_for(setup["db"], setup["admin"])
         created = client.post("/api/coverage", json=_body(setup)).json()
@@ -228,6 +299,87 @@ class TestCreate:
         client = _client_for(setup["db"], setup["admin"])
         r = client.post("/api/coverage", json=_body(setup, shift_id=999999))
         assert r.status_code == 400
+
+
+class TestTheConstraintItself:
+    """Written against raw SQL on purpose.
+
+    Every other test here goes through the ORM, where the mapper event keeps
+    `active_marker` in step with `is_active`. These bypass it entirely -- the
+    shape a bulk UPDATE or a hand-written statement would take -- to show the
+    invariant survives without the application's help.
+    """
+
+    INSERT = text(
+        "INSERT INTO shift_coverage (client_id, shift_id, coverage_date, "
+        "required_employees, actual_employees, coverage_percentage, entered_by, "
+        "is_active, active_marker) VALUES "
+        "(:client, :shift, :day, 8, 8, 100, :actor, :active, :marker)"
+    )
+
+    def _insert(self, setup, is_active, marker, day=COVERAGE_DATE):
+        setup["db"].execute(
+            self.INSERT,
+            {
+                "client": setup["client_a"].client_id,
+                "shift": setup["shift_a"].shift_id,
+                "day": day,
+                "actor": setup["admin"].user_id,
+                "active": is_active,
+                "marker": marker,
+            },
+        )
+
+    def test_a_second_active_row_is_rejected_by_the_database(self, setup):
+        db = setup["db"]
+        self._insert(setup, 1, 1)
+        db.commit()
+        with pytest.raises(IntegrityError):
+            self._insert(setup, 1, 1)
+            db.commit()
+        db.rollback()
+
+    def test_an_active_row_cannot_hide_from_the_index_with_a_null_marker(self, setup):
+        """The hole the CHECK constraint closes.
+
+        NULLs do not collide in a unique index, so an active row written with
+        `active_marker = NULL` would be invisible to `uq_shift_coverage_active`
+        -- exactly the duplicate it exists to forbid, admitted through the
+        constraint's own escape hatch.
+        """
+        db = setup["db"]
+        self._insert(setup, 1, 1)
+        db.commit()
+        with pytest.raises(IntegrityError):
+            self._insert(setup, 1, None)
+            db.commit()
+        db.rollback()
+
+    def test_a_deleted_row_cannot_keep_holding_its_slot(self, setup):
+        """The other direction: `is_active = 0` with the marker left at 1 is a
+        deleted row still occupying its key, which would make the record
+        impossible to enter again."""
+        db = setup["db"]
+        with pytest.raises(IntegrityError):
+            self._insert(setup, 0, 1)
+            db.commit()
+        db.rollback()
+
+    def test_soft_deleted_rows_may_share_a_key(self, setup):
+        """Two-sided: the constraint must not block the legitimate case it was
+        shaped around -- any number of deleted rows for one key, plus one live
+        row."""
+        db = setup["db"]
+        for _ in range(3):
+            self._insert(setup, 0, None)
+        self._insert(setup, 1, 1)
+        db.commit()
+
+        live = db.execute(
+            text("SELECT COUNT(*) FROM shift_coverage WHERE is_active = 1 AND coverage_date = :d"),
+            {"d": str(COVERAGE_DATE)},
+        ).scalar()
+        assert live == 1
 
 
 class TestUpdate:

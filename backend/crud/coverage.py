@@ -86,25 +86,10 @@ def _assert_shift_belongs_to_client(db: Session, shift_id: int, client_id: str) 
         )
 
 
-def _assert_not_duplicate(db: Session, client_id: str, coverage_date: date, shift_id: int) -> None:
-    """One coverage record per client, date and shift.
+def _find_duplicate(db: Session, client_id: str, coverage_date: date, shift_id: int) -> Optional[int]:
+    """The id of the ACTIVE row already holding this slot, or None.
 
-    Deliberately an application check rather than a UNIQUE constraint: the
-    table is soft-deleted, and a plain constraint would let a deleted row hold
-    the slot forever. A partial index would express it, but MariaDB does not
-    support them, so the constraint could not be made portable.
-
-    Two consequences, both intended:
-
-    * The read is auto-filtered to ACTIVE rows, so deleting a record and
-      entering it again works. A soft-deleted row is deleted as far as its
-      author is concerned; treating it as a tombstone would make a
-      mistakenly-entered-then-removed row impossible to re-enter.
-    * This is SELECT-then-INSERT with no lock, so it narrows the window rather
-      than closing it: two creates racing inside the same millisecond can both
-      pass. Closing it needs the constraint that soft-delete rules out. The
-      guard is here for the case that actually happens -- someone re-adding a
-      row that is already there -- not for concurrent writers.
+    Auto-filtered to active rows, which matches what the constraint binds.
     """
     clash = (
         db.query(ShiftCoverage.coverage_id)
@@ -115,12 +100,35 @@ def _assert_not_duplicate(db: Session, client_id: str, coverage_date: date, shif
         )
         .first()
     )
+    return None if clash is None else clash[0]
+
+
+def _assert_not_duplicate(db: Session, client_id: str, coverage_date: date, shift_id: int) -> None:
+    """One coverage record per client, date and shift.
+
+    NOT the thing that enforces this. `uq_shift_coverage_active` is -- see
+    backend/orm/coverage.py -- because this is SELECT-then-INSERT with no lock
+    and two creates racing inside the same millisecond both pass it.
+
+    This exists for the error MESSAGE. The constraint can only report which
+    columns collided; the caller wants to know which record already holds the
+    slot so they can go and edit it, and that needs the row. When this check
+    passes and the constraint still fires, `create_shift_coverage` catches the
+    IntegrityError and returns the same 409 with a less specific message.
+
+    The read is auto-filtered to ACTIVE rows, matching the constraint, which
+    only binds live rows: deleting a record and entering it again works on
+    both paths. A soft-deleted row is deleted as far as its author is
+    concerned; treating it as a tombstone would make a
+    mistakenly-entered-then-removed row impossible to re-enter.
+    """
+    clash = _find_duplicate(db, client_id, coverage_date, shift_id)
     if clash is not None:
         raise HTTPException(
             status_code=409,
             detail=(
                 f"Coverage for shift {shift_id} on {coverage_date} already exists "
-                f"for this client (record {clash[0]}). Edit it instead."
+                f"for this client (record {clash}). Edit it instead."
             ),
         )
 
@@ -154,6 +162,19 @@ def create_shift_coverage(db: Session, coverage: ShiftCoverageCreate, current_us
         # this turns losing that race into the same 409 the pre-check gives,
         # rather than a 500.
         db.rollback()
+        # ONLY that constraint. A blanket `except IntegrityError` would report a
+        # foreign-key or not-null violation as "already exists" -- sending
+        # whoever hit it looking for a duplicate that does not exist.
+        #
+        # Decided by RE-READING rather than by matching the driver's message:
+        # SQLite names the columns ("UNIQUE constraint failed: shift_coverage.
+        # client_id, ...") while MariaDB names the constraint ("Duplicate entry
+        # ... for key 'uq_shift_coverage_active'"), so any string match is one
+        # dialect's format and 500s on the other. Asking whether a row now
+        # holds the slot is exact on both, and costs one SELECT on a path that
+        # only runs when a write has already failed.
+        if _find_duplicate(db, coverage.client_id, coverage.coverage_date, coverage.shift_id) is None:
+            raise
         raise HTTPException(
             status_code=409,
             detail=(

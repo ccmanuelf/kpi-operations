@@ -41,6 +41,7 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    conn = op.get_bind()
     op.add_column("shift_coverage", sa.Column("active_marker", sa.Integer(), nullable=True))
 
     # Derive from the existing soft-delete state BEFORE the constraint exists,
@@ -50,14 +51,53 @@ def upgrade() -> None:
     # batch_alter_table, because SQLite cannot ALTER a table to add a
     # constraint -- it needs the copy-and-move strategy. On MariaDB this
     # compiles to a plain ALTER, so one code path serves both dialects.
+    # Fail with the rows named, not with a bare 1062 halfway through a deploy.
+    # The constraint cannot be added over contradictory data, and picking a
+    # winner is not a migration's decision to make -- whoever entered them has
+    # to say which is right.
+    duplicates = (
+        conn.execute(
+            sa.text(
+                "SELECT client_id, coverage_date, shift_id, COUNT(*) AS n "
+                "FROM shift_coverage WHERE is_active = 1 "
+                "GROUP BY client_id, coverage_date, shift_id HAVING COUNT(*) > 1"
+            )
+        )
+        .mappings()
+        .all()
+    )
+    if duplicates:
+        listed = ", ".join(
+            f"(client {r['client_id']}, {r['coverage_date']}, shift {r['shift_id']}: {r['n']} rows)"
+            for r in duplicates[:10]
+        )
+        raise RuntimeError(
+            f"shift_coverage holds {len(duplicates)} duplicated active key(s); "
+            f"uq_shift_coverage_active cannot be added until each is resolved. "
+            f"First: {listed}"
+        )
+
     with op.batch_alter_table("shift_coverage") as batch:
         batch.create_unique_constraint(
             "uq_shift_coverage_active",
             ["client_id", "coverage_date", "shift_id", "active_marker"],
         )
+        # Keeps the marker meaningful: an active row must be marked and a
+        # deleted one must not. Without it a raw INSERT of
+        # (is_active=1, active_marker=NULL) is an active row the unique index
+        # never sees, since NULLs do not collide -- the duplicate the
+        # constraint above exists to forbid.
+        batch.create_check_constraint(
+            "ck_shift_coverage_active_marker",
+            (
+                "(is_active = 1 AND active_marker IS NOT NULL AND active_marker = 1)"
+                " OR (is_active = 0 AND active_marker IS NULL)"
+            ),
+        )
 
 
 def downgrade() -> None:
     with op.batch_alter_table("shift_coverage") as batch:
+        batch.drop_constraint("ck_shift_coverage_active_marker", type_="check")
         batch.drop_constraint("uq_shift_coverage_active", type_="unique")
     op.drop_column("shift_coverage", "active_marker")
