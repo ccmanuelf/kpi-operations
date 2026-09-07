@@ -365,3 +365,75 @@ describe('clearing the client selection', () => {
     expect(reg.loading.value).toBe(false)
   })
 })
+
+// Round three of the adversarial review. All four were real; the last is the
+// same race I had just fixed in load(), sitting in loadHistory where I did
+// not sweep.
+describe('a refresh that did not actually refresh', () => {
+  it('warns when the post-write read was superseded', async () => {
+    // load() returns false rather than throwing when superseded, so treating
+    // "no exception" as success told the operator the list reflected their
+    // write when it did not.
+    let releaseRefresh: (_v: unknown) => void = () => {}
+    mockAssumptions.listAssumptions
+      .mockImplementationOnce(() => new Promise((r) => { releaseRefresh = r }))
+      .mockResolvedValueOnce({ data: [] })
+
+    const reg = useAssumptionRegistry()
+    reg.selectedClient.value = 'C'
+    const write = reg.approve(1)
+    // approve() yields at its own await before its refresh issues a request,
+    // so let the microtask queue drain first -- otherwise the client switch
+    // below consumes the pending mock and the roles are reversed.
+    await Promise.resolve()
+    await Promise.resolve()
+
+    // A client switch supersedes the write's refresh while it is in flight.
+    reg.selectedClient.value = 'D'
+    await reg.load()
+
+    releaseRefresh({ data: [] })
+    await write
+
+    expect(reg.staleAfterWrite.value).toBe(true)
+  })
+
+  it('warns when a write lands with no client selected', async () => {
+    const reg = useAssumptionRegistry()
+    reg.selectedClient.value = null
+
+    await reg.approve(1)
+
+    expect(mockAssumptions.approveAssumption).toHaveBeenCalled()
+    expect(reg.staleAfterWrite.value).toBe(true)
+  })
+
+  it('still clears the flag on a refresh that genuinely applied', async () => {
+    mockAssumptions.listAssumptions.mockResolvedValue({ data: [] })
+    const reg = useAssumptionRegistry()
+    reg.selectedClient.value = 'C'
+    await reg.approve(1)
+    expect(reg.staleAfterWrite.value).toBe(false)
+  })
+})
+
+describe('loadHistory', () => {
+  it('never shows one assumption’s change log under another’s name', async () => {
+    // This is an AUDIT view. Two overlapping history reads resolving out of
+    // order would attribute a decision to the wrong assumption.
+    let releaseFirst: (_v: unknown) => void = () => {}
+    mockAssumptions.getAssumptionHistory
+      .mockImplementationOnce(() => new Promise((r) => { releaseFirst = r }))
+      .mockResolvedValueOnce({ data: [{ change_id: 2, assumption_id: 2 }] })
+
+    const reg = useAssumptionRegistry()
+    const slow = reg.loadHistory(1)
+    await reg.loadHistory(2)
+    expect(reg.history.value.map((r) => r.assumption_id)).toEqual([2])
+
+    releaseFirst({ data: [{ change_id: 1, assumption_id: 1 }] })
+    await slow
+
+    expect(reg.history.value.map((r) => r.assumption_id)).toEqual([2])
+  })
+})

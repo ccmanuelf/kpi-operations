@@ -181,7 +181,15 @@ export function useAssumptionRegistry() {
   //: same client.
   let readToken = 0
 
-  const load = async (): Promise<void> => {
+  /**
+   * Returns TRUE only when this read applied its data.
+   *
+   * A superseded read returns false rather than throwing, and a read with no
+   * client selected never runs at all -- so a caller that needs to know
+   * whether the list on screen actually reflects a write cannot infer it from
+   * the absence of an exception.
+   */
+  const load = async (): Promise<boolean> => {
     if (!selectedClient.value) {
       // Bump the token here too. Clearing the selection must SUPERSEDE any
       // read still in flight -- without this it keeps `token === readToken`,
@@ -191,7 +199,7 @@ export function useAssumptionRegistry() {
       assumptions.value = []
       loaded.value = false
       loading.value = false
-      return
+      return false
     }
     const token = ++readToken
     const requestedFor = String(selectedClient.value)
@@ -206,15 +214,17 @@ export function useAssumptionRegistry() {
       // Superseded: a newer read is in flight or has already landed. Applying
       // this one would show a tenant's rows under another's name, or roll the
       // list back to a state from before the newest read.
-      if (token !== readToken) return
+      if (token !== readToken) return false
       assumptions.value = (data as AssumptionResponse[]) ?? []
       loaded.value = true
       // A read that succeeded is the freshest state there is, so any earlier
       // "could not refresh" warning no longer describes what is on screen.
       staleAfterWrite.value = false
+      return true
     } catch (error) {
-      // A superseded failure must not clear the newer rows either.
-      if (token !== readToken) return
+      // A superseded failure must not clear the newer rows either -- and must
+      // not be reported to this read's caller as ITS failure.
+      if (token !== readToken) return false
       assumptions.value = []
       loaded.value = false
       throw error
@@ -223,10 +233,19 @@ export function useAssumptionRegistry() {
     }
   }
 
+  //: Same shape as `readToken`, for the same reason. Opening one row's
+  //: history and then another's can resolve out of order, and this is an
+  //: AUDIT view -- showing one assumption's change log under another's name
+  //: is the specific thing it must never do.
+  let historyToken = 0
+
   const loadHistory = async (assumptionId: number): Promise<AssumptionChangeRow[]> => {
+    const token = ++historyToken
     const { data } = await getAssumptionHistory(assumptionId)
-    history.value = (data as AssumptionChangeRow[]) ?? []
-    return history.value
+    const rows = (data as AssumptionChangeRow[]) ?? []
+    if (token !== historyToken) return history.value
+    history.value = rows
+    return rows
   }
 
   /**
@@ -241,8 +260,12 @@ export function useAssumptionRegistry() {
    */
   const refreshAfterWrite = async (): Promise<void> => {
     try {
-      await load()
-      staleAfterWrite.value = false
+      // `load` clears the flag itself when it applies. A read that was
+      // superseded, or that never ran because no client is selected, returns
+      // false without throwing -- and treating that as a successful refresh
+      // would tell the operator the list reflects their write when it does
+      // not. A newer read clears the flag again when it lands.
+      if (!(await load())) staleAfterWrite.value = true
     } catch {
       staleAfterWrite.value = true
     }
