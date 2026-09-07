@@ -14,14 +14,19 @@ from backend.orm.production_entry import ProductionEntry
 from backend.orm.quality_entry import QualityEntry
 from backend.orm.work_order import WorkOrder, WorkOrderStatus
 from backend.services.dual_view.aggregators import (
+    DEMONSTRATED_BEST_MIN_UNITS_FRACTION,
     aggregate_fpy_inputs,
     aggregate_oee_inputs,
     aggregate_otd_inputs,
+    alternative_cycle_times,
 )
 from backend.tests.fixtures.factories import TestDataFactory
 
 PERIOD_START = datetime(2026, 4, 1, tzinfo=timezone.utc)
 PERIOD_END = datetime(2026, 4, 30, 23, 59, 59, tzinfo=timezone.utc)
+#: A scored period beginning just after the April rows the cycle-time tests
+#: create, so those rows land in the 90-day baseline window BEFORE it.
+SCORED_FROM = datetime(2026, 5, 1, tzinfo=timezone.utc)
 
 
 def _client_user(db, client_id: str = "AGG-CLIENT"):
@@ -310,6 +315,212 @@ class TestAggregateOTD:
 
         result = aggregate_otd_inputs(transactional_db, client.client_id, PERIOD_START, PERIOD_END)
         assert result.orders == []
+
+
+class TestAlternativeCycleTimes:
+    """The two cycle times behind the `ideal_cycle_time_source` assumption.
+
+    Nothing populated them before, so selecting `rolling_90_day_average` or
+    `demonstrated_best` recorded an assumption that changed no number on any
+    production path -- issue #278. These pin that they are now computed, and
+    computed the way the assumption means.
+    """
+
+    def _day(self, db, client_id, day: int, *, units: int, run_hours: str) -> None:
+        _make_production_entry(
+            db,
+            client_id=client_id,
+            shift_date=datetime(2026, 4, day, tzinfo=timezone.utc),
+            production_date=datetime(2026, 4, day, tzinfo=timezone.utc),
+            units_produced=units,
+            run_time_hours=Decimal(run_hours),
+        )
+
+    def test_aggregate_populates_both_fields(self, transactional_db):
+        """They were None on every production path, which is the whole bug."""
+        client, _ = _client_user(transactional_db)
+        # History BEFORE the scored period -- that is where the benchmark
+        # comes from, so a period with no prior production has none.
+        for day in (2, 5, 20):
+            _make_production_entry(
+                transactional_db,
+                client_id=client.client_id,
+                shift_date=datetime(2026, 3, day, tzinfo=timezone.utc),
+                production_date=datetime(2026, 3, day, tzinfo=timezone.utc),
+                units_produced=100,
+                run_time_hours=Decimal("10.0"),
+            )
+        # And production inside the period itself, so the aggregate is real.
+        self._day(transactional_db, client.client_id, 10, units=100, run_hours="8.0")
+
+        result = aggregate_oee_inputs(transactional_db, client.client_id, PERIOD_START, PERIOD_END)
+
+        assert result.rolling_90_day_cycle_time_hours is not None
+        assert result.demonstrated_best_cycle_time_hours is not None
+        # From the March history, not from the April rows being scored.
+        assert result.rolling_90_day_cycle_time_hours == Decimal("0.10")
+
+    def test_a_period_with_no_prior_history_gets_no_benchmark(self, transactional_db):
+        """Honest absence rather than a fabricated figure: a new client's
+        first period has nothing to compare against, and the assumption is
+        then correctly reported as not applied."""
+        client, _ = _client_user(transactional_db)
+        self._day(transactional_db, client.client_id, 10, units=100, run_hours="10.0")
+
+        result = aggregate_oee_inputs(transactional_db, client.client_id, PERIOD_START, PERIOD_END)
+
+        assert result.rolling_90_day_cycle_time_hours is None
+        assert result.demonstrated_best_cycle_time_hours is None
+
+    def test_demonstrated_best_is_the_best_DAY_not_the_best_row(self, transactional_db):
+        """Two entries on one day are one day's rate, not two candidates.
+
+        A single shift that ran briskly is not a demonstrated capability; the
+        day it belongs to is. Here day 11 has a fast shift and a slow one, and
+        the day's combined rate must be what counts.
+        """
+        client, _ = _client_user(transactional_db)
+        # Day 10: 100 units in 10h -> 0.10 h/unit
+        self._day(transactional_db, client.client_id, 10, units=100, run_hours="10.0")
+        # Day 11: a fast shift (0.02) and a slow one, combining to 0.06 h/unit
+        self._day(transactional_db, client.client_id, 11, units=100, run_hours="2.0")
+        self._day(transactional_db, client.client_id, 11, units=100, run_hours="10.0")
+
+        _, best = alternative_cycle_times(transactional_db, client.client_id, PERIOD_END)
+
+        # The combined day, 12h / 200 units. The fast SHIFT alone would be 0.02.
+        assert best == Decimal("0.06")
+
+    def test_a_low_output_day_cannot_set_the_benchmark(self, transactional_db):
+        """The output floor.
+
+        Performance is (ideal_cycle * units) / run_time, so a FASTER ideal
+        cycle LOWERS Performance. Without a floor, a part-day that made a
+        handful of units in a brisk hour would define an unreachable standard
+        and depress OEE for the whole period.
+        """
+        client, _ = _client_user(transactional_db)
+        for day in (10, 11, 12):
+            self._day(transactional_db, client.client_id, day, units=100, run_hours="10.0")
+        # A sliver of a day: far faster per unit, far below the median output.
+        self._day(transactional_db, client.client_id, 13, units=5, run_hours="0.1")
+
+        _, best = alternative_cycle_times(transactional_db, client.client_id, PERIOD_END)
+
+        assert Decimal("5") < _median_units_floor(100)
+        # 0.02 is the sliver's rate; the honest benchmark is the full days'.
+        assert best == Decimal("0.10")
+
+    def test_a_day_at_the_floor_still_counts(self, transactional_db):
+        """Two-sided: the floor must exclude slivers without discarding a
+        genuinely good short day."""
+        client, _ = _client_user(transactional_db)
+        for day in (10, 11, 12):
+            self._day(transactional_db, client.client_id, day, units=100, run_hours="10.0")
+        # Exactly at the floor (half the median of 100), and faster.
+        self._day(transactional_db, client.client_id, 13, units=50, run_hours="4.0")
+
+        _, best = alternative_cycle_times(transactional_db, client.client_id, PERIOD_END)
+
+        assert best == Decimal("0.08")
+
+    def test_rolling_average_is_units_weighted_over_the_window(self, transactional_db):
+        client, _ = _client_user(transactional_db)
+        self._day(transactional_db, client.client_id, 10, units=100, run_hours="10.0")
+        self._day(transactional_db, client.client_id, 11, units=300, run_hours="6.0")
+
+        rolling, _ = alternative_cycle_times(transactional_db, client.client_id, PERIOD_END)
+
+        # 16h / 400 units. A mean of the two DAY rates would be 0.06.
+        assert rolling == Decimal("0.04")
+
+    def test_production_outside_the_window_is_excluded(self, transactional_db):
+        """`demonstrated_best` means recently demonstrated. An all-time minimum
+        would anchor OEE to a good day that may no longer be representative."""
+        client, _ = _client_user(transactional_db)
+        self._day(transactional_db, client.client_id, 10, units=100, run_hours="10.0")
+        # Far older than the 90-day window ending at PERIOD_END, and faster.
+        _make_production_entry(
+            transactional_db,
+            client_id=client.client_id,
+            shift_date=datetime(2025, 1, 5, tzinfo=timezone.utc),
+            production_date=datetime(2025, 1, 5, tzinfo=timezone.utc),
+            units_produced=100,
+            run_time_hours=Decimal("1.0"),
+        )
+
+        rolling, best = alternative_cycle_times(transactional_db, client.client_id, PERIOD_END)
+
+        assert best == Decimal("0.10")
+        assert rolling == Decimal("0.10")
+
+    def test_the_benchmark_never_scores_itself(self, transactional_db):
+        """The window ends at period_start, not period_end.
+
+        Anchored to the end it overlaps the rows being scored, and for a
+        period of 90 days or more it contains exactly them -- so the rolling
+        "benchmark" came back as the period's own cycle time, bit for bit, and
+        Performance was 100% by construction. The assumption would have taken
+        effect and still moved nothing on any quarterly report, which is the
+        inertness this whole change exists to remove.
+        """
+        client, _ = _client_user(transactional_db)
+        # Baseline days, before the scored period.
+        self._day(transactional_db, client.client_id, 10, units=100, run_hours="10.0")
+        self._day(transactional_db, client.client_id, 11, units=100, run_hours="10.0")
+        # A day INSIDE the scored period, running at a very different rate.
+        _make_production_entry(
+            transactional_db,
+            client_id=client.client_id,
+            shift_date=datetime(2026, 5, 15, tzinfo=timezone.utc),
+            production_date=datetime(2026, 5, 15, tzinfo=timezone.utc),
+            units_produced=100,
+            run_time_hours=Decimal("2.0"),
+        )
+
+        rolling, best = alternative_cycle_times(transactional_db, client.client_id, SCORED_FROM)
+
+        # Only the baseline days count. Including the in-period day would give
+        # a rolling of 22/300 and a best of 0.02.
+        assert rolling == Decimal("0.10")
+        assert best == Decimal("0.10")
+
+    def test_a_row_on_the_period_boundary_belongs_to_the_period(self, transactional_db):
+        """The benchmark window's end is EXCLUSIVE.
+
+        The scored period starts at that instant and includes it, so an
+        inclusive bound would put a row sitting exactly on the boundary into
+        both the benchmark and the rows it is used to score -- and would BE
+        the whole benchmark for a client whose only history is that day.
+        """
+        client, _ = _client_user(transactional_db)
+        _make_production_entry(
+            transactional_db,
+            client_id=client.client_id,
+            shift_date=SCORED_FROM,
+            production_date=SCORED_FROM,
+            units_produced=100,
+            run_time_hours=Decimal("2.0"),
+        )
+
+        rolling, best = alternative_cycle_times(transactional_db, client.client_id, SCORED_FROM)
+
+        assert rolling is None
+        assert best is None
+
+    def test_no_production_yields_None_not_zero(self, transactional_db):
+        """None means "no basis to compute this"; zero would be a cycle time
+        of nothing, which the assumption would then apply."""
+        client, _ = _client_user(transactional_db)
+
+        rolling, best = alternative_cycle_times(transactional_db, client.client_id, PERIOD_END)
+
+        assert rolling is None
+        assert best is None
+
+
+def _median_units_floor(median_units: int) -> Decimal:
+    return Decimal(median_units) * DEMONSTRATED_BEST_MIN_UNITS_FRACTION
 
 
 class TestAggregateOEEFilters:
