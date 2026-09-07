@@ -33,6 +33,11 @@ class ShiftCoverageResponse(BaseModel):
     """Shift coverage response"""
 
     coverage_id: int = Field(..., description="Unique identifier for this coverage record")
+    #: Returned so a caller holding rows for SEVERAL tenants can tell them
+    #: apart. A leader assigned three clients lists coverage and gets all
+    #: three interleaved; without this there is no field to label or group by,
+    #: and the UI would need one extra round-trip per shift_id to find out.
+    client_id: str = Field(..., description="Client this coverage record belongs to")
     shift_id: int = Field(..., description="Reference to the shift definition")
     coverage_date: date = Field(..., description="Calendar date of the coverage record")
     required_employees: int = Field(..., description="Number of employees needed to fully staff the shift")

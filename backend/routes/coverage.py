@@ -4,7 +4,7 @@ PHASE 3: Shift coverage and capacity tracking
 All endpoints enforce multi-tenant client filtering
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from typing import Any, List, Optional
 from datetime import date
@@ -41,10 +41,16 @@ def create_coverage(
 @router.get("", response_model=List[ShiftCoverageResponse])
 def list_coverage(
     skip: int = 0,
-    limit: int = 100,
+    # A month of coverage for one client is ~8 rows a day, and the seeded demo
+    # alone holds 112 -- the previous default of 100 silently truncated it, so
+    # a reader had no way to tell a short month from a clipped page.
+    limit: int = Query(500, ge=1, le=2000),
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     shift_id: Optional[int] = None,
+    # The CRUD layer has always accepted this; the route just never offered it,
+    # so a multi-client leader could not narrow to one tenant.
+    client_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Any:
@@ -64,6 +70,7 @@ def list_coverage(
         start_date=start_date,
         end_date=end_date,
         shift_id=shift_id,
+        client_id=client_id,
     )
 
 

@@ -1005,6 +1005,7 @@ class TestShiftCoverageResponsePydantic:
     def test_entered_by_string_user_id_roundtrips(self):
         record = SimpleNamespace(
             coverage_id=1,
+            client_id="C1",
             shift_id=2,
             coverage_date=date(2026, 7, 8),
             required_employees=10,

@@ -2167,3 +2167,75 @@ def test_alternative_cycle_times_agree_with_sqlite_on_mariadb(mariadb_schema):
         assert rolling == Decimal("22") / Decimal("300")
     finally:
         session.close()
+
+
+@requires_mariadb
+def test_coverage_percentage_survives_a_full_shift_on_mariadb(mariadb_schema):
+    """`shift_coverage.coverage_percentage` is DECIMAL(5, 2) on this dialect.
+
+    The ratio is not otherwise bounded -- required_employees only has to be
+    > 0 -- so one required and fifty present computes 5000.00, which SQLite
+    stores silently and MariaDB rejects in strict mode. The whole suite would
+    stay green while the write 500'd in production, which is the exact shape
+    of the dialect-split class this repo keeps re-hitting.
+
+    Asserts the clamp holds against the real column, and that the value comes
+    back through ShiftCoverageResponse as a JSON number rather than a string
+    (the SUM-Integer -> Decimal class).
+    """
+    from datetime import date, time
+    from decimal import Decimal
+
+    from backend.crud.coverage import MAX_COVERAGE_PERCENTAGE, create_shift_coverage
+    from backend.orm.client import Client
+    from backend.orm.shift import Shift
+    from backend.schemas.coverage import ShiftCoverageCreate
+
+    session = SessionLocal()
+    try:
+        session.add(Client(client_id="MDB-COV", client_name="MariaDB coverage probe"))
+        session.add(
+            User(
+                user_id="mdb-cov-user",
+                username="mdb-cov-user",
+                email="mdb-cov@example.com",
+                role="admin",
+            )
+        )
+        session.flush()
+        shift = Shift(
+            client_id="MDB-COV",
+            shift_name="Probe",
+            start_time=time(6, 0),
+            end_time=time(14, 0),
+        )
+        session.add(shift)
+        session.flush()
+
+        actor = session.get(User, "mdb-cov-user")
+        created = create_shift_coverage(
+            session,
+            ShiftCoverageCreate(
+                client_id="MDB-COV",
+                shift_id=shift.shift_id,
+                coverage_date=date(2026, 5, 12),
+                required_employees=1,
+                actual_employees=50,
+            ),
+            actor,
+        )
+
+        # Without the clamp this INSERT raises on MariaDB rather than reaching
+        # the assertion at all.
+        assert created.coverage_percentage == float(MAX_COVERAGE_PERCENTAGE)
+        assert isinstance(created.coverage_percentage, float)
+        assert created.client_id == "MDB-COV"
+
+        # And the stored column agrees, so the clamp happened before the write
+        # rather than only in the response model.
+        stored = session.execute(
+            text("SELECT coverage_percentage FROM shift_coverage WHERE client_id = 'MDB-COV'")
+        ).scalar_one()
+        assert Decimal(str(stored)) == MAX_COVERAGE_PERCENTAGE
+    finally:
+        session.close()
