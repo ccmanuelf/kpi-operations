@@ -134,6 +134,81 @@ class TestCreate:
         assert clash.status_code == 409
         assert "already exists" in clash.json()["detail"]
 
+    def test_the_database_refuses_a_duplicate_even_if_the_check_is_bypassed(self, setup):
+        """The race the application check cannot close.
+
+        `_assert_not_duplicate` is SELECT-then-INSERT, so two creates racing
+        inside the same millisecond both pass it. Only the database can hold
+        the invariant. This bypasses the pre-check entirely -- writing through
+        the ORM the way a concurrent request would after winning the race --
+        and asserts the constraint stops it.
+        """
+        from sqlalchemy.exc import IntegrityError
+
+        from backend.orm.coverage import ShiftCoverage
+
+        db = setup["db"]
+        client = _client_for(db, setup["admin"])
+        assert client.post("/api/coverage", json=_body(setup)).status_code == 201
+
+        db.add(
+            ShiftCoverage(
+                client_id=setup["client_a"].client_id,
+                shift_id=setup["shift_a"].shift_id,
+                coverage_date=COVERAGE_DATE,
+                required_employees=8,
+                actual_employees=2,
+                coverage_percentage=25,
+                entered_by=setup["admin"].user_id,
+            )
+        )
+        with pytest.raises(IntegrityError):
+            db.commit()
+        db.rollback()
+
+    def test_losing_the_race_reads_as_a_conflict_not_a_crash(self, setup):
+        """And the constraint violation must surface as the same 409 the
+        pre-check gives, not a 500."""
+        db = setup["db"]
+        client = _client_for(db, setup["admin"])
+        assert client.post("/api/coverage", json=_body(setup)).status_code == 201
+
+        # Second create through the API: the pre-check catches this one, but
+        # the response must be identical either way.
+        second = client.post("/api/coverage", json=_body(setup))
+        assert second.status_code == 409
+
+    def test_a_deleted_record_can_be_entered_again(self, setup):
+        """Raised by the adversarial review as a possible bypass; it is the
+        intended behaviour and pinned here so it is not "fixed" later.
+
+        A soft-deleted row is deleted as far as its author is concerned.
+        Treating it as a tombstone for its key would make a
+        mistakenly-entered-then-removed record impossible to re-enter, which
+        is the whole reason this is an application check rather than a UNIQUE
+        constraint.
+        """
+        client = _client_for(setup["db"], setup["admin"])
+        created = client.post("/api/coverage", json=_body(setup)).json()
+        assert client.delete(f"/api/coverage/{created['coverage_id']}").status_code == 204
+
+        again = client.post("/api/coverage", json=_body(setup, actual_employees=7))
+        assert again.status_code == 201
+        assert again.json()["coverage_id"] != created["coverage_id"]
+
+    def test_the_clamp_is_logged_rather_than_silent(self, setup, caplog):
+        """The ceiling is a column width, not a domain rule, so it is not
+        rejected -- but a ratio that extreme is almost always a typo in
+        required_employees, and it must be findable afterwards."""
+        import logging
+
+        client = _client_for(setup["db"], setup["admin"])
+        with caplog.at_level(logging.WARNING, logger="backend.crud.coverage"):
+            r = client.post("/api/coverage", json=_body(setup, required_employees=1, actual_employees=50))
+
+        assert r.status_code == 201
+        assert any("exceeds the column ceiling" in rec.getMessage() for rec in caplog.records)
+
     def test_a_different_day_for_the_same_shift_is_fine(self, setup):
         """Two-sided: the guard must not block the next day's record."""
         client = _client_for(setup["db"], setup["admin"])

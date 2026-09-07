@@ -4,6 +4,9 @@ PHASE 3
 SECURITY: Multi-tenant client filtering enabled
 """
 
+import logging
+
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from typing import Optional, List
 from datetime import date
@@ -15,6 +18,8 @@ from backend.schemas.coverage import ShiftCoverageCreate, ShiftCoverageUpdate, S
 from backend.middleware.client_auth import verify_client_access, build_client_filter_clause
 from backend.orm.user import User
 from backend.db.soft_delete_service import soft_delete_record
+
+logger = logging.getLogger(__name__)
 
 #: `ShiftCoverage.coverage_percentage` is Numeric(5, 2), so the largest value
 #: the column can hold is 999.99. The ratio is NOT bounded by anything else:
@@ -30,11 +35,30 @@ MAX_COVERAGE_PERCENTAGE = Decimal("999.99")
 
 
 def _coverage_percentage(required: int, actual: int) -> Decimal:
-    """The derived percentage, clamped to what the column can actually hold."""
+    """The derived percentage, clamped to what the column can actually hold.
+
+    The clamp is a STORAGE limit, not a domain rule -- 999.99 is the width of
+    Numeric(5, 2), not a statement about plausible staffing -- so rejecting on
+    it would leak a column definition into validation. It is logged instead of
+    passing silently: a ratio this extreme is almost always a typo in
+    required_employees, and the operator should be findable afterwards. The
+    two source columns are stored faithfully either way, so the true ratio is
+    always recoverable from the row itself.
+    """
     if required <= 0:
         return Decimal("0")
     pct = (Decimal(str(actual)) / Decimal(str(required))) * 100
-    return min(pct, MAX_COVERAGE_PERCENTAGE)
+    if pct > MAX_COVERAGE_PERCENTAGE:
+        logger.warning(
+            "Coverage ratio %s%% (required=%s, actual=%s) exceeds the column ceiling; "
+            "storing %s. The source counts are kept intact.",
+            pct,
+            required,
+            actual,
+            MAX_COVERAGE_PERCENTAGE,
+        )
+        return MAX_COVERAGE_PERCENTAGE
+    return pct
 
 
 def _assert_shift_belongs_to_client(db: Session, shift_id: int, client_id: str) -> None:
@@ -43,6 +67,12 @@ def _assert_shift_belongs_to_client(db: Session, shift_id: int, client_id: str) 
     The FK only requires that the shift EXISTS, so a row for client A
     referencing client B's shift satisfies every database on every dialect and
     is silently cross-tenant. Nothing else checks this.
+
+    A DEACTIVATED shift still passes. SHIFT is in AD_HOC_FILTERED_TABLES
+    rather than the auto-filtered set precisely so its historical rows stay
+    readable -- "hiding one orphans its entries" -- and refusing coverage
+    against one here would contradict that and block backfilling a shift that
+    has since been retired. Checked deliberately, not overlooked.
     """
     from backend.orm.shift import Shift
 
@@ -62,8 +92,19 @@ def _assert_not_duplicate(db: Session, client_id: str, coverage_date: date, shif
     Deliberately an application check rather than a UNIQUE constraint: the
     table is soft-deleted, and a plain constraint would let a deleted row hold
     the slot forever. A partial index would express it, but MariaDB does not
-    support them, so the constraint could not be made portable. The ORM read
-    below is auto-filtered to active rows, which is exactly the scope wanted.
+    support them, so the constraint could not be made portable.
+
+    Two consequences, both intended:
+
+    * The read is auto-filtered to ACTIVE rows, so deleting a record and
+      entering it again works. A soft-deleted row is deleted as far as its
+      author is concerned; treating it as a tombstone would make a
+      mistakenly-entered-then-removed row impossible to re-enter.
+    * This is SELECT-then-INSERT with no lock, so it narrows the window rather
+      than closing it: two creates racing inside the same millisecond can both
+      pass. Closing it needs the constraint that soft-delete rules out. The
+      guard is here for the case that actually happens -- someone re-adding a
+      row that is already there -- not for concurrent writers.
     """
     clash = (
         db.query(ShiftCoverage.coverage_id)
@@ -103,7 +144,23 @@ def create_shift_coverage(db: Session, coverage: ShiftCoverageCreate, current_us
     )
 
     db.add(db_coverage)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        # The pre-check above catches the case that actually happens -- someone
+        # re-adding a row that is already there -- but it is SELECT-then-INSERT,
+        # so two creates racing inside the same millisecond both pass it. The
+        # uq_shift_coverage_active constraint is what makes the invariant hold;
+        # this turns losing that race into the same 409 the pre-check gives,
+        # rather than a 500.
+        db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"Coverage for shift {coverage.shift_id} on {coverage.coverage_date} "
+                f"already exists for this client. Edit it instead."
+            ),
+        ) from None
     db.refresh(db_coverage)
 
     return ShiftCoverageResponse.model_validate(db_coverage)
