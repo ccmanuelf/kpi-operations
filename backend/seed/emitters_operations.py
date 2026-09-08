@@ -46,6 +46,7 @@ from backend.seed.scenarios import (
     DEFECT_CODES,
     IDEAL_CYCLE_TIME_HOURS,
     ROUTING,
+    SCENARIOS,
     SCRAP_UNITS_PER_HUNDRED,
     WORK_ORDER_ORIGINS,
     ClientScenario,
@@ -125,7 +126,36 @@ PM_MINUTES = 30
 #: One defective unit in this many is recovered by rework.
 REWORK_DIVISOR = 3
 
-COVERAGE_WINDOW_DAYS = 21
+#: How far back coverage records are written.
+#:
+#: This was a flat 21 days, which put it entirely outside every narrative the
+#: seed tells. DEMO-HYBRID's `labor_disruption` runs months -4..-2, so the
+#: coverage screen showed three placid weeks and the client WITH the labour
+#: crisis read HEALTHIEST of the four (96.4% average, against 93.3% for a
+#: client with no labour narrative at all). The one screen whose subject is
+#: staffing could not see the staffing story.
+#:
+#: Derived from the scenarios rather than set to a number, so moving or
+#: widening a narrative carries the coverage window with it instead of
+#: silently stranding it again.
+#:
+#: Only the ATTENDANCE-affecting narratives count. `labor_disruption` is the
+#: single kind that scales `attendance` in narrative.py; the other two move
+#: defects and downtime, which coverage cannot see. Reaching back across those
+#: would add months of flat rows and call it depth. If a new kind is ever given
+#: an attendance effect it belongs in this tuple -- and
+#: test_coverage_spans_every_labour_narrative fails until it is.
+#:
+#: `* 31` converts a month offset at its longest, and the trailing fortnight
+#: buys a BEFORE to read the disruption against: an episode with no visible
+#: baseline is just a flat line at a different value.
+ATTENDANCE_NARRATIVE_KINDS = ("labor_disruption",)
+COVERAGE_WINDOW_BASELINE_DAYS = 14
+_EARLIEST_LABOUR_MONTH = max(
+    (-w.start_month for s in SCENARIOS for w in s.narrative if w.kind in ATTENDANCE_NARRATIVE_KINDS),
+    default=1,
+)
+COVERAGE_WINDOW_DAYS = _EARLIEST_LABOUR_MONTH * 31 + COVERAGE_WINDOW_BASELINE_DAYS
 
 #: How far back the labour ledger is written. Every attendance row COULD carry
 #: allocations, but 16,640 of them times three categories is fifty thousand

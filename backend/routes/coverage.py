@@ -41,10 +41,14 @@ def create_coverage(
 @router.get("", response_model=List[ShiftCoverageResponse])
 def list_coverage(
     skip: int = 0,
-    # A month of coverage for one client is ~8 rows a day, and the seeded demo
-    # alone holds 112 -- the previous default of 100 silently truncated it, so
-    # a reader had no way to tell a short month from a clipped page.
-    limit: int = Query(500, ge=1, le=2000),
+    # The default has to clear the whole seeded demo, or a reader cannot tell a
+    # short month from a clipped page. That is not a fixed fact: widening the
+    # coverage window to span the labour narrative took the demo from 112 rows
+    # to 776, which the previous default of 500 silently truncated -- the exact
+    # defect it had been raised to fix. `test_the_list_default_does_not_truncate
+    # _the_seeded_demo` now fails when the seed outgrows this number, so the
+    # next person gets a failing build rather than a quietly clipped page.
+    limit: int = Query(1000, ge=1, le=2000),
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     shift_id: Optional[int] = None,

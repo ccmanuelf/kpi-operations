@@ -12,11 +12,12 @@ than trust the emitter:
     an absence.
 """
 
-from datetime import date
+from datetime import date, timedelta
 
 import pytest
 from sqlalchemy import text
 
+from backend.seed.emitters_operations import ATTENDANCE_NARRATIVE_KINDS
 from backend.seed.generator import generate
 from backend.seed.materialize import materialize
 from backend.seed.profiles import FULL
@@ -178,3 +179,122 @@ def test_the_labour_ledger_balances_and_never_books_an_absence(full_db):
     # HourCategoryEnum; a day booked entirely to billed_production makes both
     # ratios 100% and demonstrates neither.
     assert len(categories) >= 3, f"only {sorted(categories)} allocated"
+
+
+def _labour_windows():
+    """(client_id, start, end) for every narrative that moves ATTENDANCE.
+
+    `labor_disruption` is the only kind narrative.py applies to the attendance
+    scale, and coverage is derived from attendance, so it is the only kind
+    coverage can possibly evidence.
+    """
+    out = []
+    for scenario in SCENARIOS:
+        for w in scenario.narrative:
+            if w.kind in ATTENDANCE_NARRATIVE_KINDS:
+                start = AS_OF - timedelta(days=-w.start_month * 31)
+                end = AS_OF - timedelta(days=-w.end_month * 30)
+                out.append((scenario.client_id, start, end))
+    return out
+
+
+def test_coverage_spans_every_labour_narrative(full_db):
+    """Coverage has to REACH the episode it is supposed to evidence.
+
+    It did not. The window was a flat 21 days while DEMO-HYBRID's
+    `labor_disruption` sits at months -4..-2, so the two never overlapped: the
+    coverage screen showed three placid weeks of a year-long story, and the one
+    client with a labour crisis was invisible on the one screen about staffing.
+
+    Asserts rows exist INSIDE each labour window and BEFORE it. The "before"
+    half matters as much: an episode with no baseline to compare against is not
+    a story, just a flat line at a different value.
+    """
+    windows = _labour_windows()
+    assert windows, "no labour narrative in SCENARIOS -- this test would pass vacuously"
+
+    with full_db.begin() as conn:
+        for client_id, start, end in windows:
+            inside = conn.execute(
+                text(
+                    "SELECT COUNT(*) FROM shift_coverage WHERE client_id = :c"
+                    " AND DATE(coverage_date) BETWEEN :s AND :e"
+                ),
+                {"c": client_id, "s": str(start), "e": str(end)},
+            ).scalar_one()
+            assert inside > 0, (
+                f"{client_id}: no coverage rows inside its labour disruption "
+                f"({start}..{end}) -- the screen cannot show the episode"
+            )
+
+            before = conn.execute(
+                text("SELECT COUNT(*) FROM shift_coverage WHERE client_id = :c" " AND DATE(coverage_date) < :s"),
+                {"c": client_id, "s": str(start)},
+            ).scalar_one()
+            assert before > 0, (
+                f"{client_id}: no coverage rows BEFORE its disruption starts "
+                f"({start}) -- nothing to read the dip against"
+            )
+
+
+def test_the_labour_disrupted_client_reads_worst_on_coverage(full_db):
+    """The defect stated as an assertion.
+
+    With a 21-day window, DEMO-HYBRID -- the ONLY client carrying a labour
+    narrative -- averaged 96.4% coverage while a client with no labour story at
+    all averaged 93.3%. The troubled client read healthiest on the screen built
+    to surface its trouble, and every number involved was technically correct.
+
+    A margin rather than a bare inequality, so noise between two flat clients
+    cannot satisfy it.
+    """
+    disrupted = {c for c, _, _ in _labour_windows()}
+    assert disrupted, "no labour narrative -- vacuous"
+
+    with full_db.begin() as conn:
+        averages = {
+            row[0]: float(row[1])
+            for row in conn.execute(
+                text("SELECT client_id, AVG(coverage_percentage) FROM shift_coverage GROUP BY client_id")
+            )
+        }
+
+    calm = {c: a for c, a in averages.items() if c not in disrupted}
+    assert calm, "no undisrupted client to compare against"
+
+    worst_calm = min(calm.values())
+    for client_id in disrupted:
+        assert averages[client_id] < worst_calm - 5.0, (
+            f"{client_id} carries a labour disruption but averages "
+            f"{averages[client_id]:.1f}% coverage, no worse than the calmest "
+            f"client at {worst_calm:.1f}% -- the episode is not visible"
+        )
+
+
+def test_the_list_default_does_not_truncate_the_seeded_demo(full_db):
+    """The seed and the route's page size are coupled, and nothing said so.
+
+    /api/coverage's default limit was raised 100 -> 500 precisely because 112
+    seeded rows were being silently clipped. Widening the coverage window to
+    reach the labour narrative then took the demo to 776 rows and reintroduced
+    the same defect against the same default -- a truncated page looks exactly
+    like a short month, so nothing surfaces it.
+
+    Asserts the DEFAULT clears the whole seeded table, not just one client's
+    slice: an admin reading without a client filter is the case that clips.
+    """
+    import inspect
+
+    from backend.routes.coverage import list_coverage
+
+    default = inspect.signature(list_coverage).parameters["limit"].default
+    limit = getattr(default, "default", default)
+
+    with full_db.begin() as conn:
+        rows = conn.execute(text("SELECT COUNT(*) FROM shift_coverage")).scalar_one()
+
+    assert limit >= rows, (
+        f"/api/coverage defaults to {limit} rows but the seeded demo holds "
+        f"{rows} -- an unfiltered read is silently clipped, which is "
+        f"indistinguishable from a short month"
+    )
