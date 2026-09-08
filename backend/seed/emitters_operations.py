@@ -46,6 +46,7 @@ from backend.seed.scenarios import (
     DEFECT_CODES,
     IDEAL_CYCLE_TIME_HOURS,
     ROUTING,
+    SCENARIOS,
     SCRAP_UNITS_PER_HUNDRED,
     WORK_ORDER_ORIGINS,
     ClientScenario,
@@ -125,7 +126,54 @@ PM_MINUTES = 30
 #: One defective unit in this many is recovered by rework.
 REWORK_DIVISOR = 3
 
-COVERAGE_WINDOW_DAYS = 21
+#: How far back coverage records are written.
+#:
+#: This was a flat 21 days, which put it entirely outside every narrative the
+#: seed tells. DEMO-HYBRID's `labor_disruption` runs months -4..-2, so the
+#: coverage screen showed three placid weeks and the client WITH the labour
+#: crisis read HEALTHIEST of the four (96.4% average, against 93.3% for a
+#: client with no labour narrative at all). The one screen whose subject is
+#: staffing could not see the staffing story.
+#:
+#: Derived from the scenarios rather than set to a number, so moving or
+#: widening a narrative carries the coverage window with it instead of
+#: silently stranding it again.
+#:
+#: Only the ATTENDANCE-affecting narratives count. `labor_disruption` is the
+#: single kind that scales `attendance` in narrative.py; the other two move
+#: defects and downtime, which coverage cannot see. Reaching back across those
+#: would add months of flat rows and call it depth. If a new kind is ever given
+#: an attendance effect it belongs in this tuple -- and
+#: test_coverage_spans_every_labour_narrative fails until it is.
+#:
+#: `* 31` converts a month offset at its longest, and the trailing fortnight
+#: buys a BEFORE to read the disruption against: an episode with no visible
+#: baseline is just a flat line at a different value.
+ATTENDANCE_NARRATIVE_KINDS = ("labor_disruption",)
+COVERAGE_WINDOW_BASELINE_DAYS = 14
+_EARLIEST_LABOUR_MONTH = max(
+    (-w.start_month for s in SCENARIOS for w in s.narrative if w.kind in ATTENDANCE_NARRATIVE_KINDS),
+    default=1,
+)
+COVERAGE_WINDOW_DAYS = _EARLIEST_LABOUR_MONTH * 31 + COVERAGE_WINDOW_BASELINE_DAYS
+
+
+def labour_window_days(scenario: ClientScenario) -> int:
+    """How far back coverage must reach for THIS client's own labour episodes.
+
+    COVERAGE_WINDOW_DAYS is derived at import from the module-level SCENARIOS,
+    which is what cli.py seeds -- but generate() takes a scenario list as an
+    ARGUMENT, and a list carrying a labour narrative earlier than any in the
+    default would be stranded exactly the way DEMO-HYBRID was. Taking the
+    larger of the two keeps the window uniform across clients (so a reader can
+    compare a disrupted client against a calm one on the same axis) while
+    guaranteeing every client reaches its own episode whatever list it arrived in.
+    """
+    months = [-w.start_month for w in scenario.narrative if w.kind in ATTENDANCE_NARRATIVE_KINDS]
+    if not months:
+        return 0
+    return max(months) * 31 + COVERAGE_WINDOW_BASELINE_DAYS
+
 
 #: How far back the labour ledger is written. Every attendance row COULD carry
 #: allocations, but 16,640 of them times three categories is fifty thousand
@@ -518,6 +566,9 @@ def emit_shifts(
     # two overlap. Measured before the fix: 47 COVERAGE_ENTRY rows named a
     # floater who had an ATTENDANCE_ENTRY for the very shift they were
     # covering, 6 of which had the floater covering their OWN absence.
+    # Uniform floor, raised if THIS client's own labour narrative reaches
+    # further back than the module-level scenarios do.
+    coverage_window_days = max(COVERAGE_WINDOW_DAYS, labour_window_days(scenario))
     pool_members = set(floating_pool or ())
     employees = [(employee_id, line) for employee_id, line in setup.employees if employee_id not in pool_members]
     line_minute_step = setup.line_minute_step
@@ -715,7 +766,7 @@ def emit_shifts(
                 # instead of making a second, independent claim about the same
                 # day. A coverage row invented against a present employee
                 # would contradict the very data it explains.
-                if (as_of - day).days < COVERAGE_WINDOW_DAYS and crew:
+                if (as_of - day).days < coverage_window_days and crew:
                     seen_required, seen_present, _stamp = coverage_by_shift.get(shift_id, (0, 0, at))
                     coverage_by_shift[shift_id] = (
                         seen_required + len(crew),

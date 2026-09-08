@@ -17,8 +17,10 @@ from datetime import date
 import pytest
 from sqlalchemy import text
 
+from backend.seed.emitters_operations import ATTENDANCE_NARRATIVE_KINDS
 from backend.seed.generator import generate
 from backend.seed.materialize import materialize
+from backend.seed.narrative import window_bounds
 from backend.seed.profiles import FULL
 from backend.seed.scenarios import SCENARIOS
 
@@ -178,3 +180,180 @@ def test_the_labour_ledger_balances_and_never_books_an_absence(full_db):
     # HourCategoryEnum; a day booked entirely to billed_production makes both
     # ratios 100% and demonstrates neither.
     assert len(categories) >= 3, f"only {sorted(categories)} allocated"
+
+
+def _labour_windows():
+    """(client_id, start, end) for every narrative that moves ATTENDANCE.
+
+    `labor_disruption` is the only kind narrative.py applies to the attendance
+    scale, and coverage is derived from attendance, so it is the only kind
+    coverage can possibly evidence.
+
+    Bounds come from `window_bounds` -- the function the SEEDER itself uses to
+    decide which days are disrupted -- rather than being recomputed here. A
+    hand-rolled month-to-day conversion in the test is free to drift from the
+    generator's, and then these assertions describe a window the data was never
+    written against. (The first version of this did exactly that, converting at
+    31 days where the seeder uses 30.)
+    """
+    return [
+        (scenario.client_id,) + window_bounds(w, AS_OF)
+        for scenario in SCENARIOS
+        for w in scenario.narrative
+        if w.kind in ATTENDANCE_NARRATIVE_KINDS
+    ]
+
+
+def test_coverage_spans_every_labour_narrative(full_db):
+    """Coverage has to REACH the episode it is supposed to evidence.
+
+    It did not. The window was a flat 21 days while DEMO-HYBRID's
+    `labor_disruption` sits at months -4..-2, so the two never overlapped: the
+    coverage screen showed three placid weeks of a year-long story, and the one
+    client with a labour crisis was invisible on the one screen about staffing.
+
+    Asserts rows exist INSIDE each labour window and BEFORE it. The "before"
+    half matters as much: an episode with no baseline to compare against is not
+    a story, just a flat line at a different value.
+    """
+    windows = _labour_windows()
+    assert windows, "no labour narrative in SCENARIOS -- this test would pass vacuously"
+
+    with full_db.begin() as conn:
+        for client_id, start, end in windows:
+            inside = conn.execute(
+                text(
+                    "SELECT COUNT(*) FROM shift_coverage WHERE client_id = :c"
+                    " AND DATE(coverage_date) BETWEEN :s AND :e"
+                ),
+                {"c": client_id, "s": str(start), "e": str(end)},
+            ).scalar_one()
+            assert inside > 0, (
+                f"{client_id}: no coverage rows inside its labour disruption "
+                f"({start}..{end}) -- the screen cannot show the episode"
+            )
+
+            before = conn.execute(
+                text("SELECT COUNT(*) FROM shift_coverage WHERE client_id = :c" " AND DATE(coverage_date) < :s"),
+                {"c": client_id, "s": str(start)},
+            ).scalar_one()
+            assert before > 0, (
+                f"{client_id}: no coverage rows BEFORE its disruption starts "
+                f"({start}) -- nothing to read the dip against"
+            )
+
+
+def test_the_labour_disrupted_client_reads_worst_on_coverage(full_db):
+    """The defect stated as an assertion.
+
+    With a 21-day window, DEMO-HYBRID -- the ONLY client carrying a labour
+    narrative -- averaged 96.4% coverage while a client with no labour story at
+    all averaged 93.3%. The troubled client read healthiest on the screen built
+    to surface its trouble, and every number involved was technically correct.
+
+    Compares the disrupted client against ITSELF, inside its window versus
+    outside it, rather than against another client on a whole-window average.
+    That average is diluted by however many healthy months the window happens
+    to span, so it moves whenever the window, the scenario dates or the seed
+    do -- a margin tuned against it would be measuring the dilution, not the
+    disruption. Inside-versus-outside is the thing the narrative actually
+    claims, and it holds however wide the window grows.
+    """
+    windows = _labour_windows()
+    assert windows, "no labour narrative in SCENARIOS -- this test would pass vacuously"
+
+    with full_db.begin() as conn:
+        for client_id, start, end in windows:
+            inside = conn.execute(
+                text(
+                    "SELECT AVG(coverage_percentage) FROM shift_coverage WHERE client_id = :c"
+                    " AND DATE(coverage_date) BETWEEN :s AND :e"
+                ),
+                {"c": client_id, "s": str(start), "e": str(end)},
+            ).scalar_one()
+            outside = conn.execute(
+                text(
+                    "SELECT AVG(coverage_percentage) FROM shift_coverage WHERE client_id = :c"
+                    " AND DATE(coverage_date) NOT BETWEEN :s AND :e"
+                ),
+                {"c": client_id, "s": str(start), "e": str(end)},
+            ).scalar_one()
+
+            assert inside is not None and outside is not None, (
+                f"{client_id}: need coverage rows both inside and outside its " f"labour window to compare them"
+            )
+            assert float(inside) < float(outside) - 10.0, (
+                f"{client_id} averages {float(inside):.1f}% coverage DURING its "
+                f"labour disruption and {float(outside):.1f}% outside it -- the "
+                f"episode is not visible on the screen that exists to show it"
+            )
+
+
+def test_the_list_default_does_not_truncate_the_seeded_demo(full_db):
+    """The seed and the route's page size are coupled, and nothing said so.
+
+    /api/coverage's default limit was raised 100 -> 500 precisely because 112
+    seeded rows were being silently clipped. Widening the coverage window to
+    reach the labour narrative then took the demo to 776 rows and reintroduced
+    the same defect against the same default -- a truncated page looks exactly
+    like a short month, so nothing surfaces it.
+
+    Asserts the DEFAULT clears the whole seeded table, not just one client's
+    slice: an admin reading without a client filter is the case that clips.
+    """
+    import inspect
+
+    from backend.routes.coverage import list_coverage
+
+    default = inspect.signature(list_coverage).parameters["limit"].default
+    limit = getattr(default, "default", default)
+
+    with full_db.begin() as conn:
+        rows = conn.execute(text("SELECT COUNT(*) FROM shift_coverage")).scalar_one()
+
+    assert limit >= rows, (
+        f"/api/coverage defaults to {limit} rows but the seeded demo holds "
+        f"{rows} -- an unfiltered read is silently clipped, which is "
+        f"indistinguishable from a short month"
+    )
+
+
+def test_coverage_reaches_a_labour_window_the_default_scenarios_do_not_have(seed_engine):
+    """generate() takes a scenario LIST; the window must follow that list.
+
+    COVERAGE_WINDOW_DAYS is derived at import from the module-level SCENARIOS,
+    which is what cli.py seeds. But a caller passing its own scenarios -- a
+    future client, a variant demo -- whose labour disruption reaches further
+    back than any default would be stranded outside the window in exactly the
+    way DEMO-HYBRID was, and every gate above would still pass, because they
+    all read the default scenarios.
+
+    Builds a client whose disruption sits at months -8..-6, well beyond the
+    default -4, and asserts coverage reaches it anyway.
+    """
+    from dataclasses import replace
+
+    from backend.seed.scenarios import NarrativeWindow
+
+    base = next(s for s in SCENARIOS if any(w.kind == "labor_disruption" for w in s.narrative))
+    distant = replace(
+        base,
+        narrative=(NarrativeWindow(kind="labor_disruption", start_month=-8, end_month=-6),),
+    )
+
+    events = generate([distant], FULL, seed=1234, as_of=AS_OF)
+    with seed_engine.begin() as conn:
+        materialize(conn, events, FULL)
+
+        start, end = window_bounds(distant.narrative[0], AS_OF)
+        inside = conn.execute(
+            text(
+                "SELECT COUNT(*) FROM shift_coverage WHERE client_id = :c" " AND DATE(coverage_date) BETWEEN :s AND :e"
+            ),
+            {"c": distant.client_id, "s": str(start), "e": str(end)},
+        ).scalar_one()
+
+    assert inside > 0, (
+        f"a caller-supplied labour window at {start}..{end} got no coverage rows -- "
+        f"the window followed the module's scenarios instead of the ones generated"
+    )
