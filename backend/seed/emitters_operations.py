@@ -157,6 +157,24 @@ _EARLIEST_LABOUR_MONTH = max(
 )
 COVERAGE_WINDOW_DAYS = _EARLIEST_LABOUR_MONTH * 31 + COVERAGE_WINDOW_BASELINE_DAYS
 
+
+def labour_window_days(scenario: ClientScenario) -> int:
+    """How far back coverage must reach for THIS client's own labour episodes.
+
+    COVERAGE_WINDOW_DAYS is derived at import from the module-level SCENARIOS,
+    which is what cli.py seeds -- but generate() takes a scenario list as an
+    ARGUMENT, and a list carrying a labour narrative earlier than any in the
+    default would be stranded exactly the way DEMO-HYBRID was. Taking the
+    larger of the two keeps the window uniform across clients (so a reader can
+    compare a disrupted client against a calm one on the same axis) while
+    guaranteeing every client reaches its own episode whatever list it arrived in.
+    """
+    months = [-w.start_month for w in scenario.narrative if w.kind in ATTENDANCE_NARRATIVE_KINDS]
+    if not months:
+        return 0
+    return max(months) * 31 + COVERAGE_WINDOW_BASELINE_DAYS
+
+
 #: How far back the labour ledger is written. Every attendance row COULD carry
 #: allocations, but 16,640 of them times three categories is fifty thousand
 #: rows of a screen nobody scrolls back a year in -- and the split is a recent
@@ -548,6 +566,9 @@ def emit_shifts(
     # two overlap. Measured before the fix: 47 COVERAGE_ENTRY rows named a
     # floater who had an ATTENDANCE_ENTRY for the very shift they were
     # covering, 6 of which had the floater covering their OWN absence.
+    # Uniform floor, raised if THIS client's own labour narrative reaches
+    # further back than the module-level scenarios do.
+    coverage_window_days = max(COVERAGE_WINDOW_DAYS, labour_window_days(scenario))
     pool_members = set(floating_pool or ())
     employees = [(employee_id, line) for employee_id, line in setup.employees if employee_id not in pool_members]
     line_minute_step = setup.line_minute_step
@@ -745,7 +766,7 @@ def emit_shifts(
                 # instead of making a second, independent claim about the same
                 # day. A coverage row invented against a present employee
                 # would contradict the very data it explains.
-                if (as_of - day).days < COVERAGE_WINDOW_DAYS and crew:
+                if (as_of - day).days < coverage_window_days and crew:
                     seen_required, seen_present, _stamp = coverage_by_shift.get(shift_id, (0, 0, at))
                     coverage_by_shift[shift_id] = (
                         seen_required + len(crew),
