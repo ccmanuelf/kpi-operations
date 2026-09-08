@@ -12,8 +12,10 @@
  * client-scoped screen: a slower read landing over a newer one, and a
  * committed write whose refresh failed being reported as a failed write.
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 
 const { mockApi } = vi.hoisted(() => ({
   mockApi: {
@@ -237,6 +239,118 @@ describe('errors say something a person can act on', () => {
     await c.remove(row() as never)
 
     expect(c.error.value?.detail).toContain('already exists')
+  })
+})
+
+describe('a rejected edit does not leave the grid showing it', () => {
+  it('re-reads after a failed update, not only after a successful one', async () => {
+    // This runs from an inline grid edit, and AG Grid has already written the
+    // new value into its row model before the request goes out. Without the
+    // re-read the cell keeps showing a number the server refused, beside an
+    // error message saying it was refused.
+    asRole('supervisor')
+    const c = useShiftCoverageGrid()
+    c.selectedClient.value = 'C1'
+    mockApi.updateShiftCoverage.mockRejectedValueOnce({ response: { status: 409, data: {} } })
+    mockApi.getShiftCoverage.mockResolvedValueOnce({ data: [row({ actual_employees: 6 })] })
+
+    const ok = await c.update(row() as never, { actual_employees: 999 } as never)
+
+    expect(ok).toBe(false)
+    expect(mockApi.getShiftCoverage).toHaveBeenCalled()
+    expect(c.rows.value[0].actual_employees).toBe(6)
+  })
+})
+
+describe('the default range is the local calendar date', () => {
+  // Pinned to a moment where the local and UTC dates genuinely differ.
+  // Comparing against `new Date()` proves nothing: for most of the day, and
+  // ALWAYS in CI (which runs UTC), the two agree, so the assertion holds
+  // whichever implementation is used. It has to be a fixed instant chosen so
+  // the two disagree, or it is not a gate.
+  const LOCAL_MIDNIGHT_ISH = new Date(2026, 5, 11, 0, 30) // local 2026-06-11 00:30
+  const LATE_EVENING = new Date(2026, 5, 11, 23, 30) // local 2026-06-11 23:30
+
+  beforeEach(() => vi.useFakeTimers())
+  afterEach(() => vi.useRealTimers())
+
+  it('reports the local date, whichever side of UTC the runner sits on', () => {
+    for (const instant of [LOCAL_MIDNIGHT_ISH, LATE_EVENING]) {
+      vi.setSystemTime(instant)
+      asRole('supervisor')
+      const c = useShiftCoverageGrid()
+      expect(c.endDate.value).toBe('2026-06-11')
+    }
+  })
+
+  it('never derives a calendar date through toISOString', () => {
+    // A SOURCE gate, because the behavioural one above cannot fail in CI: it
+    // runs UTC, where the local and UTC dates are always equal, so both
+    // implementations satisfy it. Setting process.env.TZ to force the
+    // difference is not an option either -- it is process-wide and leaks into
+    // every other spec sharing the worker, which was measured doing exactly
+    // that. Reading the source is the only check that holds in any zone.
+    const src = readFileSync(resolve(__dirname, '../useShiftCoverageGrid.ts'), 'utf8')
+    expect(src).not.toMatch(/toISOString\(\)\.slice/)
+  })
+
+  it('the range start is the local date N days back', () => {
+    vi.setSystemTime(LATE_EVENING)
+    asRole('supervisor')
+    const c = useShiftCoverageGrid()
+    c.applyRange(30)
+    expect(c.endDate.value).toBe('2026-06-11')
+    expect(c.startDate.value).toBe('2026-05-12')
+  })
+})
+
+describe('the row is filed under the client the form was opened for', () => {
+  it('uses the pinned client, not whatever is selected when the POST fires', async () => {
+    asRole('supervisor')
+    const c = useShiftCoverageGrid()
+    c.selectedClient.value = 'C1'
+
+    // The operator opened the dialog against C1; the selection moved to C2
+    // before the request went out.
+    c.selectedClient.value = 'C2'
+    await c.create(
+      { shift_id: 3, coverage_date: '2026-06-11', required_employees: 8, actual_employees: 6 } as never,
+      'C1',
+    )
+
+    expect(mockApi.createShiftCoverage.mock.calls[0][0]).toMatchObject({ client_id: 'C1' })
+  })
+})
+
+describe('only the selected client\'s shifts are offered', () => {
+  it('excludes another tenant\'s shifts', async () => {
+    // getShifts() returns everything the caller can see; for an admin that is
+    // every client. A shift belonging to another tenant produces a row the
+    // server refuses with 400, so offering it is the same "action that fails"
+    // defect the screen exists to remove.
+    asRole('admin')
+    const c = useShiftCoverageGrid()
+    mockApi.getShifts.mockResolvedValueOnce({
+      data: [
+        { shift_id: 1, client_id: 'C1', shift_name: 'C1 Day' },
+        { shift_id: 2, client_id: 'C2', shift_name: 'C2 Day' },
+      ],
+    })
+    await c.loadShifts()
+    c.selectedClient.value = 'C1'
+
+    expect(c.shiftsForClient.value.map((s) => s.shift_id)).toEqual([1])
+  })
+
+  it('offers nothing until a client is chosen', async () => {
+    asRole('admin')
+    const c = useShiftCoverageGrid()
+    mockApi.getShifts.mockResolvedValueOnce({
+      data: [{ shift_id: 1, client_id: 'C1', shift_name: 'C1 Day' }],
+    })
+    await c.loadShifts()
+
+    expect(c.shiftsForClient.value).toEqual([])
   })
 })
 

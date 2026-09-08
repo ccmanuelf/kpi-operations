@@ -202,7 +202,7 @@
           />
           <v-select
             v-model="draft.shift_id"
-            :items="shifts"
+            :items="shiftsForClient"
             item-title="shift_name"
             item-value="shift_id"
             :label="t('coverage.fields.shift')"
@@ -296,7 +296,7 @@ const { t } = useI18n()
 
 const {
   clients,
-  shifts,
+  shiftsForClient,
   selectedClient,
   rows,
   startDate,
@@ -388,12 +388,17 @@ const onPreset = async (days: number): Promise<void> => {
   await load()
 }
 
+/** Pin the client the dialog was opened for, so a selection that changes
+ * while the form is being filled in cannot file the row under another tenant. */
+const draftClient = ref<string | null>(null)
+
 const openAdd = (): void => {
+  draftClient.value = selectedClient.value == null ? null : String(selectedClient.value)
   showAddDialog.value = true
 }
 
 const confirmAdd = async (): Promise<void> => {
-  const ok = await create(draft)
+  const ok = await create(draft, draftClient.value ?? undefined)
   if (ok) showAddDialog.value = false
 }
 

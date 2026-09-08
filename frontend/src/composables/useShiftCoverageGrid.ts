@@ -54,6 +54,7 @@ export interface ClientOption {
 
 export interface ShiftOption {
   shift_id: number
+  client_id: string
   shift_name: string
 }
 
@@ -72,10 +73,23 @@ export const DEFAULT_RANGE_DAYS = 90
  * cards use, so "red" means the same thing on both screens. */
 export const SHORTFALL_THRESHOLD = 90
 
+/**
+ * The LOCAL calendar date, not the UTC one.
+ *
+ * `toISOString()` converts to UTC first, so west of Greenwich a late-evening
+ * "today" becomes tomorrow's date and east of it an early-morning "today"
+ * becomes yesterday's. A shift-coverage screen whose default range is off by a
+ * day either hides the most recent shift or asks for one that has not happened.
+ */
+const localISO = (d: Date): string => {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
 const isoDaysAgo = (days: number, from: Date): string => {
   const d = new Date(from)
   d.setDate(d.getDate() - days)
-  return d.toISOString().slice(0, 10)
+  return localISO(d)
 }
 
 /**
@@ -103,7 +117,7 @@ export function useShiftCoverageGrid() {
   const rows = ref<CoverageRow[]>([])
 
   const today = new Date()
-  const endDate = ref<string>(today.toISOString().slice(0, 10))
+  const endDate = ref<string>(localISO(today))
   const startDate = ref<string>(isoDaysAgo(DEFAULT_RANGE_DAYS, today))
 
   const loading = ref(false)
@@ -126,6 +140,22 @@ export function useShiftCoverageGrid() {
     shifts.value.find((s) => s.shift_id === shiftId)?.shift_name ?? String(shiftId)
 
   /** Shift-days that ran below the threshold — the screen's call to action. */
+  /**
+   * Only the selected client's shifts may be offered.
+   *
+   * `getShifts()` returns every shift the caller can see, which for an admin
+   * is all four demo clients. Offering another tenant's shift produces a row
+   * the server refuses with 400 ("belongs to a different client") -- the
+   * cross-tenant guard added in #287 catches it, but a dropdown whose options
+   * are known-invalid is the same "offers an action that fails" defect this
+   * screen exists to remove, just moved one layer up.
+   */
+  const shiftsForClient = computed<ShiftOption[]>(() =>
+    selectedClient.value == null
+      ? []
+      : shifts.value.filter((s) => String(s.client_id) === String(selectedClient.value)),
+  )
+
   const shortfalls = computed<CoverageRow[]>(() =>
     rows.value.filter((r) => Number(r.coverage_percentage) < SHORTFALL_THRESHOLD),
   )
@@ -138,7 +168,7 @@ export function useShiftCoverageGrid() {
 
   const applyRange = (days: number): void => {
     const now = new Date()
-    endDate.value = now.toISOString().slice(0, 10)
+    endDate.value = localISO(now)
     startDate.value = isoDaysAgo(days, now)
   }
 
@@ -233,12 +263,19 @@ export function useShiftCoverageGrid() {
     return typeof detail === 'string' && detail ? { key, detail } : { key }
   }
 
-  const create = async (payload: Partial<CoverageRow>): Promise<boolean> => {
+  /**
+   * `forClient` is passed in rather than read from `selectedClient` here: the
+   * dialog captures it when it opens, so a selection that changes while the
+   * form is filled in or while the POST is in flight cannot file the row under
+   * a tenant the operator was not looking at.
+   */
+  const create = async (payload: Partial<CoverageRow>, forClient?: string): Promise<boolean> => {
+    const clientId = forClient ?? String(selectedClient.value)
     saving.value = true
     error.value = null
     try {
       await api.createShiftCoverage({
-        client_id: String(selectedClient.value),
+        client_id: clientId,
         shift_id: payload.shift_id,
         coverage_date: payload.coverage_date,
         required_employees: payload.required_employees,
@@ -272,6 +309,12 @@ export function useShiftCoverageGrid() {
       })
     } catch (err) {
       error.value = errorFor(err)
+      // Re-read on FAILURE too. This is called from an inline grid edit, and
+      // AG Grid has already written the new value into its own row model by
+      // the time the request goes out -- so a rejected edit otherwise leaves
+      // the cell showing a number the server refused, beside an error message
+      // saying it was refused. The grid must end up showing what was stored.
+      await refreshAfterWrite()
       return false
     } finally {
       saving.value = false
@@ -343,6 +386,7 @@ export function useShiftCoverageGrid() {
   return {
     clients,
     shifts,
+    shiftsForClient,
     selectedClient,
     rows,
     startDate,
