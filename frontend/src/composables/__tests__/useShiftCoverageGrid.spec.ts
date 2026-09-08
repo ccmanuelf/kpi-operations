@@ -260,6 +260,22 @@ describe('a rejected edit does not leave the grid showing it', () => {
     expect(mockApi.getShiftCoverage).toHaveBeenCalled()
     expect(c.rows.value[0].actual_employees).toBe(6)
   })
+
+  it('still says WHY, after the revert', async () => {
+    // The revert re-reads, and load() clears `error` on entry. Setting the
+    // failure before the refresh loses it, so the value snaps back with
+    // nothing on screen explaining it -- which reads as the app discarding
+    // the edit for no reason.
+    asRole('supervisor')
+    const c = useShiftCoverageGrid()
+    c.selectedClient.value = 'C1'
+    mockApi.updateShiftCoverage.mockRejectedValueOnce({ response: { status: 409, data: {} } })
+    mockApi.getShiftCoverage.mockResolvedValueOnce({ data: [row()] })
+
+    await c.update(row() as never, { actual_employees: 999 } as never)
+
+    expect(c.error.value?.key).toBe('coverage.errors.duplicate')
+  })
 })
 
 describe('the default range is the local calendar date', () => {
@@ -340,6 +356,43 @@ describe('only the selected client\'s shifts are offered', () => {
     c.selectedClient.value = 'C1'
 
     expect(c.shiftsForClient.value.map((s) => s.shift_id)).toEqual([1])
+  })
+
+  it('the dialog lists shifts for the client it was PINNED to', async () => {
+    // The add dialog pins the client it was opened for so the row cannot be
+    // filed under another tenant. The shift list has to be pinned with it --
+    // otherwise the operator picks from client B's shifts while the row is
+    // written for client A, and the server refuses it as cross-tenant.
+    asRole('admin')
+    const c = useShiftCoverageGrid()
+    mockApi.getShifts.mockResolvedValueOnce({
+      data: [
+        { shift_id: 1, client_id: 'C1', shift_name: 'C1 Day' },
+        { shift_id: 2, client_id: 'C2', shift_name: 'C2 Day' },
+      ],
+    })
+    await c.loadShifts()
+    c.selectedClient.value = 'C2'
+
+    expect(c.shiftsFor('C1').map((s) => s.shift_id)).toEqual([1])
+  })
+
+  it('points the list at the client the row was written for', async () => {
+    // Otherwise the record is filed correctly and is then invisible, because
+    // the post-write refresh reads whatever client is selected.
+    asRole('supervisor')
+    const c = useShiftCoverageGrid()
+    c.selectedClient.value = 'C2'
+
+    await c.create(
+      { shift_id: 3, coverage_date: '2026-06-11', required_employees: 8, actual_employees: 6 } as never,
+      'C1',
+    )
+
+    expect(c.selectedClient.value).toBe('C1')
+    expect(mockApi.getShiftCoverage).toHaveBeenCalledWith(
+      expect.objectContaining({ client_id: 'C1' }),
+    )
   })
 
   it('offers nothing until a client is chosen', async () => {

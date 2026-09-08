@@ -150,11 +150,12 @@ export function useShiftCoverageGrid() {
    * are known-invalid is the same "offers an action that fails" defect this
    * screen exists to remove, just moved one layer up.
    */
-  const shiftsForClient = computed<ShiftOption[]>(() =>
-    selectedClient.value == null
+  const shiftsFor = (clientId: string | number | null): ShiftOption[] =>
+    clientId == null
       ? []
-      : shifts.value.filter((s) => String(s.client_id) === String(selectedClient.value)),
-  )
+      : shifts.value.filter((s) => String(s.client_id) === String(clientId))
+
+  const shiftsForClient = computed<ShiftOption[]>(() => shiftsFor(selectedClient.value))
 
   const shortfalls = computed<CoverageRow[]>(() =>
     rows.value.filter((r) => Number(r.coverage_percentage) < SHORTFALL_THRESHOLD),
@@ -271,6 +272,11 @@ export function useShiftCoverageGrid() {
    */
   const create = async (payload: Partial<CoverageRow>, forClient?: string): Promise<boolean> => {
     const clientId = forClient ?? String(selectedClient.value)
+    // The list has to end up showing the row that was just written. The
+    // refresh below reads whatever client is SELECTED, so if the dialog was
+    // pinned to a different one the new record would be filed correctly and
+    // then be invisible, with nothing saying where it went.
+    if (String(selectedClient.value) !== clientId) selectedClient.value = clientId
     saving.value = true
     error.value = null
     try {
@@ -308,13 +314,18 @@ export function useShiftCoverageGrid() {
         notes: changes.notes ?? row.notes ?? null,
       })
     } catch (err) {
-      error.value = errorFor(err)
+      const failure = errorFor(err)
       // Re-read on FAILURE too. This is called from an inline grid edit, and
       // AG Grid has already written the new value into its own row model by
       // the time the request goes out -- so a rejected edit otherwise leaves
-      // the cell showing a number the server refused, beside an error message
-      // saying it was refused. The grid must end up showing what was stored.
+      // the cell showing a number the server refused. The grid must end up
+      // showing what was stored.
       await refreshAfterWrite()
+      // AFTER the refresh, because load() clears `error` on entry: the reason
+      // the edit was rejected is the thing worth showing, and a successful
+      // re-read is not news. Setting it before the refresh loses it entirely,
+      // leaving the value to snap back with nothing saying why.
+      error.value = failure
       return false
     } finally {
       saving.value = false
@@ -387,6 +398,7 @@ export function useShiftCoverageGrid() {
     clients,
     shifts,
     shiftsForClient,
+    shiftsFor,
     selectedClient,
     rows,
     startDate,

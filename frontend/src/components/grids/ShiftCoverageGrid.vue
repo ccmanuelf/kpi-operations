@@ -202,7 +202,7 @@
           />
           <v-select
             v-model="draft.shift_id"
-            :items="shiftsForClient"
+            :items="shiftsFor(draftClient)"
             item-title="shift_name"
             item-value="shift_id"
             :label="t('coverage.fields.shift')"
@@ -296,7 +296,7 @@ const { t } = useI18n()
 
 const {
   clients,
-  shiftsForClient,
+  shiftsFor,
   selectedClient,
   rows,
   startDate,
