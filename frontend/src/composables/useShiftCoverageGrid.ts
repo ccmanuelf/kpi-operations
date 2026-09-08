@@ -243,12 +243,15 @@ export function useShiftCoverageGrid() {
    * already exists — which the server then refuses as a duplicate. The banner
    * says the list is stale instead.
    */
-  const refreshAfterWrite = async (): Promise<void> => {
+  /** True when the re-read actually applied. */
+  const refreshAfterWrite = async (): Promise<boolean> => {
     try {
       const applied = await load()
       staleAfterWrite.value = !applied
+      return applied
     } catch {
       staleAfterWrite.value = true
+      return false
     }
   }
 
@@ -272,11 +275,6 @@ export function useShiftCoverageGrid() {
    */
   const create = async (payload: Partial<CoverageRow>, forClient?: string): Promise<boolean> => {
     const clientId = forClient ?? String(selectedClient.value)
-    // The list has to end up showing the row that was just written. The
-    // refresh below reads whatever client is SELECTED, so if the dialog was
-    // pinned to a different one the new record would be filed correctly and
-    // then be invisible, with nothing saying where it went.
-    if (String(selectedClient.value) !== clientId) selectedClient.value = clientId
     saving.value = true
     error.value = null
     try {
@@ -294,6 +292,14 @@ export function useShiftCoverageGrid() {
     } finally {
       saving.value = false
     }
+    // ONLY once the write succeeded. The list has to end up showing the row
+    // that was written, and the refresh below reads whatever client is
+    // SELECTED -- so a dialog pinned to a different one would file the record
+    // correctly and leave it invisible. Doing it before the POST instead would
+    // move the operator to another client's list even when the write FAILED,
+    // which is a worse trade: they would be looking at rows they did not ask
+    // for, beside an error about a row they did.
+    if (String(selectedClient.value) !== clientId) selectedClient.value = clientId
     await refreshAfterWrite()
     return true
   }
@@ -320,12 +326,18 @@ export function useShiftCoverageGrid() {
       // the time the request goes out -- so a rejected edit otherwise leaves
       // the cell showing a number the server refused. The grid must end up
       // showing what was stored.
-      await refreshAfterWrite()
+      const refreshed = await refreshAfterWrite()
       // AFTER the refresh, because load() clears `error` on entry: the reason
       // the edit was rejected is the thing worth showing, and a successful
       // re-read is not news. Setting it before the refresh loses it entirely,
       // leaving the value to snap back with nothing saying why.
-      error.value = failure
+      //
+      // ONLY if the refresh worked, though. If the re-read failed too it has
+      // already reported its own failure and emptied the grid, and THAT is
+      // what needs explaining -- overwriting it would leave an empty, stale
+      // table beside a message about a rejected edit, which describes neither
+      // what the operator sees nor what they should do next.
+      if (refreshed) error.value = failure
       return false
     } finally {
       saving.value = false

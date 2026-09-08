@@ -261,6 +261,22 @@ describe('a rejected edit does not leave the grid showing it', () => {
     expect(c.rows.value[0].actual_employees).toBe(6)
   })
 
+  it('does not bury a reload failure under the write failure', async () => {
+    // If the revert's own re-read also fails it has already emptied the grid
+    // and reported why. Overwriting that with the rejected-edit message leaves
+    // an empty, stale table explained by the wrong error.
+    asRole('supervisor')
+    const c = useShiftCoverageGrid()
+    c.selectedClient.value = 'C1'
+    mockApi.updateShiftCoverage.mockRejectedValueOnce({ response: { status: 409, data: {} } })
+    mockApi.getShiftCoverage.mockRejectedValueOnce({ response: { status: 500, data: {} } })
+
+    await c.update(row() as never, { actual_employees: 999 } as never)
+
+    expect(c.staleAfterWrite.value).toBe(true)
+    expect(c.error.value?.key).toBe('coverage.errors.generic')
+  })
+
   it('still says WHY, after the revert', async () => {
     // The revert re-reads, and load() clears `error` on entry. Setting the
     // failure before the refresh loses it, so the value snaps back with
@@ -393,6 +409,23 @@ describe('only the selected client\'s shifts are offered', () => {
     expect(mockApi.getShiftCoverage).toHaveBeenCalledWith(
       expect.objectContaining({ client_id: 'C1' }),
     )
+  })
+
+  it('does NOT move the operator when the create fails', async () => {
+    // Re-pointing before the POST would leave them looking at another
+    // client's rows beside an error about a row they tried to add to theirs.
+    asRole('supervisor')
+    const c = useShiftCoverageGrid()
+    c.selectedClient.value = 'C2'
+    mockApi.createShiftCoverage.mockRejectedValueOnce({ response: { status: 409, data: {} } })
+
+    const ok = await c.create(
+      { shift_id: 3, coverage_date: '2026-06-11', required_employees: 8, actual_employees: 6 } as never,
+      'C1',
+    )
+
+    expect(ok).toBe(false)
+    expect(c.selectedClient.value).toBe('C2')
   })
 
   it('offers nothing until a client is chosen', async () => {
