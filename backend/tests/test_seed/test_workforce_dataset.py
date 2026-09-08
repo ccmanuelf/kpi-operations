@@ -192,8 +192,14 @@ def _labour_windows():
     for scenario in SCENARIOS:
         for w in scenario.narrative:
             if w.kind in ATTENDANCE_NARRATIVE_KINDS:
-                start = AS_OF - timedelta(days=-w.start_month * 31)
-                end = AS_OF - timedelta(days=-w.end_month * 30)
+                # The INNER interval, deliberately: a month offset is somewhere
+                # between 28 and 31 days, so converting the start at its
+                # shortest and the end at its longest brackets a window that is
+                # a SUBSET of the real episode. Erring the other way would widen
+                # the bracket and let rows sitting outside the disruption
+                # satisfy an assertion that claims they are inside it.
+                start = AS_OF - timedelta(days=-w.start_month * 30)
+                end = AS_OF - timedelta(days=-w.end_month * 31)
                 out.append((scenario.client_id, start, end))
     return out
 
