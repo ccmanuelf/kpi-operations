@@ -161,6 +161,33 @@ describe('Auth Store', () => {
       }
     })
 
+    it('isContributorTier matches the backend CONTRIBUTOR_ROLES exactly', () => {
+      // backend/orm/user.py: CONTRIBUTOR_ROLES = SUPERVISORY_ROLES + [OPERATOR]
+      // = everyone except viewer. This is what get_current_contributor admits,
+      // and shift coverage's POST/PUT sit on it while its DELETE sits on the
+      // narrower supervisory tier. Gating both on one getter would either hide
+      // an edit an operator may legitimately make, or offer them a delete the
+      // server refuses with 403 — the exact split pinned in the backend by
+      // test_coverage_edit_is_contributor_but_delete_is_supervisory.
+      const store = useAuthStore()
+      for (const role of ['admin', 'poweruser', 'leader', 'supervisor', 'operator']) {
+        store.user = { role } as never
+        expect(store.isContributorTier, `${role} should be a contributor`).toBe(true)
+      }
+      store.user = { role: 'viewer' } as never
+      expect(store.isContributorTier, 'viewer must not be a contributor').toBe(false)
+    })
+
+    it('the contributor tier is strictly wider than the supervisory tier', () => {
+      // Two-sided: an operator is the ONE role that separates them, so if the
+      // two getters ever collapse onto the same set this fails rather than
+      // silently making the delete button visible to operators.
+      const store = useAuthStore()
+      store.user = { role: 'operator' } as never
+      expect(store.isContributorTier).toBe(true)
+      expect(store.isSupervisoryTier).toBe(false)
+    })
+
     it('isSupervisor returns false for operator users', () => {
       const store = useAuthStore()
       store.user = { role: 'operator' }

@@ -92,6 +92,7 @@
           <v-list-item prepend-icon="mdi-factory" :title="$t('navigation.productionEntry')" value="production" to="/production-entry" />
           <v-list-item prepend-icon="mdi-clock-alert" :title="$t('navigation.downtime')" value="downtime" to="/data-entry/downtime" />
           <v-list-item prepend-icon="mdi-account-group" :title="$t('navigation.attendance')" value="attendance" to="/data-entry/attendance" />
+          <v-list-item prepend-icon="mdi-account-multiple-check" :title="$t('navigation.shiftCoverage')" value="shift-coverage" to="/data-entry/shift-coverage" />
           <v-list-item prepend-icon="mdi-quality-high" :title="$t('navigation.quality')" value="quality" to="/data-entry/quality" />
           <v-list-item prepend-icon="mdi-pause-circle" :title="$t('navigation.holdResume')" value="hold" to="/data-entry/hold-resume" />
         </v-list-group>

@@ -107,6 +107,7 @@
     "downtimeEntry": "Downtime Entry",
     "quality": "Quality",
     "attendance": "Attendance",
+    "shiftCoverage": "Shift Coverage",
     "downtime": "Downtime",
     "holds": "Holds",
     "holdResume": "Hold/Resume",
@@ -4678,6 +4679,62 @@
       "uncategorized": "Uncategorized",
       "unknown": "Unknown",
       "unclassified": "Unclassified"
+    }
+  },
+  "coverage": {
+    "title": "Shift Coverage",
+    "subtitle": "Required against actual headcount, per shift and day",
+    "selectClient": "Select a client to review its shift coverage",
+    "noRows": "No coverage records in this range",
+    "range": {
+      "last": "Last {days} days",
+      "from": "From",
+      "to": "To"
+    },
+    "summary": {
+      "records": "Records",
+      "average": "Average coverage",
+      "shortfalls": "Short-handed shifts",
+      "shortfallHint": "Shifts that ran below {threshold}% of required headcount"
+    },
+    "headers": {
+      "date": "Date",
+      "shift": "Shift",
+      "required": "Required",
+      "actual": "Actual",
+      "coverage": "Coverage",
+      "notes": "Notes",
+      "actions": "Actions"
+    },
+    "actions": {
+      "add": "Add coverage record",
+      "delete": "Delete record",
+      "reload": "Reload",
+      "save": "Save",
+      "cancel": "Cancel"
+    },
+    "dialog": {
+      "addTitle": "Add a coverage record",
+      "deleteTitle": "Delete this coverage record?",
+      "deleteBody": "The record for {shift} on {date} will be removed. Coverage history for that shift-day will no longer show it."
+    },
+    "fields": {
+      "date": "Coverage date",
+      "shift": "Shift",
+      "required": "Required employees",
+      "actual": "Actual employees",
+      "notes": "Notes"
+    },
+    "hints": {
+      "derived": "Coverage percentage is calculated from required and actual, and is not entered directly.",
+      "readOnly": "You have read-only access to coverage records.",
+      "deleteRestricted": "Deleting a coverage record requires a supervisory role.",
+      "staleAfterWrite": "The change was saved, but the list could not be refreshed. Reload to see the current records."
+    },
+    "errors": {
+      "duplicate": "A coverage record already exists for that shift and date. Edit the existing one instead.",
+      "forbidden": "Your role does not permit that change.",
+      "generic": "The coverage record could not be saved."
     }
   }
 }

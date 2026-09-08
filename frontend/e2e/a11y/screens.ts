@@ -25,6 +25,11 @@ export const SCREENS: { name: string; path: string }[] = [
   // Shipped with no WCAG-AA coverage until now; it is the read-only lens the
   // registry above acts on, so the two belong in the gate together.
   { name: 'admin-variance-report', path: '/admin/variance-report' },
+  // The first /data-entry screen in this gate. It can be here because
+  // ShiftCoverageGrid passes enableExcelPaste="false" -- the same opt-out
+  // work-orders and the admin grids use, and the exact reason
+  // /data-entry/attendance below is excluded.
+  { name: 'shift-coverage-entry', path: '/data-entry/shift-coverage' },
 ]
 
 // NOT added: '/data-entry/attendance'. AGGridBase's "Paste from Excel"

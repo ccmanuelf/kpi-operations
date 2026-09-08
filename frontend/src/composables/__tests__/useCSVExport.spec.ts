@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterAll } from 'vitest'
 
 const { apiMock, notificationMock } = vi.hoisted(() => ({
   apiMock: {
@@ -25,10 +25,22 @@ vi.mock('@/i18n', () => ({
   },
 }))
 
-// Mock document operations for download
+// Mock document operations for download.
+//
+// This replaces the WHOLE `URL` global with an object carrying only the two
+// object-URL helpers, so while it stands `new URL(...)` throws "URL is not a
+// constructor". Vitest reuses a worker across files, so without the unstub
+// below the next spec scheduled into this worker inherits the broken global
+// and fails for a reason that has nothing to do with it -- which is exactly
+// what happened when adding an unrelated spec re-shuffled the file
+// distribution and broke the QR-scanner tests in composables.spec.ts.
 vi.stubGlobal('URL', {
   createObjectURL: vi.fn(() => 'blob:mock'),
   revokeObjectURL: vi.fn(),
+})
+
+afterAll(() => {
+  vi.unstubAllGlobals()
 })
 
 beforeEach(() => {

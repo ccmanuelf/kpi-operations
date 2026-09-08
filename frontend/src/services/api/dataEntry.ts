@@ -21,6 +21,15 @@ export const bulkCreateAttendance = (records: Payload[]) => api.post('/attendanc
 export const markAllPresent = (params?: Params) =>
   api.post('/attendance/mark-all-present', null, { params })
 
+// Shift coverage
+// No trailing slash: the backend declares these as @router.get("") on a
+// prefix of /api/coverage, so `/coverage/` would 307 — the redirect that
+// downgraded https->http behind the proxy for quality entries (ISSUE-012).
+export const getShiftCoverage = (params?: Params) => api.get('/coverage', { params })
+export const createShiftCoverage = (data: Payload) => api.post('/coverage', data)
+export const updateShiftCoverage = (id: Id, data: Payload) => api.put(`/coverage/${id}`, data)
+export const deleteShiftCoverage = (id: Id) => api.delete(`/coverage/${id}`)
+
 // Quality
 // Trailing slash matches the backend's APIRouter("/") definition (same
 // rationale as production-lines below): without it, FastAPI 307-redirects,

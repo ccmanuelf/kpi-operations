@@ -107,6 +107,7 @@
     "downtimeEntry": "Captura de Tiempo Muerto",
     "quality": "Calidad",
     "attendance": "Asistencia",
+    "shiftCoverage": "Cobertura de Turno",
     "downtime": "Tiempo Muerto",
     "holds": "Retenciones",
     "holdResume": "Retener/Reanudar",
@@ -4678,6 +4679,62 @@
       "uncategorized": "Sin categorizar",
       "unknown": "Desconocido",
       "unclassified": "Sin clasificar"
+    }
+  },
+  "coverage": {
+    "title": "Cobertura de Turno",
+    "subtitle": "Personal requerido frente al real, por turno y día",
+    "selectClient": "Seleccione un cliente para revisar su cobertura de turno",
+    "noRows": "No hay registros de cobertura en este rango",
+    "range": {
+      "last": "Últimos {days} días",
+      "from": "Desde",
+      "to": "Hasta"
+    },
+    "summary": {
+      "records": "Registros",
+      "average": "Cobertura promedio",
+      "shortfalls": "Turnos con falta de personal",
+      "shortfallHint": "Turnos que operaron por debajo del {threshold}% del personal requerido"
+    },
+    "headers": {
+      "date": "Fecha",
+      "shift": "Turno",
+      "required": "Requerido",
+      "actual": "Real",
+      "coverage": "Cobertura",
+      "notes": "Notas",
+      "actions": "Acciones"
+    },
+    "actions": {
+      "add": "Agregar registro de cobertura",
+      "delete": "Eliminar registro",
+      "reload": "Recargar",
+      "save": "Guardar",
+      "cancel": "Cancelar"
+    },
+    "dialog": {
+      "addTitle": "Agregar un registro de cobertura",
+      "deleteTitle": "¿Eliminar este registro de cobertura?",
+      "deleteBody": "Se eliminará el registro del turno {shift} del {date}. El historial de cobertura de ese día ya no lo mostrará."
+    },
+    "fields": {
+      "date": "Fecha de cobertura",
+      "shift": "Turno",
+      "required": "Empleados requeridos",
+      "actual": "Empleados reales",
+      "notes": "Notas"
+    },
+    "hints": {
+      "derived": "El porcentaje de cobertura se calcula a partir del personal requerido y real; no se captura directamente.",
+      "readOnly": "Tiene acceso de solo lectura a los registros de cobertura.",
+      "deleteRestricted": "Eliminar un registro de cobertura requiere un rol supervisor.",
+      "staleAfterWrite": "El cambio se guardó, pero no se pudo actualizar la lista. Recargue para ver los registros actuales."
+    },
+    "errors": {
+      "duplicate": "Ya existe un registro de cobertura para ese turno y fecha. Edite el existente en su lugar.",
+      "forbidden": "Su rol no permite ese cambio.",
+      "generic": "No se pudo guardar el registro de cobertura."
     }
   }
 }
