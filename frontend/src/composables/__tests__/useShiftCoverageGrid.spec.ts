@@ -232,6 +232,10 @@ describe('errors say something a person can act on', () => {
     asRole('supervisor')
     const c = useShiftCoverageGrid()
     c.selectedClient.value = 'C1'
+    // The row has to be ON SCREEN: remove() now refuses one that is not,
+    // which is the stale-selection guard, not the path under test here.
+    mockApi.getShiftCoverage.mockResolvedValueOnce({ data: [row()] })
+    await c.load()
     mockApi.deleteShiftCoverage.mockRejectedValueOnce({
       response: { status: 409, data: { detail: 'Coverage for shift 3 on 2026-06-11 already exists' } },
     })
@@ -289,7 +293,9 @@ describe('a rejected edit does not leave the grid showing it', () => {
 
     await c.update(row() as never, { actual_employees: 999 } as never)
 
-    expect(c.error.value?.key).toBe('coverage.errors.generic')
+    // The READ failure keeps its own sentence: "could not be saved" describes
+    // nothing the operator did when a list simply would not load.
+    expect(c.error.value?.key).toBe('coverage.errors.readFailed')
   })
 
   it('still says WHY, after the revert', async () => {
@@ -337,8 +343,15 @@ describe('the default range is the local calendar date', () => {
     // difference is not an option either -- it is process-wide and leaks into
     // every other spec sharing the worker, which was measured doing exactly
     // that. Reading the source is the only check that holds in any zone.
-    const src = readFileSync(resolve(__dirname, '../useShiftCoverageGrid.ts'), 'utf8')
-    expect(src).not.toMatch(/toISOString\(\)\.slice/)
+    // BOTH files. Scanning only the composable is what let the add dialog's
+    // default date keep using toISOString: the gate was clean and the defect
+    // was one import away, in the file the gate did not read.
+    for (const rel of ['../useShiftCoverageGrid.ts', '../../components/grids/ShiftCoverageGrid.vue']) {
+      const src = readFileSync(resolve(__dirname, rel), 'utf8')
+      expect(src, `${rel} derives a calendar date through toISOString`).not.toMatch(
+        /toISOString\(\)\.slice/,
+      )
+    }
   })
 
   it('the range start is the local date N days back', () => {
@@ -366,6 +379,154 @@ describe('the row is filed under the client the form was opened for', () => {
     )
 
     expect(mockApi.createShiftCoverage.mock.calls[0][0]).toMatchObject({ client_id: 'C1' })
+  })
+})
+
+describe('an armed delete cannot outlive the list it was chosen from', () => {
+  it('disarms when the client changes', async () => {
+    // The picker holds the row OBJECT and Vuetify does not clear a v-select's
+    // model when its items change. Without this, switching client left the
+    // button enabled against a row from the PREVIOUS client, and the confirm
+    // dialog rendered that row's shift name -- resolved from an unfiltered
+    // shift list, so it looked plausible -- with no client named anywhere.
+    // The server allows it, because the user does hold both clients. The UI
+    // has to be what refuses.
+    asRole('supervisor')
+    const c = useShiftCoverageGrid()
+    c.selectedClient.value = 'C1'
+    mockApi.getShiftCoverage.mockResolvedValueOnce({ data: [row({ coverage_id: 55 })] })
+    await c.load()
+    c.pendingDelete.value = c.rows.value[0]
+    expect(c.pendingDeleteIsLive.value).toBe(true)
+
+    c.selectedClient.value = 'C2'
+    mockApi.getShiftCoverage.mockResolvedValueOnce({ data: [row({ coverage_id: 77 })] })
+    await c.load()
+
+    expect(c.pendingDelete.value).toBeNull()
+    expect(c.pendingDeleteIsLive.value).toBe(false)
+  })
+
+  it('disarms when the date range moves the row out of view', async () => {
+    asRole('supervisor')
+    const c = useShiftCoverageGrid()
+    c.selectedClient.value = 'C1'
+    mockApi.getShiftCoverage.mockResolvedValueOnce({ data: [row({ coverage_id: 55 })] })
+    await c.load()
+    c.pendingDelete.value = c.rows.value[0]
+
+    c.applyRange(30)
+    mockApi.getShiftCoverage.mockResolvedValueOnce({ data: [] })
+    await c.load()
+
+    expect(c.pendingDelete.value).toBeNull()
+  })
+
+  it('refuses to delete a row that is not on screen, whatever armed it', async () => {
+    asRole('supervisor')
+    const c = useShiftCoverageGrid()
+    c.selectedClient.value = 'C1'
+    mockApi.getShiftCoverage.mockResolvedValueOnce({ data: [row({ coverage_id: 77 })] })
+    await c.load()
+
+    const ok = await c.remove(row({ coverage_id: 55 }) as never)
+
+    expect(ok).toBe(false)
+    expect(mockApi.deleteShiftCoverage).not.toHaveBeenCalled()
+    expect(c.error.value?.key).toBe('coverage.errors.staleSelection')
+  })
+
+  it('still deletes a row that IS on screen', async () => {
+    // Two-sided: the guard must not have been achieved by refusing everything.
+    asRole('supervisor')
+    const c = useShiftCoverageGrid()
+    c.selectedClient.value = 'C1'
+    mockApi.getShiftCoverage.mockResolvedValueOnce({ data: [row({ coverage_id: 55 })] })
+    await c.load()
+
+    const ok = await c.remove(c.rows.value[0] as never)
+
+    expect(ok).toBe(true)
+    expect(mockApi.deleteShiftCoverage).toHaveBeenCalledWith(55)
+  })
+})
+
+describe('a client switch does not leave the old tenant on screen', () => {
+  it('clears rows while the new client is loading', async () => {
+    // Leaving them rendered shows one tenant's data under another's name, and
+    // the grid stays editable the whole time -- an edit then PUTs against a
+    // row the header says belongs to someone else.
+    asRole('supervisor')
+    const c = useShiftCoverageGrid()
+    c.selectedClient.value = 'C1'
+    mockApi.getShiftCoverage.mockResolvedValueOnce({ data: [row({ coverage_id: 55 })] })
+    await c.load()
+    expect(c.rows.value).toHaveLength(1)
+
+    let release: (_v: unknown) => void = () => {}
+    mockApi.getShiftCoverage.mockImplementationOnce(() => new Promise((r) => { release = r }))
+    c.selectedClient.value = 'C2'
+    const inflight = c.load()
+
+    expect(c.rows.value).toEqual([])
+    expect(c.loaded.value).toBe(false)
+
+    release({ data: [row({ coverage_id: 77 })] })
+    await inflight
+    expect(c.rows.value.map((r) => r.coverage_id)).toEqual([77])
+  })
+})
+
+describe('a superseded read is not a failure', () => {
+  it('does not raise the stale banner over fresher data', async () => {
+    asRole('supervisor')
+    const c = useShiftCoverageGrid()
+    c.selectedClient.value = 'C1'
+    mockApi.getShiftCoverage.mockResolvedValueOnce({ data: [row()] })
+    await c.load()
+
+    // A write whose refresh is superseded by a newer read: the screen ends up
+    // fresher than the refresh would have made it, so "could not refresh" is
+    // false.
+    let release: (_v: unknown) => void = () => {}
+    mockApi.getShiftCoverage
+      .mockImplementationOnce(() => new Promise((r) => { release = r }))
+      .mockResolvedValueOnce({ data: [row({ coverage_id: 99 })] })
+    const writeRefresh = c.create(
+      { shift_id: 3, coverage_date: '2026-06-11', required_employees: 8, actual_employees: 6 } as never,
+      'C1',
+    )
+    // Drain first: create() yields at its own POST await before its refresh
+    // issues a request, so without this the superseding read consumes the
+    // pending mock and the two roles swap -- the race the test claims to
+    // exercise never happens.
+    await Promise.resolve()
+    await Promise.resolve()
+    await Promise.resolve()
+
+    await c.load()
+    release({ data: [row()] })
+    await writeRefresh
+
+    expect(c.staleAfterWrite.value).toBe(false)
+  })
+})
+
+describe('empty date filters are omitted, not sent blank', () => {
+  it('never sends start_date= or end_date=', async () => {
+    // FastAPI parses an empty string as a malformed date and answers 422, so
+    // clearing a filter broke the read entirely.
+    asRole('supervisor')
+    const c = useShiftCoverageGrid()
+    c.selectedClient.value = 'C1'
+    c.startDate.value = ''
+    c.endDate.value = ''
+    mockApi.getShiftCoverage.mockResolvedValueOnce({ data: [] })
+
+    await c.load()
+
+    const params = mockApi.getShiftCoverage.mock.calls[0][0] as Record<string, unknown>
+    expect(params).toEqual({ client_id: 'C1' })
   })
 })
 

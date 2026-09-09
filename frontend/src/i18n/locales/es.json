@@ -4734,7 +4734,9 @@
     "errors": {
       "duplicate": "Ya existe un registro de cobertura para ese turno y fecha. Edite el existente en su lugar.",
       "forbidden": "Su rol no permite ese cambio.",
-      "generic": "No se pudo guardar el registro de cobertura."
+      "generic": "No se pudo guardar el registro de cobertura.",
+      "readFailed": "No se pudieron cargar los registros de cobertura.",
+      "staleSelection": "Ese registro ya no está en la lista. Recargue y selecciónelo de nuevo."
     }
   }
 }

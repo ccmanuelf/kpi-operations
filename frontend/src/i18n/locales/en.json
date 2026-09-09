@@ -4734,7 +4734,9 @@
     "errors": {
       "duplicate": "A coverage record already exists for that shift and date. Edit the existing one instead.",
       "forbidden": "Your role does not permit that change.",
-      "generic": "The coverage record could not be saved."
+      "generic": "The coverage record could not be saved.",
+      "readFailed": "The coverage records could not be loaded.",
+      "staleSelection": "That record is no longer in the list. Reload and choose it again."
     }
   }
 }

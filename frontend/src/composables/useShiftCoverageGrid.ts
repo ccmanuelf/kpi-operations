@@ -81,7 +81,7 @@ export const SHORTFALL_THRESHOLD = 90
  * becomes yesterday's. A shift-coverage screen whose default range is off by a
  * day either hides the most recent shift or asks for one that has not happened.
  */
-const localISO = (d: Date): string => {
+export const localISO = (d: Date): string => {
   const pad = (n: number) => String(n).padStart(2, '0')
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
@@ -150,6 +150,36 @@ export function useShiftCoverageGrid() {
    * are known-invalid is the same "offers an action that fails" defect this
    * screen exists to remove, just moved one layer up.
    */
+  /**
+   * The row a delete is armed against.
+   *
+   * Lives HERE, not in the component, because it has to be invalidated
+   * whenever the row set is re-pointed -- and because component-local state is
+   * unreachable from a unit test, which is why this went unnoticed.
+   *
+   * The bug it fixes: the delete picker holds the row OBJECT, and Vuetify does
+   * not clear a v-select's model when its items change. Switching client (or
+   * moving the date range) replaced `rows` while this ref kept the old row,
+   * the button stayed enabled, and the confirm dialog rendered that row's
+   * shift name -- resolved from an UNFILTERED shift list, so it looked
+   * plausible -- beside its own date, with no client named anywhere.
+   * Confirming destroyed a record belonging to the previously selected client
+   * while the screen was labelled with the new one. The server allows it
+   * (the user does hold both clients, so `verify_client_access` passes), which
+   * is exactly why the UI has to be the thing that refuses.
+   *
+   * The create path was already guarded this way via `draftClient`; delete was
+   * left trusting a ref that outlives the list it was chosen from.
+   */
+  const pendingDelete = ref<CoverageRow | null>(null)
+
+  /** True only while the armed row is still one of the rows on screen. */
+  const pendingDeleteIsLive = computed<boolean>(
+    () =>
+      pendingDelete.value != null &&
+      rows.value.some((r) => r.coverage_id === pendingDelete.value?.coverage_id),
+  )
+
   const shiftsFor = (clientId: string | number | null): ShiftOption[] =>
     clientId == null
       ? []
@@ -187,6 +217,8 @@ export function useShiftCoverageGrid() {
   //: switching A -> B -> A lets the first request match again on arrival and
   //: overwrite the third request's newer rows with its own older ones.
   let readToken = 0
+  /** Which client `rows` currently holds, so a switch can clear them. */
+  let loadedFor: string | null = null
 
   /**
    * Returns TRUE only when this read applied its data. A superseded read
@@ -194,7 +226,15 @@ export function useShiftCoverageGrid() {
    * never runs -- so a caller cannot infer "the screen reflects my write"
    * from the mere absence of an exception.
    */
-  const load = async (): Promise<boolean> => {
+  /**
+   * The three ways a read ends, which callers must tell apart.
+   *
+   * `superseded` is NOT a failure: a newer read is in flight or has already
+   * landed, so the screen is fresher than this response, and treating it as a
+   * failure raised a "could not refresh" banner over data that was perfectly
+   * current.
+   */
+  const load = async (): Promise<'applied' | 'superseded' | 'no-client'> => {
     if (!selectedClient.value) {
       // Bump the token here too, or clearing the selection fails to supersede
       // a read already in flight and it repopulates the table for a client
@@ -203,32 +243,49 @@ export function useShiftCoverageGrid() {
       rows.value = []
       loaded.value = false
       loading.value = false
-      return false
+      pendingDelete.value = null
+      return 'no-client'
     }
     const token = ++readToken
     const requestedFor = String(selectedClient.value)
+    // Drop the outgoing client's rows immediately. Leaving them on screen
+    // while the new client's read is in flight shows one tenant's data under
+    // another's name, and the grid stays EDITABLE the whole time -- an edit
+    // then PUTs against a row the header says belongs to someone else.
+    if (loaded.value && requestedFor !== loadedFor) {
+      rows.value = []
+      loaded.value = false
+    }
     loading.value = true
     error.value = null
     try {
       const { data } = await api.getShiftCoverage({
         client_id: requestedFor,
-        start_date: startDate.value,
-        end_date: endDate.value,
+        // Omit rather than send empty: FastAPI parses `start_date=` as a
+        // malformed date and answers 422, so clearing a filter broke the read.
+        ...(startDate.value ? { start_date: startDate.value } : {}),
+        ...(endDate.value ? { end_date: endDate.value } : {}),
       })
-      if (token !== readToken) return false
+      if (token !== readToken) return 'superseded'
       rows.value = (data as CoverageRow[]) ?? []
       loaded.value = true
+      loadedFor = requestedFor
+      // The armed row came from the PREVIOUS list; if it is not in this one,
+      // disarm rather than let a confirm land on a row that is off screen.
+      if (!rows.value.some((r) => r.coverage_id === pendingDelete.value?.coverage_id)) {
+        pendingDelete.value = null
+      }
       // A successful read is the freshest state there is, so an earlier
       // "could not refresh" warning no longer describes what is on screen.
       staleAfterWrite.value = false
-      return true
+      return 'applied'
     } catch (err) {
       // A superseded failure must not clear the newer rows either, and must
       // not be reported to this read's caller as ITS failure.
-      if (token !== readToken) return false
+      if (token !== readToken) return 'superseded'
       rows.value = []
       loaded.value = false
-      error.value = errorFor(err)
+      error.value = { key: 'coverage.errors.readFailed', ...detailOf(err) }
       throw err
     } finally {
       if (token === readToken) loading.value = false
@@ -250,36 +307,53 @@ export function useShiftCoverageGrid() {
    * change was saved, but the list could not be refreshed", which is the
    * opposite of what a rejected write means.
    */
-  const revert = async (): Promise<boolean> => {
+  const revert = async (): Promise<'applied' | 'superseded' | 'failed'> => {
     try {
-      return await load()
+      return (await load()) === 'applied' ? 'applied' : 'superseded'
     } catch {
-      return false
+      return 'failed'
     }
   }
 
-  /** True when the re-read actually applied. */
+  /**
+   * Re-read after a COMMITTED write.
+   *
+   * A write that succeeded followed by a read that did not is NOT a failed
+   * write, and saying so sends the operator back to re-enter a record that
+   * already exists -- which the server then refuses as a duplicate. The banner
+   * says the list is stale instead.
+   */
   const refreshAfterWrite = async (): Promise<boolean> => {
     try {
-      const applied = await load()
-      staleAfterWrite.value = !applied
-      return applied
+      const outcome = await load()
+      // A SUPERSEDED read is not stale: a newer read is in flight or has
+      // already landed, so the screen is fresher than this one would have
+      // been. Flagging it raised "could not refresh" over current data.
+      staleAfterWrite.value = outcome === 'no-client'
+      return outcome === 'applied'
     } catch {
       staleAfterWrite.value = true
       return false
     }
   }
 
+  const detailOf = (err: unknown): { detail?: string } => {
+    const detail = (err as { response?: { data?: { detail?: unknown } } }).response?.data?.detail
+    return typeof detail === 'string' && detail ? { detail } : {}
+  }
+
+  /** For WRITE failures. A read that fails is a different sentence -- see
+   * `coverage.errors.readFailed` -- because "could not be saved" describes
+   * nothing the operator did when a list simply would not load. */
   const errorFor = (err: unknown): CoverageError => {
-    const res = (err as { response?: { status?: number; data?: { detail?: unknown } } }).response
-    const detail = res?.data?.detail
+    const status = (err as { response?: { status?: number } }).response?.status
     const key =
-      res?.status === 409
+      status === 409
         ? 'coverage.errors.duplicate'
-        : res?.status === 403
+        : status === 403
           ? 'coverage.errors.forbidden'
           : 'coverage.errors.generic'
-    return typeof detail === 'string' && detail ? { key, detail } : { key }
+    return { key, ...detailOf(err) }
   }
 
   /**
@@ -303,9 +377,8 @@ export function useShiftCoverageGrid() {
       })
     } catch (err) {
       error.value = errorFor(err)
-      return false
-    } finally {
       saving.value = false
+      return false
     }
     // ONLY once the write succeeded. The list has to end up showing the row
     // that was written, and the refresh below reads whatever client is
@@ -316,6 +389,12 @@ export function useShiftCoverageGrid() {
     // for, beside an error about a row they did.
     if (String(selectedClient.value) !== clientId) selectedClient.value = clientId
     await refreshAfterWrite()
+    // Released only once the list reflects the write. Clearing it in a
+    // `finally` re-enabled the button while the refresh was still running, so
+    // a second click could fire another POST for the same shift-day -- which
+    // the server then refuses as a duplicate, reported as if the operator had
+    // done something wrong.
+    saving.value = false
     return true
   }
 
@@ -345,38 +424,45 @@ export function useShiftCoverageGrid() {
       // refreshAfterWrite means "the write landed, the list may be behind" and
       // raises staleAfterWrite -- whose banner says the change WAS saved. The
       // server refused this one.
-      const refreshed = await revert()
-      // AFTER the refresh, because load() clears `error` on entry: the reason
+      const outcome = await revert()
+      // AFTER the revert, because load() clears `error` on entry: the reason
       // the edit was rejected is the thing worth showing, and a successful
-      // re-read is not news. Setting it before the refresh loses it entirely,
-      // leaving the value to snap back with nothing saying why.
+      // re-read is not news.
       //
-      // ONLY if the refresh worked, though. If the re-read failed too it has
-      // already reported its own failure and emptied the grid, and THAT is
-      // what needs explaining -- overwriting it would leave an empty, stale
-      // table beside a message about a rejected edit, which describes neither
-      // what the operator sees nor what they should do next.
-      if (refreshed) error.value = failure
-      return false
-    } finally {
+      // Restored for BOTH 'applied' and 'superseded'. A superseded revert
+      // still means the grid is showing server data rather than the rejected
+      // value, so the rejection is still the thing that needs explaining --
+      // dropping it there left the number snapping back in silence. Only a
+      // FAILED re-read keeps its own error, because then the grid is empty and
+      // that is what the operator is looking at.
+      if (outcome !== 'failed') error.value = failure
       saving.value = false
+      return false
     }
     await refreshAfterWrite()
+    saving.value = false
     return true
   }
 
   const remove = async (row: CoverageRow): Promise<boolean> => {
+    // Belt and braces beside the invalidation above: never delete a row the
+    // operator cannot currently see, whatever armed it.
+    if (!rows.value.some((r) => r.coverage_id === row.coverage_id)) {
+      error.value = { key: 'coverage.errors.staleSelection' }
+      pendingDelete.value = null
+      return false
+    }
     saving.value = true
     error.value = null
     try {
       await api.deleteShiftCoverage(row.coverage_id)
     } catch (err) {
       error.value = errorFor(err)
-      return false
-    } finally {
       saving.value = false
+      return false
     }
     await refreshAfterWrite()
+    saving.value = false
     return true
   }
 
@@ -430,6 +516,8 @@ export function useShiftCoverageGrid() {
     shifts,
     shiftsForClient,
     shiftsFor,
+    pendingDelete,
+    pendingDeleteIsLive,
     selectedClient,
     rows,
     startDate,

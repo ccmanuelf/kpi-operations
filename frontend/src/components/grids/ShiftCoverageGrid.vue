@@ -164,7 +164,7 @@
 
       <div v-if="canDelete && rows.length" class="mt-3">
         <v-select
-          v-model="rowToDelete"
+          v-model="pendingDelete"
           :items="rows"
           :item-title="deleteLabel"
           item-value="coverage_id"
@@ -179,7 +179,7 @@
           color="error"
           variant="tonal"
           size="small"
-          :disabled="!rowToDelete"
+          :disabled="!pendingDeleteIsLive"
           data-testid="coverage-delete-btn"
           @click="showDeleteDialog = true"
         >
@@ -254,11 +254,11 @@
     <v-dialog v-model="showDeleteDialog" max-width="480">
       <v-card data-testid="coverage-delete-dialog">
         <v-card-title>{{ t('coverage.dialog.deleteTitle') }}</v-card-title>
-        <v-card-text v-if="rowToDelete">
+        <v-card-text v-if="pendingDelete">
           {{
             t('coverage.dialog.deleteBody', {
-              shift: shiftName(rowToDelete.shift_id),
-              date: rowToDelete.coverage_date,
+              shift: shiftName(pendingDelete.shift_id),
+              date: pendingDelete.coverage_date,
             })
           }}
         </v-card-text>
@@ -289,6 +289,7 @@ import AGGridBase from './AGGridBase.vue'
 import useShiftCoverageGrid, {
   RANGE_PRESETS,
   SHORTFALL_THRESHOLD,
+  localISO,
   type CoverageRow,
 } from '@/composables/useShiftCoverageGrid'
 
@@ -297,6 +298,8 @@ const { t } = useI18n()
 const {
   clients,
   shiftsFor,
+  pendingDelete,
+  pendingDeleteIsLive,
   selectedClient,
   rows,
   startDate,
@@ -322,10 +325,11 @@ const {
 
 const showAddDialog = ref(false)
 const showDeleteDialog = ref(false)
-const rowToDelete = ref<CoverageRow | null>(null)
 
 const draft = reactive<Partial<CoverageRow>>({
-  coverage_date: new Date().toISOString().slice(0, 10),
+  // localISO, not toISOString: the same UTC-vs-local defect the range fields
+  // had. It survived here because the source gate only scanned the composable.
+  coverage_date: localISO(new Date()),
   shift_id: undefined,
   required_employees: undefined,
   actual_employees: undefined,
@@ -394,6 +398,14 @@ const draftClient = ref<string | null>(null)
 
 const openAdd = (): void => {
   draftClient.value = selectedClient.value == null ? null : String(selectedClient.value)
+  // Reset every time. A shift_id left over from a previous client is not a
+  // valid option for this one, and the POST is refused with a 400 the operator
+  // cannot connect to anything they just did.
+  draft.coverage_date = localISO(new Date())
+  draft.shift_id = undefined
+  draft.required_employees = undefined
+  draft.actual_employees = undefined
+  draft.notes = ''
   showAddDialog.value = true
 }
 
@@ -403,11 +415,11 @@ const confirmAdd = async (): Promise<void> => {
 }
 
 const confirmDelete = async (): Promise<void> => {
-  if (!rowToDelete.value) return
-  const ok = await remove(rowToDelete.value)
+  if (!pendingDelete.value) return
+  const ok = await remove(pendingDelete.value)
   if (ok) {
     showDeleteDialog.value = false
-    rowToDelete.value = null
+    pendingDelete.value = null
   }
 }
 
