@@ -41,6 +41,32 @@
      case where Tailwind's bg wins but Vuetify's on-color text (sized for a
      different tone) remained, e.g. dark-blue text on a blue button in dark. */
 @layer overrides {
+  /* Restore the layout offset Vuetify computes but no longer gets to apply.
+     `.v-main{padding-left:var(--v-layout-left)}` lives in vuetify-components,
+     and Tailwind 4's preflight `*{padding:0}` in `base` was winning over it --
+     confirmed on the running stack with the browser naming `base` as the
+     winning rule, leaving v-main spanning the full viewport and the first
+     280px of EVERY screen sitting under the nav drawer.
+
+     The master @layer statement in this file was supposed to prevent that by
+     ordering `base` below the Vuetify layers, and it cannot: Tailwind owns
+     `theme`/`base`/`utilities`, strips them out of any order statement it
+     processes, and re-emits them as its own blocks later in the bundle -- so
+     `base` ends up established AFTER vuetify-components whatever this file
+     asks for. Verified in the built CSS, where the emitted statement is
+     `@layer vuetify-core,...,components` with `theme` and `base` missing.
+
+     Re-asserting the rule here is immune to that: `overrides` is last in the
+     order and is where app-level corrections already live. The variables are
+     Vuetify's own, so this restores its behaviour rather than hardcoding a
+     width, and it follows the drawer being collapsed, resized or hidden. */
+  .v-main {
+    padding-left: var(--v-layout-left);
+    padding-right: var(--v-layout-right);
+    padding-top: var(--v-layout-top);
+    padding-bottom: var(--v-layout-bottom);
+  }
+
   .text-primary { color: var(--cds-link-primary); }   /* #0f62fe light / #78a9ff dark */
   .text-warning { color: var(--cds-text-warning); }   /* dark amber light / yellow dark */
   .bg-primary { color: #ffffff; }                     /* white on Carbon blue — 5.05:1 */
