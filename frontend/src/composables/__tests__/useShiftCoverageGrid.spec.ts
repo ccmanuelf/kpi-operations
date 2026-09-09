@@ -261,6 +261,22 @@ describe('a rejected edit does not leave the grid showing it', () => {
     expect(c.rows.value[0].actual_employees).toBe(6)
   })
 
+  it('never claims a REJECTED change was saved', async () => {
+    // staleAfterWrite renders "the change was saved, but the list could not be
+    // refreshed". Reverting through refreshAfterWrite() raised it on a path
+    // where the server refused the write, telling the operator the opposite of
+    // what happened.
+    asRole('supervisor')
+    const c = useShiftCoverageGrid()
+    c.selectedClient.value = 'C1'
+    mockApi.updateShiftCoverage.mockRejectedValueOnce({ response: { status: 409, data: {} } })
+    mockApi.getShiftCoverage.mockRejectedValueOnce({ response: { status: 500, data: {} } })
+
+    await c.update(row() as never, { actual_employees: 999 } as never)
+
+    expect(c.staleAfterWrite.value).toBe(false)
+  })
+
   it('does not bury a reload failure under the write failure', async () => {
     // If the revert's own re-read also fails it has already emptied the grid
     // and reported why. Overwriting that with the rejected-edit message leaves
@@ -273,7 +289,6 @@ describe('a rejected edit does not leave the grid showing it', () => {
 
     await c.update(row() as never, { actual_employees: 999 } as never)
 
-    expect(c.staleAfterWrite.value).toBe(true)
     expect(c.error.value?.key).toBe('coverage.errors.generic')
   })
 

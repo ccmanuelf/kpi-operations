@@ -243,6 +243,21 @@ export function useShiftCoverageGrid() {
    * already exists — which the server then refuses as a duplicate. The banner
    * says the list is stale instead.
    */
+  /**
+   * Re-read after a REJECTED write, to put the grid back to what is stored.
+   *
+   * Deliberately does NOT touch `staleAfterWrite`: that flag renders "the
+   * change was saved, but the list could not be refreshed", which is the
+   * opposite of what a rejected write means.
+   */
+  const revert = async (): Promise<boolean> => {
+    try {
+      return await load()
+    } catch {
+      return false
+    }
+  }
+
   /** True when the re-read actually applied. */
   const refreshAfterWrite = async (): Promise<boolean> => {
     try {
@@ -326,7 +341,11 @@ export function useShiftCoverageGrid() {
       // the time the request goes out -- so a rejected edit otherwise leaves
       // the cell showing a number the server refused. The grid must end up
       // showing what was stored.
-      const refreshed = await refreshAfterWrite()
+      // `revert()`, NOT refreshAfterWrite(). They re-read identically, but
+      // refreshAfterWrite means "the write landed, the list may be behind" and
+      // raises staleAfterWrite -- whose banner says the change WAS saved. The
+      // server refused this one.
+      const refreshed = await revert()
       // AFTER the refresh, because load() clears `error` on entry: the reason
       // the edit was rejected is the thing worth showing, and a successful
       // re-read is not news. Setting it before the refresh loses it entirely,
