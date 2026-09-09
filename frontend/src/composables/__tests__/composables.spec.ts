@@ -2,7 +2,7 @@
  * Unit tests for Composables
  * Tests: useResponsive, useKeyboardShortcuts, useUnsavedChanges, useQRScanner
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest'
 import { withSetup as inComponent } from '../../test/composable-test-utils'
 
 // ---------- Mock setup for vue-router (useUnsavedChanges needs it) ----------
@@ -317,10 +317,20 @@ describe('useUnsavedChanges', () => {
 describe('useQRScanner', () => {
   let useQRScanner
 
-  beforeEach(async () => {
-    vi.clearAllMocks()
+  // Imported ONCE, not per test. `vi.clearAllMocks()` does not reset the
+  // module registry, so re-importing returned the cached module and bought no
+  // isolation -- while paying to resolve useQRScanner's transitive graph
+  // (@/i18n, @/services/api) on every single test. Under a loaded worker pool
+  // that exceeded the 10s hook timeout: adding one unrelated spec file
+  // elsewhere in the suite was enough to make this block fail about one run in
+  // three, with a timeout that named this test and had nothing to do with it.
+  beforeAll(async () => {
     const mod = await import('../useQRScanner.js')
     useQRScanner = mod.useQRScanner
+  })
+
+  beforeEach(() => {
+    vi.clearAllMocks()
   })
 
   it('initializes with scanning inactive', () => {

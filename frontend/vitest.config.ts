@@ -22,6 +22,14 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'happy-dom',
+    // Several specs resolve a component or composable with `await import(...)`
+    // INSIDE a beforeEach/beforeAll (views.spec.ts, composables.spec.ts).
+    // Vitest's 10s default then caps module resolution, not the thing under
+    // test: adding one unrelated spec file was enough to push those hooks past
+    // it, and a hook that times out reports as a failure in a file that did
+    // not change and skips the rest of its block. The work is transform cost,
+    // so the ceiling should be generous rather than tight.
+    hookTimeout: 30000,
     include: ['src/**/*.{test,spec}.{js,ts}'],
     exclude: [
       'node_modules/**',

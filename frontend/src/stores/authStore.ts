@@ -133,6 +133,20 @@ export const useAuthStore = defineStore('auth', {
      * admin alone, so approve/retire gate on isAdmin.
      */
     isPlanner: (state): boolean => ['admin', 'poweruser'].includes(state.user?.role ?? ''),
+
+    /**
+     * The backend's CONTRIBUTOR_ROLES (backend/orm/user.py):
+     * SUPERVISORY_ROLES + operator — everyone except viewer. This is the set
+     * `get_current_contributor` admits.
+     *
+     * WIDER than the supervisory tier, and the difference is load-bearing
+     * rather than cosmetic. Shift coverage splits its own write tier: POST and
+     * PUT are contributor, DELETE is supervisory. A screen that gated both on
+     * one getter either hides an edit an operator is entitled to make, or
+     * offers them a delete the server answers with 403.
+     */
+    isContributorTier: (state): boolean =>
+      ['admin', 'poweruser', 'leader', 'supervisor', 'operator'].includes(state.user?.role ?? ''),
   },
 
   actions: {

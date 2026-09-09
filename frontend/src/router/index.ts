@@ -132,6 +132,12 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true },
   },
   {
+    path: '/data-entry/shift-coverage',
+    name: 'shift-coverage-entry',
+    component: () => import('@/views/ShiftCoverageEntry.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
     path: '/data-entry/hold-resume',
     name: 'hold-resume-entry',
     component: () => import('@/views/HoldResumeEntry.vue'),
