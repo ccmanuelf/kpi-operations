@@ -159,6 +159,14 @@ test.describe('reachability: controls are not covered by other elements', () => 
       console.log('no covered controls')
     }
 
+    // A screen that rendered NOTHING is not a screen that passed. Without this
+    // the audit reports success for a route that failed to load, redirected, or
+    // errored -- the whole point being that it should notice unreachable UI,
+    // and "no UI at all" is the extreme case.
+    expect(
+      skipped,
+      `${skipped.length} screen(s) rendered no controls at all — they did not load`,
+    ).toHaveLength(0)
     expect(blocked, `${blocked.length} control(s) are covered by another element`).toHaveLength(0)
     expect(overflowing, `${overflowing.length} screen(s) overflow horizontally`).toHaveLength(0)
   })
