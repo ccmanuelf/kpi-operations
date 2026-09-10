@@ -58,6 +58,12 @@ const KNOWN: { screen: string; covering: RegExp; why: string }[] = [
 const isKnown = (screen: string, covering: string): boolean =>
   KNOWN.some((k) => k.screen === screen && k.covering.test(covering))
 
+/**
+ * The navigation drawer is deliberately NOT allowlisted. At the desktop
+ * viewport this audit pins, a persistent drawer must never cover content --
+ * that was #297, and letting it pass here would retire the gate that caught it.
+ */
+
 interface Blocked {
   screen: string
   control: string
@@ -69,6 +75,13 @@ const INTERACTIVE = 'button, [role="button"], a[href], input, select, textarea, 
 test.describe('reachability: controls are not covered by other elements', () => {
   test('every audited screen has clickable controls', async ({ page }) => {
     test.setTimeout(600000)
+    // Deliberately NOT widened. Pinning 1440x900 -- as the contrast gate does
+    // -- made this audit blind to the defect that prompted it: the dashboard
+    // header only runs out of room, and only crushes the dual-view toggle, at
+    // the narrower default. A reachability check has to run where things are
+    // tight, which is exactly where they break. The drawer overlaps that
+    // motivated widening turned out to be clipping, and are handled properly
+    // by the scroll-ancestor test below.
     await login(page, 'admin')
 
     const blocked: Blocked[] = []
@@ -124,15 +137,50 @@ test.describe('reachability: controls are not covered by other elements', () => 
             const y = r.top + r.height / 2
             if (x < 0 || y < 0 || x > window.innerWidth || y > window.innerHeight) continue
 
+            // Clipped by a scrolling ancestor is NOT covered. A control
+            // scrolled out of the nav drawer's list, or a tab scrolled off a
+            // slide-group strip, is reachable the moment its container is
+            // scrolled -- and probing it reports whichever container happens
+            // to paint at that point, which says nothing about reachability.
+            // Checked against EVERY scrollable ancestor rather than just the
+            // one that answered, because the element that answers is often
+            // further out than the one doing the clipping.
+            let clipped = false
+            for (let p = e.parentElement; p && p !== document.body; p = p.parentElement) {
+              const ps = getComputedStyle(p)
+              // `auto` and `scroll` ONLY. `overflow:hidden` is not a
+              // scroller -- it cuts content off with no way to reveal it, so
+              // a control outside a hidden container is genuinely
+              // unreachable. Including it here swallowed the dual-view toggle
+              // this branch fixes: its buttons overflow their own crushed
+              // 27px group, and the audit called that "clipped, fine".
+              if (!/(auto|scroll)/.test(ps.overflowY + ps.overflowX)) continue
+              const pr = p.getBoundingClientRect()
+              if (x < pr.left - 1 || x > pr.right + 1 || y < pr.top - 1 || y > pr.bottom + 1) {
+                clipped = true
+                break
+              }
+            }
+            if (clipped) continue
+
             const hit = document.elementFromPoint(x, y)
             if (!hit) continue
             if (hit === e || e.contains(hit)) continue
-            // An ANCESTOR answering is only fine when it is the form wrapper
-            // Vuetify paints over its own input -- clicking that focuses the
-            // control, so it is reachable. Exempting every ancestor, as this
-            // first did, silently forgives a backdrop or overlay that happens
-            // to wrap the control, which is real coverage.
-            if (hit.contains(e) && (hit as HTMLElement).closest('.v-field, .v-input, label') === hit) continue
+
+            if (hit.contains(e)) {
+              // An ANCESTOR answered. Two cases are legitimate and one is not.
+              //
+              // 1. A form wrapper Vuetify paints over its own input; clicking
+              //    it focuses the control, so the control is reachable.
+              // (Controls clipped by a scrolling ancestor are already
+              // filtered above, before the hit test.)
+              //
+              // Anything else -- a backdrop, an overlay, a wrapper painted on
+              // top -- is real coverage and must not be forgiven, which is
+              // what exempting every ancestor originally did.
+              const h = hit as HTMLElement
+              if (h.closest('.v-field, .v-input, label') === h) continue
+            }
             covered.push({ control: describe(e), covering: describe(hit) })
           }
 
