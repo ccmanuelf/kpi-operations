@@ -100,19 +100,39 @@ test.describe('reachability: controls are not covered by other elements', () => 
             const r = e.getBoundingClientRect()
             // Only things a person could actually aim at.
             if (r.width < 8 || r.height < 8) continue
-            if (r.bottom < 0 || r.top > window.innerHeight) continue
-            if (r.right < 0 || r.left > window.innerWidth) continue
-            const cs = getComputedStyle(e)
-            if (cs.visibility === 'hidden' || cs.display === 'none' || cs.pointerEvents === 'none') continue
-            if (parseFloat(cs.opacity || '1') < 0.1) continue
 
-            const x = Math.min(Math.max(r.left + r.width / 2, 1), window.innerWidth - 1)
-            const y = Math.min(Math.max(r.top + r.height / 2, 1), window.innerHeight - 1)
+            const cs = getComputedStyle(e)
+            if (cs.pointerEvents === 'none') continue
+            // checkVisibility accounts for ANCESTOR visibility, display and
+            // opacity. Reading the element's own computed style misses a
+            // control sitting inside a faded-out or collapsed parent, which
+            // then gets probed and reported as covered by whatever is on top
+            // of its invisible container.
+            const visible =
+              typeof e.checkVisibility === 'function'
+                ? e.checkVisibility({ opacityProperty: true, visibilityProperty: true, contentVisibilityAuto: true })
+                : cs.visibility !== 'hidden' && cs.display !== 'none' && parseFloat(cs.opacity || '1') >= 0.1
+            if (!visible) continue
+
+            // The TRUE centre, unclamped. Clamping a partially off-screen
+            // control into the viewport probes a point that is not its centre,
+            // and then reports whatever occupies that edge -- a sticky header,
+            // usually -- as covering a control that is perfectly clickable
+            // elsewhere. If the centre is off-screen this cannot be judged
+            // fairly, so it is not judged.
+            const x = r.left + r.width / 2
+            const y = r.top + r.height / 2
+            if (x < 0 || y < 0 || x > window.innerWidth || y > window.innerHeight) continue
+
             const hit = document.elementFromPoint(x, y)
             if (!hit) continue
-            // Reachable if the hit is the control, inside it, or contains it
-            // (a wrapper answering for its own child is fine).
-            if (hit === e || e.contains(hit) || hit.contains(e)) continue
+            if (hit === e || e.contains(hit)) continue
+            // An ANCESTOR answering is only fine when it is the form wrapper
+            // Vuetify paints over its own input -- clicking that focuses the
+            // control, so it is reachable. Exempting every ancestor, as this
+            // first did, silently forgives a backdrop or overlay that happens
+            // to wrap the control, which is real coverage.
+            if (hit.contains(e) && (hit as HTMLElement).closest('.v-field, .v-input, label') === hit) continue
             covered.push({ control: describe(e), covering: describe(hit) })
           }
 
