@@ -60,6 +60,16 @@
      order and is where app-level corrections already live. The variables are
      Vuetify's own, so this restores its behaviour rather than hardcoding a
      width, and it follows the drawer being collapsed, resized or hidden. */
+  /* A button GROUP must never be shrunk below the buttons inside it. Flex will
+     do exactly that in a crowded row, and the children do not shrink with it --
+     they overflow their own container and overlap each other and whatever sits
+     beside them, which is how the dual-view toggle came to render as 27px of
+     illegible overlap on the KPI dashboard. Let the row wrap instead. */
+  .v-btn-group,
+  .v-btn-toggle {
+    flex: 0 0 auto;
+  }
+
   .v-main {
     padding-left: var(--v-layout-left);
     padding-right: var(--v-layout-right);
