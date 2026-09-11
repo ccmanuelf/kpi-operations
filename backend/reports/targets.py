@@ -70,11 +70,15 @@ def _as_target(row: KPIThreshold) -> Target:
         critical=float(row.critical_threshold) if row.critical_threshold is not None else None,
         # A Y/N CHAR column, not a boolean -- and defaulting a missing value to
         # "higher is better" matches the column's own server default.
+        # A NULL direction defaults to "higher is better", matching the column's
+        # own default. Inheritance across the global-to-client boundary is
+        # `_merge`'s job, and it reads the raw row rather than this conversion --
+        # so this default applies only where there is nothing to inherit from.
         higher_is_better=(row.higher_is_better or "Y").upper() == "Y",
     )
 
 
-def _merge(base: Optional[Target], row: KPIThreshold) -> Target:
+def _merge(base: Target, row: KPIThreshold) -> Target:
     """`row`'s values over `base`'s, field by field.
 
     Wholesale replacement made a target-only client row silently erase the global
@@ -87,16 +91,25 @@ def _merge(base: Optional[Target], row: KPIThreshold) -> Target:
     Keyed on `is None`, never truthiness: a band of 0 is a legitimate
     configuration, and reading it as "unset" would inherit straight over it --
     the same defect `check_threshold_breach` carried.
+
+    `higher_is_better` is inherited for a sharper reason than the bands: the
+    column is nullable, and defaulting a NULL to "higher is better" would invert
+    the verdict for every lower-is-better metric (a PPM of 2000 against a target
+    of 500 would read On Target). Reads the RAW row, not `_as_target`, precisely
+    so that conversion's own default cannot pre-empt the inheritance.
     """
-    incoming = _as_target(row)
-    if base is None:
-        return incoming
     return Target(
-        value=incoming.value,
-        warning=incoming.warning if incoming.warning is not None else base.warning,
-        critical=incoming.critical if incoming.critical is not None else base.critical,
-        higher_is_better=incoming.higher_is_better,
+        value=float(row.target_value),
+        warning=_first_set(row.warning_threshold, base.warning),
+        critical=_first_set(row.critical_threshold, base.critical),
+        higher_is_better=(
+            base.higher_is_better if row.higher_is_better is None else row.higher_is_better.upper() == "Y"
+        ),
     )
+
+
+def _first_set(incoming: Optional[float], inherited: Optional[float]) -> Optional[float]:
+    return inherited if incoming is None else float(incoming)
 
 
 def load_targets(db: Session, client_id: Optional[str]) -> Dict[str, Target]:
@@ -105,9 +118,23 @@ def load_targets(db: Session, client_id: Optional[str]) -> Dict[str, Target]:
     `client_id=None` means an all-clients report, which has no single client's
     overrides to apply and so reads the global configuration alone.
 
-    A client's row is merged over the global row PER FIELD rather than replacing
-    it -- see `_merge`. `target_value` is NOT NULL so a client row always carries
-    its own target; the bands are what inheritance is for.
+    A NULL `higher_is_better` on a client row inherits the global row's direction
+    rather than defaulting -- defaulting would invert the verdict for every
+    lower-is-better metric. (Not reachable through the ORM, whose column default
+    supplies "Y"; reachable by direct SQL.)
+
+    TWO PASSES, not one. A client's row merges over the global row per field (see
+    `_merge`), but two GLOBAL rows for one key must NOT merge into each other --
+    that would splice a target from one row with bands from another and produce a
+    threshold nobody configured. Within a scope the highest `threshold_id` simply
+    wins; merging happens only across the global-to-client boundary.
+
+    The `threshold_id` ordering is load-bearing rather than tidiness: both
+    dialects exclude NULLs from a UNIQUE index, so UNIQUE(client_id, kpi_key)
+    does NOT prevent two global rows sharing a kpi_key. Nothing creates a
+    duplicate today -- the PUT route updates in place and migration 0009 inserts
+    if absent -- but the schema permits it, and a nondeterministic target is
+    worse than a wrong one.
     """
     query = db.query(KPIThreshold)
     if client_id:
@@ -115,21 +142,16 @@ def load_targets(db: Session, client_id: Optional[str]) -> Dict[str, Target]:
     else:
         query = query.filter(KPIThreshold.client_id.is_(None))
 
-    # Global first, then the client's own rows merge over them key by key. Sorted
-    # here rather than in SQL so the ordering is the data's and not the query
-    # plan's -- NULLs do sort before a non-null client_id on both dialects, but
-    # relying on that is relying on something neither engine promises.
-    #
-    # `threshold_id` is the tiebreak, and it is load-bearing rather than tidiness:
-    # both dialects exclude NULLs from a UNIQUE index, so
-    # UNIQUE(client_id, kpi_key) does NOT prevent two GLOBAL rows sharing a
-    # kpi_key. Without a total order, which of them a report reads would depend
-    # on the engine. (Nothing creates a duplicate today -- the PUT route updates
-    # in place and migration 0009 inserts if absent -- but the schema permits it,
-    # and a nondeterministic target is worse than a wrong one.)
+    rows = query.all()
+    by_id = sorted(rows, key=lambda r: r.threshold_id)
+
     resolved: Dict[str, Target] = {}
-    for row in sorted(query.all(), key=lambda r: (r.client_id is not None, r.threshold_id)):
-        resolved[row.kpi_key] = _merge(resolved.get(row.kpi_key), row)
+    for row in (r for r in by_id if r.client_id is None):
+        resolved[row.kpi_key] = _as_target(row)
+    for row in (r for r in by_id if r.client_id is not None):
+        base = resolved.get(row.kpi_key)
+        resolved[row.kpi_key] = _as_target(row) if base is None else _merge(base, row)
+
     return resolved
 
 
