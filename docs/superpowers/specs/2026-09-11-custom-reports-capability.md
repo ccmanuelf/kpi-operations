@@ -1,7 +1,7 @@
 # Custom Reports — Capability Proposal
 
 **Date:** 2026-09-11
-**Status:** proposal, awaiting decision
+**Status:** DECIDED 2026-09-11 (D1-D6 below) — ready for an implementation plan
 **Scope note:** This proposes a reporting capability derived from the structure the product
 actually has. It is explicitly **not** an attempt to reproduce the legacy Excel workbook,
 which no longer describes what this system does. It also assumes **no email delivery** —
@@ -119,6 +119,21 @@ reader for a gap in the generator. All four have working calculation services:
 `KPI_THRESHOLD` is a second, per-metric threshold table. **Neither generator reads either
 one** — grep for `ClientConfig`/`KPIThreshold` across `backend/reports/` returns nothing.
 
+**Of the two stores, `KPI_THRESHOLD` is the live one and the one to read** (settled as part
+of D1/D2). `CLIENT_CONFIG`'s seven target columns are read by nothing but their own CRUD
+schemas — stored, echoed back, never judged against. `KPI_THRESHOLD` is consumed by
+`routes/alerts/generate.py` and `events/handlers/notification_handlers.py`, is keyed
+per-metric with `client_id` nullable so global-default inheritance is built in, and carries
+`warning_threshold`, `critical_threshold` and `higher_is_better` — which is exactly the
+three-state status and the direction the generator currently fakes with a hardcoded
+`threshold = 0.95` heuristic (`pdf_generator.py:577`).
+
+**And the admin is already setting targets the reports discard.** The one section of
+`views/admin/AdminSettings.vue` that really persists is the KPI threshold editor, and it
+writes `KPI_THRESHOLD` for ten keys including `oee`, `otd`, `availability` and `performance`.
+So an admin sets a per-client OEE target today, it saves, alerts honour it — and the report
+prints a literal.
+
 The executive summary's five rows, as actually emitted, against the stored defaults:
 
 | KPI | report literal | `CLIENT_CONFIG` default | agrees? |
@@ -218,32 +233,69 @@ rather than extended.
 - **No query language.** The registry stays the allow-list. A caller cannot express a
   measure or a dimension the engine hasn't declared, which is what keeps tenancy and
   ratio-of-sums structural rather than advisory.
+- **Multi-dataset is a key-aligned union, not a join.** `usePivotView.ts:26`
+  (`mergePivotRows`) unions rows on `(bucket_start, group_key)`, last-write-wins. An earlier
+  draft of this document called free combination a "join planner"; that was too strong. What
+  it actually needs is a group-by intersection rule and a measure-name collision rule — see
+  D5/D6.
 - **No new datasets.** Six is what the engine serves today. Adding a seventh is its own
   piece of work with its own golden-master guard.
 
 ---
 
-## 6. Decisions needed
+## 6. Decisions — SETTLED 2026-09-11
 
-**D1 — the four dead sections.** Implement `oee`/`rty`/`dpmo`/`otd` from their existing
-services, or remove them from the declared section list?
-*Recommendation: implement.* The services exist, the dashboard already shows all four, and a
-"comprehensive" report that silently omits OEE and OTD is not comprehensive.
+| # | Decision | Answer |
+|---|---|---|
+| D1 | the four dead sections | **implement all four** (`oee`, `rty`, `dpmo`, `otd`) + add the missing `availability` summary row → 10/10 sections render, docstring becomes true |
+| D2 | sequencing | **two PRs**: PR-A the judgement columns, PR-B the missing sections |
+| D2b | the Trend column | **remove it in PR-A**; earn it back in Phase 2 from the bucketed series the renderer already receives |
+| D3 | custom-report formats | **add XLSX, keep CSV, no PDF** |
+| D4 | the inert admin UI | **remove all three fake sections** + Export button + the 5 email-config endpoints + the French locale option |
+| D5 | definition scope | **free combination**, with a group-by intersection rule and measure-name namespacing |
+| D6 | where the merge lives | **server-side**; `mergePivotRows` and the per-dataset fetch loop are deleted |
 
-**D2 — Phase 1 independently?** Ship the honesty fixes as their own PR before any builder
-work?
-*Recommendation: yes.* They are small, they are correctness rather than capability, and the
-target bug is live in every report the product has ever produced.
+### PR sequence
 
-**D3 — custom-report formats.** Excel + CSV only, or PDF too?
-*Recommendation: Excel + CSV.* See §5.
+**PR-A — the judgement columns.** Targets read from `KPI_THRESHOLD` (per-metric, with the
+`client_id IS NULL` global row as the fallback), and `warning_threshold` / `critical_threshold`
+/ `higher_is_better` replace the hardcoded `threshold = 0.95` heuristic and the per-row
+`higher_better` literals. The Trend column is removed from both generators — the PDF string at
+`pdf_generator.py:498`, the Excel `F7` header and all nine `"trend"` values, including the six
+hardcoded `"→"` and the inverted PPM arrow. Gates: a client's configured target reaches the
+rendered cell; the global row is used when no client row exists; status crosses at the
+configured warning and critical values rather than at 95% of target.
 
-**D4 — the inert notification UI.** Leave the non-functional notification settings visible,
-or remove them until email is authorised?
-*Recommendation: remove them.* A saved setting that silently does nothing is worse than an
-absent one, and it is the same class of defect as the four lying report sections.
+**PR-B — the missing sections.** `oee`, `rty`, `dpmo` and `otd` detail sections wired to
+`services/calculations/oee.py`, `calculations/fpy_rty.py`, `calculations/dpmo.py` and
+`calculations/otd.py`; plus the `availability` executive-summary row that is currently absent
+while its detail section renders. Gates: one per section asserting real seeded data reaches
+the rendered cell, and a structural test asserting every key in `all_kpis` renders a detail
+block — so a future section cannot be declared without being implemented.
 
-**D5 — scope of the definition.** One dataset per saved report, or free combination?
-*Recommendation: one dataset per definition,* keeping the two merged presets (Q1
-production+labor, Q3 quality+delivery) as presets. The engine is per-dataset; merging happens
-in the panel. Free combination would mean a join planner, which is a different project.
+**PR-C — the inert admin surface.** Remove the General, Notification and Data Retention
+sections from `views/admin/AdminSettings.vue` with their three `setTimeout` save handlers and
+the `exportData` no-op, the five `/api/reports/email-config` endpoints behind the process-local
+`_email_configs` dict, and the `fr` option from the locale list. The KPI threshold editor stays
+— it is real, and PR-A makes it matter. Needs an OpenAPI golden-master regen for the removed
+routes.
+
+**PR-D — the multi-dataset engine path (D5 + D6).** `run_pivot_multi(datasets, bucket,
+group_by, …)`: reject a `group_by` outside the intersection of the chosen datasets'
+`group_bys` with a 422 naming the intersection, union per-dataset rows on
+`(bucket_start, group_key)`, and namespace a measure present in more than one dataset as
+`<dataset>.<measure>`. `GET /api/pivot` accepts `datasets=a,b`. `mergePivotRows` and the
+per-dataset fetch loop in `usePivotView.ts` are deleted, so Q1 and Q3 become one request.
+Gates: the intersection rejection; a collision namespaced rather than overwritten (the hazard
+`usePivotView.ts:13-25` documents); Q1 and Q3 byte-identical to their current client-merged
+output. Needs live re-verification of all five presets.
+
+**PR-E — the XLSX renderer (Phase 2).** `GET /api/pivot/xlsx`, same params and same
+`resolve_client_scope` dependency as the JSON path. Header block naming client, period, bucket
+and grouping; percent / number / count formats driven by the measure kind the presets already
+declare; styled totals row. Trend returns here, computed by `analyze_trend` over the bucketed
+series.
+
+**PR-F — the builder (Phase 3).** The Summaries screen gains a measure picker from the
+registry, a dataset multi-select, and save / load / delete of definitions through the existing
+`SAVED_FILTER` endpoints with `filter_type="custom"`, plus a download-as-Excel button.
