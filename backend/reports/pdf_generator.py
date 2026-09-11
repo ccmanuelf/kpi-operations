@@ -20,7 +20,43 @@ from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, 
 from reportlab.lib.enums import TA_CENTER
 from sqlalchemy.orm import Session
 
+from backend.reports.targets import Target, load_targets, status_for
 from backend.calculations.availability import calculate_availability_pure
+
+
+def _detail_target(targets: Dict[str, Target], kpi_key: str, unit: str = "%") -> str:
+    """The `Target` cell for a detail block, or an em dash when unconfigured."""
+    target = targets.get(kpi_key)
+    return "\u2014" if target is None else f"{target.value:g}{unit}"
+
+
+def _detail_variance(targets: Dict[str, Target], kpi_key: str, value: float, unit: str = "%") -> str:
+    """Variance against the configured target, not against a literal."""
+    target = targets.get(kpi_key)
+    return "\u2014" if target is None else f"{value - target.value:+.1f}{unit}"
+
+
+def _summary_row(name: str, value: float, kpi_key: str, targets: Dict[str, Target], unit: str = "%") -> Dict[str, Any]:
+    """One executive-summary row, judged against the configured target.
+
+    `target` is None when nothing is configured for this metric, which the table
+    renders as an em dash with a "No Target" status rather than inventing a
+    number to compare against.
+
+    No `higher_better` key: each row used to carry a direction literal, read only
+    by `_get_status_color`, whose return value its single caller discarded -- so
+    the PDF never coloured a status cell by it. Direction is now the threshold
+    row's `higher_is_better`, and `status_for` applies it, so nothing downstream
+    needs to be told which way the metric points.
+    """
+    target = targets.get(kpi_key)
+    return {
+        "name": name,
+        "value": value,
+        "target": target.value if target else None,
+        "unit": unit,
+        "status": status_for(value, target),
+    }
 
 
 class PDFReportGenerator:
@@ -215,10 +251,11 @@ class PDFReportGenerator:
         kpi_values = self._fetch_kpi_summary(client_id, start_date, end_date)
 
         for kpi in kpi_values:
-            self._get_status_color(kpi["value"], kpi["target"], kpi["higher_better"])
-            summary_data.append(
-                [kpi["name"], f"{kpi['value']:.1f}{kpi['unit']}", f"{kpi['target']}{kpi['unit']}", kpi["status"]]
-            )
+            # An em dash rather than a number when no target is configured for
+            # this metric. Printing a literal here is what made the column
+            # judge clients against values they never set.
+            target_cell = "\u2014" if kpi["target"] is None else f"{kpi['target']:g}{kpi['unit']}"
+            summary_data.append([kpi["name"], f"{kpi['value']:.1f}{kpi['unit']}", target_cell, kpi["status"]])
 
         summary_table = Table(summary_data, colWidths=[2.5 * inch, 1.5 * inch, 1.5 * inch, 1.5 * inch])
         summary_table.setStyle(
@@ -332,6 +369,10 @@ class PDFReportGenerator:
         from backend.orm.quality_entry import QualityEntry
         from backend.orm.attendance_entry import AttendanceEntry
 
+        # Targets are configuration, not literals. One lookup for the whole
+        # table: this client's rows over the global defaults, per metric.
+        targets = load_targets(self.db, client_id)
+
         kpi_data = []
 
         # Build base query with client filtering
@@ -351,30 +392,12 @@ class PDFReportGenerator:
             # Calculate Efficiency
             total_efficiency = sum(float(e.efficiency_percentage or 0) for e in production_entries)
             avg_efficiency = total_efficiency / len(production_entries) if production_entries else 0
-            kpi_data.append(
-                {
-                    "name": "Efficiency",
-                    "value": avg_efficiency,
-                    "target": 85,
-                    "unit": "%",
-                    "status": "On Target" if avg_efficiency >= 85 else "At Risk",
-                    "higher_better": True,
-                }
-            )
+            kpi_data.append(_summary_row("Efficiency", avg_efficiency, "efficiency", targets))
 
             # Calculate Performance
             total_performance = sum(float(e.performance_percentage or 0) for e in production_entries)
             avg_performance = total_performance / len(production_entries) if production_entries else 0
-            kpi_data.append(
-                {
-                    "name": "Performance",
-                    "value": avg_performance,
-                    "target": 85,
-                    "unit": "%",
-                    "status": "On Target" if avg_performance >= 85 else "At Risk",
-                    "higher_better": True,
-                }
-            )
+            kpi_data.append(_summary_row("Performance", avg_performance, "performance", targets))
 
         # Quality metrics
         quality_query = self.db.query(QualityEntry).filter(
@@ -394,29 +417,11 @@ class PDFReportGenerator:
             total_defects = sum(e.units_defective for e in quality_entries)
             fpy = ((total_inspected - total_defects) / total_inspected * 100) if total_inspected > 0 else 0
 
-            kpi_data.append(
-                {
-                    "name": "First Pass Yield",
-                    "value": fpy,
-                    "target": 99,
-                    "unit": "%",
-                    "status": "On Target" if fpy >= 99 else "At Risk",
-                    "higher_better": True,
-                }
-            )
+            kpi_data.append(_summary_row("First Pass Yield", fpy, "fpy", targets))
 
             # Calculate PPM
             ppm = (total_defects / total_inspected * 1_000_000) if total_inspected > 0 else 0
-            kpi_data.append(
-                {
-                    "name": "PPM",
-                    "value": ppm,
-                    "target": 1000,
-                    "unit": "",
-                    "status": "On Target" if ppm <= 1000 else "At Risk",
-                    "higher_better": False,
-                }
-            )
+            kpi_data.append(_summary_row("PPM", ppm, "ppm", targets, unit=""))
 
         # Attendance metrics
         attendance_query = self.db.query(AttendanceEntry).filter(
@@ -438,16 +443,7 @@ class PDFReportGenerator:
             total_absent = sum(float(e.absence_hours or 0) for e in attendance_entries if e.is_absent)
             absenteeism = (total_absent / total_scheduled * 100) if total_scheduled > 0 else 0
 
-            kpi_data.append(
-                {
-                    "name": "Absenteeism",
-                    "value": absenteeism,
-                    "target": 5,
-                    "unit": "%",
-                    "status": "On Target" if absenteeism <= 5 else "At Risk",
-                    "higher_better": False,
-                }
-            )
+            kpi_data.append(_summary_row("Absenteeism", absenteeism, "absenteeism", targets))
 
         return kpi_data
 
@@ -458,6 +454,11 @@ class PDFReportGenerator:
         from backend.orm.production_entry import ProductionEntry
         from backend.orm.quality_entry import QualityEntry
         from backend.orm.attendance_entry import AttendanceEntry
+
+        # The detail blocks carried their own literals, and the first of them
+        # served efficiency, performance AND availability off a single "85%" --
+        # so two of the three showed a target that was not theirs.
+        targets = load_targets(self.db, client_id)
 
         details = {}
 
@@ -493,9 +494,8 @@ class PDFReportGenerator:
                 avg_value = sum(values) / len(values) if values else 0
                 details = {
                     "Current Value": f"{avg_value:.1f}%",
-                    "Target": "85%",
-                    "Variance": f"{avg_value - 85:+.1f}%",
-                    "Trend": "Improving" if avg_value >= 85 else "Declining",
+                    "Target": _detail_target(targets, kpi_key),
+                    "Variance": _detail_variance(targets, kpi_key, avg_value),
                     "Average (Period)": f"{avg_value:.1f}%",
                     "Best Day": f"{max(values):.1f}%" if values else "0%",
                     "Worst Day": f"{min(values):.1f}%" if values else "0%",
@@ -522,7 +522,7 @@ class PDFReportGenerator:
                     fpy = ((total_inspected - total_defects) / total_inspected * 100) if total_inspected > 0 else 0
                     details = {
                         "Current Value": f"{fpy:.2f}%",
-                        "Target": "99%",
+                        "Target": _detail_target(targets, "fpy"),
                         "Units Inspected": f"{total_inspected:,}",
                         "Defects Found": f"{total_defects:,}",
                         "Pass Rate": f"{fpy:.2f}%",
@@ -531,7 +531,7 @@ class PDFReportGenerator:
                     ppm = (total_defects / total_inspected * 1_000_000) if total_inspected > 0 else 0
                     details = {
                         "Current PPM": f"{ppm:.0f}",
-                        "Target": "1000",
+                        "Target": _detail_target(targets, "ppm", unit=""),
                         "Defects": f"{total_defects:,}",
                         "Units Inspected": f"{total_inspected:,}",
                     }
@@ -558,7 +558,7 @@ class PDFReportGenerator:
 
                 details = {
                     "Absenteeism Rate": f"{rate:.1f}%",
-                    "Target": "5%",
+                    "Target": _detail_target(targets, "absenteeism"),
                     "Total Scheduled Hours": f"{total_scheduled:.0f}",
                     "Absent Hours": f"{total_absent:.0f}",
                     "Attendance Rate": f"{100 - rate:.1f}%",
@@ -572,22 +572,3 @@ class PDFReportGenerator:
                 "Note": "Please ensure data has been entered for the selected date range",
             }
         )
-
-    def _get_status_color(self, value: float, target: float, higher_better: bool) -> str:
-        """Determine status color based on value vs target"""
-        threshold = 0.95  # 95% of target
-
-        if higher_better:
-            if value >= target:
-                return "success"
-            elif value >= target * threshold:
-                return "warning"
-            else:
-                return "error"
-        else:
-            if value <= target:
-                return "success"
-            elif value <= target * (2 - threshold):
-                return "warning"
-            else:
-                return "error"

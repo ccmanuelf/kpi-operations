@@ -391,9 +391,17 @@ REGISTRY: Dict[str, ParamSpec] = {
 #: PK on KPI_THRESHOLD, so resolving the two halves from two independent
 #: queries could pick a `kpi_key` that does not exist for that `client_id` --
 #: a 404 that looks exactly like a bad id. One query, one row, both halves.
+#:
+#: `client_id IS NOT NULL` because a NULL client_id is a GLOBAL threshold, and
+#: the DELETE route refuses to delete those ("Cannot delete global thresholds").
+#: Resolving one was always wrong for this route; it only became reachable when
+#: migration 0009 started supplying global defaults, and NULL sorts first under
+#: `ORDER BY client_id` on both dialects -- so the resolver picked the one row
+#: the route is guaranteed to 404 on.
 COMPOSITES: Dict[str, Tuple[str, Tuple[str, ...]]] = {
     "/api/kpi-thresholds/{client_id}/{kpi_key}": (
-        "SELECT client_id, kpi_key FROM KPI_THRESHOLD ORDER BY client_id, kpi_key LIMIT 1",
+        "SELECT client_id, kpi_key FROM KPI_THRESHOLD"
+        " WHERE client_id IS NOT NULL ORDER BY client_id, kpi_key LIMIT 1",
         ("client_id", "kpi_key"),
     ),
 }

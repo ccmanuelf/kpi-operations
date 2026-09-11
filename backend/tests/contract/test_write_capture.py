@@ -154,11 +154,19 @@ def test_kpi_thresholds_wrote_a_scoped_row_not_a_global_one(harness: _Harness) -
     body = BODY_REGISTRY["PUT /api/kpi-thresholds"].build(Resolver(engine=harness.engine))
     assert body["client_id"], "the body must scope its threshold to a client"
 
+    count_globals = sa.text("SELECT COUNT(*) FROM KPI_THRESHOLD WHERE client_id IS NULL")
+    with harness.engine.connect() as connection:
+        before = connection.execute(count_globals).scalar()
+
     harness.client.put("/api/kpi-thresholds", json=body)
     with harness.engine.connect() as connection:
-        global_rows = connection.execute(sa.text("SELECT COUNT(*) FROM KPI_THRESHOLD WHERE client_id IS NULL")).scalar()
+        after = connection.execute(count_globals).scalar()
 
-    assert global_rows == 0, "the capture wrote a global threshold row, which GET /api/kpi-thresholds reads"
+    # Unchanged, rather than zero: migration 0009 supplies global defaults so the
+    # report generators have a target to fall back on, and GET /api/kpi-thresholds
+    # legitimately reads them. What must not happen is this CAPTURE adding one --
+    # that is what would silently move the GET's golden shape.
+    assert after == before, f"the capture wrote a global threshold row ({before} -> {after})"
 
 
 def test_the_isolated_phase_is_order_independent(harness: _Harness) -> None:
