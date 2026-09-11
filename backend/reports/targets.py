@@ -74,11 +74,40 @@ def _as_target(row: KPIThreshold) -> Target:
     )
 
 
+def _merge(base: Optional[Target], row: KPIThreshold) -> Target:
+    """`row`'s values over `base`'s, field by field.
+
+    Wholesale replacement made a target-only client row silently erase the global
+    warning/critical bands, so the same measured number read "At Risk" for one
+    metric and "Urgent" for another. The admin UI cannot set bands per-client at
+    all -- one numeric field per KPI -- so inheritance is the only mechanism by
+    which a client's bands can exist, and `update_kpi_thresholds` creates client
+    rows with bands of None as well, so this is not merely the seeder's shape.
+
+    Keyed on `is None`, never truthiness: a band of 0 is a legitimate
+    configuration, and reading it as "unset" would inherit straight over it --
+    the same defect `check_threshold_breach` carried.
+    """
+    incoming = _as_target(row)
+    if base is None:
+        return incoming
+    return Target(
+        value=incoming.value,
+        warning=incoming.warning if incoming.warning is not None else base.warning,
+        critical=incoming.critical if incoming.critical is not None else base.critical,
+        higher_is_better=incoming.higher_is_better,
+    )
+
+
 def load_targets(db: Session, client_id: Optional[str]) -> Dict[str, Target]:
     """`kpi_key` -> `Target` for one client, or for the global defaults.
 
     `client_id=None` means an all-clients report, which has no single client's
     overrides to apply and so reads the global configuration alone.
+
+    A client's row is merged over the global row PER FIELD rather than replacing
+    it -- see `_merge`. `target_value` is NOT NULL so a client row always carries
+    its own target; the bands are what inheritance is for.
     """
     query = db.query(KPIThreshold)
     if client_id:
@@ -86,7 +115,7 @@ def load_targets(db: Session, client_id: Optional[str]) -> Dict[str, Target]:
     else:
         query = query.filter(KPIThreshold.client_id.is_(None))
 
-    # Global first, then the client's own rows overwrite them key by key. Sorted
+    # Global first, then the client's own rows merge over them key by key. Sorted
     # here rather than in SQL so the ordering is the data's and not the query
     # plan's -- NULLs do sort before a non-null client_id on both dialects, but
     # relying on that is relying on something neither engine promises.
@@ -96,11 +125,11 @@ def load_targets(db: Session, client_id: Optional[str]) -> Dict[str, Target]:
     # UNIQUE(client_id, kpi_key) does NOT prevent two GLOBAL rows sharing a
     # kpi_key. Without a total order, which of them a report reads would depend
     # on the engine. (Nothing creates a duplicate today -- the PUT route updates
-    # in place and this migration inserts if absent -- but the schema permits it,
+    # in place and migration 0009 inserts if absent -- but the schema permits it,
     # and a nondeterministic target is worse than a wrong one.)
     resolved: Dict[str, Target] = {}
     for row in sorted(query.all(), key=lambda r: (r.client_id is not None, r.threshold_id)):
-        resolved[row.kpi_key] = _as_target(row)
+        resolved[row.kpi_key] = _merge(resolved.get(row.kpi_key), row)
     return resolved
 
 
