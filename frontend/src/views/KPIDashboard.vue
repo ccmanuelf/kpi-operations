@@ -6,7 +6,12 @@
         <h1 id="kpi-dashboard-title" class="text-h3">{{ t('navigation.kpiDashboard') }}</h1>
         <p class="text-subtitle-1 text-grey">{{ t('kpi.title') }}</p>
       </v-col>
-      <v-col cols="12" md="6" class="d-flex align-center justify-end ga-2">
+      <!-- flex-wrap: seven controls share half the row, and without it flex
+           crushed the dual-view toggle to 27px against its own 88px of buttons,
+           so "Standard" and "Site-Adjusted" overlapped each other and the
+           refresh icon. Wrapping to a second line is the responsive answer;
+           shrinking a control below its content never is. -->
+      <v-col cols="12" md="6" class="d-flex align-center justify-end ga-2 flex-wrap">
         <v-tooltip location="bottom">
           <template v-slot:activator="{ props }">
             <v-btn v-bind="props" color="secondary" variant="tonal" prepend-icon="mdi-qrcode-scan"
