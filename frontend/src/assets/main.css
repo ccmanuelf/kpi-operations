@@ -1323,14 +1323,6 @@ body,
   outline-offset: 2px !important;
 }
 
-/* FAB focus states */
-.v-fab:focus-visible,
-.v-speed-dial .v-btn:focus-visible {
-  outline: 2px solid var(--cds-focus) !important;
-  outline-offset: 2px !important;
-  box-shadow: 0 0 0 4px rgba(15, 98, 254, 0.3) !important;
-}
-
 /* Dialog focus trap styling */
 .v-dialog[role="dialog"]:focus,
 .v-dialog[role="alertdialog"]:focus {

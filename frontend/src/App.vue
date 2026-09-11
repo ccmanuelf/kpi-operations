@@ -203,7 +203,6 @@
       @refresh="onboardingState.checkStatus()"
     />
 
-    <!-- Quick Actions FAB for Workflow Navigation -->
   </v-app>
 </template>
 
