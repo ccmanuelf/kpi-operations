@@ -1,7 +1,7 @@
 # Custom Reports — Capability Proposal
 
 **Date:** 2026-09-11
-**Status:** DECIDED 2026-09-11 (D1-D6 below) — ready for an implementation plan
+**Status:** D1–D6 decided; PR-A shipped (`23890c9`). Q1/Q2 decided after investigation — see §7.
 **Scope note:** This proposes a reporting capability derived from the structure the product
 actually has. It is explicitly **not** an attempt to reproduce the legacy Excel workbook,
 which no longer describes what this system does. It also assumes **no email delivery** —
@@ -325,3 +325,107 @@ series.
 **PR-F — the builder (Phase 3).** The Summaries screen gains a measure picker from the
 registry, a dataset multi-select, and save / load / delete of definitions through the existing
 `SAVED_FILTER` endpoints with `filter_type="custom"`, plus a download-as-Excel button.
+
+
+---
+
+## 7. Q1 and Q2 — decided 2026-09-11, after a four-probe investigation
+
+PR-A's live verification raised two questions. Investigating them corrected two claims
+made earlier in this document and found that **PR-B as specified would have shipped
+defects**, so the sequence below replaces §6's.
+
+### What the investigation corrected
+
+**The KPI threshold editor cannot save.** §3.2 and §6 said it was "the one section of the
+admin settings page that really persists" and that an admin "is already setting per-client
+targets". Both wrong. `AdminSettings.vue:283` declares `const kpiList = computed(() => [...])`
+and `:406` iterates it with `for (const kpi of kpiList)`; a computed ref is not iterable, so
+it throws `TypeError` before any request and the surrounding `catch` shows a generic "failed
+to save". `resetToGlobal` at `:439` has the same bug. Present in `frontend/dist`. Regression
+from `6070a17`, which converted the array to a `computed` and left both loops. So **all four**
+sections of that page are non-functional — it reads real data, but nothing on it persists.
+The per-client targets PR-A reads come from the seeder and migration 0009, not from admins.
+
+**The stored efficiency columns have no write path at all.** Not "unpopulated on seeded
+data": nothing writes `ProductionEntry.efficiency_percentage` or `performance_percentage`
+except test fixtures — not the seeder, not CSV upload, not the data-entry route. Those two
+report rows can never show a real number in any deployment.
+
+**The admin UI cannot set bands.** One numeric field per KPI, bound to the target. Nothing in
+`frontend/src` reads `warning_threshold`/`critical_threshold` except `useKPIDashboardData.ts`.
+
+### Q1 — band inheritance: PER-FIELD MERGE EVERYWHERE
+
+A client row supplies only the fields it sets; unset fields fall back to the global row, in
+**both** `reports/targets.py::load_targets` and `routes/kpi/thresholds.py::get_kpi_thresholds`,
+so the admin screen and the PDF describe the same product. Merge keyed on `is None`, never
+truthiness — a band of 0 is legal (`calculations/alerts.py`, fixed in PR-A for the same reason).
+
+Why, rather than fixing the seeder: the UI cannot set bands per-client at all, so inheritance
+is the **only** mechanism by which a client's bands can exist. And the trap is not the
+seeder's — `update_kpi_thresholds` creates client rows with `bands=None`, so the first real
+admin to save a target would hit it too. Merging is also the only option that repairs the
+databases already holding target-only rows, correct on the next request rather than needing a
+reseed.
+
+Response shape unchanged (same 8 keys), so no OpenAPI regen. `is_global` keeps its meaning of
+"no client row exists for this key", so the editor's reset loop and hint are untouched. Restores
+out-of-control band highlighting on the dashboard charts for free.
+
+**Adjunct:** the seeded `oee` target is 75 while 0009's global is 85, so the inherited warning
+(75) would equal the client target and collapse the At Risk tier for that one key. Reconcile
+the seeded value or give `oee` its own seeded bands.
+
+### Q2 — the unpopulated efficiency columns: MAKE ABSENCE LEGIBLE FIRST
+
+The defect is not the zero; it is that the report has no vocabulary for "absent" on these two
+rows, while the pivot does (`excluded_entries`) and while this same file family already omits
+its OTD and Labour-Hours blocks under exactly that condition, with tests. So: detect "no
+contributing data" and render it absent, reusing that idiom.
+
+This is a **prerequisite for PR-B, not a detour.** PR-B as specified would replicate the defect
+three more times and add a fourth problem:
+
+* **RTY cannot be non-zero** — it needs `inspection_stage`, NULL on 4088/4088 quality rows.
+* **`calculate_otd` has no `client_id` parameter at all**, and `calculate_fpy` takes a
+  `product_id` it never uses ("get all quality entries in date range"). Wiring either into a
+  client-scoped report reproduces the leak #300 just fixed. Both are currently called **only
+  from tests** — latent, not live; PR-B's risk was activating them. Use
+  `calculate_true_otd(db, client_id, …)`, which is scoped.
+* **OEE would contradict itself in one session** — ~92.8% in the report against a dashboard
+  card reading 0.00 and that card's own trend chart reading 90–93%.
+* **RTY and DPMO have no `KPI_THRESHOLD` row anywhere**, so they would render "Target —" beside
+  eight metrics that have one.
+
+"Point the report at the canonical service" is **not available as posed**: there are four
+competing efficiency implementations (`calculations/efficiency.py`,
+`services/calculations/efficiency.py`, `services/production_kpi_service.py`, the pivot's
+earned-hours basis), two of which return 0 or a tautological 100% on this data. Choosing one
+inside a report function would settle a product question by accident. And populating the
+columns needs a denominator: a plausible 0.25 h/unit yields 191% per entry and 768% on the
+pivot — replacing an understated number with an impossible one.
+
+Note the direction: **the dashboard is the one that is wrong**, reading 0.00% from a NULL
+coerced at `crud/production/queries.py:129`. Make the report honest first because it is the
+artifact that leaves the building, then the dashboard, then settle the formula.
+
+### The revised sequence
+
+| PR | Contents |
+|---|---|
+| ~~A~~ | **SHIPPED** `23890c9` — targets from configuration, Trend removed |
+| **A2** | Q1: per-field band merge in both readers, keyed on `is None`; reconcile seeded `oee` |
+| **B0** | Q2: absence legible on the efficiency/performance rows |
+| **B** | the four sections + the `availability` summary row, each with the absence guard, OTD via `calculate_true_otd`, and `KPI_THRESHOLD` rows for `rty`/`dpmo` |
+| **C** | the inert admin surface — **removes three sections and FIXES the fourth's save path** (the `kpiList` TypeError), since the threshold editor is the one we keep |
+| **D** | `run_pivot_multi` — free dataset combination server-side |
+| **E** | `GET /api/pivot/xlsx`; Trend returns from the bucketed series |
+| **F** | the builder on Summaries |
+
+**Deferred and recorded, not forgotten:** settle which efficiency formula is canonical; seed
+`ideal_cycle_time` so earned hours stop excluding every entry; fix the dashboard's NULL
+coercion and its OEE card; give `KPI_THRESHOLD` a structural guarantee that global rows are
+unique (both dialects exclude NULLs from a UNIQUE index — needs 0008's nullable-discriminator
+trick); and `alerts/generate.py` builds a third, unordered resolution path over every tenant's
+rows, harmless only because its two consumers are stubs returning `[]`.

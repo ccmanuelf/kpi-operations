@@ -9,13 +9,20 @@
    Spec: `docs/superpowers/specs/2026-09-11-custom-reports-capability.md`
    (branch `docs/custom-reports-capability`, unpushed — rides with PR-A).
    Decisions D1–D6 settled with the user; six-PR sequence A..F in its §6.
-   - **PR-A (in progress, branch `fix/report-targets-from-config`)** — the
-     judgement columns. Targets read from KPI_THRESHOLD; the Trend column
-     removed.
-   - PR-B — the four missing sections (oee/rty/dpmo/otd) + the availability
-     summary row.
-   - PR-C — the inert admin surface (11 controls, 3 fake save handlers, the
-     Export no-op, the 5 email-config endpoints, the `fr` locale option).
+   - ~~**PR-A**~~ — SHIPPED `23890c9` (#301). Targets from KPI_THRESHOLD; Trend removed.
+   - **PR-A2 (in progress, `fix/threshold-band-inheritance`)** — Q1: per-field
+     band merge in BOTH readers (`reports/targets.py` and
+     `routes/kpi/thresholds.py`), keyed on `is None`.
+   - **PR-B0** — Q2: make absence legible on the efficiency/performance rows.
+     PREREQUISITE for PR-B.
+   - PR-B — the four sections + the availability summary row, each with the
+     absence guard, OTD via `calculate_true_otd` (NOT `calculate_otd`, which has
+     no client_id at all), and KPI_THRESHOLD rows for rty/dpmo.
+   - PR-C — the inert admin surface: removes THREE sections and **FIXES the
+     fourth's save path**. The KPI threshold editor's save/reset handlers are
+     dead code (`for (const kpi of kpiList)` over a `computed` ref → TypeError,
+     swallowed by catch; in `frontend/dist`; regression from `6070a17`), so all
+     four sections of that page are non-functional, not three.
    - PR-D — `run_pivot_multi`: free dataset combination server-side, deleting
      `mergePivotRows` and the per-dataset fetch loop.
    - PR-E — `GET /api/pivot/xlsx`; Trend returns, computed from the bucketed
@@ -30,6 +37,52 @@
    than an oversight.
 
 
+
+
+## Q1 / Q2 DECIDED 2026-09-11 — and PR-B was blocked as specified
+
+A four-probe investigation of PR-A's two open questions corrected two things I had
+stated as fact and found that PR-B would have shipped defects. Full reasoning in
+the spec's §7.
+
+**Corrections.** (1) The KPI threshold editor CANNOT SAVE — `kpiList` is a
+`computed` ref iterated with `for...of`, which throws before any request; the
+catch shows a generic failure. So all four Admin Settings sections are
+non-functional, and the per-client targets PR-A reads come from the seeder and
+migration 0009, not from admins. (2) `ProductionEntry.efficiency_percentage` and
+`performance_percentage` have NO write path anywhere except test fixtures — not
+"unpopulated on seeded data", unpopulated by construction in every deployment.
+
+**Q1 → per-field merge everywhere.** A client row supplies what it sets; unset
+bands inherit from the global row, in both `load_targets` and
+`GET /api/kpi-thresholds` so the admin screen and the PDF cannot disagree. Keyed
+on `is None` — a band of 0 is legal. Decisive: the UI cannot set bands per-client
+at all, so inheritance is the ONLY way a client's bands can exist; and the trap is
+not the seeder's, since `update_kpi_thresholds` also creates band-less rows.
+Verified upside: `useKPIDashboardData.ts:71` fetches with a client_id and reads
+the bands at :89-90, so every seeded client had lost out-of-control highlighting
+on four metrics and now inherits it.
+
+**Q2 → make absence legible first, as PR-B's prerequisite.** PR-B as specified
+would have: rendered RTY as a structural zero (`inspection_stage` NULL on
+4088/4088 rows); wired `calculate_otd`, which has NO `client_id` parameter, and
+`calculate_fpy`, which ignores its `product_id` — reproducing #300's cross-tenant
+leak (both are called only from tests today, so they are latent, not live, and
+PR-B's risk was activating them); printed an OEE of ~92.8% against a dashboard
+card reading 0.00 and that card's own trend chart reading 90-93%; and rendered
+"Target —" for rty/dpmo beside eight metrics that have one.
+
+"Point the report at the canonical service" is not available as posed: there are
+FOUR competing efficiency implementations, two of which return 0 or a tautological
+100% on this data. And populating the columns needs a denominator — a plausible
+0.25 h/unit gives 191% per entry and 768% on the pivot.
+
+**Not patched, deliberately:** the seeded `oee` target of 75 inherits global bands
+75/60, which makes the At Risk tier unreachable for that one key. Pinned as
+intended with a documenting test — the client's target sits exactly on the line
+the global configuration calls a warning, so "below target" genuinely is warning
+territory. Editing the seed to make a tier reappear would hide that behind nicer
+demo data. The real remedy is a client able to set its own bands.
 
 ## IN PROGRESS: PR-A — report targets come from configuration (2026-09-11)
 

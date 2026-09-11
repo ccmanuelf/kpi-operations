@@ -25,6 +25,7 @@ its own it would call an efficiency of 50% against a target of 85% "no breach".
 """
 
 from decimal import Decimal
+from types import SimpleNamespace
 
 import pytest
 
@@ -64,6 +65,172 @@ class TestResolution:
         _threshold(db, client_id=client.client_id, kpi_key="efficiency", target=70.0)
 
         assert load_targets(db, client.client_id)["efficiency"].value == 70.0
+
+
+class TestTheMergeIsPerField:
+    """A client row supplies what it sets; the rest comes from the global row.
+
+    Wholesale replacement made a target-only client row silently erase the global
+    warning/critical bands -- so on the live demo the same measured 0.0% read
+    "At Risk" for one metric and "Urgent" for another. The admin UI cannot set
+    bands per-client at all (one numeric field per KPI), so inheritance is the
+    ONLY mechanism by which a client's bands can exist; and the trap is not the
+    seeder's, since `update_kpi_thresholds` creates client rows with bands of
+    None too.
+    """
+
+    def test_a_target_only_client_row_inherits_the_global_bands(self, transactional_db):
+        db = transactional_db
+        client = TestDataFactory.create_client(db)
+        _threshold(db, client_id=None, kpi_key="efficiency", target=85.0, warning=75.0, critical=60.0)
+        _threshold(db, client_id=client.client_id, kpi_key="efficiency", target=70.0)
+
+        t = load_targets(db, client.client_id)["efficiency"]
+        assert t.value == 70.0, "the client's own target must still win"
+        assert (t.warning, t.critical) == (75.0, 60.0), "the global bands must be inherited"
+
+    def test_a_client_band_still_wins_over_the_global_one(self, transactional_db):
+        db = transactional_db
+        client = TestDataFactory.create_client(db)
+        _threshold(db, client_id=None, kpi_key="efficiency", target=85.0, warning=75.0, critical=60.0)
+        _threshold(db, client_id=client.client_id, kpi_key="efficiency", target=70.0, warning=40.0)
+
+        t = load_targets(db, client.client_id)["efficiency"]
+        assert t.warning == 40.0, "the client set this one"
+        assert t.critical == 60.0, "and inherited this one"
+
+    def test_a_zero_band_is_a_value_not_an_absence(self, transactional_db):
+        # The merge keys on `is None`. Truthiness would treat a configured 0 as
+        # unset and silently inherit over it -- the same defect PR-A fixed inside
+        # check_threshold_breach.
+        db = transactional_db
+        client = TestDataFactory.create_client(db)
+        _threshold(db, client_id=None, kpi_key="ppm", target=500.0, warning=1000.0, critical=2000.0, higher="N")
+        _threshold(db, client_id=client.client_id, kpi_key="ppm", target=100.0, warning=0.0, higher="N")
+
+        t = load_targets(db, client.client_id)["ppm"]
+        assert t.warning == 0.0, "a configured zero must not be overwritten by inheritance"
+        assert t.critical == 2000.0
+
+    def test_direction_is_inherited_when_the_client_row_has_none(self, transactional_db):
+        """Defence in depth, and honestly scoped.
+
+        `higher_is_better` is a NULLABLE column, and defaulting a NULL to "higher
+        is better" would invert the verdict for every lower-is-better metric -- a
+        PPM of 2000 against a target of 500 would read On Target. So the merge
+        inherits it.
+
+        A NULL is NOT reachable through the ORM: the column carries a Python-side
+        `default="Y"` (orm/kpi_threshold.py), which the PUT route, the seeder and
+        migration 0009 all go through. It is reachable by direct SQL, which is why
+        this test writes one that way rather than pretending the ORM can.
+
+        An earlier version of this test set the direction on BOTH rows, so it
+        passed without exercising inheritance at all.
+        """
+        from sqlalchemy import text
+
+        db = transactional_db
+        client = TestDataFactory.create_client(db)
+        _threshold(db, client_id=None, kpi_key="ppm", target=500.0, warning=1000.0, higher="N")
+        _threshold(db, client_id=client.client_id, kpi_key="ppm", target=100.0, higher="N")
+        db.execute(
+            text("UPDATE KPI_THRESHOLD SET higher_is_better = NULL WHERE client_id = :c AND kpi_key = 'ppm'"),
+            {"c": client.client_id},
+        )
+        db.expire_all()
+
+        t = load_targets(db, client.client_id)["ppm"]
+        assert t.higher_is_better is False, "a NULL direction must inherit, not default to Y"
+        assert status_for(2000.0, t) != "On Target", "the verdict would have inverted"
+        assert status_for(50.0, t) == "On Target"
+
+    def test_inheritance_carries_a_global_Y_as_well_as_a_global_N(self, transactional_db):
+        """Both directions, because one of them cannot discriminate.
+
+        With a global "N", a broken inheritance that yields False agrees with the
+        correct answer by accident -- which is exactly how the first mutation of
+        this gate passed. A global "Y" separates them.
+        """
+        from sqlalchemy import text
+
+        db = transactional_db
+        client = TestDataFactory.create_client(db)
+        _threshold(db, client_id=None, kpi_key="made_up_y", target=80.0, warning=70.0, higher="Y")
+        _threshold(db, client_id=client.client_id, kpi_key="made_up_y", target=75.0, higher="Y")
+        db.execute(
+            text("UPDATE KPI_THRESHOLD SET higher_is_better = NULL WHERE client_id = :c AND kpi_key = 'made_up_y'"),
+            {"c": client.client_id},
+        )
+        db.expire_all()
+
+        t = load_targets(db, client.client_id)["made_up_y"]
+        assert t.higher_is_better is True, "a global Y must be inherited as True"
+        assert status_for(90.0, t) == "On Target"
+
+    def test_a_client_row_may_still_override_the_direction(self, transactional_db):
+        db = transactional_db
+        client = TestDataFactory.create_client(db)
+        _threshold(db, client_id=None, kpi_key="made_up", target=50.0, higher="N")
+        _threshold(db, client_id=client.client_id, kpi_key="made_up", target=50.0, higher="Y")
+
+        assert load_targets(db, client.client_id)["made_up"].higher_is_better is True
+
+    def test_a_direction_missing_everywhere_falls_back_to_higher_is_better(self, transactional_db):
+        # Matching the column's own server default, decided once in `_resolve`
+        # rather than silently inside every row read.
+        db = transactional_db
+        _threshold(db, client_id=None, kpi_key="made_up", target=50.0, higher=None)
+
+        assert load_targets(db, None)["made_up"].higher_is_better is True
+
+    def test_two_global_rows_do_not_splice_into_a_threshold_nobody_configured(self, transactional_db):
+        """Merging is for the global-to-client boundary only.
+
+        Two GLOBAL rows for one key are schema-permitted. Merging them into each
+        other would take the target from one and the bands from the other,
+        producing a combination nobody ever configured. Within a scope the highest
+        threshold_id simply wins, whole.
+        """
+        db = transactional_db
+        db.query(KPIThreshold).filter(KPIThreshold.client_id.is_(None), KPIThreshold.kpi_key == "oee").delete()
+        for threshold_id, target, warning in (("AAA", 10.0, 5.0), ("ZZZ", 20.0, None)):
+            db.add(
+                KPIThreshold(
+                    threshold_id=threshold_id,
+                    client_id=None,
+                    kpi_key="oee",
+                    target_value=target,
+                    warning_threshold=warning,
+                    unit="%",
+                    higher_is_better="Y",
+                )
+            )
+        db.flush()
+
+        t = load_targets(db, None)["oee"]
+        assert (t.value, t.warning) == (20.0, None), "ZZZ must win WHOLE, not lend its target to AAA's band"
+
+    def test_a_metric_with_no_global_row_still_resolves(self, transactional_db):
+        # Merging must not require a global row to merge against.
+        db = transactional_db
+        client = TestDataFactory.create_client(db)
+        _threshold(db, client_id=client.client_id, kpi_key="made_up", target=12.0, warning=8.0)
+
+        t = load_targets(db, client.client_id)["made_up"]
+        assert (t.value, t.warning, t.critical) == (12.0, 8.0, None)
+
+    def test_the_inheritance_changes_the_rendered_verdict(self, transactional_db):
+        # The whole point, end to end: a target-only client row used to collapse
+        # to the two-state scale. With the global bands inherited it escalates.
+        db = transactional_db
+        client = TestDataFactory.create_client(db)
+        _threshold(db, client_id=None, kpi_key="efficiency", target=85.0, warning=75.0, critical=60.0)
+        _threshold(db, client_id=client.client_id, kpi_key="efficiency", target=85.0)
+
+        t = load_targets(db, client.client_id)["efficiency"]
+        assert status_for(70.0, t) == "Warning", "70 breaches the inherited warning band of 75"
+        assert status_for(55.0, t) == "Critical"
 
     def test_another_client_s_row_is_not_visible(self, transactional_db):
         # The same tenancy rule the rest of the product follows: one client's
@@ -286,3 +453,143 @@ class TestAZeroThresholdIsAConfiguration:
         assert (
             check_threshold_breach(Decimal("15"), Decimal("10"), None, Decimal("0"), False) == "critical"
         ), "a zero critical band was discarded"
+
+
+class TestTheApiAndTheReportAgree:
+    """`GET /api/kpi-thresholds` and `load_targets` must resolve identically.
+
+    If they diverge, the admin screen and the PDF describe different thresholds
+    for the same client -- the PDF-vs-Excel class #300 fixed, rebuilt between two
+    layers instead of two formats.
+    """
+
+    def test_the_route_inherits_the_global_bands_too(self, transactional_db):
+        from backend.routes.kpi.thresholds import get_kpi_thresholds
+
+        db = transactional_db
+        client = TestDataFactory.create_client(db)
+        _threshold(db, client_id=None, kpi_key="efficiency", target=85.0, warning=75.0, critical=60.0)
+        _threshold(db, client_id=client.client_id, kpi_key="efficiency", target=70.0)
+        db.commit()
+
+        scope = SimpleNamespace(client_ids=(client.client_id,))
+        row = get_kpi_thresholds(client_id=client.client_id, db=db, current_user=None, scope=scope)["thresholds"][
+            "efficiency"
+        ]
+
+        assert row["target_value"] == 70.0
+        assert (row["warning_threshold"], row["critical_threshold"]) == (75.0, 60.0)
+        assert row["is_global"] is False, "is_global still means 'a client row exists for this key'"
+
+    def test_both_readers_agree_field_for_field(self, transactional_db):
+        from backend.routes.kpi.thresholds import get_kpi_thresholds
+
+        db = transactional_db
+        client = TestDataFactory.create_client(db)
+        # The client row carries NO direction, so both readers must INHERIT it.
+        # Setting it on both rows (as an earlier version did) made this pass
+        # without comparing the thing most likely to diverge. Written by direct
+        # SQL because the ORM column default would supply "Y".
+        from sqlalchemy import text
+
+        _threshold(db, client_id=None, kpi_key="ppm", target=500.0, warning=1000.0, critical=2000.0, higher="N")
+        _threshold(db, client_id=client.client_id, kpi_key="ppm", target=100.0, warning=0.0, higher="N")
+        db.execute(
+            text("UPDATE KPI_THRESHOLD SET higher_is_better = NULL WHERE client_id = :c AND kpi_key = 'ppm'"),
+            {"c": client.client_id},
+        )
+        db.commit()
+
+        scope = SimpleNamespace(client_ids=(client.client_id,))
+        api = get_kpi_thresholds(client_id=client.client_id, db=db, current_user=None, scope=scope)["thresholds"]["ppm"]
+        resolved = load_targets(db, client.client_id)["ppm"]
+
+        assert api["target_value"] == resolved.value
+        assert api["warning_threshold"] == resolved.warning
+        assert api["critical_threshold"] == resolved.critical
+        assert api["higher_is_better"] == "N", "the route must inherit the direction"
+        assert (api["higher_is_better"] == "Y") is resolved.higher_is_better
+
+    def test_the_route_resolves_duplicate_globals_the_same_way(self, transactional_db):
+        """Two global rows for one key are schema-permitted on both dialects.
+
+        The route's global pass used no ORDER BY, so which of them won depended on
+        the query plan -- and could disagree with `load_targets`, which sorts by
+        threshold_id. Same data, two answers, depending which surface you ask.
+        """
+        from backend.routes.kpi.thresholds import get_kpi_thresholds
+
+        db = transactional_db
+        client = TestDataFactory.create_client(db)
+        db.query(KPIThreshold).filter(KPIThreshold.client_id.is_(None), KPIThreshold.kpi_key == "oee").delete()
+        for threshold_id, target in (("ZZZ-WINS", 22.0), ("AAA-LOSES", 11.0)):
+            db.add(
+                KPIThreshold(
+                    threshold_id=threshold_id,
+                    client_id=None,
+                    kpi_key="oee",
+                    target_value=target,
+                    unit="%",
+                    higher_is_better="Y",
+                )
+            )
+        db.commit()
+
+        scope = SimpleNamespace(client_ids=(client.client_id,))
+        api = get_kpi_thresholds(client_id=client.client_id, db=db, current_user=None, scope=scope)["thresholds"]["oee"]
+
+        assert api["target_value"] == 22.0, "the highest threshold_id must win"
+        assert api["target_value"] == load_targets(db, client.client_id)["oee"].value
+
+    def test_a_client_band_of_zero_survives_the_route_too(self, transactional_db):
+        from backend.routes.kpi.thresholds import get_kpi_thresholds
+
+        db = transactional_db
+        client = TestDataFactory.create_client(db)
+        _threshold(db, client_id=None, kpi_key="ppm", target=500.0, warning=1000.0, higher="N")
+        _threshold(db, client_id=client.client_id, kpi_key="ppm", target=100.0, warning=0.0, higher="N")
+        db.commit()
+
+        scope = SimpleNamespace(client_ids=(client.client_id,))
+        api = get_kpi_thresholds(client_id=client.client_id, db=db, current_user=None, scope=scope)["thresholds"]["ppm"]
+
+        assert api["warning_threshold"] == 0.0, "truthiness would have inherited 1000 over the configured 0"
+
+
+class TestWhenAClientTargetSitsAtTheGlobalWarningLine:
+    """Inherited bands are calibrated to the GLOBAL target, not the client's.
+
+    The seeded `oee` case: client target 75, global bands 75 / 60. Every miss of
+    the client's own target is then at least a Warning, and the At Risk tier is
+    unreachable for that metric.
+
+    Pinned as INTENDED rather than patched away. It is not incoherent -- the
+    client's target sits exactly on the line the global configuration calls a
+    warning, so "below target" genuinely is warning territory. Editing the seeded
+    target to make a tier reappear would hide that reading behind nicer-looking
+    demo data.
+
+    The real remedy is a client able to set its own bands, which the threshold
+    editor cannot do today (one numeric field per KPI) -- recorded in the spec,
+    not worked around here.
+    """
+
+    BANDS_AT_TARGET = Target(value=75.0, warning=75.0, critical=60.0, higher_is_better=True)
+
+    def test_meeting_the_client_target_is_still_on_target(self):
+        assert status_for(75.0, self.BANDS_AT_TARGET) == "On Target"
+        assert status_for(80.0, self.BANDS_AT_TARGET) == "On Target"
+
+    def test_any_miss_is_at_least_a_warning(self):
+        assert status_for(74.9, self.BANDS_AT_TARGET) == "Warning"
+        assert status_for(70.0, self.BANDS_AT_TARGET) == "Warning"
+
+    def test_the_lower_bands_still_work(self):
+        assert status_for(60.0, self.BANDS_AT_TARGET) == "Critical"
+        assert status_for(30.0, self.BANDS_AT_TARGET) == "Urgent"
+
+    def test_the_at_risk_tier_is_genuinely_unreachable_here(self):
+        # Documented explicitly so a future reader does not treat its absence as a
+        # regression in the status scale.
+        verdicts = {status_for(v, self.BANDS_AT_TARGET) for v in (74.99, 74.0, 70.0, 65.0, 60.1)}
+        assert "At Risk" not in verdicts, verdicts

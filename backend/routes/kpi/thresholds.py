@@ -37,7 +37,13 @@ def get_kpi_thresholds(
     from backend.orm.client import Client
 
     # Get global defaults
-    global_thresholds = db.query(KPIThreshold).filter(KPIThreshold.client_id.is_(None)).all()
+    # Ordered by threshold_id, because two GLOBAL rows for one kpi_key are
+    # schema-permitted -- both dialects exclude NULLs from a UNIQUE index -- and
+    # an unordered last-wins here would resolve differently from
+    # backend/reports/targets.py::load_targets for the same data.
+    global_thresholds = (
+        db.query(KPIThreshold).filter(KPIThreshold.client_id.is_(None)).order_by(KPIThreshold.threshold_id).all()
+    )
 
     # Build response with global defaults
     result: Dict[str, Any] = {"client_id": client_id, "client_name": None, "thresholds": {}}
@@ -61,17 +67,44 @@ def get_kpi_thresholds(
         if client:
             result["client_name"] = client.client_name
 
-        client_thresholds = db.query(KPIThreshold).filter(KPIThreshold.client_id == client_id).all()
+        client_thresholds = (
+            db.query(KPIThreshold).filter(KPIThreshold.client_id == client_id).order_by(KPIThreshold.threshold_id).all()
+        )
 
         for t in client_thresholds:
+            # PER FIELD, not wholesale. A client row's NULL band used to replace
+            # the global row's configured one, so a target-only override silently
+            # disabled escalation for that metric -- and the threshold editor
+            # cannot set bands per-client at all (one numeric field per KPI), so
+            # inheritance is the only way a client's bands can exist. The report
+            # generators resolve this identically (backend/reports/targets.py),
+            # and they must agree: otherwise the admin screen and the PDF would
+            # describe different thresholds for the same client.
+            #
+            # `is None` rather than truthiness -- a band of 0 is a legitimate
+            # configuration and must not be inherited over.
+            inherited = result["thresholds"].get(t.kpi_key, {})
             result["thresholds"][t.kpi_key] = {
                 "threshold_id": t.threshold_id,
                 "kpi_key": t.kpi_key,
                 "target_value": t.target_value,
-                "warning_threshold": t.warning_threshold,
-                "critical_threshold": t.critical_threshold,
-                "unit": t.unit,
-                "higher_is_better": t.higher_is_better,
+                "warning_threshold": (
+                    t.warning_threshold if t.warning_threshold is not None else inherited.get("warning_threshold")
+                ),
+                "critical_threshold": (
+                    t.critical_threshold if t.critical_threshold is not None else inherited.get("critical_threshold")
+                ),
+                # unit and higher_is_better inherit for the same reason: both
+                # columns are nullable, and for DIRECTION a NULL falling back to
+                # "higher is better" would invert the verdict for every
+                # lower-is-better metric (PPM 2000 against a target of 500 would
+                # read as On Target).
+                "unit": t.unit if t.unit is not None else inherited.get("unit"),
+                "higher_is_better": (
+                    t.higher_is_better if t.higher_is_better is not None else inherited.get("higher_is_better")
+                ),
+                # Still "does a client row exist for this key", which is what the
+                # editor's reset-to-global control and its hint both read.
                 "is_global": False,
             }
 
