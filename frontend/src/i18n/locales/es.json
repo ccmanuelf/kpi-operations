@@ -1201,23 +1201,6 @@
     "spanish": "Español",
     "select": "Seleccionar Idioma"
   },
-  "quickActionsFab": {
-    "shiftActive": "Turno Activo",
-    "activeShift": "Turno Activo",
-    "shiftNumber": "Turno {number}",
-    "started": "Iniciado: {time}",
-    "close": "Cerrar",
-    "endShift": "Finalizar Turno",
-    "startShift": "Iniciar Turno",
-    "logProduction": "Registrar Producción",
-    "reportDowntime": "Reportar Tiempo Inactivo",
-    "qualityEntry": "Entrada de Calidad",
-    "attendance": "Asistencia",
-    "cannotStartShiftWorkflow": "No se puede iniciar el flujo de inicio de turno",
-    "cannotStartEndShiftWorkflow": "No se puede iniciar el flujo de fin de turno",
-    "shiftStartedSuccess": "¡Turno iniciado exitosamente!",
-    "shiftEndedSuccess": "¡Turno finalizado exitosamente!"
-  },
   "shifts": {
     "shift1": "Turno 1 (Mañana)",
     "shift2": "Turno 2 (Tarde)",

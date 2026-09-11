@@ -203,8 +203,6 @@
       @refresh="onboardingState.checkStatus()"
     />
 
-    <!-- Quick Actions FAB for Workflow Navigation -->
-    <QuickActionsFAB v-if="isAuthenticated" />
   </v-app>
 </template>
 
@@ -220,7 +218,6 @@ import { useKeyboardShortcutsStore } from '@/stores/keyboardShortcutsStore'
 import { useThemeStore } from '@/stores/themeStore'
 import { useDualViewStore } from '@/stores/dualViewStore'
 import KeyboardShortcutsHelp from '@/components/KeyboardShortcutsHelp.vue'
-import QuickActionsFAB from '@/components/QuickActionsFAB.vue'
 import LanguageToggle from '@/components/LanguageToggle.vue'
 import DarkModeToggle from '@/components/DarkModeToggle.vue'
 import OnboardingChecklist from '@/components/OnboardingChecklist.vue'

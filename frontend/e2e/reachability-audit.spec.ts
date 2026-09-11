@@ -29,21 +29,6 @@ import { login } from './helpers'
  */
 const KNOWN: { screen: string; covering: RegExp; why: string }[] = [
   {
-    screen: 'work-orders',
-    covering: /v-btn--elevated.*v-btn--icon/,
-    why: "the global quick-actions FAB (position:fixed, bottom/right 24px, z-index 1000) sits over the grid's Actions column, so rows level with it cannot be deleted -- clicking the row's ✕ opens the FAB instead. Fixing it is a design decision about a global component, not a mechanical change: the page scrolls under a fixed FAB, so reserving space does not help.",
-  },
-  {
-    screen: 'plan-vs-actual',
-    covering: /v-btn--elevated.*v-btn--icon/,
-    why: 'same FAB overlap as work-orders.',
-  },
-  {
-    screen: 'admin-users',
-    covering: /v-btn--elevated.*v-btn--icon/,
-    why: 'same FAB overlap as work-orders.',
-  },
-  {
     screen: 'capacity-planning',
     covering: /v-slide-group__next/,
     why: "a tab bar's own scroll arrow overlaying the last visible tab, which is how Vuetify's slide-group is designed to behave -- the arrow scrolls the tab into reach.",
