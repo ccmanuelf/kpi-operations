@@ -183,6 +183,40 @@ class TestReversibility:
         # The administrator's own global row survives; the supplied defaults go.
         assert set(_globals(at_previous)) == {"quality"}
 
+    def test_downgrade_keeps_a_pre_existing_row_that_shares_our_id(self, at_previous):
+        """The case matching on threshold_id alone would have destroyed.
+
+        `upgrade` skips a key that is already configured. If that pre-existing row
+        happens to carry this migration's own id, an id-only delete would remove
+        it on downgrade even though the migration never inserted it -- losing
+        configuration a downgrade must not touch.
+        """
+        conn = sqlite3.connect(at_previous)
+        conn.execute(
+            "INSERT INTO KPI_THRESHOLD (threshold_id, client_id, kpi_key, target_value,"
+            " warning_threshold, critical_threshold, unit, higher_is_better)"
+            " VALUES ('THR-GLOBAL-EFFICIENCY', NULL, 'efficiency', 62.5, 55.0, 40.0, '%', 'Y')"
+        )
+        conn.commit()
+        conn.close()
+
+        cfg = _config(at_previous)
+        command.upgrade(cfg, REVISION)
+        command.downgrade(cfg, PREVIOUS)
+
+        rows = _globals(at_previous)
+        assert "efficiency" in rows, "downgrade deleted a row it never inserted"
+        assert rows["efficiency"][0] == 62.5, rows["efficiency"]
+
+    def test_downgrade_still_removes_a_row_it_did_insert(self, at_previous):
+        # The other side: an untouched default must not survive a downgrade, or
+        # the column-matching above would have made downgrade a no-op.
+        cfg = _config(at_previous)
+        command.upgrade(cfg, REVISION)
+        command.downgrade(cfg, PREVIOUS)
+
+        assert _globals(at_previous) == {}
+
     def test_upgrade_is_idempotent_across_a_downgrade_and_back(self, at_previous):
         cfg = _config(at_previous)
         command.upgrade(cfg, REVISION)

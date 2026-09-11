@@ -120,13 +120,39 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    # Only the rows this migration could have created, identified by the id it
-    # assigns. A global row an administrator configured carries a different id
-    # and is left alone -- a downgrade must not delete someone's configuration.
+    """Remove only rows that are still exactly what `upgrade` would have written.
+
+    Matching on `threshold_id` alone is not enough. `upgrade` skips a key that is
+    already configured, so a pre-existing global row that happens to carry this
+    migration's id would be deleted here despite never having been inserted by
+    it -- silently destroying configuration a downgrade has no business touching.
+
+    So every column is matched. A row that differs in any value has been edited
+    (or was never ours) and stays. The one case this cannot distinguish is a row
+    an administrator created with both our id AND our exact values, where
+    deleting it is indistinguishable from reverting our own insert.
+    """
     bind = op.get_bind()
-    ids = [_ID.format(kpi_key.upper()) for kpi_key, *_ in DEFAULTS]
-    bind.execute(
-        sa.text("DELETE FROM KPI_THRESHOLD WHERE client_id IS NULL AND threshold_id IN :ids").bindparams(
-            sa.bindparam("ids", value=ids, expanding=True)
+    for kpi_key, target, warning, critical, unit, higher in DEFAULTS:
+        bind.execute(
+            sa.text(
+                "DELETE FROM KPI_THRESHOLD"
+                " WHERE client_id IS NULL"
+                " AND threshold_id = :threshold_id"
+                " AND kpi_key = :kpi_key"
+                " AND target_value = :target_value"
+                " AND warning_threshold = :warning_threshold"
+                " AND critical_threshold = :critical_threshold"
+                " AND unit = :unit"
+                " AND higher_is_better = :higher_is_better"
+            ),
+            {
+                "threshold_id": _ID.format(kpi_key.upper()),
+                "kpi_key": kpi_key,
+                "target_value": target,
+                "warning_threshold": warning,
+                "critical_threshold": critical,
+                "unit": unit,
+                "higher_is_better": higher,
+            },
         )
-    )

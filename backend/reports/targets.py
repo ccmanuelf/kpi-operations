@@ -49,12 +49,17 @@ _BREACH_STATUS = {"warning": WARNING, "critical": CRITICAL, "urgent": URGENT}
 
 @dataclass(frozen=True)
 class Target:
-    """One configured KPI target, as the report needs to read it."""
+    """One configured KPI target, as the report needs to read it.
+
+    No `unit`: `KPI_THRESHOLD` stores one, but each generator already hardcodes
+    the matching number format beside the cell it writes (`'0.0"%"'`, `"#,##0"`),
+    so presentation belongs to the caller. Carrying the column here while the
+    format stayed hardcoded would be half a decision, and nothing read it.
+    """
 
     value: float
     warning: Optional[float]
     critical: Optional[float]
-    unit: str
     higher_is_better: bool
 
 
@@ -63,7 +68,6 @@ def _as_target(row: KPIThreshold) -> Target:
         value=float(row.target_value),
         warning=float(row.warning_threshold) if row.warning_threshold is not None else None,
         critical=float(row.critical_threshold) if row.critical_threshold is not None else None,
-        unit=row.unit or "%",
         # A Y/N CHAR column, not a boolean -- and defaulting a missing value to
         # "higher is better" matches the column's own server default.
         higher_is_better=(row.higher_is_better or "Y").upper() == "Y",
@@ -83,11 +87,19 @@ def load_targets(db: Session, client_id: Optional[str]) -> Dict[str, Target]:
         query = query.filter(KPIThreshold.client_id.is_(None))
 
     # Global first, then the client's own rows overwrite them key by key. Sorted
-    # so the ordering is the data's rather than the query plan's -- NULLs sort
-    # before a non-null client_id on both dialects, but relying on that would be
-    # relying on something neither engine promises.
+    # here rather than in SQL so the ordering is the data's and not the query
+    # plan's -- NULLs do sort before a non-null client_id on both dialects, but
+    # relying on that is relying on something neither engine promises.
+    #
+    # `threshold_id` is the tiebreak, and it is load-bearing rather than tidiness:
+    # both dialects exclude NULLs from a UNIQUE index, so
+    # UNIQUE(client_id, kpi_key) does NOT prevent two GLOBAL rows sharing a
+    # kpi_key. Without a total order, which of them a report reads would depend
+    # on the engine. (Nothing creates a duplicate today -- the PUT route updates
+    # in place and this migration inserts if absent -- but the schema permits it,
+    # and a nondeterministic target is worse than a wrong one.)
     resolved: Dict[str, Target] = {}
-    for row in sorted(query.all(), key=lambda r: r.client_id is not None):
+    for row in sorted(query.all(), key=lambda r: (r.client_id is not None, r.threshold_id)):
         resolved[row.kpi_key] = _as_target(row)
     return resolved
 

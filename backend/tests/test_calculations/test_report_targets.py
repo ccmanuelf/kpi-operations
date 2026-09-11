@@ -100,6 +100,44 @@ class TestResolution:
 
         assert load_targets(db, client.client_id).get("rty") is None
 
+    def test_two_global_rows_for_one_metric_resolve_deterministically(self, transactional_db):
+        """Both dialects exclude NULLs from a UNIQUE index.
+
+        So `UNIQUE(client_id, kpi_key)` does NOT prevent two GLOBAL rows sharing a
+        kpi_key, and without a total order which one a report reads would depend on
+        the query plan. Nothing creates a duplicate today -- the PUT route updates
+        in place and migration 0009 inserts only if absent -- but the schema
+        permits it, and a nondeterministic target is worse than a wrong one.
+
+        Resolving a structural guarantee for this is its own piece of work (it
+        needs the nullable-discriminator trick migration 0008 used for coverage);
+        this pins the read side so the report is at least stable.
+        """
+        db = transactional_db
+        _delete_global = (
+            db.query(KPIThreshold).filter(KPIThreshold.client_id.is_(None), KPIThreshold.kpi_key == "oee").delete()
+        )
+        assert _delete_global >= 0
+        # Inserted LATER-id FIRST, so insertion order and id order disagree. A
+        # stable sort with no tiebreak would keep insertion order and let the
+        # second row win; the tiebreak makes the id decide instead.
+        for threshold_id, target in (("ZZZ-LATER", 22.0), ("AAA-EARLIER", 11.0)):
+            db.add(
+                KPIThreshold(
+                    threshold_id=threshold_id,
+                    client_id=None,
+                    kpi_key="oee",
+                    target_value=target,
+                    unit="%",
+                    higher_is_better="Y",
+                )
+            )
+        db.flush()
+
+        # The highest threshold_id wins, every time, because the sort is total.
+        assert load_targets(db, None)["oee"].value == 22.0
+        assert load_targets(db, None)["oee"].value == 22.0
+
     def test_the_bands_and_direction_are_carried_through(self, transactional_db):
         db = transactional_db
         _threshold(
@@ -107,7 +145,7 @@ class TestResolution:
         )
 
         t = load_targets(db, None)["ppm"]
-        assert (t.value, t.warning, t.critical, t.unit, t.higher_is_better) == (500.0, 1000.0, 2000.0, "ppm", False)
+        assert (t.value, t.warning, t.critical, t.higher_is_better) == (500.0, 1000.0, 2000.0, False)
 
 
 class TestStatusWhenNothingIsConfigured:
@@ -120,7 +158,7 @@ class TestStatusWhenNothingIsConfigured:
 class TestStatusWithATargetAndNoBands:
     """What the seeder writes, and therefore what a fresh deployment has."""
 
-    EFF = Target(value=85.0, warning=None, critical=None, unit="%", higher_is_better=True)
+    EFF = Target(value=85.0, warning=None, critical=None, higher_is_better=True)
 
     def test_meeting_target_is_on_target(self):
         assert status_for(85.0, self.EFF) == "On Target"
@@ -138,7 +176,7 @@ class TestStatusWithATargetAndNoBands:
         assert status_for(40.0, self.EFF) == "At Risk"
 
     def test_direction_is_honoured_for_lower_is_better(self):
-        ppm = Target(value=500.0, warning=None, critical=None, unit="ppm", higher_is_better=False)
+        ppm = Target(value=500.0, warning=None, critical=None, higher_is_better=False)
         assert status_for(500.0, ppm) == "On Target"
         assert status_for(499.0, ppm) == "On Target"
         assert status_for(501.0, ppm) == "At Risk"
@@ -147,7 +185,7 @@ class TestStatusWithATargetAndNoBands:
 class TestStatusWithBands:
     """What the VM's global rows carry, and what the admin screen can write."""
 
-    EFF = Target(value=85.0, warning=75.0, critical=60.0, unit="%", higher_is_better=True)
+    EFF = Target(value=85.0, warning=75.0, critical=60.0, higher_is_better=True)
 
     def test_meeting_target_is_on_target(self):
         assert status_for(85.0, self.EFF) == "On Target"
@@ -171,7 +209,7 @@ class TestStatusWithBands:
         assert status_for(42.0, self.EFF) == "Urgent"
 
     def test_lower_is_better_bands_ascend(self):
-        ppm = Target(value=500.0, warning=1000.0, critical=2000.0, unit="ppm", higher_is_better=False)
+        ppm = Target(value=500.0, warning=1000.0, critical=2000.0, higher_is_better=False)
         assert status_for(400.0, ppm) == "On Target"
         assert status_for(900.0, ppm) == "At Risk"
         assert status_for(1000.0, ppm) == "Warning"
@@ -186,7 +224,7 @@ class TestAgreementWithTheProductsOwnBreachRule:
         # "At Risk" is exactly what calculations/alerts.py says it is.
         from backend.calculations.alerts import check_threshold_breach
 
-        t = Target(value=85.0, warning=75.0, critical=60.0, unit="%", higher_is_better=True)
+        t = Target(value=85.0, warning=75.0, critical=60.0, higher_is_better=True)
         names = {"warning": "Warning", "critical": "Critical", "urgent": "Urgent", None: "At Risk"}
 
         for value in (84.9, 80.0, 75.0, 70.0, 60.0, 50.0, 42.0, 10.0):
@@ -204,3 +242,47 @@ def test_higher_is_better_is_read_from_the_column_not_guessed(transactional_db, 
     _threshold(db, client_id=None, kpi_key="made_up_metric", target=50.0, higher=higher)
 
     assert load_targets(db, None)["made_up_metric"].higher_is_better is (higher == "Y")
+
+
+class TestAZeroThresholdIsAConfiguration:
+    """`if critical_threshold` discarded a configured zero.
+
+    Unreachable while every caller passed a literal; reachable now that these come
+    from `KPI_THRESHOLD`, where an administrator can type 0.
+
+    Every case below is LOWER-is-better, because that is where a zero band can
+    actually be consulted. For a higher-is-better metric with a positive target, a
+    value at or below a zero band is always below half of target, so the urgent
+    ratio answers first and the band is never reached -- which is why an earlier
+    draft of these tests passed with the bug still in place.
+    """
+
+    def test_a_zero_warning_band_is_honoured(self):
+        # Defect rate: target 10, but warn the moment there are any at all.
+        t = Target(value=10.0, warning=0.0, critical=None, higher_is_better=False)
+
+        assert status_for(5.0, t) == "On Target"  # meets target
+        assert status_for(15.0, t) == "Warning"  # 15 >= 0; discarded, this was "At Risk"
+
+    def test_a_zero_critical_band_is_honoured(self):
+        t = Target(value=10.0, warning=None, critical=0.0, higher_is_better=False)
+
+        assert status_for(15.0, t) == "Critical"  # 15 >= 0; discarded, this was "At Risk"
+
+    def test_a_zero_band_does_not_swallow_the_on_target_case(self):
+        # The fix must not turn "meets target" into a breach.
+        t = Target(value=10.0, warning=0.0, critical=0.0, higher_is_better=False)
+
+        assert status_for(10.0, t) == "On Target"
+        assert status_for(0.0, t) == "On Target"
+
+    def test_the_underlying_breach_function_honours_zero(self):
+        from backend.calculations.alerts import check_threshold_breach
+
+        # Directly, on the one shape where a zero band is reachable.
+        assert (
+            check_threshold_breach(Decimal("15"), Decimal("10"), Decimal("0"), None, False) == "warning"
+        ), "a zero warning band was discarded"
+        assert (
+            check_threshold_breach(Decimal("15"), Decimal("10"), None, Decimal("0"), False) == "critical"
+        ), "a zero critical band was discarded"
