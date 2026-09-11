@@ -63,23 +63,28 @@ def check_threshold_breach(
     Returns:
         None if no breach, or 'warning', 'critical', 'urgent' severity
     """
+    # `is not None`, not truthiness: a threshold of ZERO is a legitimate
+    # configuration ("alert when this reaches nothing") and `if critical_threshold`
+    # discards it, silently downgrading a breach to no-breach. Unreachable while
+    # every caller passed a literal; reachable now that the report generators
+    # resolve these from KPI_THRESHOLD, where an administrator can type 0.
     if higher_is_better:
         # For metrics where higher is better (efficiency, FPY)
         # Check for urgent FIRST (far below target - more severe than critical)
         if current_value < target * URGENT_RATIO_THRESHOLD:
             return "urgent"
-        if critical_threshold and current_value <= critical_threshold:
+        if critical_threshold is not None and current_value <= critical_threshold:
             return "critical"
-        if warning_threshold and current_value <= warning_threshold:
+        if warning_threshold is not None and current_value <= warning_threshold:
             return "warning"
     else:
         # For metrics where lower is better (DPMO, PPM, downtime)
         # Check for urgent FIRST (far above target - more severe than critical)
         if current_value > target * URGENT_MULTIPLIER_THRESHOLD:
             return "urgent"
-        if critical_threshold and current_value >= critical_threshold:
+        if critical_threshold is not None and current_value >= critical_threshold:
             return "critical"
-        if warning_threshold and current_value >= warning_threshold:
+        if warning_threshold is not None and current_value >= warning_threshold:
             return "warning"
 
     return None

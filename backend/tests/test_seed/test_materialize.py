@@ -346,8 +346,15 @@ def test_kpi_thresholds_are_scoped_per_client_not_shared(seed_engine):
     for r in rows:
         by_client.setdefault(r.client_id, set()).add(r.kpi_key)
 
-    assert set(by_client) == {s.client_id for s in S}
-    for kpi_keys in by_client.values():
+    # The global rows (client_id IS NULL) are migration 0009's, not the
+    # seeder's: they are the report generators' fallback target, and a --reset
+    # of any one client cannot touch them because the seeder never writes them.
+    # The invariant this test protects is about the SEEDED rows -- that every
+    # seeded client carries its own full set rather than borrowing another's.
+    seeded = {cid: keys for cid, keys in by_client.items() if cid is not None}
+
+    assert set(seeded) == {s.client_id for s in S}
+    for kpi_keys in seeded.values():
         assert kpi_keys == {kpi_key for kpi_key, _ in THRESHOLDS}
 
 

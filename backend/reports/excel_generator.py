@@ -16,7 +16,21 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from sqlalchemy.orm import Session
 
+from backend.reports.targets import UNEVALUATED_STATUSES, Target, load_targets, status_for
 from backend.calculations.availability import calculate_availability_pure
+
+
+def _target_value(targets: Dict[str, Target], kpi_key: str) -> Optional[float]:
+    """The configured target, or None so the cell stays blank.
+
+    A blank target cell already means "not evaluated" in this sheet -- the
+    labour-hours rows use it. The Variance column has to be blanked with it:
+    Excel reads an empty cell as zero, so `=B-C` against a blank target would
+    render the measured value itself as the variance, which is a wrong number
+    rather than an absent one.
+    """
+    target = targets.get(kpi_key)
+    return target.value if target else None
 
 
 class ExcelReportGenerator:
@@ -106,7 +120,7 @@ class ExcelReportGenerator:
         ws["A1"].fill = PatternFill(
             start_color=self.colors["header"], end_color=self.colors["header"], fill_type="solid"
         )
-        ws.merge_cells("A1:F1")
+        ws.merge_cells("A1:E1")  # the table is five columns wide since Trend was removed
         ws.row_dimensions[1].height = 30
         ws["A1"].alignment = Alignment(horizontal="center", vertical="center")
 
@@ -127,10 +141,9 @@ class ExcelReportGenerator:
         ws["C7"] = "Target"
         ws["D7"] = "Variance"
         ws["E7"] = "Status"
-        ws["F7"] = "Trend"
 
         # Style header row
-        for col in ["A", "B", "C", "D", "E", "F"]:
+        for col in ["A", "B", "C", "D", "E"]:
             cell = ws[f"{col}7"]
             cell.font = Font(bold=True, color="FFFFFF")
             cell.fill = PatternFill(
@@ -146,9 +159,12 @@ class ExcelReportGenerator:
             ws[f"A{row}"] = kpi["name"]
             ws[f"B{row}"] = kpi["current"]
             ws[f"C{row}"] = kpi["target"]
-            ws[f"D{row}"] = f"=B{row}-C{row}"
+            # No target means no variance. Excel treats the blank C cell as 0, so
+            # leaving the formula in would print the measured value as its own
+            # variance from nothing.
+            if kpi["target"] is not None:
+                ws[f"D{row}"] = f"=B{row}-C{row}"
             ws[f"E{row}"] = kpi["status"]
-            ws[f"F{row}"] = kpi["trend"]
 
             # Format values
             ws[f"B{row}"].number_format = kpi.get("format", "0.0")
@@ -169,7 +185,7 @@ class ExcelReportGenerator:
                     start_color=self.colors["warning"], end_color=self.colors["warning"], fill_type="solid"
                 )
                 status_cell.font = Font(bold=True, color=self.colors["text_primary"][2:])  # Dark text for yellow bg
-            elif kpi["status"] == "N/A":
+            elif kpi["status"] in UNEVALUATED_STATUSES:
                 # Carbon Gray 20 with secondary text -- neutral/not-applicable,
                 # distinct from the red error fallback below. Used by rows that
                 # report a raw total rather than evaluating against a target
@@ -189,7 +205,7 @@ class ExcelReportGenerator:
 
             # Alternating row colors
             if row % 2 == 0:
-                for col in ["A", "B", "C", "D", "F"]:
+                for col in ["A", "B", "C", "D"]:
                     ws[f"{col}{row}"].fill = PatternFill(
                         start_color=self.colors["light_gray"], end_color=self.colors["light_gray"], fill_type="solid"
                     )
@@ -197,7 +213,7 @@ class ExcelReportGenerator:
             row += 1
 
         # Apply borders
-        self._apply_table_borders(ws, "A7", f"F{row-1}")
+        self._apply_table_borders(ws, "A7", f"E{row-1}")
 
         # Adjust column widths
         ws.column_dimensions["A"].width = 25
@@ -205,7 +221,6 @@ class ExcelReportGenerator:
         ws.column_dimensions["C"].width = 15
         ws.column_dimensions["D"].width = 15
         ws.column_dimensions["E"].width = 15
-        ws.column_dimensions["F"].width = 15
 
     def _create_production_sheet(
         self, wb: Workbook, client_id: Optional[str], start_date: date, end_date: date
@@ -506,6 +521,11 @@ class ExcelReportGenerator:
         from backend.orm.attendance_entry import AttendanceEntry
         from backend.orm.product import Product
 
+        # Targets are configuration: this client's rows over the global
+        # defaults, per metric. Same resolution the PDF uses, so the two
+        # formats cannot disagree about the same client's target.
+        targets = load_targets(self.db, client_id)
+
         kpi_data = []
 
         # Production KPIs
@@ -528,9 +548,8 @@ class ExcelReportGenerator:
                 {
                     "name": "Efficiency",
                     "current": avg_efficiency,
-                    "target": 85,
-                    "status": "On Target" if avg_efficiency >= 85 else "At Risk",
-                    "trend": "↑" if avg_efficiency >= 85 else "↓",
+                    "target": _target_value(targets, "efficiency"),
+                    "status": status_for(avg_efficiency, targets.get("efficiency")),
                     "format": '0.0"%"',
                 }
             )
@@ -542,9 +561,8 @@ class ExcelReportGenerator:
                 {
                     "name": "Performance",
                     "current": avg_performance,
-                    "target": 85,
-                    "status": "On Target" if avg_performance >= 85 else "At Risk",
-                    "trend": "↑" if avg_performance >= 85 else "→",
+                    "target": _target_value(targets, "performance"),
+                    "status": status_for(avg_performance, targets.get("performance")),
                     "format": '0.0"%"',
                 }
             )
@@ -571,9 +589,8 @@ class ExcelReportGenerator:
                 {
                     "name": "FPY",
                     "current": fpy,
-                    "target": 99,
-                    "status": "On Target" if fpy >= 99 else "At Risk",
-                    "trend": "→",
+                    "target": _target_value(targets, "fpy"),
+                    "status": status_for(fpy, targets.get("fpy")),
                     "format": '0.0"%"',
                 }
             )
@@ -584,9 +601,8 @@ class ExcelReportGenerator:
                 {
                     "name": "PPM",
                     "current": ppm,
-                    "target": 1000,
-                    "status": "On Target" if ppm <= 1000 else "At Risk",
-                    "trend": "↑" if ppm > 1000 else "↓",
+                    "target": _target_value(targets, "ppm"),
+                    "status": status_for(ppm, targets.get("ppm")),
                     "format": "#,##0",
                 }
             )
@@ -611,9 +627,8 @@ class ExcelReportGenerator:
                 {
                     "name": "Absenteeism",
                     "current": absenteeism,
-                    "target": 5,
-                    "status": "On Target" if absenteeism <= 5 else "At Risk",
-                    "trend": "↓" if absenteeism <= 5 else "↑",
+                    "target": _target_value(targets, "absenteeism"),
+                    "status": status_for(absenteeism, targets.get("absenteeism")),
                     "format": '0.0"%"',
                 }
             )
@@ -646,9 +661,8 @@ class ExcelReportGenerator:
                     {
                         "name": "OTD",
                         "current": otd_gross,
-                        "target": 95,
-                        "status": "On Target" if otd_gross >= 95 else "At Risk",
-                        "trend": "→",
+                        "target": _target_value(targets, "otd"),
+                        "status": status_for(otd_gross, targets.get("otd")),
                         "format": '0.0"%"',
                     }
                 )
@@ -656,9 +670,8 @@ class ExcelReportGenerator:
                     {
                         "name": "OTD (Net of Justified)",
                         "current": otd_net,
-                        "target": 95,
-                        "status": "On Target" if otd_net >= 95 else "At Risk",
-                        "trend": "→",
+                        "target": _target_value(targets, "otd"),
+                        "status": status_for(otd_net, targets.get("otd")),
                         "format": '0.0"%"',
                     }
                 )
@@ -706,7 +719,6 @@ class ExcelReportGenerator:
                             "current": float(value),
                             "target": None,
                             "status": "N/A",
-                            "trend": "→",
                             "format": "0.00",
                         }
                     )

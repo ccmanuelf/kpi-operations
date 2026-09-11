@@ -5,9 +5,22 @@
 1. ~~cross-tenant attendance fix~~ — DONE, see below
 2. full e2e browser validation
 3. `_get_calendar_data` divides by the shift count twice
-4. custom-reports capability — propose from the structure and features the
-   system ACTUALLY has. Explicitly NOT an attempt to reproduce the legacy
-   Excel, which no longer relates to what the product does.
+4. custom-reports capability — **PROPOSED + DECIDED 2026-09-11**, now EXECUTING.
+   Spec: `docs/superpowers/specs/2026-09-11-custom-reports-capability.md`
+   (branch `docs/custom-reports-capability`, unpushed — rides with PR-A).
+   Decisions D1–D6 settled with the user; six-PR sequence A..F in its §6.
+   - **PR-A (in progress, branch `fix/report-targets-from-config`)** — the
+     judgement columns. Targets read from KPI_THRESHOLD; the Trend column
+     removed.
+   - PR-B — the four missing sections (oee/rty/dpmo/otd) + the availability
+     summary row.
+   - PR-C — the inert admin surface (11 controls, 3 fake save handlers, the
+     Export no-op, the 5 email-config endpoints, the `fr` locale option).
+   - PR-D — `run_pivot_multi`: free dataset combination server-side, deleting
+     `mergePivotRows` and the per-dataset fetch loop.
+   - PR-E — `GET /api/pivot/xlsx`; Trend returns, computed from the bucketed
+     series.
+   - PR-F — the builder on Summaries (measure picker + SAVED_FILTER save/load).
 5. issue #278 — a catalog assumption that can never take effect
 6. the lower-value findings below
 7. unauthenticated SMTP — **DEFERRED BY DECISION**, not an open task. There is
@@ -16,6 +29,78 @@
    finding stays recorded below so the deferral is a choice on record rather
    than an oversight.
 
+
+
+## IN PROGRESS: PR-A — report targets come from configuration (2026-09-11)
+
+Branch `fix/report-targets-from-config`. First of the six PRs under working-order
+item 4.
+
+**The defect.** Both generators carried inline target literals and judged every
+client against them. `KPI_THRESHOLD` has stored per-client and global targets all
+along, and the KPI threshold editor is the ONE section of the admin settings page
+that really persists — so an admin could set a per-client OEE target, watch it
+save, and read a report that used a different number. Four of the five summary
+literals disagreed with what the product stored.
+
+Also found while scoping, and fixed here:
+- the PDF **detail** blocks had their own literals, and one block serves
+  efficiency, performance AND availability off a single `"85%"` — so two of the
+  three showed a target that was not theirs (configured 95 and 90).
+- `_get_status_color` (the hardcoded `target * 0.95` band) was **dead**: its
+  caller discarded the return value, so the PDF never coloured a status cell.
+- removing the Trend *data* would have left the Excel column still **drawn** —
+  striped by the alternating-row fill, bordered out to F, a reserved width, and
+  a title banner merged across A1:F1.
+
+**Targets come from `KPI_THRESHOLD`, not `CLIENT_CONFIG`.** The spec first named
+the wrong store. CLIENT_CONFIG's seven `*_target_*` columns are read by nothing
+but their own CRUD schemas. KPI_THRESHOLD is per-metric, has a real global
+(`client_id IS NULL`) fallback, and carries `warning_threshold` /
+`critical_threshold` / `higher_is_better` — which replaces the 0.95 heuristic AND
+the per-row direction literals.
+
+**Status scale** composes two questions, because neither answers the column
+alone: "meets target?" (direction-aware) and "how bad is the miss?"
+(`calculations/alerts.py::check_threshold_breach`, the product's own breach
+definition, reused so a report and an alert cannot disagree). With no bands
+configured, `check_threshold_breach` returns None above half of target — so asked
+alone it would call 50% against an 85% target "no breach". Result:
+No Target / On Target / At Risk / Warning / Critical / Urgent.
+
+**Migration 0009 supplies the global defaults**, because the configuration did
+not exist anywhere in the repository — nothing in `backend/seed/`, no migration,
+no bootstrap wrote a global row. Measured, not assumed: Render had **0**, the VM
+had **10** made by hand. Values are the VM's, copied exactly, so the two
+environments converge; only `fpy` is new (the VM lacks it). Insert-if-absent per
+key, so an administrator's value is never overwritten and the migration is
+idempotent. `quality`/`throughput`/`wip_aging` deliberately left out — they
+diverge too, but no report row reads them, and supplying a target for a metric
+whose judgement path is unexamined would be inventing configuration.
+
+**Blast radius handled, each attributed by testing a clean tree first** (all 78
+passed without the change, so all 9 failures were mine):
+- `param_specs.py` composite resolver did `ORDER BY client_id LIMIT 1`, and NULL
+  sorts first on both dialects — so it began resolving a GLOBAL row for a DELETE
+  route that explicitly refuses to delete global rows. Always wrong; only
+  reachable once global rows existed. Now `WHERE client_id IS NOT NULL`.
+- `golden/api_shapes.json`: `GET /api/kpi-thresholds` went 3 → 66 fields. Its
+  `thresholds` dict had been captured EMPTY, so the golden master had no coverage
+  of that response's fields at all. One entry updated, 64 insertions, nothing
+  else touched.
+- `test_write_capture` asserted global rows == 0; its real intent is that the
+  CAPTURE adds none, so it now asserts the count is unchanged.
+- `test_materialize` asserted the distinct client_id set equals the seeded
+  clients; its docstring is about `--reset` safety for SEEDED rows, so it now
+  separates those from the migration's globals.
+- alembic head expectation 0008 → 0009.
+
+**Verification.** 20 mutations, each landing in its intended assertion: the PDF
+and Excel literals, client-row precedence, the global fallback, the no-target
+path, direction, band escalation, the bandless-row rule, the three-metrics-one-
+literal bug, the variance, and all four column-F leftovers. Plus 9 migration
+tests (fresh/existing/partial/reversible/idempotent) run against a real
+`alembic upgrade`.
 
 ## RESOLVED: `kpi-detail-views.spec.ts` flake — root-caused and fixed 2026-09-04
 
