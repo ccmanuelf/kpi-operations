@@ -257,14 +257,40 @@ rather than extended.
 
 ### PR sequence
 
-**PR-A — the judgement columns.** Targets read from `KPI_THRESHOLD` (per-metric, with the
-`client_id IS NULL` global row as the fallback), and `warning_threshold` / `critical_threshold`
-/ `higher_is_better` replace the hardcoded `threshold = 0.95` heuristic and the per-row
-`higher_better` literals. The Trend column is removed from both generators — the PDF string at
-`pdf_generator.py:498`, the Excel `F7` header and all nine `"trend"` values, including the six
-hardcoded `"→"` and the inverted PPM arrow. Gates: a client's configured target reaches the
-rendered cell; the global row is used when no client row exists; status crosses at the
-configured warning and critical values rather than at 95% of target.
+**PR-A — the judgement columns. SHIPPED as `c979253`.** Targets read from `KPI_THRESHOLD`
+(per-metric, with the `client_id IS NULL` global row as the fallback), and `warning_threshold` /
+`critical_threshold` / `higher_is_better` replace the hardcoded `threshold = 0.95` heuristic and
+the per-row `higher_better` literals. The Trend column is removed from both generators.
+
+Scoping widened it in four ways, each fixed in the same PR:
+
+* **The detail blocks had literals too**, and one block serves efficiency, performance AND
+  availability off a single `"85%"` — so two of the three showed a target that was not theirs.
+* **`_get_status_color` was dead.** Its one caller discarded the return value, so the PDF never
+  coloured a status cell by the 0.95 band it implemented.
+* **Removing the Trend data would not have removed the column.** Four places kept drawing
+  Excel's column F: the alternating-row fill, `_apply_table_borders`, a reserved width, and a
+  title banner merged across `A1:F1`. And Excel reads a blank Target cell as 0, so the variance
+  formula rendered the measured value as its own variance — blanked with the target.
+* **The configuration did not exist in the repository.** Nothing in `backend/seed/`, no
+  migration, no bootstrap ever wrote a global row: Render had 0, the VM had 10 made by hand.
+  Migration `0009_global_kpi_targets` supplies them, values copied from the VM so the two
+  environments converge, insert-if-absent so no configured value is overwritten.
+
+**The status scale** composes two questions, because neither answers the column alone: "meets
+target?" (direction-aware) and "how bad is the miss?" (`calculations/alerts.py::
+check_threshold_breach`, reused so a report and an alert cannot disagree about one number). With
+no bands configured `check_threshold_breach` returns None above half of target, so asked alone it
+would call 50% against an 85% target "no breach". Result: No Target / On Target / At Risk /
+Warning / Critical / Urgent.
+
+**One MariaDB-only defect, caught by running the migration against a throwaway MariaDB 11.4
+rather than trusting that the SQL looked portable.** `alembic_version.version_num` is
+`VARCHAR(32)`; the first revision id was 34 characters. SQLite does not enforce declared string
+lengths, so it upgraded cleanly there — through nine migration tests that each ran a real
+`alembic upgrade` — and failed on MariaDB at the migration's last statement, after the DDL had
+implicitly committed. `0008` is 31 characters, so the cliff was one character away with nothing
+watching it. `test_revision_ids_fit_the_version_column.py` now guards every migration.
 
 **PR-B — the missing sections.** `oee`, `rty`, `dpmo` and `otd` detail sections wired to
 `services/calculations/oee.py`, `calculations/fpy_rty.py`, `calculations/dpmo.py` and
