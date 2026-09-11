@@ -1201,23 +1201,6 @@
     "spanish": "Spanish",
     "select": "Select Language"
   },
-  "quickActionsFab": {
-    "shiftActive": "Shift Active",
-    "activeShift": "Active Shift",
-    "shiftNumber": "Shift {number}",
-    "started": "Started: {time}",
-    "close": "Close",
-    "endShift": "End Shift",
-    "startShift": "Start Shift",
-    "logProduction": "Log Production",
-    "reportDowntime": "Report Downtime",
-    "qualityEntry": "Quality Entry",
-    "attendance": "Attendance",
-    "cannotStartShiftWorkflow": "Cannot start shift workflow",
-    "cannotStartEndShiftWorkflow": "Cannot start end shift workflow",
-    "shiftStartedSuccess": "Shift started successfully!",
-    "shiftEndedSuccess": "Shift ended successfully!"
-  },
   "shifts": {
     "shift1": "Shift 1 (Morning)",
     "shift2": "Shift 2 (Afternoon)",
