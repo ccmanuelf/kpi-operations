@@ -425,6 +425,12 @@ class PDFReportGenerator:
             )
         )
 
+        # Scope it, like the production and quality queries above. Without this
+        # a client-scoped report computed absenteeism over EVERY tenant's
+        # attendance -- the number was both wrong and not the reader's to see.
+        if client_id:
+            attendance_query = attendance_query.filter(AttendanceEntry.client_id == client_id)
+
         attendance_entries = attendance_query.all()
 
         if attendance_entries:
@@ -537,6 +543,11 @@ class PDFReportGenerator:
                     datetime.combine(end_date, datetime.max.time()),
                 )
             )
+
+            # Same scoping as the summary above, and for the same reason: this
+            # is the ONLY section of /reports/attendance/pdf.
+            if client_id:
+                query = query.filter(AttendanceEntry.client_id == client_id)
 
             entries = query.all()
 
