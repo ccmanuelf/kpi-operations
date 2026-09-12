@@ -17,7 +17,7 @@ from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from sqlalchemy.orm import Session
 
 from backend.reports.measurements import recorded
-from backend.reports.targets import UNEVALUATED_STATUSES, Target, load_targets, status_for
+from backend.reports.targets import NOT_RECORDED, UNEVALUATED_STATUSES, Target, load_targets, status_for
 from backend.calculations.availability import calculate_availability_pure
 
 
@@ -160,10 +160,11 @@ class ExcelReportGenerator:
             ws[f"A{row}"] = kpi["name"]
             ws[f"B{row}"] = kpi["current"]
             ws[f"C{row}"] = kpi["target"]
-            # No target means no variance. Excel treats the blank C cell as 0, so
-            # leaving the formula in would print the measured value as its own
-            # variance from nothing.
-            if kpi["target"] is not None:
+            # No target -- or no measurement -- means no variance. Excel treats a
+            # blank cell as 0, so leaving the formula in would subtract nothing
+            # from nothing and print a confident 0.0 for a row that measured
+            # neither side.
+            if kpi["target"] is not None and kpi["current"] is not None:
                 ws[f"D{row}"] = f"=B{row}-C{row}"
             ws[f"E{row}"] = kpi["status"]
 
@@ -541,36 +542,39 @@ class ExcelReportGenerator:
 
         production_entries = production_query.all()
 
-        # Averaged over the entries that RECORDED the measurement -- see
-        # backend/reports/measurements.py. `or 0` counted NULLs as contributing
-        # zeros, and nothing in the application writes these two columns. Bound
-        # unconditionally so neither branch below depends on short-circuiting.
-        efficiency_values = recorded(production_entries, "efficiency_percentage")
-        performance_values = recorded(production_entries, "performance_percentage")
-
-        if efficiency_values:
-            avg_efficiency = sum(efficiency_values) / len(efficiency_values)
-            kpi_data.append(
-                {
-                    "name": "Efficiency",
-                    "current": avg_efficiency,
-                    "target": _target_value(targets, "efficiency"),
-                    "status": status_for(avg_efficiency, targets.get("efficiency")),
-                    "format": '0.0"%"',
-                }
-            )
-
-        if performance_values:
-            avg_performance = sum(performance_values) / len(performance_values)
-            kpi_data.append(
-                {
-                    "name": "Performance",
-                    "current": avg_performance,
-                    "target": _target_value(targets, "performance"),
-                    "status": status_for(avg_performance, targets.get("performance")),
-                    "format": '0.0"%"',
-                }
-            )
+        # ONLY when production entries exist for the window. Two different
+        # absences, two different answers:
+        #
+        #   no entries at all          -> omit the row. There is nothing to report
+        #                                 on, which is how the OTD block treats a
+        #                                 window with no deliveries and the
+        #                                 labour-hours block a window with no
+        #                                 attendance.
+        #   entries, no measurement    -> emit it, carrying None and "Not
+        #                                 Recorded". The rows exist; the column
+        #                                 they would populate is one nothing in the
+        #                                 application writes. Omitting here would
+        #                                 make an untracked KPI indistinguishable
+        #                                 from one the sheet never covered.
+        #
+        # Averaged over the entries that RECORDED the measurement -- `or 0` counted
+        # NULLs as contributing zeros. See backend/reports/measurements.py.
+        if production_entries:
+            for label, column, kpi_key in (
+                ("Efficiency", "efficiency_percentage", "efficiency"),
+                ("Performance", "performance_percentage", "performance"),
+            ):
+                values = recorded(production_entries, column)
+                average = sum(values) / len(values) if values else None
+                kpi_data.append(
+                    {
+                        "name": label,
+                        "current": average,
+                        "target": _target_value(targets, kpi_key),
+                        "status": NOT_RECORDED if average is None else status_for(average, targets.get(kpi_key)),
+                        "format": '0.0"%"',
+                    }
+                )
 
         # Quality KPIs
         quality_query = self.db.query(QualityEntry).filter(

@@ -21,7 +21,7 @@ from reportlab.lib.enums import TA_CENTER
 from sqlalchemy.orm import Session
 
 from backend.reports.measurements import absence_note, recorded
-from backend.reports.targets import Target, load_targets, status_for
+from backend.reports.targets import NOT_RECORDED, Target, load_targets, status_for
 from backend.calculations.availability import calculate_availability_pure
 
 
@@ -37,7 +37,9 @@ def _detail_variance(targets: Dict[str, Target], kpi_key: str, value: float, uni
     return "\u2014" if target is None else f"{value - target.value:+.1f}{unit}"
 
 
-def _summary_row(name: str, value: float, kpi_key: str, targets: Dict[str, Target], unit: str = "%") -> Dict[str, Any]:
+def _summary_row(
+    name: str, value: Optional[float], kpi_key: str, targets: Dict[str, Target], unit: str = "%"
+) -> Dict[str, Any]:
     """One executive-summary row, judged against the configured target.
 
     `target` is None when nothing is configured for this metric, which the table
@@ -56,7 +58,9 @@ def _summary_row(name: str, value: float, kpi_key: str, targets: Dict[str, Targe
         "value": value,
         "target": target.value if target else None,
         "unit": unit,
-        "status": status_for(value, target),
+        # `value is None` means the measurement was never recorded -- distinct
+        # from a recorded zero, which is a finding and must still be judged.
+        "status": NOT_RECORDED if value is None else status_for(value, target),
     }
 
 
@@ -256,7 +260,8 @@ class PDFReportGenerator:
             # this metric. Printing a literal here is what made the column
             # judge clients against values they never set.
             target_cell = "\u2014" if kpi["target"] is None else f"{kpi['target']:g}{kpi['unit']}"
-            summary_data.append([kpi["name"], f"{kpi['value']:.1f}{kpi['unit']}", target_cell, kpi["status"]])
+            value_cell = "\u2014" if kpi["value"] is None else f"{kpi['value']:.1f}{kpi['unit']}"
+            summary_data.append([kpi["name"], value_cell, target_cell, kpi["status"]])
 
         summary_table = Table(summary_data, colWidths=[2.5 * inch, 1.5 * inch, 1.5 * inch, 1.5 * inch])
         summary_table.setStyle(
@@ -394,22 +399,20 @@ class PDFReportGenerator:
             # `float(x or 0)` counted a NULL as a contributing zero, and for these
             # two columns that is every row in every deployment -- nothing writes
             # them -- so both rows reported 0.0% and "At Risk" where the truth is
-            # that nobody measured. A row with no measurement is omitted, the same
-            # way the Excel OTD and labour-hours blocks omit themselves when their
-            # own inputs are absent.
-            efficiency_values = recorded(production_entries, "efficiency_percentage")
-            if efficiency_values:
-                kpi_data.append(
-                    _summary_row("Efficiency", sum(efficiency_values) / len(efficiency_values), "efficiency", targets)
-                )
-
-            performance_values = recorded(production_entries, "performance_percentage")
-            if performance_values:
-                kpi_data.append(
-                    _summary_row(
-                        "Performance", sum(performance_values) / len(performance_values), "performance", targets
-                    )
-                )
+            # that nobody measured.
+            #
+            # The row is still EMITTED, carrying None and a "Not Recorded" status,
+            # rather than omitted. Omitting it would make an untracked KPI
+            # indistinguishable from one the report never covered, and a reader
+            # comparing two periods would not notice a row quietly disappearing.
+            # This matches how an unconfigured target renders "No Target" instead
+            # of vanishing.
+            for label, column, kpi_key in (
+                ("Efficiency", "efficiency_percentage", "efficiency"),
+                ("Performance", "performance_percentage", "performance"),
+            ):
+                values = recorded(production_entries, column)
+                kpi_data.append(_summary_row(label, sum(values) / len(values) if values else None, kpi_key, targets))
 
         # Quality metrics
         quality_query = self.db.query(QualityEntry).filter(
@@ -510,6 +513,13 @@ class PDFReportGenerator:
                 avg_value = sum(values) / len(values) if values else 0
                 details = {
                     "Current Value": f"{avg_value:.1f}%",
+                    # How much of the window the average actually rests on. A
+                    # partly-populated column averages over a subset, and without
+                    # this the reader cannot tell a figure drawn from 2 entries
+                    # from one drawn from 200 -- nor compare it with a period that
+                    # measured everything. The pivot engine exposes the same thing
+                    # as `excluded_entries`.
+                    "Entries Measured": f"{len(values)} of {len(entries)}",
                     "Target": _detail_target(targets, kpi_key),
                     "Variance": _detail_variance(targets, kpi_key, avg_value),
                     "Average (Period)": f"{avg_value:.1f}%",
