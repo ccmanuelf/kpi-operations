@@ -39,10 +39,14 @@ WARNING = "Warning"
 CRITICAL = "Critical"
 URGENT = "Urgent"
 NO_TARGET = "No Target"
+#: The measurement itself was never recorded -- distinct from NO_TARGET (the
+#: number is real, nobody said what it should be) and from "N/A" (a raw total that
+#: is not evaluated at all). See backend/reports/measurements.py.
+NOT_RECORDED = "Not Recorded"
 
 #: Statuses that must not be painted as an alarm by a renderer's colour rule.
 #: Both mean "no judgement was made" rather than "the judgement is bad".
-UNEVALUATED_STATUSES = ("N/A", NO_TARGET)
+UNEVALUATED_STATUSES = ("N/A", NO_TARGET, NOT_RECORDED)
 
 _BREACH_STATUS = {"warning": WARNING, "critical": CRITICAL, "urgent": URGENT}
 

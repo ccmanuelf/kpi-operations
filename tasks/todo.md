@@ -13,7 +13,10 @@
    - **PR-A2 (in progress, `fix/threshold-band-inheritance`)** — Q1: per-field
      band merge in BOTH readers (`reports/targets.py` and
      `routes/kpi/thresholds.py`), keyed on `is None`.
-   - **PR-B0** — Q2: make absence legible on the efficiency/performance rows.
+   - ~~**PR-A2**~~ — SHIPPED `5b6219b` (#302). Per-field band merge; verified on
+     Render (efficiency at 0.0% went At Risk → Urgent once the bands inherited).
+   - **PR-B0 (in progress, `fix/report-absent-measurements`)** — Q2: a
+     measurement nobody recorded is omitted, not reported as a measured zero.
      PREREQUISITE for PR-B.
    - PR-B — the four sections + the availability summary row, each with the
      absence guard, OTD via `calculate_true_otd` (NOT `calculate_otd`, which has
