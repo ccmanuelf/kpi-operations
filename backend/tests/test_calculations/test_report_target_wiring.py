@@ -48,6 +48,11 @@ def tenant(transactional_db):
     product = TestDataFactory.create_product(db, client_id=client.client_id)
     employee = TestDataFactory.create_employee(db, client_id=client.client_id)
     work_order = TestDataFactory.create_work_order(db, client_id=client.client_id, product_id=product.product_id)
+    # efficiency_percentage / performance_percentage are set explicitly because
+    # nothing in the application writes them, and the generators now OMIT a row
+    # whose measurement was never recorded (backend/reports/measurements.py).
+    # These tests are about which TARGET reaches the cell, so the rows have to
+    # render -- an unmeasured fixture would make every assertion below vacuous.
     TestDataFactory.create_production_entry(
         db,
         client_id=client.client_id,
@@ -55,6 +60,8 @@ def tenant(transactional_db):
         shift_id=shift.shift_id,
         entered_by=user.user_id,
         production_date=DAY,
+        efficiency_percentage=Decimal("80.0"),
+        performance_percentage=Decimal("90.0"),
     )
     TestDataFactory.create_quality_entry(
         db,

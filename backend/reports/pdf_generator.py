@@ -20,6 +20,7 @@ from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, 
 from reportlab.lib.enums import TA_CENTER
 from sqlalchemy.orm import Session
 
+from backend.reports.measurements import absence_note, recorded
 from backend.reports.targets import Target, load_targets, status_for
 from backend.calculations.availability import calculate_availability_pure
 
@@ -389,15 +390,26 @@ class PDFReportGenerator:
         production_entries = production_query.all()
 
         if production_entries:
-            # Calculate Efficiency
-            total_efficiency = sum(float(e.efficiency_percentage or 0) for e in production_entries)
-            avg_efficiency = total_efficiency / len(production_entries) if production_entries else 0
-            kpi_data.append(_summary_row("Efficiency", avg_efficiency, "efficiency", targets))
+            # Averaged over the entries that actually RECORDED the measurement.
+            # `float(x or 0)` counted a NULL as a contributing zero, and for these
+            # two columns that is every row in every deployment -- nothing writes
+            # them -- so both rows reported 0.0% and "At Risk" where the truth is
+            # that nobody measured. A row with no measurement is omitted, the same
+            # way the Excel OTD and labour-hours blocks omit themselves when their
+            # own inputs are absent.
+            efficiency_values = recorded(production_entries, "efficiency_percentage")
+            if efficiency_values:
+                kpi_data.append(
+                    _summary_row("Efficiency", sum(efficiency_values) / len(efficiency_values), "efficiency", targets)
+                )
 
-            # Calculate Performance
-            total_performance = sum(float(e.performance_percentage or 0) for e in production_entries)
-            avg_performance = total_performance / len(production_entries) if production_entries else 0
-            kpi_data.append(_summary_row("Performance", avg_performance, "performance", targets))
+            performance_values = recorded(production_entries, "performance_percentage")
+            if performance_values:
+                kpi_data.append(
+                    _summary_row(
+                        "Performance", sum(performance_values) / len(performance_values), "performance", targets
+                    )
+                )
 
         # Quality metrics
         quality_query = self.db.query(QualityEntry).filter(
@@ -477,9 +489,13 @@ class PDFReportGenerator:
 
             if entries:
                 if kpi_key == "efficiency":
-                    values = [float(e.efficiency_percentage or 0) for e in entries]
+                    values = recorded(entries, "efficiency_percentage")
+                    if not values:
+                        return absence_note(entries, "efficiency_percentage", "Efficiency")
                 elif kpi_key == "performance":
-                    values = [float(e.performance_percentage or 0) for e in entries]
+                    values = recorded(entries, "performance_percentage")
+                    if not values:
+                        return absence_note(entries, "performance_percentage", "Performance")
                 else:
                     values = [
                         float(

@@ -370,6 +370,13 @@ class TestDataFactory:
             work_order_id=kwargs.get("work_order_id"),
             job_id=kwargs.get("job_id"),
             ideal_cycle_time=kwargs.get("ideal_cycle_time"),
+            # Nothing in the application writes these two, so they default to
+            # NULL here exactly as they do in production. Accepted as kwargs so a
+            # test can express the MEASURED case -- the generators now omit a row
+            # whose measurement was never recorded, and a test about targets needs
+            # the row to render.
+            efficiency_percentage=kwargs.get("efficiency_percentage"),
+            performance_percentage=kwargs.get("performance_percentage"),
             notes=kwargs.get("notes"),
         )
         db.add(entry)

@@ -16,6 +16,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from sqlalchemy.orm import Session
 
+from backend.reports.measurements import recorded
 from backend.reports.targets import UNEVALUATED_STATUSES, Target, load_targets, status_for
 from backend.calculations.availability import calculate_availability_pure
 
@@ -540,10 +541,15 @@ class ExcelReportGenerator:
 
         production_entries = production_query.all()
 
-        if production_entries:
-            # Efficiency
-            total_efficiency = sum(float(e.efficiency_percentage or 0) for e in production_entries)
-            avg_efficiency = total_efficiency / len(production_entries)
+        # Averaged over the entries that RECORDED the measurement -- see
+        # backend/reports/measurements.py. `or 0` counted NULLs as contributing
+        # zeros, and nothing in the application writes these two columns. Bound
+        # unconditionally so neither branch below depends on short-circuiting.
+        efficiency_values = recorded(production_entries, "efficiency_percentage")
+        performance_values = recorded(production_entries, "performance_percentage")
+
+        if efficiency_values:
+            avg_efficiency = sum(efficiency_values) / len(efficiency_values)
             kpi_data.append(
                 {
                     "name": "Efficiency",
@@ -554,9 +560,8 @@ class ExcelReportGenerator:
                 }
             )
 
-            # Performance
-            total_performance = sum(float(e.performance_percentage or 0) for e in production_entries)
-            avg_performance = total_performance / len(production_entries)
+        if performance_values:
+            avg_performance = sum(performance_values) / len(performance_values)
             kpi_data.append(
                 {
                     "name": "Performance",
