@@ -49,8 +49,11 @@ def absence_note(entries: Sequence[Any], attribute: str, label: str) -> dict:
     """
     return {
         "Status": f"{label} was not recorded for this period",
+        # Phrased without an indefinite article on purpose: "a {label}" reads as
+        # "a efficiency" for every vowel-initial metric, and this string is
+        # customer-facing. Rewording beats carrying an a/an rule for one sentence.
         "Note": (
-            f"{len(entries)} production entries cover this range, but none carry a"
-            f" {label.lower()} measurement, so no average can be reported."
+            f"{len(entries)} production entries cover this range, but none of them"
+            f" recorded {label.lower()}, so no average can be reported."
         ),
     }

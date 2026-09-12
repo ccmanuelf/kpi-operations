@@ -72,10 +72,20 @@ class TestAbsenceNote:
 
         assert "not recorded" in note["Status"].lower()
         assert "3 production entries" in note["Note"]
+        # Caught on the live demo: "a efficiency measurement". Every metric this
+        # is used for is vowel-initial, and the string is customer-facing.
+        assert " a efficiency" not in note["Note"], note["Note"]
+        assert " a availability" not in absence_note([1], "x", "Availability")["Note"]
         # The generators' generic message is false here and actionable in the
         # wrong direction: the entries WERE entered, and entering more would
         # change nothing.
         assert "ensure data has been entered" not in note["Note"]
+
+    def test_the_sentence_reads_correctly_for_every_metric_it_is_used_for(self):
+        for label in ("Efficiency", "Performance", "Availability", "OEE"):
+            note = absence_note([1, 2], "col", label)
+            assert f" a {label.lower()}" not in note["Note"], note["Note"]
+            assert label.lower() in note["Note"], note["Note"]
 
 
 @pytest.fixture
